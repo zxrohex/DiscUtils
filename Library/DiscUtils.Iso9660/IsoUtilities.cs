@@ -178,11 +178,8 @@ namespace DiscUtils.Iso9660
 
             // Assumption: never less than one byte per character
 
-            int charsUsed;
-            int bytesUsed;
-            bool completed;
             encoder.Convert(paddedString.ToCharArray(), 0, paddedString.Length, buffer, offset, numBytes, false,
-                out charsUsed, out bytesUsed, out completed);
+                out var charsUsed, out var bytesUsed, out _);
 
             if (!canTruncate && charsUsed < str.Length)
             {
@@ -288,8 +285,7 @@ namespace DiscUtils.Iso9660
                 }
             }
 
-            ushort ver;
-            if (!ushort.TryParse(parts[2], out ver) || ver > 32767 || ver < 1)
+            if (!ushort.TryParse(parts[2], out var ver) || ver > 32767 || ver < 1)
             {
                 ver = 1;
             }
@@ -328,7 +324,7 @@ namespace DiscUtils.Iso9660
 
         internal static void ToDirectoryTimeFromUTC(byte[] data, int offset, DateTime dateTime)
         {
-            if (dateTime == DateTime.MinValue)
+            if (dateTime == DateTime.MinValue || dateTime.Year < 1900)
             {
                 Array.Clear(data, offset, 7);
             }
@@ -447,8 +443,7 @@ namespace DiscUtils.Iso9660
 
         private static int SafeParseInt(int minVal, int maxVal, string str)
         {
-            int val;
-            if (!int.TryParse(str, out val))
+            if (!int.TryParse(str, out var val))
             {
                 return minVal;
             }

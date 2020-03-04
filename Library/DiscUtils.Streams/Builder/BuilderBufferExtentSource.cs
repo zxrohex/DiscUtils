@@ -31,6 +31,8 @@ namespace DiscUtils.Streams
             _buffer = buffer;
         }
 
+        public override long Length => _buffer.Length;
+
         public override BuilderExtent Fix(long pos)
         {
             return new BuilderBufferExtent(pos, _buffer);

@@ -135,7 +135,7 @@ namespace DiscUtils.Ntfs
 
             // If we found more than two clusters, or we have a fragmented result,
             // then switch out of trying to allocate contiguous ranges.  Similarly,
-            // switch back if we found a resonable quantity in a single span.
+            // switch back if we found a reasonable quantity in a single span.
             if ((numFound > 4 && result.Count == 1) || result.Count > 1)
             {
                 _fragmentedDiskMode = numFound / result.Count < 4;
@@ -153,11 +153,7 @@ namespace DiscUtils.Ntfs
         {
             foreach (Tuple<long, long> run in runs)
             {
-#if NET20
                 _bitmap.MarkAbsentRange(run.Item1, run.Item2);
-#else
-                _bitmap.MarkAbsentRange(run.Item1, run.Item2);
-#endif
             }
         }
 

@@ -89,6 +89,11 @@ namespace DiscUtils.Ntfs
         public ShortFileNameOption ShortNameCreation { get; set; }
 
         /// <summary>
+        /// Enables sequence number checks when a file reference is resolved through master file table.
+        /// </summary>
+        public bool UseSafeSequenceNumberChecks { get; set; } = true;
+
+        /// <summary>
         /// Returns a string representation of the file system options.
         /// </summary>
         /// <returns>A string of the form Show: XX XX XX.</returns>

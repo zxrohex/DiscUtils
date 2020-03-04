@@ -28,7 +28,7 @@ namespace DiscUtils.Ntfs.Internals
     /// <remarks>Each instance of this class points to the actual Master File Table
     /// entry that contains the attribute.  It is used for files split over multiple
     /// Master File Table entries.</remarks>
-    public sealed class AttributeListEntry
+    public struct AttributeListEntry : IAttributeLocator
     {
         private readonly AttributeListRecord _record;
 
@@ -40,7 +40,7 @@ namespace DiscUtils.Ntfs.Internals
         /// <summary>
         /// Gets the identifier of the attribute.
         /// </summary>
-        public int AttributeIdentifier
+        public ushort Identifier
         {
             get { return _record.AttributeId; }
         }
@@ -48,7 +48,7 @@ namespace DiscUtils.Ntfs.Internals
         /// <summary>
         /// Gets the name of the attribute (if any).
         /// </summary>
-        public string AttributeName
+        public string Name
         {
             get { return _record.Name; }
         }

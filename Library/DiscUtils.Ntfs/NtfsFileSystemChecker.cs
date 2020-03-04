@@ -310,7 +310,7 @@ namespace DiscUtils.Ntfs
         {
             ReportInfo("About to self-check index {0} in file {1} (MFT:{2})", name, file.BestName, file.IndexInMft);
 
-            IndexRoot root = file.GetStream(AttributeType.IndexRoot, name).GetContent<IndexRoot>();
+            IndexRoot root = file.GetStream(AttributeType.IndexRoot, name).Value.GetContent<IndexRoot>();
 
             byte[] rootBuffer;
             using (Stream s = file.OpenStream(AttributeType.IndexRoot, name, FileAccess.Read))

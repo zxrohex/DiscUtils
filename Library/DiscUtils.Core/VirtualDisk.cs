@@ -41,6 +41,8 @@ namespace DiscUtils
     {
         private VirtualDiskTransport _transport;
 
+        public event EventHandler Disposed;
+
         /// <summary>
         /// Finalizes an instance of the VirtualDisk class.
         /// </summary>
@@ -332,10 +334,9 @@ namespace DiscUtils
         public static VirtualDisk CreateDisk(string type, string variant, string path, VirtualDiskParameters diskParameters, string user, string password)
         {
             Uri uri = PathToUri(path);
-            VirtualDisk result = null;
+            VirtualDisk result;
 
-            Type transportType;
-            if (!VirtualDiskManager.DiskTransports.TryGetValue(uri.Scheme.ToUpperInvariant(), out transportType))
+            if (!VirtualDiskManager.DiskTransports.TryGetValue(uri.Scheme.ToUpperInvariant(), out var transportType))
             {
                 throw new FileNotFoundException(string.Format(CultureInfo.InvariantCulture, "Unable to parse path '{0}'", path), path);
             }
@@ -416,8 +417,7 @@ namespace DiscUtils
             Uri uri = PathToUri(path);
             VirtualDisk result = null;
 
-            Type transportType;
-            if (!VirtualDiskManager.DiskTransports.TryGetValue(uri.Scheme.ToUpperInvariant(), out transportType))
+            if (!VirtualDiskManager.DiskTransports.TryGetValue(uri.Scheme.ToUpperInvariant(), out var transportType))
             {
                 throw new FileNotFoundException(string.Format(CultureInfo.InvariantCulture, "Unable to parse path '{0}'", path), path);
             }
@@ -495,8 +495,7 @@ namespace DiscUtils
                 extension = extension.Substring(1);
             }
 
-            VirtualDiskFactory factory;
-            if (VirtualDiskManager.ExtensionMap.TryGetValue(extension, out factory))
+            if (VirtualDiskManager.ExtensionMap.TryGetValue(extension, out var factory))
             {
                 return factory.OpenDisk(fs, path, access);
             }
@@ -539,14 +538,14 @@ namespace DiscUtils
             {
                 throw new ArgumentNullException(nameof(data));
             }
-            if (data.Length != Sizes.Sector)
+            else if (data.Length > Sizes.Sector)
             {
-                throw new ArgumentException("The Master Boot Record must be exactly 512 bytes in length", nameof(data));
+                throw new ArgumentException("The Master Boot Record must be 512 bytes in length", "data");
             }
 
             long oldPos = Content.Position;
             Content.Position = 0;
-            Content.Write(data, 0, Sizes.Sector);
+            Content.Write(data, 0, data.Length);
             Content.Position = oldPos;
         }
 
@@ -573,8 +572,7 @@ namespace DiscUtils
                 extension = extension.Substring(1);
             }
 
-            VirtualDiskFactory factory;
-            if (VirtualDiskManager.ExtensionMap.TryGetValue(extension, out factory))
+            if (VirtualDiskManager.ExtensionMap.TryGetValue(extension, out var factory))
             {
                 return factory.OpenDiskLayer(locator, path, access);
             }
@@ -590,14 +588,21 @@ namespace DiscUtils
         /// if running inside destructor.</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing)
+            try
             {
-                if (_transport != null)
+                if (disposing)
                 {
-                    _transport.Dispose();
-                }
+                    if (_transport != null)
+                    {
+                        _transport.Dispose();
+                    }
 
-                _transport = null;
+                    _transport = null;
+                }
+            }
+            finally
+            {
+                Disposed?.Invoke(this, EventArgs.Empty);
             }
         }
 

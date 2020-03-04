@@ -40,7 +40,7 @@ namespace DiscUtils.Iso9660
     ///   builder.Build(@"C:\TEMP\myiso.iso");
     /// </code>
     /// </example>
-    public sealed class CDBuilder : StreamBuilder
+    public sealed class CDBuilder : StreamBuilder, IFileSystemBuilder
     {
         private const long DiskStart = 0x8000;
         private BootInitialEntry _bootEntry;
@@ -65,6 +65,8 @@ namespace DiscUtils.Iso9660
             _buildParams = new BuildParameters();
             _buildParams.UseJoliet = true;
         }
+
+        public bool TrackEqualSourceFiles { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether to update the ISOLINUX info table at the
@@ -145,6 +147,11 @@ namespace DiscUtils.Iso9660
             return GetDirectory(nameElements, nameElements.Length, true);
         }
 
+        private void AddFile(BuildFileInfo fi)
+        {
+            _files.Add(fi);
+        }
+
         /// <summary>
         /// Adds a byte array to the ISO image as a file.
         /// </summary>
@@ -161,16 +168,10 @@ namespace DiscUtils.Iso9660
         /// </remarks>
         public BuildFileInfo AddFile(string name, byte[] content)
         {
-            string[] nameElements = name.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
-            BuildDirectoryInfo dir = GetDirectory(nameElements, nameElements.Length - 1, true);
+            CheckDirectoryForFilePath(name, out var nameElements, out var dir);
 
-            BuildDirectoryMember existing;
-            if (dir.TryGetMember(nameElements[nameElements.Length - 1], out existing))
-            {
-                throw new IOException("File already exists");
-            }
             BuildFileInfo fi = new BuildFileInfo(nameElements[nameElements.Length - 1], dir, content);
-            _files.Add(fi);
+            AddFile(fi);
             dir.Add(fi);
             return fi;
         }
@@ -191,16 +192,10 @@ namespace DiscUtils.Iso9660
         /// </remarks>
         public BuildFileInfo AddFile(string name, string sourcePath)
         {
-            string[] nameElements = name.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
-            BuildDirectoryInfo dir = GetDirectory(nameElements, nameElements.Length - 1, true);
+            CheckDirectoryForFilePath(name, out var nameElements, out var dir);
 
-            BuildDirectoryMember existing;
-            if (dir.TryGetMember(nameElements[nameElements.Length - 1], out existing))
-            {
-                throw new IOException("File already exists");
-            }
             BuildFileInfo fi = new BuildFileInfo(nameElements[nameElements.Length - 1], dir, sourcePath);
-            _files.Add(fi);
+            AddFile(fi);
             dir.Add(fi);
             return fi;
         }
@@ -223,19 +218,13 @@ namespace DiscUtils.Iso9660
         {
             if (!source.CanSeek)
             {
-                throw new ArgumentException("source doesn't support seeking", nameof(source));
+                throw new ArgumentException("source doesn't support seeking", "source");
             }
 
-            string[] nameElements = name.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
-            BuildDirectoryInfo dir = GetDirectory(nameElements, nameElements.Length - 1, true);
+            CheckDirectoryForFilePath(name, out var nameElements, out var dir);
 
-            BuildDirectoryMember existing;
-            if (dir.TryGetMember(nameElements[nameElements.Length - 1], out existing))
-            {
-                throw new IOException("File already exists");
-            }
             BuildFileInfo fi = new BuildFileInfo(nameElements[nameElements.Length - 1], dir, source);
-            _files.Add(fi);
+            AddFile(fi);
             dir.Add(fi);
             return fi;
         }
@@ -289,17 +278,37 @@ namespace DiscUtils.Iso9660
             // Find end of the file data, fixing the files in place as we go
             foreach (BuildFileInfo fi in _files)
             {
-                primaryLocationTable.Add(fi, (uint)(focus / IsoUtilities.SectorSize));
-                supplementaryLocationTable.Add(fi, (uint)(focus / IsoUtilities.SectorSize));
-                FileExtent extent = new FileExtent(fi, focus);
-
-                // Only remember files of non-zero length (otherwise we'll stomp on a valid file)
-                if (extent.Length != 0)
+                if (TrackEqualSourceFiles && primaryLocationTable.TryGetValue(fi, out var existing_sector))
                 {
-                    fixedRegions.Add(extent);
-                }
+                    primaryLocationTable.Add(fi, existing_sector);
+                    supplementaryLocationTable.Add(fi, existing_sector);
 
-                focus += MathUtilities.RoundUp(extent.Length, IsoUtilities.SectorSize);
+                    var existing_focus = existing_sector * IsoUtilities.SectorSize;
+
+                    var extent = new FileExtent(fi, existing_focus);
+
+                    // Only remember files of non-zero length (otherwise we'll stomp on a valid file)
+                    if (extent.Length != 0)
+                    {
+                        fixedRegions.Add(extent);
+                    }
+                }
+                else
+                {
+                    var sector = (uint)(focus / IsoUtilities.SectorSize);
+
+                    primaryLocationTable.Add(fi, sector);
+                    supplementaryLocationTable.Add(fi, sector);
+                    var extent = new FileExtent(fi, focus);
+
+                    // Only remember files of non-zero length (otherwise we'll stomp on a valid file)
+                    if (extent.Length != 0)
+                    {
+                        fixedRegions.Add(extent);
+                    }
+
+                    focus += MathUtilities.RoundUp(extent.Length, IsoUtilities.SectorSize);
+                }
             }
 
             // ####################################################################
@@ -447,6 +456,53 @@ namespace DiscUtils.Iso9660
             return new MemoryStream(bootData, false);
         }
 
+        /// <summary>
+        /// Returns the number of files that have been added to this instance.
+        /// </summary>
+        public int FileCount => _files.Count;
+
+        int IFileSystemBuilder.FileCount => throw new NotImplementedException();
+
+        long IFileSystemBuilder.TotalSize => throw new NotImplementedException();
+
+        string IFileSystemBuilder.VolumeIdentifier { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+        /// <summary>
+        /// Get information about already added file.
+        /// </summary>
+        /// <param name="path">Full path to previously added file.</param>
+        /// <returns>BuildDirectoryMember object representing already added file.</returns>
+        public BuildDirectoryMember GetFile(string path)
+        {
+            var nameElements = path.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            var dir = GetDirectory(nameElements, nameElements.Length - 1, true);
+
+            if (dir.TryGetMember(nameElements[nameElements.Length - 1], out var existing))
+            {
+                return existing;
+            }
+
+            var name = IsoUtilities.NormalizeFileName(nameElements[nameElements.Length - 1]);
+
+            if (dir.TryGetMember(name, out existing))
+            {
+                return existing;
+            }
+
+            return null;
+        }
+
+        private void CheckDirectoryForFilePath(string name, out string[] nameElements, out BuildDirectoryInfo dir)
+        {
+            nameElements = name.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            dir = GetDirectory(nameElements, nameElements.Length - 1, true);
+
+            if (dir.TryGetMember(nameElements[nameElements.Length - 1], out _))
+            {
+                throw new IOException("File already exists");
+            }
+        }
+
         private BuildDirectoryInfo GetDirectory(string[] path, int pathLength, bool createMissing)
         {
             BuildDirectoryInfo di = TryGetDirectory(path, pathLength, createMissing);
@@ -465,8 +521,7 @@ namespace DiscUtils.Iso9660
 
             for (int i = 0; i < pathLength; ++i)
             {
-                BuildDirectoryMember next;
-                if (!focus.TryGetMember(path[i], out next))
+                if (!focus.TryGetMember(path[i], out var next))
                 {
                     if (createMissing)
                     {
@@ -483,8 +538,7 @@ namespace DiscUtils.Iso9660
                 }
                 else
                 {
-                    BuildDirectoryInfo nextAsBuildDirectoryInfo = next as BuildDirectoryInfo;
-                    if (nextAsBuildDirectoryInfo == null)
+                    if (!(next is BuildDirectoryInfo nextAsBuildDirectoryInfo))
                     {
                         throw new IOException("File with conflicting name exists");
                     }
@@ -494,5 +548,45 @@ namespace DiscUtils.Iso9660
 
             return focus;
         }
+
+        void IFileSystemBuilder.AddDirectory(string name) =>
+            AddDirectory(name);
+
+        void IFileSystemBuilder.AddFile(string name, byte[] content) =>
+            AddFile(name, content);
+
+        void IFileSystemBuilder.AddFile(string name, Stream source) =>
+            AddFile(name, source);
+
+        void IFileSystemBuilder.AddFile(string name, string sourcePath) =>
+            AddFile(name, sourcePath);
+
+        void IFileSystemBuilder.AddDirectory(string name, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime) =>
+            AddDirectory(name).CreationTime = modificationTime;
+
+        void IFileSystemBuilder.AddFile(string name, byte[] content, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime) =>
+            AddFile(name, content).CreationTime = modificationTime;
+
+        void IFileSystemBuilder.AddFile(string name, Stream source, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime) =>
+            AddFile(name, source).CreationTime = modificationTime;
+
+        void IFileSystemBuilder.AddFile(string name, string sourcePath, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime) =>
+            AddFile(name, sourcePath).CreationTime = modificationTime;
+
+        void IFileSystemBuilder.AddDirectory(string name, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+            AddDirectory(name).CreationTime = writtenTime;
+
+        void IFileSystemBuilder.AddFile(string name, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+            AddFile(name, content).CreationTime = writtenTime;
+
+        void IFileSystemBuilder.AddFile(string name, Stream source, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+            AddFile(name, source).CreationTime = writtenTime;
+        
+        void IFileSystemBuilder.AddFile(string name, string sourcePath, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+            AddFile(name, sourcePath).CreationTime = writtenTime;
+
+        bool IFileSystemBuilder.Exists(string path) => GetFile(path) != null;
+
+        public IFileSystem GenerateFileSystem() => new CDReader(Build(), UseJoliet);
     }
 }

@@ -98,7 +98,7 @@ namespace DiscUtils.Xva
         /// Creates a new stream that contains the XVA image.
         /// </summary>
         /// <returns>The new stream.</returns>
-        public override SparseStream Build()
+        public override Stream Build()
         {
             TarFileBuilder tarBuilder = new TarFileBuilder();
 

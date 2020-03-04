@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -101,10 +102,12 @@ namespace DiscUtils.Ntfs
         /// First MFT Index available for 'normal' files.
         /// </summary>
         private const uint FirstAvailableMftIndex = 24;
+        private static readonly int FILE_MAGIC = BitConverter.ToInt32(Encoding.ASCII.GetBytes("FILE"), 0);
 
         private Bitmap _bitmap;
         private int _bytesPerSector;
         private readonly ObjectCache<long, FileRecord> _recordCache;
+        private readonly NtfsOptions _options;
 
         private Stream _recordStream;
 
@@ -121,6 +124,8 @@ namespace DiscUtils.Ntfs
             // Temporary record stream - until we've bootstrapped the MFT properly
             _recordStream = new SubStream(context.RawStream, bpb.MftCluster * bpb.SectorsPerCluster * bpb.BytesPerSector,
                 24 * RecordSize);
+
+            _options = context.Options;
         }
 
         /// <summary>
@@ -137,7 +142,7 @@ namespace DiscUtils.Ntfs
                     {
                         byte[] recordData = StreamUtilities.ReadExact(mftStream, RecordSize);
 
-                        if (EndianUtilities.BytesToString(recordData, 0, 4) != "FILE")
+                        if (BitConverter.ToInt32(recordData, 0) != FILE_MAGIC)
                         {
                             continue;
                         }
@@ -208,10 +213,10 @@ namespace DiscUtils.Ntfs
                 _recordStream.Dispose();
             }
 
-            NtfsStream bitmapStream = _self.GetStream(AttributeType.Bitmap, null);
+            NtfsStream bitmapStream = _self.GetStream(AttributeType.Bitmap, null).Value;
             _bitmap = new Bitmap(bitmapStream.Open(FileAccess.ReadWrite), long.MaxValue);
 
-            NtfsStream recordsStream = _self.GetStream(AttributeType.Data, null);
+            NtfsStream recordsStream = _self.GetStream(AttributeType.Data, null).Value;
             _recordStream = recordsStream.Open(FileAccess.ReadWrite);
         }
 
@@ -335,15 +340,12 @@ namespace DiscUtils.Ntfs
         {
             FileRecord result = GetRecord(fileReference.MftIndex, false);
 
-            if (result != null)
+            if (result != null &&
+                _options.UseSafeSequenceNumberChecks &&
+                fileReference.SequenceNumber != 0 && result.SequenceNumber != 0 &&
+                fileReference.SequenceNumber != result.SequenceNumber)
             {
-                if (fileReference.SequenceNumber != 0 && result.SequenceNumber != 0)
-                {
-                    if (fileReference.SequenceNumber != result.SequenceNumber)
-                    {
-                        throw new IOException("Attempt to get an MFT record with an old reference");
-                    }
-                }
+                throw new IOException("Attempt to get an MFT record with an old reference");
             }
 
             return result;
@@ -506,6 +508,97 @@ namespace DiscUtils.Ntfs
             }
 
             return new ClusterMap(clusterToRole, clusterToFile, fileToPaths);
+        }
+
+        public Tuple<uint, ushort>[] GetClusterList()
+        {
+            int totalClusters =
+                (int)
+                MathUtilities.Ceil(_self.Context.BiosParameterBlock.TotalSectors64,
+                    _self.Context.BiosParameterBlock.SectorsPerCluster);
+
+            var clusters = new Tuple<uint, ushort>[totalClusters];
+
+            foreach (FileRecord fr in Records)
+            {
+                if (fr.BaseFile.Value != 0 || (fr.Flags & FileRecordFlags.InUse) == 0)
+                {
+                    continue;
+                }
+
+                File f = new File(_self.Context, fr);
+
+                foreach (NtfsStream stream in f.AllStreams)
+                {
+                    foreach (Range<long, long> range in stream.GetClusters())
+                    {
+                        for (long cluster = range.Offset; cluster < range.Offset + range.Count; ++cluster)
+                        {
+                            clusters[cluster] = new Tuple<uint, ushort>(f.IndexInMft, stream.Attribute.Id);
+                        }
+                    }
+                }
+            }
+
+            return clusters;
+        }
+
+        public ClusterRoles[] GetClusterRoles()
+        {
+            int totalClusters =
+                (int)
+                MathUtilities.Ceil(_self.Context.BiosParameterBlock.TotalSectors64,
+                    _self.Context.BiosParameterBlock.SectorsPerCluster);
+
+            ClusterRoles[] clusterToRole = new ClusterRoles[totalClusters];
+
+            for (int i = 0; i < totalClusters; ++i)
+            {
+                clusterToRole[i] = ClusterRoles.Free;
+            }
+
+            foreach (FileRecord fr in Records)
+            {
+                if (fr.BaseFile.Value != 0 || (fr.Flags & FileRecordFlags.InUse) == 0)
+                {
+                    continue;
+                }
+
+                File f = new File(_self.Context, fr);
+
+                foreach (NtfsStream stream in f.AllStreams)
+                {
+                    ClusterRoles roles = ClusterRoles.None;
+                    if (f.IndexInMft < FirstAvailableMftIndex)
+                    {
+                        roles |= ClusterRoles.SystemFile;
+
+                        if (f.IndexInMft == BootIndex)
+                        {
+                            roles |= ClusterRoles.BootArea;
+                        }
+                    }
+                    else
+                    {
+                        roles |= ClusterRoles.DataFile;
+                    }
+
+                    if (stream.AttributeType != AttributeType.Data)
+                    {
+                        roles |= ClusterRoles.Metadata;
+                    }
+
+                    foreach (Range<long, long> range in stream.GetClusters())
+                    {
+                        for (long cluster = range.Offset; cluster < range.Offset + range.Count; ++cluster)
+                        {
+                            clusterToRole[cluster] = roles;
+                        }
+                    }
+                }
+            }
+
+            return clusterToRole;
         }
 
         private static void Wipe(Stream s)

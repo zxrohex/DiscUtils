@@ -473,7 +473,9 @@ namespace DiscUtils.Vhdx
             {
                 FileLocator fileLocator = file.RelativeFileLocator;
                 bool found = false;
-                foreach (string testPath in file.GetParentLocations())
+                var parent_locations = file.GetParentLocations();
+                
+                foreach (string testPath in parent_locations)
                 {
                     if (fileLocator.Exists(testPath))
                     {
@@ -495,8 +497,7 @@ namespace DiscUtils.Vhdx
 
                 if (!found)
                 {
-                    throw new IOException(string.Format(CultureInfo.InvariantCulture,
-                        "Failed to find parent for disk '{0}'", file.FullPath));
+                    throw new IOException($"Failed to find parent for disk '{file.FullPath}'.{Environment.NewLine}{Environment.NewLine}Paths tried:{Environment.NewLine}{string.Join(Environment.NewLine, parent_locations)}");
                 }
             }
         }

@@ -102,7 +102,7 @@ namespace DiscUtils.Vhd
                 CanBeHardDisk = true,
                 DeterministicGeometry = true,
                 PreservesBiosGeometry = false,
-                CalcGeometry = c => Geometry.FromCapacity(c)
+                CalcGeometry = Geometry.FromCapacity
             };
         }
     }

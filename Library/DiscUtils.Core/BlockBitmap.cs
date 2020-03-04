@@ -20,9 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils
 {
-    internal sealed class BlockBitmap
+    public sealed class BlockBitmap
     {
         private readonly byte[] _data;
         private readonly int _length;

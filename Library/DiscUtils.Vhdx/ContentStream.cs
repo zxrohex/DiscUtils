@@ -28,7 +28,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Vhdx
 {
-    internal sealed class ContentStream : MappedStream
+    public sealed class ContentStream : MappedStream
     {
         private bool _atEof;
         private readonly Stream _batStream;
@@ -44,7 +44,7 @@ namespace DiscUtils.Vhdx
         private SparseStream _parentStream;
         private long _position;
 
-        public ContentStream(SparseStream fileStream, bool? canWrite, Stream batStream, FreeSpaceTable freeSpaceTable,
+        internal ContentStream(SparseStream fileStream, bool? canWrite, Stream batStream, FreeSpaceTable freeSpaceTable,
                              Metadata metadata, long length, SparseStream parentStream, Ownership ownsParent)
         {
             _fileStream = fileStream;
@@ -130,7 +130,12 @@ namespace DiscUtils.Vhdx
         {
             CheckDisposed();
 
-            throw new NotImplementedException();
+            if (!CanWrite)
+            {
+                throw new InvalidOperationException("Attempt to flush to read-only VHDX");
+            }
+
+            _fileStream.Flush();
         }
 
         public override IEnumerable<StreamExtent> MapContent(long start, long length)
@@ -176,10 +181,7 @@ namespace DiscUtils.Vhdx
 
             while (totalRead < totalToRead)
             {
-                int chunkIndex;
-                int blockIndex;
-                int sectorIndex;
-                Chunk chunk = GetChunk(_position + totalRead, out chunkIndex, out blockIndex, out sectorIndex);
+                Chunk chunk = GetChunk(_position + totalRead, out _, out var blockIndex, out var sectorIndex);
 
                 int blockOffset = (int)(sectorIndex * _metadata.LogicalSectorSize);
                 int blockBytesRemaining = (int)(_fileParameters.BlockSize - blockOffset);
@@ -197,8 +199,7 @@ namespace DiscUtils.Vhdx
                 {
                     BlockBitmap bitmap = chunk.GetBlockBitmap(blockIndex);
 
-                    bool present;
-                    int numSectors = bitmap.ContiguousSectors(sectorIndex, out present);
+                    int numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
                     int toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
                     int read;
 
@@ -284,10 +285,7 @@ namespace DiscUtils.Vhdx
 
             while (totalWritten < count)
             {
-                int chunkIndex;
-                int blockIndex;
-                int sectorIndex;
-                Chunk chunk = GetChunk(_position + totalWritten, out chunkIndex, out blockIndex, out sectorIndex);
+                Chunk chunk = GetChunk(_position + totalWritten, out _, out var blockIndex, out var sectorIndex);
 
                 int blockOffset = (int)(sectorIndex * _metadata.LogicalSectorSize);
                 int blockBytesRemaining = (int)(_fileParameters.BlockSize - blockOffset);
@@ -348,11 +346,7 @@ namespace DiscUtils.Vhdx
 
             while (pos < start + count)
             {
-                int chunkIndex;
-                int blockIndex;
-                int sectorIndex;
-
-                Chunk chunk = GetChunk(pos, out chunkIndex, out blockIndex, out sectorIndex);
+                Chunk chunk = GetChunk(pos, out _, out _, out _);
 
                 for (int i = 0; i < chunkRatio; ++i)
                 {
@@ -375,7 +369,9 @@ namespace DiscUtils.Vhdx
             }
         }
 
-        private Chunk GetChunk(long position, out int chunk, out int block, out int sector)
+        public long ChunkSize => (1L << 23) * _metadata.LogicalSectorSize;
+
+        public Chunk GetChunk(long position, out int chunk, out int block, out int sector)
         {
             long chunkSize = (1L << 23) * _metadata.LogicalSectorSize;
             int chunkRatio = (int)(chunkSize / _metadata.FileParameters.BlockSize);

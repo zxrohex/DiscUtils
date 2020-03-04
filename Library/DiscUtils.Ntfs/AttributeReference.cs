@@ -27,7 +27,7 @@ namespace DiscUtils.Ntfs
     /// <summary>
     /// Fully-qualified reference to an attribute.
     /// </summary>
-    internal class AttributeReference : IComparable<AttributeReference>, IEquatable<AttributeReference>
+    internal struct AttributeReference : IComparable<AttributeReference>, IEquatable<AttributeReference>
     {
         private FileRecordReference _fileReference;
 
@@ -95,7 +95,7 @@ namespace DiscUtils.Ntfs
         /// <returns>String representing the attribute.</returns>
         public override string ToString()
         {
-            return _fileReference + ".attr[" + AttributeId + "]";
+            return $"{_fileReference}.attr[{AttributeId}]";
         }
 
         /// <summary>
@@ -105,13 +105,13 @@ namespace DiscUtils.Ntfs
         /// <returns><c>true</c> if obj is an equivalent attribute reference.</returns>
         public override bool Equals(object obj)
         {
-            AttributeReference objAsAttrRef = obj as AttributeReference;
+            AttributeReference? objAsAttrRef = obj as AttributeReference?;
             if (objAsAttrRef == null)
             {
                 return false;
             }
 
-            return Equals(objAsAttrRef);
+            return Equals(objAsAttrRef.Value);
         }
 
         /// <summary>

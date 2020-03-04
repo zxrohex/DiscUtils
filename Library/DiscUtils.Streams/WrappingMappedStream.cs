@@ -92,7 +92,7 @@ namespace DiscUtils.Streams
             set { WrappedStream.Position = value; }
         }
 
-        protected T WrappedStream { get; private set; }
+        public T WrappedStream { get; private set; }
 
         public override IEnumerable<StreamExtent> MapContent(long start, long length)
         {

@@ -26,7 +26,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs
 {
-    internal class NtfsStream
+    internal struct NtfsStream
     {
         private readonly File _file;
 
@@ -89,7 +89,7 @@ namespace DiscUtils.Ntfs
             return Attribute.Open(access);
         }
 
-        internal Range<long, long>[] GetClusters()
+        public Range<long, long>[] GetClusters()
         {
             return Attribute.GetClusters();
         }

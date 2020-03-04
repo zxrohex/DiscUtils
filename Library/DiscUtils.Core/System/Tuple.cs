@@ -21,12 +21,12 @@
 //
 
 
-#if NET20
+#if NET20 || NET35
 
 // ReSharper disable once CheckNamespace
 namespace System
 {
-    internal class Tuple<A, B>
+    public sealed class Tuple<A, B>
     {
         public A Item1 { get; }
         public B Item2 { get; }
@@ -37,7 +37,7 @@ namespace System
             Item2 = item2;
         }
 
-        protected static bool Equals<V>(V a, V b)
+        public static bool Equals<V>(V a, V b)
         {
             if (a == null && b == null)
                 return true;
@@ -65,9 +65,6 @@ namespace System
         }
     }
 }
-#endif
-
-#if NET20
 
 // ReSharper disable once CheckNamespace
 namespace System
@@ -111,6 +108,11 @@ namespace System
         {
             return ((Item1 == null) ? 0x14AB32BC : Item1.GetHashCode()) ^ ((Item2 == null) ? 0x65BC32DE : Item2.GetHashCode()) ^ ((Item3 == null) ? 0x2D4C25CF : Item3.GetHashCode());
         }
+    }
+
+    public static class EnumExtensions
+    {
+        public static bool HasFlag<TEnum>(this TEnum value, TEnum flag) where TEnum : Enum => ((long)(object)value & (long)(object)flag).Equals(flag);
     }
 }
 #endif

@@ -22,7 +22,7 @@
 
 namespace DiscUtils.Vhdx
 {
-    internal enum PayloadBlockStatus : ulong
+    public enum PayloadBlockStatus : ulong
     {
         NotPresent = 0,
         Undefined = 1,

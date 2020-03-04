@@ -535,6 +535,10 @@ namespace DiscUtils.Vfs
             get { return _wrapped.AvailableSpace; }
         }
 
+        public override byte[] ReadBootCode() => _wrapped.ReadBootCode();
+
+        public override uint VolumeId => _wrapped.VolumeId;
+
         /// <summary>
         /// Provides access to the actual file system implementation.
         /// </summary>

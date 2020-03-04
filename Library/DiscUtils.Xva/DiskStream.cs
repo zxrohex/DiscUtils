@@ -206,13 +206,13 @@ namespace DiscUtils.Xva
         private void ReadChunkSkipList()
         {
             List<int> skipChunks = new List<int>();
-            foreach (FileRecord fileInfo in _archive.GetFiles(_dir))
+            foreach (var fileInfo in _archive.GetFiles(_dir))
             {
                 if (fileInfo.Length == 0)
                 {
                     string path = fileInfo.Name.Replace('/', '\\');
-                    int index;
-                    if (int.TryParse(Utilities.GetFileFromPath(path), NumberStyles.Integer, CultureInfo.InvariantCulture, out index))
+
+                    if (int.TryParse(Utilities.GetFileFromPath(path), NumberStyles.Integer, CultureInfo.InvariantCulture, out var index))
                     {
                         skipChunks.Add(index);
                     }

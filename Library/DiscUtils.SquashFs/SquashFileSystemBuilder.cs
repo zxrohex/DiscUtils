@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using DiscUtils.Compression;
@@ -32,7 +33,7 @@ namespace DiscUtils.SquashFs
     /// <summary>
     /// Class that creates SquashFs file systems.
     /// </summary>
-    public sealed class SquashFileSystemBuilder
+    public sealed class SquashFileSystemBuilder : StreamBuilder, IFileSystemBuilder
     {
         private const int DefaultBlockSize = 131072;
         private BuilderContext _context;
@@ -74,6 +75,8 @@ namespace DiscUtils.SquashFs
         /// </summary>
         public int DefaultUser { get; set; }
 
+        string IFileSystemBuilder.VolumeIdentifier { get; set; }
+
         /// <summary>
         /// Adds a file to the file system.
         /// </summary>
@@ -85,6 +88,21 @@ namespace DiscUtils.SquashFs
         /// created, with default owner, group and directory permissions.</para>
         /// </remarks>
         public void AddFile(string path, Stream content)
+        {
+            AddFile(path, content, DefaultUser, DefaultGroup, DefaultFilePermissions, DateTime.Now);
+        }
+
+        /// <summary>
+        /// Adds a file to the file system.
+        /// </summary>
+        /// <param name="path">The full path to the file.</param>
+        /// <param name="content">The content of the file.</param>
+        /// <remarks>
+        /// <para>The created file with have the default owner, group, permissions and the
+        /// current time as it's modification time.  Any missing parent directories will be
+        /// created, with default owner, group and directory permissions.</para>
+        /// </remarks>
+        public void AddFile(string path, byte[] content)
         {
             AddFile(path, content, DefaultUser, DefaultGroup, DefaultFilePermissions, DateTime.Now);
         }
@@ -118,6 +136,36 @@ namespace DiscUtils.SquashFs
         /// default directory permissions and the current time as the modification time.</para>
         /// </remarks>
         public void AddFile(string path, Stream content, int user, int group, UnixFilePermissions permissions,
+                            DateTime modificationTime)
+        {
+            BuilderFile file = new BuilderFile(content);
+            file.UserId = user;
+            file.GroupId = group;
+            file.Mode = permissions;
+            file.ModificationTime = modificationTime;
+
+            BuilderDirectory dirNode = CreateDirectory(
+                Utilities.GetDirectoryFromPath(path),
+                user,
+                group,
+                DefaultDirectoryPermissions);
+            dirNode.AddChild(Utilities.GetFileFromPath(path), file);
+        }
+
+        /// <summary>
+        /// Adds a file to the file system.
+        /// </summary>
+        /// <param name="path">The full path to the file.</param>
+        /// <param name="content">The content of the file.</param>
+        /// <param name="user">The owner of the file.</param>
+        /// <param name="group">The group of the file.</param>
+        /// <param name="permissions">The access permission of the file.</param>
+        /// <param name="modificationTime">The modification time of the file.</param>
+        /// <remarks>
+        /// <para>Any missing parent directories will be created with the specified owner and group,
+        /// default directory permissions and the current time as the modification time.</para>
+        /// </remarks>
+        public void AddFile(string path, byte[] content, int user, int group, UnixFilePermissions permissions,
                             DateTime modificationTime)
         {
             BuilderFile file = new BuilderFile(content);
@@ -209,6 +257,27 @@ namespace DiscUtils.SquashFs
             parentDir.AddChild(Utilities.GetFileFromPath(path), dir);
         }
 
+        void IFileSystemBuilder.AddDirectory(
+            string name, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
+        {
+            AddDirectory(name, 0, 0, Utilities.UnixFilePermissionsFromFileAttributes(attributes), writtenTime);
+        }
+
+        void IFileSystemBuilder.AddFile(string name, byte[] buffer, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
+        {
+            AddFile(name, buffer, 0, 0, Utilities.UnixFilePermissionsFromFileAttributes(attributes), writtenTime);
+        }
+
+        void IFileSystemBuilder.AddFile(string name, string sourcefile, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
+        {
+            AddFile(name, sourcefile, 0, 0, Utilities.UnixFilePermissionsFromFileAttributes(attributes), writtenTime);
+        }
+
+        void IFileSystemBuilder.AddFile(string name, Stream stream, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
+        {
+            AddFile(name, stream, 0, 0, Utilities.UnixFilePermissionsFromFileAttributes(attributes), writtenTime);
+        }
+
         /// <summary>
         /// Builds the file system, returning a new stream.
         /// </summary>
@@ -218,24 +287,23 @@ namespace DiscUtils.SquashFs
         /// the <c>Build(Stream)</c> or <c>Build(string)</c> variant is recommended
         /// when the file system will be written to a file.
         /// </remarks>
-        public Stream Build()
+        public override Stream Build()
         {
             Stream stream = new FileStream(Path.GetTempFileName(), FileMode.CreateNew, FileAccess.ReadWrite,
                 FileShare.None, 1024 * 1024, FileOptions.DeleteOnClose);
             try
             {
                 Build(stream);
-
-                Stream tempStream = stream;
-                stream = null;
-                return tempStream;
+                return stream;
             }
-            finally
+            catch (Exception ex)
             {
                 if (stream != null)
                 {
                     stream.Dispose();
                 }
+
+                throw new Exception("SquashFs build failed", ex);
             }
         }
 
@@ -244,7 +312,7 @@ namespace DiscUtils.SquashFs
         /// </summary>
         /// <param name="output">The stream to write to.</param>
         /// <remarks>The <c>output</c> stream must support seeking and writing.</remarks>
-        public void Build(Stream output)
+        public override void Build(Stream output)
         {
             if (output == null)
             {
@@ -327,19 +395,6 @@ namespace DiscUtils.SquashFs
             superBlock.WriteTo(buffer, 0);
             output.Write(buffer, 0, buffer.Length);
             output.Position = end;
-        }
-
-        /// <summary>
-        /// Writes the stream contents to a file.
-        /// </summary>
-        /// <param name="outputFile">The file to write to.</param>
-        public void Build(string outputFile)
-        {
-            var locator = new LocalFileLocator(string.Empty);
-            using (Stream destStream = locator.Open(outputFile, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                Build(destStream);
-            }
         }
 
         /// <summary>
@@ -430,7 +485,7 @@ namespace DiscUtils.SquashFs
                 }
                 else if (nextDir == null)
                 {
-                    throw new FileNotFoundException("Found " + nextDirAsNode.Inode.Type + ", expecting Directory",
+                    throw new FileNotFoundException($"Found {nextDirAsNode.Inode.Type}, expecting Directory",
                         string.Join("\\", elems, 0, i + 1));
                 }
 
@@ -439,5 +494,59 @@ namespace DiscUtils.SquashFs
 
             return currentDir;
         }
+
+        public bool Exists(string path)
+        {
+            BuilderDirectory currentDir = GetRoot();
+            string[] elems = path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+
+            for (int i = 0; i < elems.Length; ++i)
+            {
+                BuilderNode nextDirAsNode = currentDir.GetChild(elems[i]);
+                BuilderDirectory nextDir = nextDirAsNode as BuilderDirectory;
+
+                if (nextDir == null)
+                {
+                    return false;
+                }
+
+                currentDir = nextDir;
+            }
+
+            return true;
+        }
+
+        public int FileCount
+        {
+            get
+            {
+                var n = 0;
+                foreach (var entry in GetRoot().EnumerateTreeEntries())
+                {
+                    n++;
+                }
+                return n;
+            }
+        }
+
+        public long TotalSize
+        {
+            get
+            {
+                var n = 0L;
+                foreach (var entry in GetRoot().EnumerateTreeEntries())
+                {
+                    if (entry is BuilderFile file)
+                    {
+                        n += file.Inode.FileSize;
+                    }
+                }
+                return n;
+            }
+        }
+
+        public IFileSystem GenerateFileSystem() => new SquashFileSystemReader(Build());
+
+        protected override List<BuilderExtent> FixExtents(out long totalLength) => throw new NotImplementedException();
     }
 }

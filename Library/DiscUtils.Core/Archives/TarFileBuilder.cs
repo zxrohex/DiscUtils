@@ -20,17 +20,18 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using DiscUtils.Streams;
-
 namespace DiscUtils.Archives
 {
+    using Internal;
+    using Streams;
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+
     /// <summary>
     /// Builder to create UNIX Tar archive files.
     /// </summary>
-    public sealed class TarFileBuilder : StreamBuilder
+    public class TarFileBuilder : StreamBuilder
     {
         private readonly List<UnixBuildFileRecord> _files;
 
@@ -40,6 +41,71 @@ namespace DiscUtils.Archives
         public TarFileBuilder()
         {
             _files = new List<UnixBuildFileRecord>();
+        }
+
+        public bool Exists(string name)
+        {
+            name = name.TrimEnd('/');
+
+            foreach (var file in _files)
+            {
+                if (name.Equals(file.Name.TrimEnd('/'), StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public long TotalSize
+        {
+            get
+            {
+                var size = 0L;
+
+                foreach (var file in _files)
+                {
+                    size += file.Length + 512;
+                }
+
+                return size;
+            }
+        }
+
+        public int FileCount => _files.Count;
+
+        /// <summary>
+        /// Add a directory to the tar archive.
+        /// </summary>
+        /// <param name="name">The name of the directory.</param>
+        public void AddDirectory(string name)
+        {
+            if (name.Length < 1 || name[name.Length - 1] != '/')
+            {
+                name += "/";
+            }
+
+            AddFile(name, new byte[0]);
+        }
+
+        /// <summary>
+        /// Add a directory to the tar archive.
+        /// </summary>
+        /// <param name="name">The name of the directory.</param>
+        /// <param name="ownerId">The uid of the owner.</param>
+        /// <param name="groupId">The gid of the owner.</param>
+        /// <param name="fileMode">The access mode of the directory.</param>
+        /// <param name="modificationTime">The modification time for the directory.</param>
+        public void AddDirectory(
+            string name, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+        {
+            if (name.Length < 1 || name[name.Length - 1] != '/')
+            {
+                name += "/";
+            }
+
+            AddFile(name, new byte[0], ownerId, groupId, fileMode, modificationTime);
         }
 
         /// <summary>
@@ -56,16 +122,40 @@ namespace DiscUtils.Archives
         /// Add a file to the tar archive.
         /// </summary>
         /// <param name="name">The name of the file.</param>
+        /// <param name="sourcefile">The file to add.</param>
+        public void AddFile(string name, string sourcefile)
+        {
+            _files.Add(new UnixBuildFileRecord(name, File.ReadAllBytes(sourcefile)));
+        }
+
+        /// <summary>
+        /// Add a file to the tar archive.
+        /// </summary>
+        /// <param name="name">The name of the file.</param>
         /// <param name="buffer">The file data.</param>
-        /// <param name="fileMode">The access mode of the file.</param>
         /// <param name="ownerId">The uid of the owner.</param>
         /// <param name="groupId">The gid of the owner.</param>
+        /// <param name="fileMode">The access mode of the file.</param>
         /// <param name="modificationTime">The modification time for the file.</param>
         public void AddFile(
-            string name, byte[] buffer, UnixFilePermissions fileMode, int ownerId, int groupId,
-            DateTime modificationTime)
+            string name, byte[] buffer, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
         {
             _files.Add(new UnixBuildFileRecord(name, buffer, fileMode, ownerId, groupId, modificationTime));
+        }
+
+        /// <summary>
+        /// Add a file to the tar archive.
+        /// </summary>
+        /// <param name="name">The name of the file.</param>
+        /// <param name="sourcefile">The file to add.</param>
+        /// <param name="ownerId">The uid of the owner.</param>
+        /// <param name="groupId">The gid of the owner.</param>
+        /// <param name="fileMode">The access mode of the file.</param>
+        /// <param name="modificationTime">The modification time for the file.</param>
+        public void AddFile(
+            string name, string sourcefile, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+        {
+            _files.Add(new UnixBuildFileRecord(name, File.ReadAllBytes(sourcefile), fileMode, ownerId, groupId, modificationTime));
         }
 
         /// <summary>
@@ -83,20 +173,19 @@ namespace DiscUtils.Archives
         /// </summary>
         /// <param name="name">The name of the file.</param>
         /// <param name="stream">The file data.</param>
-        /// <param name="fileMode">The access mode of the file.</param>
         /// <param name="ownerId">The uid of the owner.</param>
         /// <param name="groupId">The gid of the owner.</param>
+        /// <param name="fileMode">The access mode of the file.</param>
         /// <param name="modificationTime">The modification time for the file.</param>
         public void AddFile(
-            string name, Stream stream, UnixFilePermissions fileMode, int ownerId, int groupId,
-            DateTime modificationTime)
+            string name, Stream stream, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
         {
             _files.Add(new UnixBuildFileRecord(name, stream, fileMode, ownerId, groupId, modificationTime));
         }
 
         protected override List<BuilderExtent> FixExtents(out long totalLength)
         {
-            List<BuilderExtent> result = new List<BuilderExtent>(_files.Count * 2 + 2);
+            List<BuilderExtent> result = new List<BuilderExtent>((_files.Count * 2) + 2);
             long pos = 0;
 
             foreach (UnixBuildFileRecord file in _files)
@@ -104,8 +193,7 @@ namespace DiscUtils.Archives
                 BuilderExtent fileContentExtent = file.Fix(pos + TarHeader.Length);
 
                 result.Add(new TarHeaderExtent(
-                    pos, file.Name, fileContentExtent.Length, file.FileMode, file.OwnerId, file.GroupId,
-                    file.ModificationTime));
+                    pos, file.Name, fileContentExtent.Length, file.FileMode, file.OwnerId, file.GroupId, file.ModificationTime));
                 pos += TarHeader.Length;
 
                 result.Add(fileContentExtent);

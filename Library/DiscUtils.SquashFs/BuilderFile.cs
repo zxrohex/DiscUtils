@@ -40,6 +40,12 @@ namespace DiscUtils.SquashFs
             NumLinks = 1;
         }
 
+        public BuilderFile(byte[] source)
+        {
+            _source = new MemoryStream(source, writable: false);
+            NumLinks = 1;
+        }
+
         public BuilderFile(string source)
         {
             _sourcePath = source;

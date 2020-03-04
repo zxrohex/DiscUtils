@@ -46,7 +46,8 @@ namespace DiscUtils.Ntfs
 
         // Working state
         private readonly ObjectCache<long, File> _fileCache;
-        private readonly VolumeInformation _volumeInfo;
+        
+        public VolumeInformation VolumeInfo { get; }
 
         /// <summary>
         /// Initializes a new instance of the NtfsFileSystem class.
@@ -94,15 +95,15 @@ namespace DiscUtils.Ntfs
 
             // Get volume information (includes version number)
             File volumeInfoFile = GetFile(MasterFileTable.VolumeIndex);
-            _volumeInfo =
-                volumeInfoFile.GetStream(AttributeType.VolumeInformation, null).GetContent<VolumeInformation>();
+            VolumeInfo =
+                volumeInfoFile.GetStream(AttributeType.VolumeInformation, null)?.GetContent<VolumeInformation>();
 
             // Initialize access to the other well-known metadata files
             _context.ClusterBitmap = new ClusterBitmap(GetFile(MasterFileTable.BitmapIndex));
             _context.AttributeDefinitions = new AttributeDefinitions(GetFile(MasterFileTable.AttrDefIndex));
             _context.UpperCase = new UpperCase(GetFile(MasterFileTable.UpCaseIndex));
 
-            if (_volumeInfo.Version >= VolumeInformation.VersionW2k)
+            if (VolumeInfo.Version >= VolumeInformation.VersionW2k)
             {
                 _context.SecurityDescriptors = new SecurityDescriptors(GetFile(MasterFileTable.SecureIndex));
                 _context.ObjectIds = new ObjectIds(GetFile(GetDirectoryEntry(@"$Extend\$ObjId").Reference));
@@ -132,7 +133,7 @@ namespace DiscUtils.Ntfs
             {
                 return _context.Options.ShortNameCreation == ShortFileNameOption.Enabled
                        || (_context.Options.ShortNameCreation == ShortFileNameOption.UseVolumeFlag
-                           && (_volumeInfo.Flags & VolumeInformationFlags.DisableShortNameCreation) == 0);
+                           && (VolumeInfo.Flags & VolumeInformationFlags.DisableShortNameCreation) == 0);
             }
         }
 
@@ -160,8 +161,8 @@ namespace DiscUtils.Ntfs
             get
             {
                 File volumeFile = GetFile(MasterFileTable.VolumeIndex);
-                NtfsStream volNameStream = volumeFile.GetStream(AttributeType.VolumeName, null);
-                return volNameStream.GetContent<VolumeName>().Name;
+                NtfsStream? volNameStream = volumeFile.GetStream(AttributeType.VolumeName, null);
+                return volNameStream?.GetContent<VolumeName>().Name;
             }
         }
 
@@ -254,7 +255,7 @@ namespace DiscUtils.Ntfs
                 File newFile = File.CreateNew(_context, destParentDir.StandardInformation.FileAttributes);
                 foreach (NtfsStream origStream in origFile.AllStreams)
                 {
-                    NtfsStream newStream = newFile.GetStream(origStream.AttributeType, origStream.Name);
+                    NtfsStream? newStream = newFile.GetStream(origStream.AttributeType, origStream.Name);
 
                     switch (origStream.AttributeType)
                     {
@@ -265,7 +266,7 @@ namespace DiscUtils.Ntfs
                             }
 
                             using (SparseStream s = origStream.Open(FileAccess.Read))
-                            using (SparseStream d = newStream.Open(FileAccess.Write))
+                            using (SparseStream d = newStream.Value.Open(FileAccess.Write))
                             {
                                 byte[] buffer = new byte[64 * Sizes.OneKiB];
                                 int numRead;
@@ -281,7 +282,7 @@ namespace DiscUtils.Ntfs
 
                         case AttributeType.StandardInformation:
                             StandardInformation newSi = origStream.GetContent<StandardInformation>();
-                            newStream.SetContent(newSi);
+                            newStream?.SetContent(newSi);
                             break;
                     }
                 }
@@ -396,12 +397,12 @@ namespace DiscUtils.Ntfs
                 }
                 else
                 {
-                    NtfsStream attrStream = file.GetStream(attributeType, attributeName);
+                    NtfsStream? attrStream = file.GetStream(attributeType, attributeName);
                     if (attrStream == null)
                     {
-                        throw new FileNotFoundException("No such attribute: " + attributeName, path);
+                        throw new FileNotFoundException($"No such attribute: {attributeName}", path);
                     }
-                    file.RemoveStream(attrStream);
+                    file.RemoveStream(attrStream.Value);
                 }
             }
         }
@@ -940,7 +941,7 @@ namespace DiscUtils.Ntfs
 
             File file = GetFile(dirEntry.Reference);
 
-            NtfsStream stream = file.GetStream(AttributeType.Data, attributeName);
+            NtfsStream? stream = file.GetStream(AttributeType.Data, attributeName);
             if (stream == null)
             {
                 throw new FileNotFoundException(
@@ -948,7 +949,7 @@ namespace DiscUtils.Ntfs
                         attributeName), path);
             }
 
-            return stream.GetClusters();
+            return stream.Value.GetClusters();
         }
 
         /// <summary>
@@ -975,7 +976,7 @@ namespace DiscUtils.Ntfs
 
             File file = GetFile(dirEntry.Reference);
 
-            NtfsStream stream = file.GetStream(AttributeType.Data, attributeName);
+            NtfsStream? stream = file.GetStream(AttributeType.Data, attributeName);
             if (stream == null)
             {
                 throw new FileNotFoundException(
@@ -983,7 +984,7 @@ namespace DiscUtils.Ntfs
                         attributeName), path);
             }
 
-            return stream.GetAbsoluteExtents();
+            return stream.Value.GetAbsoluteExtents();
         }
 
         /// <summary>
@@ -1131,6 +1132,30 @@ namespace DiscUtils.Ntfs
         }
 
         /// <summary>
+        /// Removes the security descriptor associated with the file or directory.
+        /// </summary>
+        /// <param name="path">The file or directory to change.</param>
+        public void RemoveSecurity(string path)
+        {
+            using (new NtfsTransaction())
+            {
+                DirectoryEntry dirEntry = GetDirectoryEntry(path);
+                if (dirEntry == null)
+                {
+                    throw new FileNotFoundException("File not found", path);
+                }
+                else
+                {
+                    File file = GetFile(dirEntry.Reference);
+                    DoRemoveSecurity(file);
+
+                    // Update the directory entry used to open the file
+                    dirEntry.UpdateFrom(file);
+                }
+            }
+        }
+
+        /// <summary>
         /// Sets the reparse point data on a file or directory.
         /// </summary>
         /// <param name="path">The file to set the reparse point on.</param>
@@ -1146,11 +1171,11 @@ namespace DiscUtils.Ntfs
                 }
                 File file = GetFile(dirEntry.Reference);
 
-                NtfsStream stream = file.GetStream(AttributeType.ReparsePoint, null);
+                NtfsStream? stream = file.GetStream(AttributeType.ReparsePoint, null);
                 if (stream != null)
                 {
                     // If there's an existing reparse point, unhook it.
-                    using (Stream contentStream = stream.Open(FileAccess.Read))
+                    using (Stream contentStream = stream.Value.Open(FileAccess.Read))
                     {
                         byte[] oldRpBuffer = StreamUtilities.ReadExact(contentStream, (int)contentStream.Length);
                         ReparsePointRecord rp = new ReparsePointRecord();
@@ -1170,17 +1195,17 @@ namespace DiscUtils.Ntfs
 
                 byte[] contentBuffer = new byte[newRp.Size];
                 newRp.WriteTo(contentBuffer, 0);
-                using (Stream contentStream = stream.Open(FileAccess.ReadWrite))
+                using (Stream contentStream = stream.Value.Open(FileAccess.ReadWrite))
                 {
                     contentStream.Write(contentBuffer, 0, contentBuffer.Length);
                     contentStream.SetLength(contentBuffer.Length);
                 }
 
                 // Update the standard information attribute - so it reflects the actual file state
-                NtfsStream stdInfoStream = file.GetStream(AttributeType.StandardInformation, null);
-                StandardInformation si = stdInfoStream.GetContent<StandardInformation>();
-                si.FileAttributes = si.FileAttributes | FileAttributeFlags.ReparsePoint;
-                stdInfoStream.SetContent(si);
+                NtfsStream? stdInfoStream = file.GetStream(AttributeType.StandardInformation, null);
+                StandardInformation si = stdInfoStream?.GetContent<StandardInformation>();
+                si.FileAttributes |= FileAttributeFlags.ReparsePoint;
+                stdInfoStream?.SetContent(si);
 
                 // Update the directory entry used to open the file, so it's accurate
                 dirEntry.Details.EASizeOrReparsePointTag = newRp.Tag;
@@ -1210,12 +1235,12 @@ namespace DiscUtils.Ntfs
                 }
                 File file = GetFile(dirEntry.Reference);
 
-                NtfsStream stream = file.GetStream(AttributeType.ReparsePoint, null);
+                NtfsStream? stream = file.GetStream(AttributeType.ReparsePoint, null);
                 if (stream != null)
                 {
                     ReparsePointRecord rp = new ReparsePointRecord();
 
-                    using (Stream contentStream = stream.Open(FileAccess.Read))
+                    using (Stream contentStream = stream.Value.Open(FileAccess.Read))
                     {
                         byte[] buffer = StreamUtilities.ReadExact(contentStream, (int)contentStream.Length);
                         rp.ReadFrom(buffer, 0);
@@ -1466,6 +1491,11 @@ namespace DiscUtils.Ntfs
             }
 
             File file = GetFile(dirEntry.Reference);
+
+            if (file == null)
+            {
+                throw new FileNotFoundException("File not found", path);
+            }
 
             List<string> names = new List<string>();
             foreach (NtfsStream attr in file.AllStreams)
@@ -1737,9 +1767,7 @@ namespace DiscUtils.Ntfs
         {
             using (new NtfsTransaction())
             {
-                string attributeName;
-                AttributeType attributeType;
-                string dirEntryPath = ParsePath(path, out attributeName, out attributeType);
+                string dirEntryPath = ParsePath(path, out var attributeName, out var attributeType);
 
                 DirectoryEntry entry = GetDirectoryEntry(dirEntryPath);
                 if (entry == null)
@@ -1755,13 +1783,20 @@ namespace DiscUtils.Ntfs
                     throw new IOException("File already exists");
                 }
 
-                if ((entry.Details.FileAttributes & FileAttributes.Directory) != 0 &&
+                if (string.IsNullOrEmpty(attributeName) &&
+                    (entry.Details.FileAttributes & FileAttributes.Directory) != 0 &&
                     attributeType == AttributeType.Data)
                 {
                     throw new IOException("Attempt to open directory as a file");
                 }
                 File file = GetFile(entry.Reference);
-                NtfsStream ntfsStream = file.GetStream(attributeType, attributeName);
+
+                if (file == null)
+                {
+                    throw new FileNotFoundException("File not found", path);
+                }
+
+                NtfsStream? ntfsStream = file.GetStream(attributeType, attributeName);
 
                 if (ntfsStream == null)
                 {
@@ -1871,6 +1906,11 @@ namespace DiscUtils.Ntfs
 
                 File file = GetFile(dirEntry.Reference);
 
+                if (file == null)
+                {
+                    return 0;
+                }
+
                 if (!_context.Options.HideDosFileNames)
                 {
                     return file.HardLinkCount;
@@ -1928,8 +1968,7 @@ namespace DiscUtils.Ntfs
                     _context.Mft = null;
                 }
 
-                IDisposable disposableCompressor = _context.Options.Compressor as IDisposable;
-                if (disposableCompressor != null)
+                if (_context.Options.Compressor is IDisposable disposableCompressor)
                 {
                     disposableCompressor.Dispose();
                     _context.Options.Compressor = null;
@@ -1988,7 +2027,7 @@ namespace DiscUtils.Ntfs
                                                       StandardInformationModifier modifier)
         {
             // Update the standard information attribute - so it reflects the actual file state
-            NtfsStream stream = file.GetStream(AttributeType.StandardInformation, null);
+            NtfsStream stream = file.GetStream(AttributeType.StandardInformation, null).Value;
             StandardInformation si = stream.GetContent<StandardInformation>();
             modifier(si);
             stream.SetContent(si);
@@ -2153,23 +2192,23 @@ namespace DiscUtils.Ntfs
 
         private void RemoveReparsePoint(File file)
         {
-            NtfsStream stream = file.GetStream(AttributeType.ReparsePoint, null);
+            NtfsStream? stream = file.GetStream(AttributeType.ReparsePoint, null);
             if (stream != null)
             {
                 ReparsePointRecord rp = new ReparsePointRecord();
 
-                using (Stream contentStream = stream.Open(FileAccess.Read))
+                using (Stream contentStream = stream.Value.Open(FileAccess.Read))
                 {
                     byte[] buffer = StreamUtilities.ReadExact(contentStream, (int)contentStream.Length);
                     rp.ReadFrom(buffer, 0);
                 }
 
-                file.RemoveStream(stream);
+                file.RemoveStream(stream.Value);
 
                 // Update the standard information attribute - so it reflects the actual file state
-                NtfsStream stdInfoStream = file.GetStream(AttributeType.StandardInformation, null);
+                NtfsStream stdInfoStream = file.GetStream(AttributeType.StandardInformation, null).Value;
                 StandardInformation si = stdInfoStream.GetContent<StandardInformation>();
-                si.FileAttributes = si.FileAttributes & ~FileAttributeFlags.ReparsePoint;
+                si.FileAttributes &= ~FileAttributeFlags.ReparsePoint;
                 stdInfoStream.SetContent(si);
 
                 // Remove the reparse point from the index
@@ -2179,10 +2218,10 @@ namespace DiscUtils.Ntfs
 
         private RawSecurityDescriptor DoGetSecurity(File file)
         {
-            NtfsStream legacyStream = file.GetStream(AttributeType.SecurityDescriptor, null);
+            NtfsStream? legacyStream = file.GetStream(AttributeType.SecurityDescriptor, null);
             if (legacyStream != null)
             {
-                return legacyStream.GetContent<SecurityDescriptor>().Descriptor;
+                return legacyStream.Value.GetContent<SecurityDescriptor>().Descriptor;
             }
 
             StandardInformation si = file.StandardInformation;
@@ -2191,21 +2230,41 @@ namespace DiscUtils.Ntfs
 
         private void DoSetSecurity(File file, RawSecurityDescriptor securityDescriptor)
         {
-            NtfsStream legacyStream = file.GetStream(AttributeType.SecurityDescriptor, null);
+            NtfsStream? legacyStream = file.GetStream(AttributeType.SecurityDescriptor, null);
             if (legacyStream != null)
             {
                 SecurityDescriptor sd = new SecurityDescriptor();
                 sd.Descriptor = securityDescriptor;
-                legacyStream.SetContent(sd);
+                legacyStream.Value.SetContent(sd);
             }
             else
             {
                 uint id = _context.SecurityDescriptors.AddDescriptor(securityDescriptor);
 
                 // Update the standard information attribute - so it reflects the actual file state
-                NtfsStream stream = file.GetStream(AttributeType.StandardInformation, null);
+                NtfsStream stream = file.GetStream(AttributeType.StandardInformation, null).Value;
                 StandardInformation si = stream.GetContent<StandardInformation>();
                 si.SecurityId = id;
+                stream.SetContent(si);
+
+                // Write attribute changes back to the Master File Table
+                file.UpdateRecordInMft();
+            }
+        }
+
+        private void DoRemoveSecurity(File file)
+        {
+            NtfsStream? legacyStream = file.GetStream(AttributeType.SecurityDescriptor, null);
+            if (legacyStream != null)
+            {
+                file.RemoveStream(legacyStream.Value);
+            }
+            else
+            {
+                // Update the standard information attribute - so it reflects the actual file state
+                NtfsStream stream = file.GetStream(AttributeType.StandardInformation, null).Value;
+                StandardInformation si = stream.GetContent<StandardInformation>();
+                si.SecurityId = uint.MaxValue;
                 stream.SetContent(si);
 
                 // Write attribute changes back to the Master File Table
@@ -2218,13 +2277,12 @@ namespace DiscUtils.Ntfs
             foreach (DirectoryEntry dirEntry in dir.GetAllEntries(true))
             {
                 File file = GetFile(dirEntry.Reference);
-                Directory asDir = file as Directory;
-                writer.WriteLine(indent + "+-" + file + " (" + file.IndexInMft + ")");
+                writer.WriteLine($"{indent}+-{file} ({file.IndexInMft})");
 
                 // Recurse - but avoid infinite recursion via the root dir...
-                if (asDir != null && file.IndexInMft != 5)
+                if (file is Directory asDir && file.IndexInMft != 5)
                 {
-                    DumpDirectory(asDir, writer, indent + "| ");
+                    DumpDirectory(asDir, writer, $"{indent}| ");
                 }
             }
         }
@@ -2377,7 +2435,7 @@ namespace DiscUtils.Ntfs
 
         internal File AllocateFile(FileRecordFlags flags)
         {
-            File result = null;
+            File result;
             if ((flags & FileRecordFlags.IsDirectory) != 0)
             {
                 result = new Directory(_context, _context.Mft.AllocateRecord(flags, false));
@@ -2431,5 +2489,9 @@ namespace DiscUtils.Ntfs
         /// Available space of the Filesystem in bytes
         /// </summary>
         public override long AvailableSpace { get { return Size - UsedSpace; } }
+
+        public bool IsClusterInUse(long index) => _context.ClusterBitmap.Bitmap.IsPresent(index);
+
+        public override uint VolumeId => (uint)_context.BiosParameterBlock.VolumeSerialNumber;
     }
 }

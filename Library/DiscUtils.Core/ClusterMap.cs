@@ -56,6 +56,19 @@ namespace DiscUtils
         }
 
         /// <summary>
+        /// Converts a cluster to a file id.
+        /// </summary>
+        /// <param name="cluster">The cluster to inspect.</param>
+        public object ClusterToFileId(long cluster)
+        {
+            if (_clusterToFileId == null || _clusterToFileId.Length < cluster)
+            {
+                return null;
+            }
+            return _clusterToFileId[cluster];
+        }
+
+        /// <summary>
         /// Converts a cluster to a list of file names.
         /// </summary>
         /// <param name="cluster">The cluster to inspect.</param>

@@ -32,37 +32,33 @@ namespace DiscUtils.Iso9660
     /// <summary>
     /// Represents a file that will be built into the ISO image.
     /// </summary>
-    public sealed class BuildFileInfo : BuildDirectoryMember
+    public sealed class BuildFileInfo : BuildDirectoryMember, IEquatable<BuildFileInfo>
     {
         private readonly byte[] _contentData;
         private readonly string _contentPath;
-        private readonly long _contentSize;
         private readonly Stream _contentStream;
 
         internal BuildFileInfo(string name, BuildDirectoryInfo parent, byte[] content)
-            : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name, parent))
+            : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
         {
             Parent = parent;
             _contentData = content;
-            _contentSize = content.Length;
         }
 
         internal BuildFileInfo(string name, BuildDirectoryInfo parent, string content)
-            : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name, parent))
+            : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
         {
             Parent = parent;
             _contentPath = content;
-            _contentSize = new FileInfo(_contentPath).Length;
 
             CreationTime = new FileInfo(_contentPath).LastWriteTimeUtc;
         }
 
         internal BuildFileInfo(string name, BuildDirectoryInfo parent, Stream source)
-            : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name, parent))
+            : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
         {
             Parent = parent;
             _contentStream = source;
-            _contentSize = _contentStream.Length;
         }
 
         /// <summary>
@@ -72,14 +68,22 @@ namespace DiscUtils.Iso9660
 
         internal override long GetDataSize(Encoding enc)
         {
-            return _contentSize;
+            if (_contentData != null)
+            {
+                return _contentData.Length;
+            }
+            if (_contentPath != null)
+            {
+                return new FileInfo(_contentPath).Length;
+            }
+            return _contentStream.Length;
         }
 
         internal Stream OpenStream()
         {
             if (_contentData != null)
             {
-                return new MemoryStream(_contentData, false);
+                return new MemoryStream(_contentData, writable: false);
             }
             if (_contentPath != null)
             {
@@ -99,7 +103,7 @@ namespace DiscUtils.Iso9660
             }
         }
 
-        private static string MakeShortFileName(string longName, BuildDirectoryInfo dir)
+        private static string MakeShortFileName(string longName)
         {
             if (IsoUtilities.IsValidFileName(longName))
             {
@@ -127,10 +131,46 @@ namespace DiscUtils.Iso9660
                 parts[0] = parts[0].Substring(0, 30 - parts[1].Length);
             }
 
-            string candidate = parts[0] + '.' + parts[1] + ';' + parts[2];
+            string candidate = $"{parts[0]}.{parts[1]};{parts[2]}";
 
             // TODO: Make unique
             return candidate;
         }
+
+        internal bool Equals(Stream stream) =>
+            _contentStream != null &&
+            ReferenceEquals(_contentStream, stream);
+
+        internal bool Equals(byte[] data)
+        {
+            if (_contentData == null || data == null || _contentData.Length != data.Length)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(_contentData, data))
+            {
+                return true;
+            }
+
+            for (var i = 0; i < _contentData.Length; i++)
+            {
+                if (data[i] != _contentData[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        internal bool Equals(string path) =>
+            _contentPath != null &&
+            StringComparer.OrdinalIgnoreCase.Equals(_contentPath, path);
+
+        public bool Equals(BuildFileInfo other) =>
+            Equals(other._contentStream) ||
+            Equals(other._contentPath) ||
+            Equals(other._contentData);
     }
 }

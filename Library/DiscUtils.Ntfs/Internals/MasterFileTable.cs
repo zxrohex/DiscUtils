@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 
 namespace DiscUtils.Ntfs.Internals
@@ -148,5 +149,11 @@ namespace DiscUtils.Ntfs.Internals
                 }
             }
         }
+
+        public ClusterRoles[] GetClusterRoles() => _mft.GetClusterRoles();
+
+        public ClusterMap GetClusterMap() => _mft.GetClusterMap();
+
+        public Tuple<uint, ushort>[] GetClusterList() => _mft.GetClusterList();
     }
 }

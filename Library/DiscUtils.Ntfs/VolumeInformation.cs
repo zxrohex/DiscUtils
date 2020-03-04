@@ -25,7 +25,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs
 {
-    internal sealed class VolumeInformation : IByteArraySerializable, IDiagnosticTraceable
+    public sealed class VolumeInformation : IByteArraySerializable, IDiagnosticTraceable
     {
         public const int VersionNt4 = 0x0102;
         public const int VersionW2k = 0x0300;

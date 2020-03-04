@@ -124,7 +124,7 @@ namespace DiscUtils.Streams
                     }
                 }
 
-                int numRead = 0;
+                int numRead;
 
                 // If the block is outside any known extent, defer to base stream.
                 if (_currentExtent == null)
@@ -146,10 +146,13 @@ namespace DiscUtils.Streams
                     numRead = _currentExtent.Read(_position, buffer, offset + totalRead, count - totalRead);
                 }
 
+                if (numRead <= 0)
+                {
+                    break;
+                }
+
                 _position += numRead;
                 totalRead += numRead;
-                if (numRead == 0)
-                    break;
             }
 
             return totalRead;

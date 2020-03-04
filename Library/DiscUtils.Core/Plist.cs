@@ -39,7 +39,7 @@ namespace DiscUtils
 #endif
 
             XmlReaderSettings settings = new XmlReaderSettings();
-#if !NET20
+#if !NET20 && !NET35
             // DTD processing is disabled on anything but .NET 2.0, so this must be set to
             // Ignore.
             // See https://msdn.microsoft.com/en-us/magazine/ee335713.aspx for additional information.

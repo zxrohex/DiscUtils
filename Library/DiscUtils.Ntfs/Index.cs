@@ -50,7 +50,7 @@ namespace DiscUtils.Ntfs
 
             _blockCache = new ObjectCache<long, IndexBlock>();
 
-            _root = _file.GetStream(AttributeType.IndexRoot, _name).GetContent<IndexRoot>();
+            _root = _file.GetStream(AttributeType.IndexRoot, _name).Value.GetContent<IndexRoot>();
             _comparer = _root.GetCollator(upCase);
 
             using (Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Read))

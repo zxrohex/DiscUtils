@@ -20,20 +20,23 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using DiscUtils.Streams;
-
 namespace DiscUtils.Archives
 {
+    using Internal;
+    using Streams;
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+
     /// <summary>
     /// Minimal tar file format implementation.
     /// </summary>
-    public sealed class TarFile
+    public class TarFile
     {
-        private readonly Dictionary<string, FileRecord> _files;
-        private readonly Stream _fileStream;
+        public static int FileDatabufferChunkSize { get; set; } = 32 * 1024 * 1024;
+
+        private Stream _fileStream;
+        private Dictionary<string, TarFileRecord> _files;
 
         /// <summary>
         /// Initializes a new instance of the TarFile class.
@@ -42,19 +45,27 @@ namespace DiscUtils.Archives
         public TarFile(Stream fileStream)
         {
             _fileStream = fileStream;
-            _files = new Dictionary<string, FileRecord>();
+            _files = new Dictionary<string, TarFileRecord>();
 
-            TarHeader hdr = new TarHeader();
-            byte[] hdrBuf = StreamUtilities.ReadExact(_fileStream, TarHeader.Length);
-            hdr.ReadFrom(hdrBuf, 0);
-            while (hdr.FileLength != 0 || !string.IsNullOrEmpty(hdr.FileName))
-            {
-                FileRecord record = new FileRecord(hdr.FileName, _fileStream.Position, hdr.FileLength);
-                _files.Add(record.Name, record);
-                _fileStream.Position += (hdr.FileLength + 511) / 512 * 512;
+            var hdrBuf = new byte[512];
 
-                hdrBuf = StreamUtilities.ReadExact(_fileStream, TarHeader.Length);
-                hdr.ReadFrom(hdrBuf, 0);
+            for (;;)
+            {                
+                if (StreamUtilities.ReadMaximum(_fileStream, hdrBuf, 0, 512) < 512)
+                {
+                    break;
+                }
+
+                var hdr = new TarHeader(hdrBuf, 0);
+
+                if (hdr.FileLength == 0 && string.IsNullOrEmpty(hdr.FileName))
+                {
+                    break;
+                }
+
+                TarFileRecord record = new TarFileRecord(hdr, _fileStream.Position);
+                _files.Add(hdr.FileName, record);
+                _fileStream.Position += ((hdr.FileLength + 511) / 512) * 512;
             }
         }
 
@@ -68,7 +79,7 @@ namespace DiscUtils.Archives
         {
             if (_files.ContainsKey(path))
             {
-                FileRecord file = _files[path];
+                TarFileRecord file = _files[path];
                 stream = new SubStream(_fileStream, file.Start, file.Length);
                 return true;
             }
@@ -87,11 +98,21 @@ namespace DiscUtils.Archives
         {
             if (_files.ContainsKey(path))
             {
-                FileRecord file = _files[path];
+                TarFileRecord file = _files[path];
                 return new SubStream(_fileStream, file.Start, file.Length);
             }
 
             throw new FileNotFoundException("File is not in archive", path);
+        }
+
+        public ICollection<string> GetFileNames()
+        {
+            return _files.Keys;
+        }
+
+        public ICollection<TarFileRecord> GetFiles()
+        {
+            return _files.Values;
         }
 
         /// <summary>
@@ -126,17 +147,88 @@ namespace DiscUtils.Archives
             return false;
         }
 
-        internal IEnumerable<FileRecord> GetFiles(string dir)
+        public IEnumerable<TarFileRecord> GetFiles(string dir)
         {
             string searchStr = dir;
             searchStr = searchStr.Replace(@"\", "/");
             searchStr = searchStr.EndsWith(@"/", StringComparison.Ordinal) ? searchStr : searchStr + @"/";
 
-            foreach (string filePath in _files.Keys)
+            foreach (var filePath in _files.Keys)
             {
                 if (filePath.StartsWith(searchStr, StringComparison.Ordinal))
                 {
                     yield return _files[filePath];
+                }
+            }
+        }
+
+        public static IEnumerable<TarFileData> EnumerateFiles(Stream archive)
+        {
+            var hdrBuf = new byte[512];
+
+            for (;;)
+            {
+                if (StreamUtilities.ReadMaximum(archive, hdrBuf, 0, 512) < 512)
+                {
+                    break;
+                }
+
+                var hdr = new TarHeader(hdrBuf, 0);
+
+                if (hdr.FileLength == 0 && string.IsNullOrEmpty(hdr.FileName))
+                {
+                    break;
+                }
+
+                if (hdr.FileLength == 0)
+                {
+                    yield return new TarFileData(hdr, source: null);
+                }
+                else if (archive.CanSeek)
+                {
+                    var location = archive.Position;
+
+                    var datastream = new SubStream(archive, location, hdr.FileLength);
+
+                    yield return new TarFileData(hdr, datastream);
+
+                    archive.Position = location + hdr.FileLength + (-(datastream.Length & 511) & 511);
+                }
+                else
+                {
+                    Stream datastream;
+
+                    if (hdr.FileLength >= FileDatabufferChunkSize)
+                    {
+                        var data = new SparseMemoryBuffer(FileDatabufferChunkSize);
+
+                        if (data.WriteFromStream(0, archive, hdr.FileLength) < hdr.FileLength)
+                        {
+                            throw new EndOfStreamException("Unexpected end of tar stream");
+                        }
+
+                        datastream = new SparseMemoryStream(data, FileAccess.Read);
+                    }
+                    else
+                    {
+                        var data = new byte[hdr.FileLength];
+
+                        if (archive.Read(data, 0, data.Length) < hdr.FileLength)
+                        {
+                            throw new EndOfStreamException("Unexpected end of tar stream");
+                        }
+
+                        datastream = new MemoryStream(data, writable: false);
+                    }
+
+                    yield return new TarFileData(hdr, datastream);
+
+                    var moveForward = (int)(-(datastream.Length & 511) & 511);
+
+                    if (archive.Read(hdrBuf, 0, moveForward) < moveForward)
+                    {
+                        break;
+                    }
                 }
             }
         }

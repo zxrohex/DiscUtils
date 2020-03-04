@@ -268,13 +268,6 @@ namespace DiscUtils.Vfs
             }
 
             string fileName = Utilities.GetFileFromPath(path);
-            string attributeName = null;
-
-            int streamSepPos = fileName.IndexOf(':');
-            if (streamSepPos >= 0)
-            {
-                attributeName = fileName.Substring(streamSepPos + 1);
-            }
 
             string dirName;
             try
@@ -305,41 +298,49 @@ namespace DiscUtils.Vfs
             if (entry.IsSymlink)
             {
                 entry = ResolveSymlink(entry, entryPath);
+
+                if (entry == null)
+                {
+                    throw new FileNotFoundException("Unable to resolve symlink", entryPath);
+                }
             }
 
             if (entry.IsDirectory)
             {
                 throw new IOException("Attempt to open directory as a file");
             }
+
             TFile file = GetFile(entry);
 
-            SparseStream stream = null;
-            if (string.IsNullOrEmpty(attributeName))
+            string attributeName = null;
+
+            int streamSepPos = fileName.IndexOf(':');
+            if (streamSepPos >= 0)
+            {
+                attributeName = fileName.Substring(streamSepPos + 1);
+            }
+
+            IVfsFileWithStreams fileStreams = file as IVfsFileWithStreams;
+
+            SparseStream stream;
+
+            if (fileStreams == null || attributeName == null)
             {
                 stream = new BufferStream(file.FileContent, access);
             }
             else
             {
-                IVfsFileWithStreams fileStreams = file as IVfsFileWithStreams;
-                if (fileStreams != null)
+                stream = fileStreams.OpenExistingStream(attributeName);
+                if (stream == null)
                 {
-                    stream = fileStreams.OpenExistingStream(attributeName);
-                    if (stream == null)
+                    if (mode == FileMode.Create || mode == FileMode.OpenOrCreate)
                     {
-                        if (mode == FileMode.Create || mode == FileMode.OpenOrCreate)
-                        {
-                            stream = fileStreams.CreateStream(attributeName);
-                        }
-                        else
-                        {
-                            throw new FileNotFoundException("No such attribute on file", path);
-                        }
+                        stream = fileStreams.CreateStream(attributeName);
                     }
-                }
-                else
-                {
-                    throw new NotSupportedException(
-                        "Attempt to open a file stream on a file system that doesn't support them");
+                    else
+                    {
+                        throw new FileNotFoundException("No such attribute on file", path);
+                    }
                 }
             }
 
@@ -652,6 +653,15 @@ namespace DiscUtils.Vfs
                 {
                     return entry;
                 }
+                if (entry.IsSymlink)
+                {
+                    entry = ResolveSymlink(entry, pathEntries[pathOffset]);
+
+                    if (entry == null)
+                    {
+                        return null;
+                    }
+                }
                 if (entry.IsDirectory)
                 {
                     return GetDirectoryEntry((TDirectory)ConvertDirEntryToFile(entry), pathEntries, pathOffset + 1);
@@ -684,6 +694,11 @@ namespace DiscUtils.Vfs
                 if (entry.IsSymlink)
                 {
                     entry = ResolveSymlink(entry, path + "\\" + entry.FileName);
+
+                    if (entry == null)
+                    {
+                        continue;
+                    }
                 }
 
                 bool isDir = entry.IsDirectory;
@@ -718,14 +733,14 @@ namespace DiscUtils.Vfs
                 IVfsSymlink<TDirEntry, TFile> symlink = GetFile(currentEntry) as IVfsSymlink<TDirEntry, TFile>;
                 if (symlink == null)
                 {
-                    throw new FileNotFoundException("Unable to resolve symlink", path);
+                    return null; // throw new FileNotFoundException("Unable to resolve symlink", path);
                 }
 
                 currentPath = Utilities.ResolvePath(currentPath.TrimEnd('\\'), symlink.TargetPath);
                 currentEntry = GetDirectoryEntry(currentPath);
                 if (currentEntry == null)
                 {
-                    throw new FileNotFoundException("Unable to resolve symlink", path);
+                    return null; // throw new FileNotFoundException("Unable to resolve symlink", path);
                 }
 
                 --resolvesLeft;
@@ -733,7 +748,7 @@ namespace DiscUtils.Vfs
 
             if (currentEntry.IsSymlink)
             {
-                throw new FileNotFoundException("Unable to resolve symlink - too many links", path);
+                return null; // throw new FileNotFoundException("Unable to resolve symlink - too many links", path);
             }
 
             return currentEntry;

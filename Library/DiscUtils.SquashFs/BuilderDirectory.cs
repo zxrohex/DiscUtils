@@ -71,6 +71,38 @@ namespace DiscUtils.SquashFs
             return null;
         }
 
+        public IEnumerable<KeyValuePair<string, BuilderNode>> EnumerateTree()
+        {
+            foreach (var entry in _index)
+            {
+                if (entry.Value.Node is BuilderDirectory subdir)
+                {
+                    foreach (var subdir_entry in subdir.EnumerateTree())
+                    {
+                        yield return new KeyValuePair<string, BuilderNode>(Path.Combine(entry.Key, subdir_entry.Key), subdir_entry.Value);
+                    }
+                }
+
+                yield return new KeyValuePair<string, BuilderNode>(entry.Key, entry.Value.Node);
+            }
+        }
+
+        public IEnumerable<BuilderNode> EnumerateTreeEntries()
+        {
+            foreach (var entry in _index)
+            {
+                if (entry.Value.Node is BuilderDirectory subdir)
+                {
+                    foreach (var subdir_entry in subdir.EnumerateTreeEntries())
+                    {
+                        yield return subdir_entry;
+                    }
+                }
+
+                yield return entry.Value.Node;
+            }
+        }
+
         public override void Reset()
         {
             foreach (Entry entry in _children)

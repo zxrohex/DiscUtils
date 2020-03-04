@@ -28,7 +28,7 @@ using System.Text.RegularExpressions;
 
 namespace DiscUtils.Internal
 {
-    internal static class Utilities
+    public static class Utilities
     {
         /// <summary>
         /// Converts between two arrays.
@@ -59,16 +59,36 @@ namespace DiscUtils.Internal
         /// <param name="source">The source array.</param>
         /// <param name="func">The function to map from source type to destination type.</param>
         /// <returns>The resultant array.</returns>
-        public static U[] Map<T, U>(IEnumerable<T> source, Func<T, U> func)
+        public static U[] Map<T, U>(IEnumerable<T> source, Converter<T, U> func)
         {
-            List<U> result = new List<U>();
-
-            foreach (T sVal in source)
+            if (source is T[] array)
             {
-                result.Add(func(sVal));
+                return Array.ConvertAll(array, func);
             }
+            else if (source is ICollection<T> collection)
+            {
+                var result = new U[collection.Count];
 
-            return result.ToArray();
+                var i = 0;
+
+                foreach (T sVal in source)
+                {
+                    result[i++] = func(sVal);
+                }
+
+                return result;
+            }
+            else
+            {
+                List<U> result = new List<U>();
+
+                foreach (T sVal in source)
+                {
+                    result.Add(func(sVal));
+                }
+
+                return result.ToArray();
+            }
         }
 
         /// <summary>
@@ -158,6 +178,11 @@ namespace DiscUtils.Internal
             if (a.Length != b.Length)
             {
                 return false;
+            }
+
+            if (ReferenceEquals(a, b))
+            {
+                return true;
             }
 
             for (int i = 0; i < a.Length; ++i)
@@ -430,37 +455,69 @@ namespace DiscUtils.Internal
         /// </remarks>
         public static Regex ConvertWildcardsToRegEx(string pattern)
         {
+#if false
             if (!pattern.Contains("."))
             {
                 pattern += ".";
             }
+#endif
 
             string query = "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", "[^.]") + "$";
             return new Regex(query, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
 
-        public static FileAttributes FileAttributesFromUnixFileType(UnixFileType fileType)
+        public static FileAttributes FileAttributesFromUnixFileType(this UnixFileType fileType)
         {
             switch (fileType)
             {
-                case UnixFileType.Fifo:
-                    return FileAttributes.Device | FileAttributes.System;
-                case UnixFileType.Character:
-                    return FileAttributes.Device | FileAttributes.System;
-                case UnixFileType.Directory:
-                    return FileAttributes.Directory;
-                case UnixFileType.Block:
-                    return FileAttributes.Device | FileAttributes.System;
                 case UnixFileType.Regular:
                     return FileAttributes.Normal;
+
+                case UnixFileType.Directory:
+                    return FileAttributes.Directory;
+
                 case UnixFileType.Link:
                     return FileAttributes.ReparsePoint;
+
+                case UnixFileType.Fifo:
+                case UnixFileType.Character:
+                case UnixFileType.Block:
                 case UnixFileType.Socket:
                     return FileAttributes.Device | FileAttributes.System;
+
                 default:
                     return 0;
             }
         }
+
+        public static FileAttributes FileAttributesFromUnixFilePermissions(string name, UnixFilePermissions fileMode, UnixFileType fileType)
+        {
+            var attr = fileType.FileAttributesFromUnixFileType();
+
+            if (!fileMode.HasFlag(UnixFilePermissions.OwnerWrite))
+            {
+                attr |= FileAttributes.ReadOnly;
+            }
+
+            if (Path.GetFileName(name).StartsWith(".", StringComparison.Ordinal))
+            {
+                attr |= FileAttributes.Hidden;
+            }
+
+            return attr;
+        }
+
+        public static UnixFilePermissions UnixFilePermissionsFromFileAttributes(this FileAttributes attributes)
+        {
+            if ((attributes & FileAttributes.ReadOnly) == 0)
+            {
+                return UnixFilePermissions.OwnerAll | UnixFilePermissions.GroupAll | UnixFilePermissions.OthersAll;
+            }
+
+            return UnixFilePermissions.OwnerRead | UnixFilePermissions.GroupRead | UnixFilePermissions.OthersRead |
+                UnixFilePermissions.OwnerExecute | UnixFilePermissions.GroupExecute | UnixFilePermissions.OthersExecute;
+        }
+
 
         #endregion
     }

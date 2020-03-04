@@ -357,9 +357,9 @@ namespace DiscUtils.Fat
         /// <summary>
         /// Gets the volume serial number.
         /// </summary>
-        public int VolumeId
+        public override uint VolumeId
         {
-            get { return (int)_bsVolId; }
+            get { return _bsVolId; }
         }
 
         /// <summary>
@@ -736,7 +736,8 @@ namespace DiscUtils.Fat
         /// <returns>The length in bytes.</returns>
         public override long GetFileLength(string path)
         {
-            return GetDirectoryEntry(path).FileSize;
+            return GetDirectoryEntry(path)?.FileSize ??
+                throw new FileNotFoundException("File not found", path);
         }
 
         /// <summary>
@@ -935,7 +936,7 @@ namespace DiscUtils.Fat
             // Special case - root directory
             if (string.IsNullOrEmpty(path))
             {
-                return true;
+                return false;
             }
             DirectoryEntry dirEntry = GetDirectoryEntry(path);
             return dirEntry != null && (dirEntry.Attributes & FatAttributes.Directory) == 0;
@@ -1069,7 +1070,7 @@ namespace DiscUtils.Fat
             List<string> result = new List<string>(entries.Length);
             foreach (DirectoryEntry dirEntry in entries)
             {
-                if (re.IsMatch(dirEntry.Name.GetSearchName(FatOptions.FileNameEncoding)))
+                if (dirEntry.Name.IsMatch(re, FatOptions.FileNameEncoding))
                 {
                     result.Add(Utilities.CombinePaths(path, dirEntry.Name.GetDisplayName(FatOptions.FileNameEncoding)));
                 }
@@ -1259,6 +1260,7 @@ namespace DiscUtils.Fat
             Directory parent;
 
             long id = GetDirectoryEntry(_rootDir, path, out parent);
+            
             if (parent == null || id < 0)
             {
                 return null;
@@ -1489,6 +1491,32 @@ namespace DiscUtils.Fat
             return FatType.Fat32;
         }
 
+        public bool Dirty
+        {
+            get
+            {
+                if (FatVariant < FatType.Fat32)
+                {
+                    return (_bootSector[0x25] & 0x01) == 0x01;
+                }
+                else
+                {
+                    return (_bootSector[0x41] & 0x01) == 0x01;
+                }
+            }
+            set
+            {
+                if (FatVariant < FatType.Fat32)
+                {
+                    _bootSector[0x25] = (byte)((_bootSector[0x25] & 0xFE) | (value ? 0x01 : 0x00));
+                }
+                else
+                {
+                    _bootSector[0x41] = (byte)((_bootSector[0x41] & 0xFE) | (value ? 0x01 : 0x00));
+                }
+            }
+        }
+
         private static bool IsRootPath(string path)
         {
             return string.IsNullOrEmpty(path) || path == @"\";
@@ -1637,7 +1665,7 @@ namespace DiscUtils.Fat
 
                 if ((isDir && dirs) || (!isDir && files))
                 {
-                    if (regex.IsMatch(de.Name.GetSearchName(FatOptions.FileNameEncoding)))
+                    if (de.Name.IsMatch(regex, FatOptions.FileNameEncoding))
                     {
                         results.Add(Utilities.CombinePaths(path, de.Name.GetDisplayName(FatOptions.FileNameEncoding)));
                     }

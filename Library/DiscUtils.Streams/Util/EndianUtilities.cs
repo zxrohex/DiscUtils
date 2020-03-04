@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Text;
 
 namespace DiscUtils.Streams
 {
@@ -237,20 +238,22 @@ namespace DiscUtils.Streams
         /// this preserves those code points by removing the top 16 bits of each character.</remarks>
         public static void StringToBytes(string value, byte[] dest, int offset, int count)
         {
-            char[] chars = value.ToCharArray(0, Math.Min(value.Length, count));
+            Encoding.GetEncoding(1252).GetBytes(value, 0, Math.Min(count, value.Length), dest, offset);
 
-            int i = 0;
-            while (i < chars.Length && i < count)
-            {
-                dest[i + offset] = (byte)chars[i];
-                ++i;
-            }
+            //    char[] chars = value.ToCharArray(0, Math.Min(value.Length, count));
 
-            while (i < count)
-            {
-                dest[i + offset] = 0;
-                ++i;
-            }
+            //    int i = 0;
+            //    while (i < chars.Length && i < count)
+            //    {
+            //        dest[i + offset] = (byte)chars[i];
+            //        ++i;
+            //    }
+
+            //    while (i < count)
+            //    {
+            //        dest[i + offset] = 0;
+            //        ++i;
+            //    }
         }
 
         /// <summary>
@@ -264,14 +267,16 @@ namespace DiscUtils.Streams
         /// this preserves those code points.</remarks>
         public static string BytesToString(byte[] data, int offset, int count)
         {
-            char[] result = new char[count];
+            return Encoding.GetEncoding(1252).GetString(data, offset, count);
 
-            for (int i = 0; i < count; ++i)
-            {
-                result[i] = (char)data[i + offset];
-            }
+            //char[] result = new char[count];
 
-            return new string(result);
+            //for (int i = 0; i < count; ++i)
+            //{
+            //    result[i] = (char)data[i + offset];
+            //}
+
+            //return new string(result);
         }
 
         /// <summary>
@@ -285,20 +290,14 @@ namespace DiscUtils.Streams
         /// this preserves those code points.</remarks>
         public static string BytesToZString(byte[] data, int offset, int count)
         {
-            char[] result = new char[count];
+            var z = Array.IndexOf(data, default, offset, Math.Min(count, data.Length - offset));
 
-            for (int i = 0; i < count; ++i)
+            if (z >= 0)
             {
-                byte ch = data[i + offset];
-                if (ch == 0)
-                {
-                    return new string(result, 0, i);
-                }
-
-                result[i] = (char)ch;
+                count = z - offset;
             }
 
-            return new string(result);
+            return Encoding.GetEncoding(1252).GetString(data, offset, count);
         }
 
         #endregion

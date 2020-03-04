@@ -77,7 +77,7 @@ namespace DiscUtils.Raw
                 CanBeHardDisk = true,
                 DeterministicGeometry = true,
                 PreservesBiosGeometry = false,
-                CalcGeometry = c => Geometry.FromCapacity(c)
+                CalcGeometry = Geometry.FromCapacity
             };
         }
     }

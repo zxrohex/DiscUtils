@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System.IO;
 
 namespace DiscUtils
 {
@@ -46,7 +47,7 @@ namespace DiscUtils
         /// Gets the object that provides access to the file's content.
         /// </summary>
         /// <returns>A stream object that contains the file's content.</returns>
-        public SparseStream OpenStream()
+        public Stream OpenStream()
         {
             return _builder.Build();
         }

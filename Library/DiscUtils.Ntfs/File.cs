@@ -110,13 +110,13 @@ namespace DiscUtils.Ntfs
                     return null;
                 }
 
-                NtfsStream stream = GetStream(AttributeType.FileName, null);
+                NtfsStream? stream = GetStream(AttributeType.FileName, null);
                 if (stream == null)
                 {
                     return null;
                 }
 
-                FileNameRecord record = stream.GetContent<FileNameRecord>();
+                FileNameRecord record = stream.Value.GetContent<FileNameRecord>();
 
                 // Root dir is stored without root directory flag set in FileNameRecord, simulate it.
                 if (_records[0].MasterFileTableIndex == MasterFileTable.RootDirIndex)
@@ -206,7 +206,7 @@ namespace DiscUtils.Ntfs
 
         public StandardInformation StandardInformation
         {
-            get { return GetStream(AttributeType.StandardInformation, null).GetContent<StandardInformation>(); }
+            get { return GetStream(AttributeType.StandardInformation, null)?.GetContent<StandardInformation>(); }
         }
 
         public static File CreateNew(INtfsContext context, FileAttributeFlags dirFlags)
@@ -265,7 +265,7 @@ namespace DiscUtils.Ntfs
         {
             DateTime now = DateTime.UtcNow;
 
-            NtfsStream siStream = GetStream(AttributeType.StandardInformation, null);
+            NtfsStream siStream = GetStream(AttributeType.StandardInformation, null).Value;
             StandardInformation si = siStream.GetContent<StandardInformation>();
             si.LastAccessTime = now;
             si.ModificationTime = now;
@@ -278,7 +278,7 @@ namespace DiscUtils.Ntfs
         {
             DateTime now = DateTime.UtcNow;
 
-            NtfsStream siStream = GetStream(AttributeType.StandardInformation, null);
+            NtfsStream siStream = GetStream(AttributeType.StandardInformation, null).Value;
             StandardInformation si = siStream.GetContent<StandardInformation>();
             si.LastAccessTime = now;
             siStream.SetContent(si);
@@ -297,7 +297,7 @@ namespace DiscUtils.Ntfs
             {
                 if (NtfsTransaction.Current != null)
                 {
-                    NtfsStream stream = GetStream(AttributeType.StandardInformation, null);
+                    NtfsStream stream = GetStream(AttributeType.StandardInformation, null).Value;
                     StandardInformation si = stream.GetContent<StandardInformation>();
                     si.MftChangedTime = NtfsTransaction.Current.Timestamp;
                     stream.SetContent(si);
@@ -404,10 +404,10 @@ namespace DiscUtils.Ntfs
 
             _context.ForgetFile(this);
 
-            NtfsStream objIdStream = GetStream(AttributeType.ObjectId, null);
+            NtfsStream? objIdStream = GetStream(AttributeType.ObjectId, null);
             if (objIdStream != null)
             {
-                ObjectId objId = objIdStream.GetContent<ObjectId>();
+                ObjectId objId = objIdStream.Value.GetContent<ObjectId>();
                 Context.ObjectIds.Remove(objId.Id);
             }
 
@@ -451,7 +451,7 @@ namespace DiscUtils.Ntfs
             return GetStream(attrType, name) != null;
         }
 
-        public NtfsStream GetStream(AttributeType attrType, string name)
+        public NtfsStream? GetStream(AttributeType attrType, string name)
         {
             foreach (NtfsStream stream in GetStreams(attrType, name))
             {
@@ -493,6 +493,30 @@ namespace DiscUtils.Ntfs
             }
 
             return null;
+        }
+
+        public SparseStream OpenStream(ushort attributeid, AttributeType type, FileAccess access)
+        {
+            NtfsAttribute attr = GetAttribute(attributeid, type);
+            if (attr != null)
+            {
+                return new FileStream(this, attr, access);
+            }
+
+            return null;
+        }
+
+        public IEnumerable<Range<long, long>> GetClusters(ushort attributeid, AttributeType type)
+        {
+            NtfsAttribute attr = GetAttribute(attributeid, type);
+
+            foreach (var record in attr.Records)
+            {
+                foreach (var cluster in record.GetClusters())
+                {
+                    yield return cluster;
+                }
+            }
         }
 
         public void RemoveStream(NtfsStream stream)
@@ -614,6 +638,25 @@ namespace DiscUtils.Ntfs
             foreach (NtfsAttribute attr in _attributes)
             {
                 if (attr.PrimaryRecord.AttributeType == type && attr.Name == name)
+                {
+                    return attr;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        ///  Gets an attribute instance by unique identifier.
+        /// </summary>
+        /// <param name="identifier">Attribute id.</param>
+        /// <returns>The attribute of <c>null</c>.</returns>
+        internal NtfsAttribute GetAttribute(ushort identifier, AttributeType type)
+        {
+            foreach (NtfsAttribute attr in _attributes)
+            {
+                if (attr.PrimaryRecord.AttributeId == identifier &&
+                    attr.PrimaryRecord.AttributeType == type)
                 {
                     return attr;
                 }

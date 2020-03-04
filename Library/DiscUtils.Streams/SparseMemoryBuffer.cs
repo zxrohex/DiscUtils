@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace DiscUtils.Streams
 {
@@ -248,5 +249,49 @@ namespace DiscUtils.Streams
                 }
             }
         }
+
+        /// <summary>
+        /// Writes from a stream into the sparse buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the sparse buffer.</param>
+        /// <param name="source">The stream to get data from.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public long WriteFromStream(long pos, Stream source, long count)
+        {
+            long totalWritten = 0;
+
+            while (totalWritten < count)
+            {
+                int chunk = (int)(pos / ChunkSize);
+                int chunkOffset = (int)(pos % ChunkSize);
+                int numToWrite = (int)Math.Min(ChunkSize - chunkOffset, count - totalWritten);
+
+                if (!_buffers.TryGetValue(chunk, out var chunkBuffer))
+                {
+                    chunkBuffer = new byte[ChunkSize];
+                    _buffers[chunk] = chunkBuffer;
+                }
+
+                var numRead = source.Read(chunkBuffer, chunkOffset, numToWrite);
+
+                if (numRead <= 0)
+                {
+                    break;
+                }
+
+                totalWritten += numRead;
+                pos += numRead;
+
+                if (numRead < numToWrite)
+                {
+                    break;
+                }
+            }
+
+            _capacity = Math.Max(_capacity, pos);
+
+            return totalWritten;
+        }
+
     }
 }

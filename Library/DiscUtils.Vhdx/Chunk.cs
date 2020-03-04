@@ -32,9 +32,9 @@ namespace DiscUtils.Vhdx
     /// The BAT entries for a chunk are always present in the BAT, but the data blocks and
     /// sector bitmap blocks may (or may not) be present.
     /// </remarks>
-    internal sealed class Chunk
+    public sealed class Chunk
     {
-        private const ulong SectorBitmapPresent = 6;
+        public const ulong SectorBitmapPresent = 6;
 
         private readonly Stream _bat;
         private readonly byte[] _batData;
@@ -45,7 +45,7 @@ namespace DiscUtils.Vhdx
         private readonly FreeSpaceTable _freeSpace;
         private byte[] _sectorBitmap;
 
-        public Chunk(Stream bat, SparseStream file, FreeSpaceTable freeSpace, FileParameters fileParameters, int chunk,
+        internal Chunk(Stream bat, SparseStream file, FreeSpaceTable freeSpace, FileParameters fileParameters, int chunk,
                      int blocksPerChunk)
         {
             _bat = bat;
@@ -59,7 +59,7 @@ namespace DiscUtils.Vhdx
             _batData = StreamUtilities.ReadExact(bat, (_blocksPerChunk + 1) * 8);
         }
 
-        private bool HasSectorBitmap
+        public bool HasSectorBitmap
         {
             get { return new BatEntry(_batData, _blocksPerChunk * 8).BitmapBlockPresent; }
         }
@@ -70,12 +70,16 @@ namespace DiscUtils.Vhdx
 
             set
             {
-                BatEntry entry = new BatEntry();
-                entry.BitmapBlockPresent = value != 0;
-                entry.FileOffsetMB = value / Sizes.OneMiB;
+                BatEntry entry = new BatEntry
+                {
+                    BitmapBlockPresent = value != 0,
+                    FileOffsetMB = value / Sizes.OneMiB
+                };
                 entry.WriteTo(_batData, _blocksPerChunk * 8);
             }
         }
+
+        public int BlocksPerChunk => _blocksPerChunk;
 
         public long GetBlockPosition(int block)
         {
@@ -104,7 +108,7 @@ namespace DiscUtils.Vhdx
             _file.Write(_sectorBitmap, offset, bytesPerBlock);
         }
 
-        public PayloadBlockStatus AllocateSpaceForBlock(int block)
+        internal PayloadBlockStatus AllocateSpaceForBlock(int block)
         {
             bool dataModified = false;
 
@@ -159,8 +163,7 @@ namespace DiscUtils.Vhdx
 
         private long AllocateSpace(int sizeBytes, bool zero)
         {
-            long pos;
-            if (!_freeSpace.TryAllocate(sizeBytes, out pos))
+            if (!_freeSpace.TryAllocate(sizeBytes, out var pos))
             {
                 pos = MathUtilities.RoundUp(_file.Length, Sizes.OneMiB);
                 _file.SetLength(pos + sizeBytes);

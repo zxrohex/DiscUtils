@@ -33,6 +33,10 @@ namespace DiscUtils.Streams
     /// aren't stored.  The unstored parts are implicitly zero-byte ranges.</remarks>
     public abstract class SparseStream : Stream
     {
+        public event EventHandler Disposing;
+
+        public event EventHandler Disposed;
+
         /// <summary>
         /// Gets the parts of the stream that are stored.
         /// </summary>
@@ -308,15 +312,20 @@ namespace DiscUtils.Streams
             {
                 try
                 {
+                    Disposing?.Invoke(this, EventArgs.Empty);
+
                     if (disposing && _ownsWrapped == Ownership.Dispose && _wrapped != null)
                     {
                         _wrapped.Dispose();
-                        _wrapped = null;
                     }
+
+                    _wrapped = null;
                 }
                 finally
                 {
                     base.Dispose(disposing);
+
+                    Disposed?.Invoke(this, EventArgs.Empty);
                 }
             }
         }

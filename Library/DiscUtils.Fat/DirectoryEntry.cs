@@ -46,7 +46,18 @@ namespace DiscUtils.Fat
             _options = options;
             _fatVariant = fatVariant;
             byte[] buffer = StreamUtilities.ReadExact(stream, 32);
-            Load(buffer, 0);
+
+            // LFN entry
+            if ((buffer[0] & 0xc0) == 0x40 && buffer[11] == 0x0f)
+            {
+                var lfn_entries = buffer[0] & 0x3F;
+
+                Array.Resize(ref buffer, 32 * (lfn_entries + 1));
+
+                StreamUtilities.ReadExact(stream, buffer, 32, 32 * lfn_entries);
+            }
+
+            Load(buffer, 0, buffer.Length);
         }
 
         internal DirectoryEntry(FatFileSystemOptions options, FileName name, FatAttributes attrs, FatType fatVariant)
@@ -192,9 +203,12 @@ namespace DiscUtils.Fat
             tenths = (byte)(value.Second % 2 * 100 + value.Millisecond / 10);
         }
 
-        private void Load(byte[] data, int offset)
+        private void Load(byte[] data, int offset, int count)
         {
             Name = new FileName(data, offset);
+
+            offset += count - 32;
+
             _attr = data[offset + 11];
             _creationTimeTenth = data[offset + 13];
             _creationTime = EndianUtilities.ToUInt16LittleEndian(data, offset + 14);

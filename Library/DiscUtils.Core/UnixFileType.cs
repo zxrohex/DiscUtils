@@ -25,7 +25,7 @@ namespace DiscUtils
     /// <summary>
     /// Standard Unix-style file type.
     /// </summary>
-    public enum UnixFileType
+    public enum UnixFileType : byte
     {
         /// <summary>
         /// No type specified.

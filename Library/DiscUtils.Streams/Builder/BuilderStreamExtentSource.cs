@@ -33,6 +33,8 @@ namespace DiscUtils.Streams
             _stream = stream;
         }
 
+        public override long Length => _stream.Length;
+
         public override BuilderExtent Fix(long pos)
         {
             return new BuilderStreamExtent(pos, _stream);

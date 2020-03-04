@@ -65,8 +65,7 @@ namespace DiscUtils.Xva
         {
             VirtualMachine machine = new VirtualMachine(locator.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read), Ownership.Dispose);
 
-            int diskIndex;
-            if (!int.TryParse(extraInfo, out diskIndex))
+            if (!int.TryParse(extraInfo, out var diskIndex))
             {
                 diskIndex = 0;
             }
@@ -99,7 +98,7 @@ namespace DiscUtils.Xva
                 CanBeHardDisk = true,
                 DeterministicGeometry = true,
                 PreservesBiosGeometry = false,
-                CalcGeometry = c => Geometry.FromCapacity(c)
+                CalcGeometry = Geometry.FromCapacity
             };
         }
     }

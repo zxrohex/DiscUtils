@@ -32,39 +32,44 @@ namespace DiscUtils.Ext
         public Directory(Context context, uint inodeNum, Inode inode)
             : base(context, inodeNum, inode) {}
 
+        List<DirEntry> dirEntries;
+
         public ICollection<DirEntry> AllEntries
         {
             get
             {
-                List<DirEntry> dirEntries = new List<DirEntry>();
-
-                IBuffer content = FileContent;
-                uint blockSize = Context.SuperBlock.BlockSize;
-
-                byte[] blockData = new byte[blockSize];
-                uint relBlock = 0;
-
-                long pos = 0;
-                while (pos < Inode.FileSize)
+                if (dirEntries == null)
                 {
-                    StreamUtilities.ReadMaximum(content, blockSize * (long)relBlock, blockData, 0, (int)blockSize);
+                    dirEntries = new List<DirEntry>();
 
-                    int blockPos = 0;
-                    while (blockPos < blockSize)
+                    IBuffer content = FileContent;
+                    uint blockSize = Context.SuperBlock.BlockSize;
+
+                    byte[] blockData = new byte[blockSize];
+                    uint relBlock = 0;
+
+                    long pos = 0;
+                    while (pos < Inode.FileSize)
                     {
-                        DirectoryRecord r = new DirectoryRecord(Context.Options.FileNameEncoding);
-                        int numRead = r.ReadFrom(blockData, blockPos);
+                        StreamUtilities.ReadMaximum(content, blockSize * (long)relBlock, blockData, 0, (int)blockSize);
 
-                        if (r.Inode != 0 && r.Name != "." && r.Name != "..")
+                        int blockPos = 0;
+                        while (blockPos < blockSize)
                         {
-                            dirEntries.Add(new DirEntry(r));
+                            DirectoryRecord r = new DirectoryRecord(Context.Options.FileNameEncoding);
+                            int numRead = r.ReadFrom(blockData, blockPos);
+
+                            if (r.Inode != 0 && r.Name != "." && r.Name != "..")
+                            {
+                                dirEntries.Add(new DirEntry(r));
+                            }
+
+                            blockPos += numRead;
                         }
 
-                        blockPos += numRead;
+                        ++relBlock;
+                        pos += blockSize;
                     }
-
-                    ++relBlock;
-                    pos += blockSize;
                 }
 
                 return dirEntries;
@@ -91,6 +96,9 @@ namespace DiscUtils.Ext
 
         public DirEntry CreateNewFile(string name)
         {
+            // Clear cache
+            dirEntries = null;
+
             throw new NotImplementedException();
         }
     }

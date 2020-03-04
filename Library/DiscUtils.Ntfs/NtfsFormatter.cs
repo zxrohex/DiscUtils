@@ -163,7 +163,7 @@ namespace DiscUtils.Ntfs
                 badClusFile.UpdateRecordInMft();
 
                 File secureFile = CreateSystemFile(MasterFileTable.SecureIndex, FileRecordFlags.HasViewIndex);
-                secureFile.RemoveStream(secureFile.GetStream(AttributeType.Data, null));
+                secureFile.RemoveStream(secureFile.GetStream(AttributeType.Data, null).Value);
                 _context.SecurityDescriptors = SecurityDescriptors.Initialize(secureFile);
                 secureFile.UpdateRecordInMft();
 
@@ -173,7 +173,7 @@ namespace DiscUtils.Ntfs
 
                 File objIdFile = File.CreateNew(_context, FileRecordFlags.IsMetaFile | FileRecordFlags.HasViewIndex,
                     FileAttributeFlags.None);
-                objIdFile.RemoveStream(objIdFile.GetStream(AttributeType.Data, null));
+                objIdFile.RemoveStream(objIdFile.GetStream(AttributeType.Data, null).Value);
                 objIdFile.CreateIndex("$O", 0, AttributeCollationRule.MultipleUnsignedLongs);
                 objIdFile.UpdateRecordInMft();
 

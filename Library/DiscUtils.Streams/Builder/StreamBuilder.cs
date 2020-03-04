@@ -34,7 +34,7 @@ namespace DiscUtils.Streams
         /// Builds a new stream.
         /// </summary>
         /// <returns>The stream created by the StreamBuilder instance.</returns>
-        public virtual SparseStream Build()
+        public virtual Stream Build()
         {
             long totalLength;
             List<BuilderExtent> extents = FixExtents(out totalLength);
@@ -45,7 +45,7 @@ namespace DiscUtils.Streams
         /// Writes the stream contents to an existing stream.
         /// </summary>
         /// <param name="output">The stream to write to.</param>
-        public void Build(Stream output)
+        public virtual void Build(Stream output)
         {
             using (Stream src = Build())
             {

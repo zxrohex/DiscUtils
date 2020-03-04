@@ -119,7 +119,7 @@ namespace DiscUtils.Iscsi
                     CanBeHardDisk = true,
                     DeterministicGeometry = false,
                     PreservesBiosGeometry = false,
-                    CalcGeometry = c => Geometry.FromCapacity(c)
+                    CalcGeometry = Geometry.FromCapacity
                 };
             }
         }

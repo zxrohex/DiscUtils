@@ -27,7 +27,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Vhd
 {
-    internal class DynamicStream : MappedStream
+    public class DynamicStream : MappedStream
     {
         private bool _atEof;
         private bool _autoCommitFooter = true;
@@ -45,7 +45,7 @@ namespace DiscUtils.Vhd
 
         private long _position;
 
-        public DynamicStream(Stream fileStream, DynamicHeader dynamicHeader, long length, SparseStream parentStream,
+        internal DynamicStream(Stream fileStream, DynamicHeader dynamicHeader, long length, SparseStream parentStream,
                              Ownership ownsParentStream)
         {
             if (fileStream == null)
@@ -101,6 +101,8 @@ namespace DiscUtils.Vhd
                 }
             }
         }
+
+        public uint BlockSize => _dynamicHeader.BlockSize;
 
         public override bool CanRead
         {
@@ -236,6 +238,18 @@ namespace DiscUtils.Vhd
                     position += toRead;
                 }
             }
+        }
+
+        public BlockBitmap GetBlockBitmap(int block)
+        {
+            if (!PopulateBlockBitmap(block))
+            {
+                return null;
+            }
+
+            var data = _blockBitmaps[block];
+
+            return new BlockBitmap(data, 0, (int)(_dynamicHeader.BlockSize / Sizes.Sector / 8));
         }
 
         public override int Read(byte[] buffer, int offset, int count)

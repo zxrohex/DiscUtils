@@ -20,56 +20,88 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-using System.IO;
-using DiscUtils.Streams;
-
 namespace DiscUtils.Archives
 {
+    using Streams;
+    using System;
+    using System.IO;
+
     internal sealed class UnixBuildFileRecord
     {
-        private readonly BuilderExtentSource _source;
+        private string _name;
+        private UnixFilePermissions _fileMode;
+        private int _ownerId;
+        private int _groupId;
+        private DateTime _modificationTime;
+        private BuilderExtentSource _source;
 
         public UnixBuildFileRecord(string name, byte[] buffer)
-            : this(name, new BuilderBufferExtentSource(buffer), 0, 0, 0, DateTimeOffsetExtensions.UnixEpoch) {}
-
-        public UnixBuildFileRecord(string name, Stream stream)
-            : this(name, new BuilderStreamExtentSource(stream), 0, 0, 0, DateTimeOffsetExtensions.UnixEpoch) {}
-
-        public UnixBuildFileRecord(
-            string name, byte[] buffer, UnixFilePermissions fileMode, int ownerId, int groupId,
-            DateTime modificationTime)
-            : this(name, new BuilderBufferExtentSource(buffer), fileMode, ownerId, groupId, modificationTime) {}
-
-        public UnixBuildFileRecord(
-            string name, Stream stream, UnixFilePermissions fileMode, int ownerId, int groupId,
-            DateTime modificationTime)
-            : this(name, new BuilderStreamExtentSource(stream), fileMode, ownerId, groupId, modificationTime) {}
-
-        public UnixBuildFileRecord(string name, BuilderExtentSource fileSource, UnixFilePermissions fileMode,
-                                   int ownerId, int groupId, DateTime modificationTime)
+            : this(name, new BuilderBufferExtentSource(buffer), 0, 0, 0, DateTimeOffsetExtensions.UnixEpoch)
         {
-            Name = name;
-            _source = fileSource;
-            FileMode = fileMode;
-            OwnerId = ownerId;
-            GroupId = groupId;
-            ModificationTime = modificationTime;
         }
 
-        public UnixFilePermissions FileMode { get; }
+        public UnixBuildFileRecord(string name, Stream stream)
+            : this(name, new BuilderStreamExtentSource(stream), 0, 0, 0, DateTimeOffsetExtensions.UnixEpoch)
+        {
+        }
 
-        public int GroupId { get; }
+        public UnixBuildFileRecord(
+            string name, byte[] buffer, UnixFilePermissions fileMode, int ownerId, int groupId, DateTime modificationTime)
+            : this(name, new BuilderBufferExtentSource(buffer), fileMode, ownerId, groupId, modificationTime)
+        {
+        }
 
-        public DateTime ModificationTime { get; }
+        public UnixBuildFileRecord(
+            string name, Stream stream, UnixFilePermissions fileMode, int ownerId, int groupId, DateTime modificationTime)
+            : this(name, new BuilderStreamExtentSource(stream), fileMode, ownerId, groupId, modificationTime)
+        {
+        }
 
-        public string Name { get; }
+        public UnixBuildFileRecord(string name, BuilderExtentSource fileSource, UnixFilePermissions fileMode, int ownerId, int groupId, DateTime modificationTime)
+        {
+            _name = name;
+            _source = fileSource;
+            _fileMode = fileMode;
+            _ownerId = ownerId;
+            _groupId = groupId;
+            _modificationTime = modificationTime;
+        }
 
-        public int OwnerId { get; }
+        public string Name
+        {
+            get { return _name; }
+        }
+
+        public UnixFilePermissions FileMode
+        {
+            get { return this._fileMode; }
+        }
+
+        public int OwnerId
+        {
+            get { return this._ownerId; }
+        }
+
+        public int GroupId
+        {
+            get { return this._groupId; }
+        }
+
+        public DateTime ModificationTime
+        {
+            get { return this._modificationTime; }
+        }
+
+        public long Length => _source.Length;
 
         public BuilderExtent Fix(long pos)
         {
             return _source.Fix(pos);
+        }
+
+        public override string ToString()
+        {
+            return _name;
         }
     }
 }

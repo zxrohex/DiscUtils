@@ -409,10 +409,11 @@ namespace DiscUtils.Vmdk
 
         private void Load(Stream source)
         {
-            if (source.Length - source.Position > MaxSize)
+            var descriptor_size = source.Length - source.Position;
+
+            if (descriptor_size > MaxSize)
             {
-                throw new IOException(string.Format(CultureInfo.InvariantCulture,
-                    "Invalid VMDK descriptor file, more than {0} bytes in length", MaxSize));
+                throw new IOException($"Too large VMDK descriptor file, {descriptor_size} bytes. Largest allowed size is {MaxSize} bytes. Please verify that you open a descriptor VMDK file and not an actual image file.");
             }
 
             StreamReader reader = new StreamReader(source);

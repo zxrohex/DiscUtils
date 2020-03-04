@@ -21,9 +21,13 @@
 //
 
 using System.Collections.Generic;
+using System.IO;
 
 namespace DiscUtils.Ntfs.Internals
 {
+    using DiscUtils.CoreCompat;
+    using Streams;
+
     /// <summary>
     /// An entry within the Master File Table.
     /// </summary>
@@ -36,23 +40,6 @@ namespace DiscUtils.Ntfs.Internals
         {
             _context = context;
             _fileRecord = fileRecord;
-        }
-
-        /// <summary>
-        /// Gets the attributes contained in this entry.
-        /// </summary>
-        public ICollection<GenericAttribute> Attributes
-        {
-            get
-            {
-                List<GenericAttribute> result = new List<GenericAttribute>();
-                foreach (AttributeRecord attr in _fileRecord.Attributes)
-                {
-                    result.Add(GenericAttribute.FromAttributeRecord(_context, attr));
-                }
-
-                return result;
-            }
         }
 
         /// <summary>
@@ -130,6 +117,74 @@ namespace DiscUtils.Ntfs.Internals
         public int SequenceNumber
         {
             get { return _fileRecord.SequenceNumber; }
+        }
+
+        /// <summary>
+        /// Gets the attributes contained in this entry.
+        /// </summary>
+        public ICollection<GenericAttribute> Attributes =>
+            _fileRecord.Attributes
+                .ConvertAll(attr => GenericAttribute.FromAttributeRecord(_context, attr))
+                .AsReadOnly();
+
+        public bool HasAttributes() => _fileRecord.Attributes.Count > 0;
+
+        public bool HasAttributes(AttributeType type) =>
+            _fileRecord.Attributes.FindIndex(attr => attr.AttributeType == type) >= 0;
+
+        public IEnumerable<GenericAttribute> EnumerateAttributes(params AttributeType[] types)
+        {
+            foreach (var attr in _fileRecord.Attributes)
+            {
+                if (System.Array.Exists(types, t => t == attr.AttributeType))
+                {
+                    GenericAttribute attribute = null;
+
+                    try
+                    {
+                        attribute = GenericAttribute.FromAttributeRecord(_context, attr);
+                    }
+                    catch
+                    {
+                    }
+
+                    if (attribute != null)
+                    {
+                        yield return attribute;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Opens an attribute as stream
+        /// </summary>
+        /// <param name="attr">Attribute to open</param>
+        /// <param name="access">Access</param>
+        public SparseStream Open(IAttributeLocator attr, System.IO.FileAccess access) =>
+            File.OpenStream(attr.Identifier, attr.AttributeType, access);
+
+        public IEnumerable<Range<long, long>> GetClusters(IAttributeLocator attr) =>
+            File.GetClusters(attr.Identifier, attr.AttributeType);
+
+        private File _file;
+
+        internal File File => _file ?? (_file = new File(_context, _fileRecord));
+
+        public GenericAttribute GetAttributeObject(IAttributeLocator attr)
+        {
+            using (var attrstream = Open(attr, FileAccess.Read))
+            {
+                if (attrstream == null)
+                {
+                    return null;
+                }
+
+                var buffer = new byte[attrstream.Length];
+                attrstream.Read(buffer, 0, buffer.Length);
+                var record = AttributeRecord.FromBytes(buffer, 0, out var length);
+                return GenericAttribute.FromAttributeRecord(_context, record);
+            }
         }
     }
 }

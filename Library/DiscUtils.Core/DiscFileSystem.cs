@@ -93,6 +93,11 @@ namespace DiscUtils
         }
 
         /// <summary>
+        /// Volume Serial Number
+        /// </summary>
+        public virtual uint VolumeId => (uint)GetHashCode();
+
+        /// <summary>
         /// Gets a value indicating whether the file system is thread-safe.
         /// </summary>
         public virtual bool IsThreadSafe

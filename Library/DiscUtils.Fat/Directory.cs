@@ -353,8 +353,8 @@ namespace DiscUtils.Fat
 
             while (_dirStream.Position < _dirStream.Length)
             {
-                long streamPos = _dirStream.Position;
                 DirectoryEntry entry = new DirectoryEntry(FileSystem.FatOptions, _dirStream, FileSystem.FatVariant);
+                long streamPos = _dirStream.Position - 32;
 
                 if (entry.Attributes ==
                     (FatAttributes.ReadOnly | FatAttributes.Hidden | FatAttributes.System | FatAttributes.VolumeId))

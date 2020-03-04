@@ -30,7 +30,7 @@ namespace DiscUtils.Ntfs.Internals
     /// <remarks>
     /// More specialized base classes are provided for known attribute types.
     /// </remarks>
-    public abstract class GenericAttribute
+    public abstract class GenericAttribute : IAttributeLocator
     {
         private readonly INtfsContext _context;
         private readonly AttributeRecord _record;
@@ -80,10 +80,7 @@ namespace DiscUtils.Ntfs.Internals
         /// <summary>
         /// Gets the unique id of the attribute.
         /// </summary>
-        public int Identifier
-        {
-            get { return _record.AttributeId; }
-        }
+        public ushort Identifier => _record.AttributeId;
 
         /// <summary>
         /// Gets a value indicating whether the attribute content is stored in the MFT record itself.
@@ -100,6 +97,8 @@ namespace DiscUtils.Ntfs.Internals
         {
             get { return _record.Name; }
         }
+
+        public long FirstFileCluster => _record.StartVcn;
 
         internal static GenericAttribute FromAttributeRecord(INtfsContext context, AttributeRecord record)
         {
