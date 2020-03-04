@@ -7,6 +7,10 @@
     <Authors>Kenneth Bell;Quamotion;LordMike</Authors>
     <PackageTags>DiscUtils;VHD;VDI;XVA;VMDK;ISO;NTFS;EXT2FS</PackageTags>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\DiscUtils.Streams\DiscUtils.Streams.csproj" />

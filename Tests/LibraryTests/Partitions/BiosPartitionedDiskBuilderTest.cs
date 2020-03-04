@@ -44,7 +44,7 @@ namespace LibraryTests.Partitions
             partitionContent.WriteByte(0xAf);
             builder.SetPartitionContent(0, partitionContent);
 
-            SparseStream constructedStream = builder.Build();
+            SparseStream constructedStream = builder.Build() as SparseStream;
 
             BiosPartitionTable bpt = new BiosPartitionTable(constructedStream, geometry);
             Assert.Equal(1, bpt.Count);

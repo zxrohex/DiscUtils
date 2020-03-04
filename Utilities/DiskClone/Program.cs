@@ -223,7 +223,7 @@ namespace DiskClone
                     }
                 }
             }
-            SparseStream contentStream = contentBuilder.Build();
+            SparseStream contentStream = contentBuilder.Build() as SparseStream;
 
 
             // Write out the disk images
@@ -244,7 +244,7 @@ namespace DiskClone
                     outputPath = _destDisk.Value;
                 }
 
-                using (SparseStream vhdStream = fileSpecs[i].OpenStream())
+                using (SparseStream vhdStream = fileSpecs[i].OpenStream() as SparseStream)
                 using (FileStream fs = new FileStream(outputPath, FileMode.Create, FileAccess.ReadWrite))
                 {
                     StreamPump pump = new StreamPump()

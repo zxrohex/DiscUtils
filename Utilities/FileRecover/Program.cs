@@ -22,6 +22,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using DiscUtils;
 using DiscUtils.Common;
 using DiscUtils.Ntfs;
@@ -77,7 +78,7 @@ namespace FileRecover
             }
 
 
-            VolumeInfo volInfo = null;
+            VolumeInfo volInfo;
             if (!string.IsNullOrEmpty(VolumeId))
             {
                 volInfo = volMgr.GetVolume(VolumeId);
@@ -127,7 +128,7 @@ namespace FileRecover
                     {
                         // Skip entries with no attributes, they've probably never been used.  We're certainly
                         // not going to manage to recover any useful data from them.
-                        if (entry.Attributes.Count == 0)
+                        if (!entry.HasAttributes())
                             continue;
 
                         // Skip directories - any useful files inside will be found separately
@@ -149,28 +150,14 @@ namespace FileRecover
             }
         }
 
-        static IBuffer GetContent(MasterFileTableEntry entry)
-        {
-            foreach (var attr in entry.Attributes)
-            {
-                if (attr.AttributeType == AttributeType.Data)
-                {
-                    return attr.Content;
-                }
-            }
-
-            return null;
-        }
+        static IBuffer GetContent(MasterFileTableEntry entry) =>
+            entry.EnumerateAttributes(AttributeType.Data).FirstOrDefault()?.Content;
 
         static long GetSize(MasterFileTableEntry entry)
         {
-            foreach (var attr in entry.Attributes)
+            foreach (var fna in entry.EnumerateAttributes(AttributeType.FileName).OfType<FileNameAttribute>())
             {
-                FileNameAttribute fna = attr as FileNameAttribute;
-                if (fna != null)
-                {
-                    return fna.RealSize;
-                }
+                return fna.RealSize;
             }
 
             return 0;
@@ -185,15 +172,11 @@ namespace FileRecover
 
             FileNameAttribute fna = null;
 
-            foreach (var attr in entry.Attributes)
+            foreach (var thisFna in entry.EnumerateAttributes(AttributeType.FileName).OfType<FileNameAttribute>())
             {
-                FileNameAttribute thisFna = attr as FileNameAttribute;
-                if (thisFna != null)
+                if (fna == null || thisFna.FileNameNamespace == NtfsNamespace.Win32 || thisFna.FileNameNamespace == NtfsNamespace.Win32AndDos)
                 {
-                    if (fna == null || thisFna.FileNameNamespace == NtfsNamespace.Win32 || thisFna.FileNameNamespace == NtfsNamespace.Win32AndDos)
-                    {
-                        fna = thisFna;
-                    }
+                    fna = thisFna;
                 }
             }
 

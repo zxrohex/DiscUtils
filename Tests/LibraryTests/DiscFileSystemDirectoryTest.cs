@@ -38,7 +38,7 @@ namespace LibraryTests
             DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo("SOMEDIR");
             dirInfo.Create();
 
-            Assert.Equal(1, fs.Root.GetDirectories().Length);
+            Assert.Single(fs.Root.GetDirectories());
         }
 
         [Theory]

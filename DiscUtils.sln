@@ -123,7 +123,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{DE1702
 		Utilities\common-utilities.props = Utilities\common-utilities.props
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscUtils.VirtualFileSystem", "Library\DiscUtils.VirtualFileSystem\DiscUtils.VirtualFileSystem.csproj", "{DD506E79-41D5-490D-BE12-05F5C7839575}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscUtils.VirtualFileSystem", "Library\DiscUtils.VirtualFileSystem\DiscUtils.VirtualFileSystem.csproj", "{DD506E79-41D5-490D-BE12-05F5C7839575}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5D9CD658-4A85-4C0D-B9F5-AD88832DB09C}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
