@@ -517,17 +517,17 @@ namespace DiscUtils.VirtualFileSystem
         {
             if (string.IsNullOrEmpty(path))
             {
-                return path;
+                return string.Empty;
             }
 
             var index = path.LastIndexOfAny(new[] { '\\', '/' });
 
             if (index >= 0)
             {
-                path = path.Remove(index);
+                return path.Remove(index);
             }
 
-            return path;
+            return string.Empty;
         }
     }
 }

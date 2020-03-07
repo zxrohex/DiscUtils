@@ -41,6 +41,8 @@ namespace DiscUtils
     {
         private VirtualDiskTransport _transport;
 
+        public event EventHandler Disposing;
+
         public event EventHandler Disposed;
 
         /// <summary>
@@ -592,6 +594,8 @@ namespace DiscUtils
             {
                 if (disposing)
                 {
+                    Disposing?.Invoke(this, EventArgs.Empty);
+
                     if (_transport != null)
                     {
                         _transport.Dispose();
@@ -602,7 +606,10 @@ namespace DiscUtils
             }
             finally
             {
-                Disposed?.Invoke(this, EventArgs.Empty);
+                if (disposing)
+                {
+                    Disposed?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
 

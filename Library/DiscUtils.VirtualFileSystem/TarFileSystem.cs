@@ -1,16 +1,36 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace DiscUtils.VirtualFileSystem
 {
     using Archives;
+    using Streams;
     using Internal;
 
     public class TarFileSystem : VirtualFileSystem
     {
         private readonly WeakReference _tar;
+
+        public static bool Detect(Stream archive)
+        {
+            archive.Position = 0;
+
+            try
+            {
+                var buffer = new byte[512];
+
+                if (StreamUtilities.ReadMaximum(archive, buffer, 0, 512) < 512)
+                {
+                    return false;
+                }
+
+                return TarHeader.IsValid(buffer, 0);
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         public TarFileSystem(FileStream tar_stream, bool ownsStream)
             : this(tar_stream, tar_stream.Name, ownsStream) { }
@@ -21,6 +41,11 @@ namespace DiscUtils.VirtualFileSystem
                 VolumeLabel = label
             })
         {
+            if (tar_stream.CanSeek)
+            {
+                tar_stream.Position = 0;
+            }
+
             if (ownsStream)
             {
                 _tar = new WeakReference(tar_stream);

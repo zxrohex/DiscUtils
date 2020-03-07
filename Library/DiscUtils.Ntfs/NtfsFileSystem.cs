@@ -435,8 +435,32 @@ namespace DiscUtils.Ntfs
         {
             using (new NtfsTransaction())
             {
-                DirectoryEntry dirEntry = GetDirectoryEntry(path);
-                return dirEntry != null && (dirEntry.Details.FileAttributes & FileAttributes.Directory) == 0;
+                string attributeName;
+                AttributeType attributeType;
+                string dirEntryPath = ParsePath(path, out attributeName, out attributeType);
+
+                DirectoryEntry dirEntry = GetDirectoryEntry(dirEntryPath);
+                if (dirEntry == null)
+                {
+                    return false;
+                }
+
+                // Ordinary file length request, use info from directory entry
+                if (attributeName == null && attributeType == AttributeType.Data &&
+                    !dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
+                {
+                    return true;
+                }
+
+                // Alternate stream / attribute, pull info from attribute record
+                File file = GetFile(dirEntry.Reference);
+                NtfsAttribute attr = file.GetAttribute(attributeType, attributeName);
+                if (attr == null)
+                {
+                    return false;
+                }
+
+                return true;
             }
         }
 

@@ -325,7 +325,10 @@ namespace DiscUtils.Streams
                 {
                     base.Dispose(disposing);
 
-                    Disposed?.Invoke(this, EventArgs.Empty);
+                    if (disposing)
+                    {
+                        Disposed?.Invoke(this, EventArgs.Empty);
+                    }
                 }
             }
         }

@@ -25,6 +25,7 @@ namespace DiscUtils.Archives
     using Internal;
     using Streams;
     using System;
+    using System.Linq;
 
     public sealed class TarHeader
     {
@@ -90,6 +91,34 @@ namespace DiscUtils.Archives
             LastAccessTime = DateTimeOffsetExtensions.FromUnixTimeSeconds((uint)OctalToLong(ReadNullTerminatedString(buffer, offset + 476, 12)));
             CreationTime = DateTimeOffsetExtensions.FromUnixTimeSeconds((uint)OctalToLong(ReadNullTerminatedString(buffer, offset + 488, 12)));
         }
+
+        public static bool IsValid(byte[] buffer, int offset)
+        {
+            if (ReadNullTerminatedString(buffer, offset + 0, 100).Length > 0 &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 100, 8)) &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 108, 8)) &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 116, 8)) &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 136, 12)) &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 148, 8)) &&
+                ReadNullTerminatedString(buffer, offset + 257, 6).Length > 0 &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 263, 2)) &&
+                ReadNullTerminatedString(buffer, offset + 265, 32).Length > 0 &&
+                ReadNullTerminatedString(buffer, offset + 297, 32).Length > 0 &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 329, 8)) &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 337, 8)) &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 476, 12)) &&
+                IsValidOctalString(ReadNullTerminatedString(buffer, offset + 488, 12)))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        private static bool IsValidOctalString(string v) =>
+            string.IsNullOrEmpty(v) || v.All(c => c >= '0' && c <= '7');
 
         private static long ParseFileLength(byte[] buffer, int offset, int count)
         {

@@ -507,7 +507,15 @@ namespace DiscUtils
         /// Disposes of this instance.
         /// </summary>
         /// <param name="disposing">The value <c>true</c> if Disposing.</param>
-        protected virtual void Dispose(bool disposing) {}
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Disposed?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public event EventHandler Disposed;
 
         #endregion
     }

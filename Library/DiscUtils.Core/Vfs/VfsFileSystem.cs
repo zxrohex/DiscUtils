@@ -115,7 +115,7 @@ namespace DiscUtils.Vfs
         /// <returns>true if the directory exists.</returns>
         public override bool DirectoryExists(string path)
         {
-            if (IsRoot(path))
+            if (IsRoot(path) && RootDirectory != null)
             {
                 return true;
             }
@@ -644,9 +644,9 @@ namespace DiscUtils.Vfs
 
             if (pathEntries.Length == 0)
             {
-                return dir.Self;
+                return dir?.Self;
             }
-            entry = dir.GetEntryByName(pathEntries[pathOffset]);
+            entry = dir?.GetEntryByName(pathEntries[pathOffset]);
             if (entry != null)
             {
                 if (pathOffset == pathEntries.Length - 1)

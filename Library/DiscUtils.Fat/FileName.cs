@@ -87,8 +87,14 @@ namespace DiscUtils.Fat
 
             byte[] bytes = encoding.GetBytes(name.ToUpperInvariant());
 
+            if (bytes.Length == 0)
+            {
+                throw new ArgumentException($"File name too short '{name}'", nameof(name));
+            }
+
             int nameIdx = 0;
             int rawIdx = 0;
+
             while (nameIdx < bytes.Length && bytes[nameIdx] != '.' && rawIdx < _raw.Length)
             {
                 byte b = bytes[nameIdx++];
@@ -104,9 +110,10 @@ namespace DiscUtils.Fat
             {
                 //throw new ArgumentException($"File name too long '{name}'", nameof(name));
             }
+
             if (rawIdx == 0)
             {
-                throw new ArgumentException($"File name too short '{name}'", nameof(name));
+                //throw new ArgumentException($"File name too short '{name}'", nameof(name));
             }
 
             while (rawIdx < 8)
@@ -281,18 +288,18 @@ namespace DiscUtils.Fat
             return 0;
         }
 
-        private static bool Contains(byte[] array, byte val)
-        {
-            foreach (byte b in array)
-            {
-                if (b == val)
-                {
-                    return true;
-                }
-            }
+        private static bool Contains(byte[] array, byte val) => Array.IndexOf(array, val) >= 0;
+        //{
+        //    foreach (byte b in array)
+        //    {
+        //        if (b == val)
+        //        {
+        //            return true;
+        //        }
+        //    }
 
-            return false;
-        }
+        //    return false;
+        //}
 
         public override string ToString() => GetDisplayName(Encoding.ASCII);
     }
