@@ -52,6 +52,8 @@ namespace DiscUtils.VirtualFileSystem
 
         public long AllocationLength => Length + ((1 + ~(Length & (SectorSize - 1))) & (SectorSize - 1));
 
+        public override long FileId => OpenFunc?.GetHashCode() ?? -1;
+
         public override VirtualFileSystemDirectoryEntry AddLink(VirtualFileSystemDirectory new_parent, string new_name)
             => new VirtualFileSystemFile(new_parent, new_name, this);
     }

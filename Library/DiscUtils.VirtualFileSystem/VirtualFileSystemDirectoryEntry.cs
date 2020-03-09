@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Security.AccessControl;
 
 namespace DiscUtils.VirtualFileSystem
 {
@@ -18,6 +19,14 @@ namespace DiscUtils.VirtualFileSystem
 
         public DateTime CreationTimeUtc { get; set; } = DateTime.UtcNow;
 
+        public RawSecurityDescriptor SecurityDescriptor { get; set; }
+
+        public ReparsePoint ReparsePoint { get; set; }
+
+        public string ShortName { get; set; }
+
+        public abstract long FileId { get; }
+
         internal VirtualFileSystemDirectoryEntry(VirtualFileSystem fileSystem) =>
             FileSystem = fileSystem ?? throw new ArgumentNullException(nameof(FileSystem));
 
@@ -32,6 +41,23 @@ namespace DiscUtils.VirtualFileSystem
             }
 
             parent.AddEntry(name, this);
+        }
+
+        public WindowsFileInformation GetStandardInformation() => new WindowsFileInformation
+        {
+            ChangeTime = LastWriteTimeUtc.ToLocalTime(),
+            CreationTime = CreationTimeUtc.ToLocalTime(),
+            LastAccessTime = LastAccessTimeUtc.ToLocalTime(),
+            LastWriteTime = LastWriteTimeUtc.ToLocalTime(),
+            FileAttributes = Attributes
+        };
+
+        public void SetStandardInformation(WindowsFileInformation info)
+        {
+            CreationTimeUtc = info.CreationTime.ToUniversalTime();
+            LastAccessTimeUtc = info.LastAccessTime.ToUniversalTime();
+            LastWriteTimeUtc = info.LastWriteTime.ToUniversalTime();
+            Attributes = info.FileAttributes;
         }
 
         public virtual void Delete()

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security.AccessControl;
 using System.IO;
 using System.Linq;
 
@@ -7,21 +8,38 @@ namespace DiscUtils.VirtualFileSystem
     using Internal;
     using Streams;
 
-    public partial class VirtualFileSystem : DiscFileSystem, IFileSystemBuilder
+    public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFileSystemBuilder
     {
         public delegate Stream FileOpenDelegate(FileMode mode, FileAccess access);
+
+        public static string GetPathDirectoryName(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return string.Empty;
+            }
+
+            var index = path.LastIndexOfAny(new[] { '\\', '/' });
+
+            if (index >= 0)
+            {
+                return path.Remove(index);
+            }
+
+            return string.Empty;
+        }
 
         private readonly VirtualFileSystemDirectory _root;
 
         private long _used_space;
 
-        public event EventHandler<CreateFileEventArgs> CreateFile;
-
-        public new VirtualFileSystemOptions Options => base.Options as VirtualFileSystemOptions;
-
         public VirtualFileSystem(VirtualFileSystemOptions options)
             : base(options) =>
             _root = new VirtualFileSystemDirectory(this);
+
+        public event EventHandler<CreateFileEventArgs> CreateFile;
+
+        public new VirtualFileSystemOptions Options => base.Options as VirtualFileSystemOptions;
 
         public override bool CanWrite => Options.CanWrite;
 
@@ -37,25 +55,27 @@ namespace DiscUtils.VirtualFileSystem
 
         public override long AvailableSpace => 0;
 
-        int IFileSystemBuilder.FileCount => throw new NotImplementedException();
+        int IFileSystemBuilder.FileCount => _root.EnumerateTreeEntries().Count();
 
-        long IFileSystemBuilder.TotalSize => throw new NotImplementedException();
+        long IFileSystemBuilder.TotalSize => _used_space;
 
-        string IFileSystemBuilder.VolumeIdentifier { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public string VolumeIdentifier
+        {
+            get => Options.VolumeLabel;
+            set => Options.VolumeLabel = value;
+        }
 
-        public void SetUsedSpace(long size) => _used_space = size;
+        public virtual void SetUsedSpace(long size) => _used_space = size;
 
-        public long UpdateUsedSpace() =>
+        public virtual long UpdateUsedSpace() =>
             _used_space = _root.EnumerateTreeEntries()
             .OfType<VirtualFileSystemFile>()
             .Sum(file => file.AllocationLength);
 
-        public override void CopyFile(string sourceFile, string destinationFile, bool overwrite)
-        {
+        public override void CopyFile(string sourceFile, string destinationFile, bool overwrite) =>
             throw new NotImplementedException();
-        }
 
-        public VirtualFileSystemDirectoryEntry AddLink(string existing, string new_path)
+        public virtual VirtualFileSystemDirectoryEntry AddLink(string existing, string new_path)
         {
             if (!CanWrite)
             {
@@ -69,7 +89,7 @@ namespace DiscUtils.VirtualFileSystem
             return entry.AddLink(destination, Path.GetFileName(new_path));
         }
 
-        public VirtualFileSystemDirectoryEntry AddLink(VirtualFileSystemDirectoryEntry entry, string new_path)
+        public virtual VirtualFileSystemDirectoryEntry AddLink(VirtualFileSystemDirectoryEntry entry, string new_path)
         {
             if (!CanWrite)
             {
@@ -81,9 +101,9 @@ namespace DiscUtils.VirtualFileSystem
             return entry.AddLink(destination, Path.GetFileName(new_path));
         }
 
-        public override void CreateDirectory(string path) => AddDirectory(path);
+        public override sealed void CreateDirectory(string path) => AddDirectory(path);
 
-        public VirtualFileSystemDirectory AddDirectory(string path)
+        public virtual VirtualFileSystemDirectory AddDirectory(string path)
         {
             if (!CanWrite)
             {
@@ -157,7 +177,9 @@ namespace DiscUtils.VirtualFileSystem
 
         public static Func<string, bool> GetFilter(string searchPattern)
         {
-            if (string.IsNullOrEmpty(searchPattern) || searchPattern.Equals("*", StringComparison.Ordinal) || searchPattern.Equals("*.*", StringComparison.Ordinal))
+            if (string.IsNullOrEmpty(searchPattern) ||
+                searchPattern.Equals("*", StringComparison.Ordinal) ||
+                searchPattern.Equals("*.*", StringComparison.Ordinal))
             {
                 return name => true;
             }
@@ -513,21 +535,94 @@ namespace DiscUtils.VirtualFileSystem
 
         IFileSystem IFileSystemBuilder.GenerateFileSystem() => this;
 
-        public static string GetPathDirectoryName(string path)
+        public virtual RawSecurityDescriptor GetSecurity(string path)
         {
-            if (string.IsNullOrEmpty(path))
-            {
-                return string.Empty;
-            }
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
 
-            var index = path.LastIndexOfAny(new[] { '\\', '/' });
+            return file.SecurityDescriptor;
+        }
 
-            if (index >= 0)
-            {
-                return path.Remove(index);
-            }
+        public virtual void SetSecurity(string path, RawSecurityDescriptor securityDescriptor)
+        {
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
 
-            return string.Empty;
+            file.SecurityDescriptor = securityDescriptor;
+        }
+
+        public virtual ReparsePoint GetReparsePoint(string path)
+        {
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
+
+            return file.ReparsePoint;
+        }
+
+        public virtual void SetReparsePoint(string path, ReparsePoint reparsePoint)
+        {
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
+
+            file.ReparsePoint = reparsePoint;
+
+            file.Attributes |= FileAttributes.ReparsePoint;
+        }
+
+        public virtual void RemoveReparsePoint(string path)
+        {
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
+
+            file.ReparsePoint = null;
+
+            file.Attributes &= ~FileAttributes.ReparsePoint;
+        }
+
+        public virtual WindowsFileInformation GetFileStandardInformation(string path)
+        {
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
+
+            return file.GetStandardInformation();
+        }
+
+        public virtual void SetFileStandardInformation(string path, WindowsFileInformation info)
+        {
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
+
+            file.SetStandardInformation(info);
+        }
+
+        public virtual string[] GetAlternateDataStreams(string path) => new string[0];
+
+        public virtual bool HasHardLinks(string path) => false;
+
+        public virtual int GetHardLinkCount(string path) => 1;
+
+        public virtual string GetShortName(string path)
+        {
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
+
+            return file.ShortName;
+        }
+
+        public virtual void SetShortName(string path, string shortName)
+        {
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
+
+            file.ShortName = shortName;
+        }
+
+        public virtual long GetFileId(string path)
+        {
+            var file = _root.ResolvePathToEntry(path) ??
+                throw new FileNotFoundException("File not found", path);
+
+            return file.FileId;
         }
     }
 }

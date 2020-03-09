@@ -349,8 +349,8 @@ namespace DiscUtils.Iso9660
         {
             long totalClusters = TotalClusters;
             ClusterRoles[] clusterToRole = new ClusterRoles[totalClusters];
-            object[] clusterToFileId = new object[totalClusters];
-            Dictionary<object, string[]> fileIdToPaths = new Dictionary<object, string[]>();
+            long?[] clusterToFileId = new long?[totalClusters];
+            Dictionary<long, string[]> fileIdToPaths = new Dictionary<long, string[]>();
 
             ForAllDirEntries(
                 string.Empty,

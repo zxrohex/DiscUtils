@@ -204,9 +204,69 @@ namespace DiscUtils.Fat
             return _lfn ?? GetShortName(encoding);
         }
 
-        private string GetShortName(Encoding encoding)
+        public string GetShortName(Encoding encoding)
         {
-            return $"{encoding.GetString(_raw, 0, 8).TrimEnd()}.{encoding.GetString(_raw, 8, 3).TrimEnd()}".TrimEnd('.');
+            return $"{encoding.GetString(_raw, 0, 8).TrimEnd()}.{encoding.GetString(_raw, 8, 3)}".TrimEnd('.', ' ');
+        }
+
+        public void SetShortName(string name, Encoding encoding)
+        {
+            byte[] bytes = encoding.GetBytes(name.ToUpperInvariant());
+
+            int nameIdx = 0;
+            int rawIdx = 0;
+
+            while (nameIdx < bytes.Length && bytes[nameIdx] != '.' && rawIdx < _raw.Length)
+            {
+                byte b = bytes[nameIdx++];
+                if (b < 0x20 || Contains(InvalidBytes, b))
+                {
+                    throw new ArgumentException($"Invalid character in file name '{(char)b}'", nameof(name));
+                }
+
+                _raw[rawIdx++] = b;
+            }
+
+            if (rawIdx > 8)
+            {
+                throw new ArgumentException($"File name too long '{name}'", nameof(name));
+            }
+
+            if (rawIdx == 0)
+            {
+                throw new ArgumentException($"File name too short '{name}'", nameof(name));
+            }
+
+            while (rawIdx < 8)
+            {
+                _raw[rawIdx++] = SpaceByte;
+            }
+
+            if (nameIdx < bytes.Length && bytes[nameIdx] == '.')
+            {
+                ++nameIdx;
+            }
+
+            while (nameIdx < bytes.Length && rawIdx < _raw.Length)
+            {
+                byte b = bytes[nameIdx++];
+                if (b < 0x20 || Contains(InvalidBytes, b))
+                {
+                    throw new ArgumentException($"Invalid character in file extension '{(char)b}'", nameof(name));
+                }
+
+                _raw[rawIdx++] = b;
+            }
+
+            while (rawIdx < 11)
+            {
+                _raw[rawIdx++] = SpaceByte;
+            }
+
+            if (nameIdx != bytes.Length)
+            {
+                throw new ArgumentException($"File extension too long '{name}'", nameof(name));
+            }
         }
 
         public bool IsMatch(Regex regex, Encoding encoding)

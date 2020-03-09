@@ -444,8 +444,8 @@ namespace DiscUtils.Ntfs
                     _self.Context.BiosParameterBlock.SectorsPerCluster);
 
             ClusterRoles[] clusterToRole = new ClusterRoles[totalClusters];
-            object[] clusterToFile = new object[totalClusters];
-            Dictionary<object, string[]> fileToPaths = new Dictionary<object, string[]>();
+            long?[] clusterToFile = new long?[totalClusters];
+            Dictionary<long, string[]> fileToPaths = new Dictionary<long, string[]>();
 
             for (int i = 0; i < totalClusters; ++i)
             {
@@ -463,19 +463,19 @@ namespace DiscUtils.Ntfs
 
                 foreach (NtfsStream stream in f.AllStreams)
                 {
-                    string fileId;
+                    long fileId;
 
                     if (stream.AttributeType == AttributeType.Data && !string.IsNullOrEmpty(stream.Name))
                     {
-                        fileId = f.IndexInMft.ToString(CultureInfo.InvariantCulture) + ":" + stream.Name;
+                        fileId = f.IndexInMft | ((long)stream.Attribute.Id << 32);
                         fileToPaths[fileId] = Utilities.Map(f.Names, n => n + ":" + stream.Name);
                     }
                     else
                     {
-                        fileId = f.IndexInMft.ToString(CultureInfo.InvariantCulture);
+                        fileId = f.IndexInMft;
                         fileToPaths[fileId] = f.Names.ToArray();
                     }
-
+                    
                     ClusterRoles roles = ClusterRoles.None;
                     if (f.IndexInMft < FirstAvailableMftIndex)
                     {

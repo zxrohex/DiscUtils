@@ -34,7 +34,7 @@ namespace DiscUtils.Fat
     /// <summary>
     /// Class for accessing FAT file systems.
     /// </summary>
-    public sealed class FatFileSystem : DiscFileSystem
+    public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
     {
         /// <summary>
         /// The Epoch for FAT file systems (1st Jan, 1980).
@@ -455,6 +455,24 @@ namespace DiscUtils.Fat
             return parent.OpenFile(dirEntry.Name, mode, access);
         }
 
+        public long GetFileId(string path)
+        {
+            // Simulate a root directory entry - doesn't really exist though
+            if (IsRootPath(path))
+            {
+                return 0;
+            }
+
+            DirectoryEntry dirEntry = GetDirectoryEntry(path);
+            if (dirEntry == null)
+            {
+                throw new FileNotFoundException("No such file", path);
+            }
+
+            // Luckily, FAT and .NET FileAttributes match, bit-for-bit
+            return dirEntry.FirstCluster;
+        }
+
         /// <summary>
         /// Gets the attributes of a file or directory.
         /// </summary>
@@ -517,6 +535,88 @@ namespace DiscUtils.Fat
                 dirEntry.Attributes = newFatAttr;
                 dir.SelfEntry = dirEntry;
             }
+        }
+
+        /// <summary>
+        /// Gets the standard file information for a file.
+        /// </summary>
+        /// <param name="path">The full path to the file or directory to query.</param>
+        /// <returns>The standard file information.</returns>
+        public WindowsFileInformation GetFileStandardInformation(string path)
+        {
+            // Simulate a root directory entry - doesn't really exist though
+            if (IsRootPath(path))
+            {
+                return new WindowsFileInformation
+                {
+                    FileAttributes = FileAttributes.Directory,
+                    ChangeTime = Epoch,
+                    CreationTime = Epoch,
+                    LastAccessTime = Epoch,
+                    LastWriteTime = Epoch
+                };
+            }
+
+            DirectoryEntry dirEntry = GetDirectoryEntry(path);
+            if (dirEntry == null)
+            {
+                throw new FileNotFoundException("No such file", path);
+            }
+
+            return new WindowsFileInformation
+            {
+                CreationTime = dirEntry.CreationTime,
+                LastAccessTime = dirEntry.LastAccessTime,
+                ChangeTime = dirEntry.LastWriteTime,
+                LastWriteTime = dirEntry.LastWriteTime,
+                FileAttributes = (FileAttributes)dirEntry.Attributes
+            };
+        }
+
+
+        /// <summary>
+        /// Sets the standard file information for a file.
+        /// </summary>
+        /// <param name="path">The full path to the file or directory to query.</param>
+        /// <param name="info">The standard file information.</param>
+        public void SetFileStandardInformation(string path, WindowsFileInformation info)
+        {
+            // Simulate a root directory entry - doesn't really exist though
+            if (IsRootPath(path))
+            {
+                throw new NotSupportedException("Root directory cannot be modified");
+            }
+
+            DirectoryEntry dirEntry = GetDirectoryEntry(path);
+            if (dirEntry == null)
+            {
+                throw new FileNotFoundException("No such file", path);
+            }
+
+            dirEntry.CreationTime = info.CreationTime;
+            dirEntry.LastAccessTime = info.LastAccessTime;
+            dirEntry.LastWriteTime = info.LastWriteTime;
+            dirEntry.Attributes = (FatAttributes)info.FileAttributes;
+        }
+
+        public string GetShortName(string path)
+        {
+            if (IsRootPath(path))
+            {
+                return null;
+            }
+
+            return GetDirectoryEntry(path).Name.GetShortName(FatOptions.FileNameEncoding);
+        }
+
+        public void SetShortName(string path, string name)
+        {
+            if (IsRootPath(path))
+            {
+                throw new InvalidOperationException("Cannot set short name on root directory");
+            }
+
+            GetDirectoryEntry(path).Name.SetShortName(name, FatOptions.FileNameEncoding);
         }
 
         /// <summary>

@@ -34,7 +34,7 @@ namespace DiscUtils.VirtualFileSystem
             return null;
         }
 
-        internal void AddEntry(string name, VirtualFileSystemDirectoryEntry entry) => _entries.Add(string.Intern(name), entry);
+        internal void AddEntry(string name, VirtualFileSystemDirectoryEntry entry) => _entries.Add(name, entry);
 
         internal void RemoveEntry(VirtualFileSystemDirectoryEntry entry)
         {
@@ -162,6 +162,8 @@ namespace DiscUtils.VirtualFileSystem
 
             return null;
         }
+
+        public override long FileId => _entries.GetHashCode();
 
         public override VirtualFileSystemDirectoryEntry AddLink(VirtualFileSystemDirectory new_parent, string new_name)
             => new VirtualFileSystemDirectory(new_parent, new_name, this);

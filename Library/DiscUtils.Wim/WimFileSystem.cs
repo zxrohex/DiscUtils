@@ -238,7 +238,7 @@ namespace DiscUtils.Wim
         public long GetFileId(string path)
         {
             DirectoryEntry dirEntry = GetEntry(path);
-            return dirEntry.HardLink == 0 ? -1 : (long)dirEntry.HardLink;
+            return dirEntry.HardLink == 0 ? -1L : dirEntry.HardLink;
         }
 
         /// <summary>
@@ -250,6 +250,12 @@ namespace DiscUtils.Wim
         {
             DirectoryEntry dirEntry = GetEntry(path);
             return dirEntry.HardLink != 0;
+        }
+
+        public int GetHardLinkCount(string path)
+        {
+            DirectoryEntry dirEntry = GetEntry(path);
+            return dirEntry.HardLink != 0 ? 2 : 1;
         }
 
         /// <summary>

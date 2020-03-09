@@ -29,12 +29,12 @@ namespace DiscUtils
     /// </summary>
     public sealed class ClusterMap
     {
-        private readonly object[] _clusterToFileId;
+        private readonly long?[] _clusterToFileId;
         private readonly ClusterRoles[] _clusterToRole;
-        private readonly Dictionary<object, string[]> _fileIdToPaths;
+        private readonly Dictionary<long, string[]> _fileIdToPaths;
 
-        internal ClusterMap(ClusterRoles[] clusterToRole, object[] clusterToFileId,
-                            Dictionary<object, string[]> fileIdToPaths)
+        internal ClusterMap(ClusterRoles[] clusterToRole, long?[] clusterToFileId,
+                            Dictionary<long, string[]> fileIdToPaths)
         {
             _clusterToRole = clusterToRole;
             _clusterToFileId = clusterToFileId;
@@ -77,9 +77,9 @@ namespace DiscUtils
         /// hard links, a cluster may correspond to multiple directory entries.</remarks>
         public string[] ClusterToPaths(long cluster)
         {
-            if ((GetRole(cluster) & (ClusterRoles.DataFile | ClusterRoles.SystemFile)) != 0)
+            if ((GetRole(cluster) & (ClusterRoles.DataFile | ClusterRoles.SystemFile)) != 0 &&
+                _clusterToFileId[cluster] is long fileId)
             {
-                object fileId = _clusterToFileId[cluster];
                 return _fileIdToPaths[fileId];
             }
             return new string[0];
