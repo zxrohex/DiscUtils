@@ -39,7 +39,7 @@ namespace DiscUtils.Ntfs
 
         internal void Read(byte[] buffer, int offset)
         {
-            Name = Encoding.Unicode.GetString(buffer, offset + 0, 128).Trim('\0');
+            Name = string.Intern(Encoding.Unicode.GetString(buffer, offset + 0, 128).Trim('\0'));
             Type = (AttributeType)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x80);
             DisplayRule = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x84);
             CollationRule = (AttributeCollationRule)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x88);

@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -444,8 +445,8 @@ namespace DiscUtils.Ntfs
                     _self.Context.BiosParameterBlock.SectorsPerCluster);
 
             ClusterRoles[] clusterToRole = new ClusterRoles[totalClusters];
-            long?[] clusterToFile = new long?[totalClusters];
-            Dictionary<long, string[]> fileToPaths = new Dictionary<long, string[]>();
+            Dictionary<long, long> clusterToFile = new Dictionary<long, long>();
+            Dictionary<long, IList<string>> fileToPaths = new Dictionary<long, IList<string>>();
 
             for (int i = 0; i < totalClusters; ++i)
             {
@@ -465,17 +466,17 @@ namespace DiscUtils.Ntfs
                 {
                     long fileId;
 
-                    if (stream.AttributeType == AttributeType.Data && !string.IsNullOrEmpty(stream.Name))
+                    if (stream.AttributeType == AttributeType.Data && string.IsNullOrEmpty(stream.Name))
                     {
-                        fileId = f.IndexInMft | ((long)stream.Attribute.Id << 32);
-                        fileToPaths[fileId] = Utilities.Map(f.Names, n => n + ":" + stream.Name);
+                        fileId = f.IndexInMft;
+                        fileToPaths[fileId] = new List<string>(f.Names).AsReadOnly();
                     }
                     else
                     {
-                        fileId = f.IndexInMft;
-                        fileToPaths[fileId] = f.Names.ToArray();
+                        fileId = f.IndexInMft | ((long)stream.Attribute.Id << 32);
+                        fileToPaths[fileId] = Utilities.Map(f.Names, n => $"{n}:{stream.Name}:{_self.Context.AttributeDefinitions.ToString(stream.AttributeType)}");
                     }
-                    
+
                     ClusterRoles roles = ClusterRoles.None;
                     if (f.IndexInMft < FirstAvailableMftIndex)
                     {

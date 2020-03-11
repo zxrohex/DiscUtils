@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -73,15 +74,15 @@ namespace DiscUtils.Ntfs
         {
             get
             {
-                NtfsAttribute[] attrs = GetAttributes(AttributeType.FileName);
+                var attrs = new List<NtfsAttribute>(GetAttributes(AttributeType.FileName));
 
                 string bestName = null;
 
-                if (attrs != null && attrs.Length != 0)
+                if (attrs != null && attrs.Count != 0)
                 {
                     bestName = attrs[0].ToString();
 
-                    for (int i = 1; i < attrs.Length; ++i)
+                    for (int i = 1; i < attrs.Count; ++i)
                     {
                         string name = attrs[i].ToString();
 
@@ -173,34 +174,37 @@ namespace DiscUtils.Ntfs
             get { return _records[0].Reference; }
         }
 
-        public List<string> Names
+        public IEnumerable<string> Names
         {
             get
             {
-                List<string> result = new List<string>();
-
                 if (IndexInMft == MasterFileTable.RootDirIndex)
                 {
-                    result.Add(string.Empty);
+                    yield return string.Empty;
                 }
                 else
                 {
                     foreach (StructuredNtfsAttribute<FileNameRecord> attr in GetAttributes(AttributeType.FileName))
                     {
+                        if (_context.Options.HideDosFileNames &&
+                            attr.Content.FileNameNamespace == FileNameNamespace.Dos)
+                        {
+                            continue;
+                        }
+
                         string name = attr.Content.FileName;
 
                         Directory parentDir = _context.GetDirectoryByRef(attr.Content.ParentDirectory);
+                        
                         if (parentDir != null)
                         {
                             foreach (string dirName in parentDir.Names)
                             {
-                                result.Add(Utilities.CombinePaths(dirName, name));
+                                yield return Utilities.CombinePaths(dirName, name);
                             }
                         }
                     }
                 }
-
-                return result;
             }
         }
 
@@ -526,17 +530,16 @@ namespace DiscUtils.Ntfs
 
         public FileNameRecord GetFileNameRecord(string name, bool freshened)
         {
-            NtfsAttribute[] attrs = GetAttributes(AttributeType.FileName);
             StructuredNtfsAttribute<FileNameRecord> attr = null;
             if (string.IsNullOrEmpty(name))
             {
-                if (attrs.Length != 0)
-                {
-                    attr = (StructuredNtfsAttribute<FileNameRecord>)attrs[0];
-                }
+                attr = GetAttributes(AttributeType.FileName)
+                    .OfType<StructuredNtfsAttribute<FileNameRecord>>()
+                    .FirstOrDefault();
             }
             else
             {
+                var attrs = GetAttributes(AttributeType.FileName);
                 foreach (StructuredNtfsAttribute<FileNameRecord> a in attrs)
                 {
                     if (_context.UpperCase.Compare(a.Content.FileName, name) == 0)
@@ -670,19 +673,15 @@ namespace DiscUtils.Ntfs
         /// </summary>
         /// <param name="type">The attribute type.</param>
         /// <returns>The attributes.</returns>
-        internal NtfsAttribute[] GetAttributes(AttributeType type)
+        internal IEnumerable<NtfsAttribute> GetAttributes(AttributeType type)
         {
-            List<NtfsAttribute> matches = new List<NtfsAttribute>();
-
             foreach (NtfsAttribute attr in _attributes)
             {
                 if (attr.PrimaryRecord.AttributeType == type && string.IsNullOrEmpty(attr.Name))
                 {
-                    matches.Add(attr);
+                    yield return attr;
                 }
             }
-
-            return matches.ToArray();
         }
 
         internal void MakeAttributeNonResident(AttributeReference attrRef, int maxData)

@@ -21,6 +21,7 @@
 //
 
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace DiscUtils
 {
@@ -29,12 +30,12 @@ namespace DiscUtils
     /// </summary>
     public sealed class ClusterMap
     {
-        private readonly long?[] _clusterToFileId;
+        private readonly Dictionary<long, long> _clusterToFileId;
         private readonly ClusterRoles[] _clusterToRole;
-        private readonly Dictionary<long, string[]> _fileIdToPaths;
+        private readonly Dictionary<long, IList<string>> _fileIdToPaths;
 
-        internal ClusterMap(ClusterRoles[] clusterToRole, long?[] clusterToFileId,
-                            Dictionary<long, string[]> fileIdToPaths)
+        internal ClusterMap(ClusterRoles[] clusterToRole, Dictionary<long, long> clusterToFileId,
+                            Dictionary<long, IList<string>> fileIdToPaths)
         {
             _clusterToRole = clusterToRole;
             _clusterToFileId = clusterToFileId;
@@ -59,13 +60,14 @@ namespace DiscUtils
         /// Converts a cluster to a file id.
         /// </summary>
         /// <param name="cluster">The cluster to inspect.</param>
-        public object ClusterToFileId(long cluster)
+        public long? ClusterToFileId(long cluster)
         {
-            if (_clusterToFileId == null || _clusterToFileId.Length < cluster)
+            if (_clusterToFileId != null &&
+                _clusterToFileId.TryGetValue(cluster, out var fileId))
             {
-                return null;
+                return fileId;
             }
-            return _clusterToFileId[cluster];
+            return null;
         }
 
         /// <summary>
@@ -75,12 +77,28 @@ namespace DiscUtils
         /// <returns>A list of paths that map to the cluster.</returns>
         /// <remarks>A list is returned because on file systems with the notion of
         /// hard links, a cluster may correspond to multiple directory entries.</remarks>
-        public string[] ClusterToPaths(long cluster)
+        public IList<string> ClusterToPaths(long cluster)
         {
-            if ((GetRole(cluster) & (ClusterRoles.DataFile | ClusterRoles.SystemFile)) != 0 &&
-                _clusterToFileId[cluster] is long fileId)
+            if (_clusterToFileId != null &&
+                _clusterToFileId.TryGetValue(cluster, out var fileId))
             {
-                return _fileIdToPaths[fileId];
+                return FileIdToPaths(fileId);
+            }
+            return new string[0];
+        }
+
+        /// <summary>
+        /// Converts a file id to a list of file names.
+        /// </summary>
+        /// <param name="fileId">The file id.</param>
+        /// <returns>A list of paths that map to the file id.</returns>
+        /// <remarks>A list is returned because on file systems with the notion of
+        /// hard links, a cluster may correspond to multiple directory entries.</remarks>
+        public IList<string> FileIdToPaths(long fileId)
+        {
+            if (_fileIdToPaths.TryGetValue(fileId, out var paths))
+            {
+                return paths;
             }
             return new string[0];
         }

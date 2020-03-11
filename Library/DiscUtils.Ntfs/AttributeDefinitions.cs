@@ -27,11 +27,11 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs
 {
-    internal sealed class AttributeDefinitions
+    public sealed class AttributeDefinitions
     {
         private readonly Dictionary<AttributeType, AttributeDefinitionRecord> _attrDefs;
 
-        public AttributeDefinitions()
+        internal AttributeDefinitions()
         {
             _attrDefs = new Dictionary<AttributeType, AttributeDefinitionRecord>();
 
@@ -56,7 +56,7 @@ namespace DiscUtils.Ntfs
                 0x10000);
         }
 
-        public AttributeDefinitions(File file)
+        internal AttributeDefinitions(File file)
         {
             _attrDefs = new Dictionary<AttributeType, AttributeDefinitionRecord>();
 
@@ -77,7 +77,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        public void WriteTo(File file)
+        internal void WriteTo(File file)
         {
             List<AttributeType> attribs = new List<AttributeType>(_attrDefs.Keys);
             attribs.Sort();
@@ -112,7 +112,20 @@ namespace DiscUtils.Ntfs
             return null;
         }
 
-        internal bool MustBeResident(AttributeType attributeType)
+        public AttributeType? FromString(string name)
+        {
+            foreach (AttributeDefinitionRecord record in _attrDefs.Values)
+            {
+                if (string.Compare(name, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    return record.Type;
+                }
+            }
+
+            return null;
+        }
+
+        public bool MustBeResident(AttributeType attributeType)
         {
             AttributeDefinitionRecord record;
             if (_attrDefs.TryGetValue(attributeType, out record))
@@ -123,7 +136,7 @@ namespace DiscUtils.Ntfs
             return false;
         }
 
-        internal bool IsIndexed(AttributeType attributeType)
+        public bool IsIndexed(AttributeType attributeType)
         {
             AttributeDefinitionRecord record;
             if (_attrDefs.TryGetValue(attributeType, out record))
@@ -144,6 +157,15 @@ namespace DiscUtils.Ntfs
             adr.MinSize = minSize;
             adr.MaxSize = maxSize;
             _attrDefs.Add(attributeType, adr);
+        }
+
+        public string ToString(AttributeType attributeType)
+        {
+            if (_attrDefs.TryGetValue(attributeType, out var record))
+            {
+                return record.Name;
+            }
+            return attributeType.ToString();
         }
     }
 }

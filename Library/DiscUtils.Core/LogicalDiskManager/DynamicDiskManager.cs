@@ -122,9 +122,8 @@ namespace DiscUtils.LogicalDiskManager
         /// Gets the logical volumes held across the set of managed disks.
         /// </summary>
         /// <returns>An array of logical volumes.</returns>
-        public LogicalVolumeInfo[] GetLogicalVolumes()
+        public IEnumerable<LogicalVolumeInfo> GetLogicalVolumes()
         {
-            List<LogicalVolumeInfo> result = new List<LogicalVolumeInfo>();
             foreach (DynamicDiskGroup group in _groups.Values)
             {
                 foreach (DynamicVolume volume in group.GetVolumes())
@@ -136,11 +135,9 @@ namespace DiscUtils.LogicalDiskManager
                         volume.Length,
                         volume.BiosType,
                         volume.Status);
-                    result.Add(lvi);
+                    yield return lvi;
                 }
             }
-
-            return result.ToArray();
         }
 
         private static bool IsLdmPartition(PartitionInfo partition)

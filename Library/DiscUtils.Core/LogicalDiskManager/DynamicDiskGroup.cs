@@ -137,15 +137,12 @@ namespace DiscUtils.LogicalDiskManager
             _disks.Add(dynDisk.Id, dynDisk);
         }
 
-        internal DynamicVolume[] GetVolumes()
+        internal IEnumerable<DynamicVolume> GetVolumes()
         {
-            List<DynamicVolume> vols = new List<DynamicVolume>();
             foreach (VolumeRecord record in _database.GetVolumes())
             {
-                vols.Add(new DynamicVolume(this, record.VolumeGuid));
+                yield return new DynamicVolume(this, record.VolumeGuid);
             }
-
-            return vols.ToArray();
         }
 
         internal VolumeRecord GetVolume(Guid volume)

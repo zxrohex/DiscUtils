@@ -7,7 +7,7 @@ namespace DiscUtils
     /// </summary>
     /// <remarks>A cluster may be in more than one role.</remarks>
     [Flags]
-    public enum ClusterRoles
+    public enum ClusterRoles : byte
     {
         /// <summary>
         /// Unknown, or unspecified role.

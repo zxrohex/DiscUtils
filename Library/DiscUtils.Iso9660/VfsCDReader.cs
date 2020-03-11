@@ -349,14 +349,14 @@ namespace DiscUtils.Iso9660
         {
             long totalClusters = TotalClusters;
             ClusterRoles[] clusterToRole = new ClusterRoles[totalClusters];
-            long?[] clusterToFileId = new long?[totalClusters];
-            Dictionary<long, string[]> fileIdToPaths = new Dictionary<long, string[]>();
+            Dictionary<long, long> clusterToFileId = new Dictionary<long, long>();
+            Dictionary<long, IList<string>> fileIdToPaths = new Dictionary<long, IList<string>>();
 
             ForAllDirEntries(
                 string.Empty,
                 (path, entry) =>
                 {
-                    string[] paths = null;
+                    IList<string> paths = null;
                     if (fileIdToPaths.ContainsKey(entry.UniqueCacheId))
                     {
                         paths = fileIdToPaths[entry.UniqueCacheId];
@@ -364,14 +364,14 @@ namespace DiscUtils.Iso9660
 
                     if (paths == null)
                     {
-                        fileIdToPaths[entry.UniqueCacheId] = new[] { path };
+                        fileIdToPaths[entry.UniqueCacheId] = Array.AsReadOnly(new[] { path });
                     }
                     else
                     {
-                        string[] newPaths = new string[paths.Length + 1];
-                        Array.Copy(paths, newPaths, paths.Length);
-                        newPaths[paths.Length] = path;
-                        fileIdToPaths[entry.UniqueCacheId] = newPaths;
+                        string[] newPaths = new string[paths.Count + 1];
+                        paths.CopyTo(newPaths, 0);
+                        newPaths[paths.Count] = path;
+                        fileIdToPaths[entry.UniqueCacheId] = Array.AsReadOnly(newPaths);
                     }
 
                     if (entry.Record.FileUnitSize != 0 || entry.Record.InterleaveGapSize != 0)

@@ -195,6 +195,8 @@ namespace DiscUtils.Ntfs
             }
         }
 
+        public AttributeDefinitions AttributeDefinitions => _context.AttributeDefinitions;
+
         /// <summary>
         /// Copies an existing file to a new file, allowing overwriting of an existing file.
         /// </summary>
