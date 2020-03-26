@@ -411,13 +411,17 @@ namespace DiscUtils.Vmdk
         {
             var descriptor_size = source.Length - source.Position;
 
-            if (descriptor_size > MaxSize)
+            StreamReader reader = new StreamReader(source);
+            
+            string line = reader.ReadLine();
+            
+            if (line != null &&
+                !line.Equals("# Disk DescriptorFile", StringComparison.OrdinalIgnoreCase) &&
+                descriptor_size > MaxSize)
             {
                 throw new IOException($"Too large VMDK descriptor file, {descriptor_size} bytes. Largest allowed size is {MaxSize} bytes. Please verify that you open a descriptor VMDK file and not an actual image file.");
             }
 
-            StreamReader reader = new StreamReader(source);
-            string line = reader.ReadLine();
             while (line != null)
             {
                 line = line.Trim('\0');
