@@ -41,6 +41,11 @@ namespace DiscUtils.Iso9660
         internal BuildFileInfo(string name, BuildDirectoryInfo parent, byte[] content)
             : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
         {
+            if (content.LongLength >= (4L << 30))
+            {
+                throw new InvalidOperationException("ISO 9660 file system does not support files larger than 4 GB");
+            }
+
             Parent = parent;
             _contentData = content;
         }
@@ -48,6 +53,11 @@ namespace DiscUtils.Iso9660
         internal BuildFileInfo(string name, BuildDirectoryInfo parent, string content)
             : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
         {
+            if (new FileInfo(content).Length >= (4L << 30))
+            {
+                throw new InvalidOperationException("ISO 9660 file system does not support files larger than 4 GB");
+            }
+
             Parent = parent;
             _contentPath = content;
 
@@ -57,6 +67,11 @@ namespace DiscUtils.Iso9660
         internal BuildFileInfo(string name, BuildDirectoryInfo parent, Stream source)
             : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
         {
+            if (source.Length >= (4L << 30))
+            {
+                throw new InvalidOperationException("ISO 9660 file system does not support files larger than 4 GB");
+            }
+
             Parent = parent;
             _contentStream = source;
         }

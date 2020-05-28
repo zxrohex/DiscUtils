@@ -72,7 +72,7 @@ namespace DiscUtils.VirtualFileSystem
                 }
                 else
                 {
-                    AddFile(path, file.GetStream(),
+                    AddFile(path, file.GetStream() ?? Stream.Null,
                         file.Header.CreationTime.DateTime, file.Header.ModificationTime.DateTime, file.Header.LastAccessTime.DateTime,
                         Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
                 }
