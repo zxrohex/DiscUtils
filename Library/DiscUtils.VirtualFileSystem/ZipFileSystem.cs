@@ -117,6 +117,8 @@ namespace DiscUtils.VirtualFileSystem
                         file.LastWriteTime.UtcDateTime;
                 }
             }
+
+            Freeze();
         }
 
         protected override void Dispose(bool disposing)

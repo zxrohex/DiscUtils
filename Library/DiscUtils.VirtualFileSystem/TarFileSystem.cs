@@ -77,6 +77,8 @@ namespace DiscUtils.VirtualFileSystem
                         Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
                 }
             }
+
+            Freeze();
         }
 
         protected override void Dispose(bool disposing)

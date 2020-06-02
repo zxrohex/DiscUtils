@@ -27,9 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="SnapIn.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Update="SnapIn.cs" />
   </ItemGroup>
 
   <ItemGroup>
