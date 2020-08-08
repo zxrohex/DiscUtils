@@ -111,6 +111,8 @@ namespace DiscUtils.Ntfs
             return _memoryBuffer;
         }
 
+        public override CookedDataRuns GetCookedDataRuns() => new CookedDataRuns();
+
         public override Range<long, long>[] GetClusters()
         {
             return new Range<long, long>[0];

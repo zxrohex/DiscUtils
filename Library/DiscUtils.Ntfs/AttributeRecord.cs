@@ -129,6 +129,8 @@ namespace DiscUtils.Ntfs
 
         public abstract Range<long, long>[] GetClusters();
 
+        public abstract CookedDataRuns GetCookedDataRuns();
+
         public abstract IBuffer GetReadOnlyDataBuffer(INtfsContext context);
 
         public abstract int Write(byte[] buffer, int offset);

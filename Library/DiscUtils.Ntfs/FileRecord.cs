@@ -356,7 +356,7 @@ namespace DiscUtils.Ntfs
             while (true)
             {
                 int length;
-                AttributeRecord attr = AttributeRecord.FromBytes(buffer, focus, out length);
+                AttributeRecord attr = AttributeRecord.FromBytes(buffer, offset + focus, out length);
                 if (attr == null)
                 {
                     break;

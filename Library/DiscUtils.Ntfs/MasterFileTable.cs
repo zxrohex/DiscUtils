@@ -540,7 +540,7 @@ namespace DiscUtils.Ntfs
                     }
                 }
             }
-
+            
             return clusters;
         }
 
@@ -600,6 +600,39 @@ namespace DiscUtils.Ntfs
             }
 
             return clusterToRole;
+        }
+
+        public BlockBitmap GetAllocationBitMap()
+        {
+            int totalClusterBytes =
+                (int)
+                MathUtilities.Ceil(_self.Context.BiosParameterBlock.TotalSectors64,
+                    _self.Context.BiosParameterBlock.SectorsPerCluster * 8);
+
+            var clusterbytes = new byte[totalClusterBytes];
+
+            foreach (FileRecord fr in Records)
+            {
+                if (fr.BaseFile.Value != 0 || (fr.Flags & FileRecordFlags.InUse) == 0)
+                {
+                    continue;
+                }
+
+                File f = new File(_self.Context, fr);
+
+                foreach (NtfsStream stream in f.AllStreams)
+                {
+                    foreach (Range<long, long> range in stream.GetClusters())
+                    {
+                        for (long cluster = range.Offset; cluster < range.Offset + range.Count; ++cluster)
+                        {
+                            clusterbytes[cluster >> 3] |= (byte)(1 << (int)(cluster & 0x7));
+                        }
+                    }
+                }
+            }
+
+            return new BlockBitmap(clusterbytes, 0, totalClusterBytes);
         }
 
         private static void Wipe(Stream s)

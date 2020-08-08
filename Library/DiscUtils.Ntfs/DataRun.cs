@@ -24,7 +24,7 @@ using System.Globalization;
 
 namespace DiscUtils.Ntfs
 {
-    internal class DataRun
+    public class DataRun
     {
         public DataRun() {}
 

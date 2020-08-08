@@ -24,9 +24,9 @@ using System;
 
 namespace DiscUtils.Ntfs
 {
-    internal class CookedDataRun
+    public class CookedDataRun
     {
-        public CookedDataRun(DataRun raw, long startVcn, long prevLcn, NonResidentAttributeRecord attributeExtent)
+        internal CookedDataRun(DataRun raw, long startVcn, long prevLcn, NonResidentAttributeRecord attributeExtent)
         {
             DataRun = raw;
             StartVcn = startVcn;
@@ -44,7 +44,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        public NonResidentAttributeRecord AttributeExtent { get; }
+        internal NonResidentAttributeRecord AttributeExtent { get; }
 
         public DataRun DataRun { get; }
 

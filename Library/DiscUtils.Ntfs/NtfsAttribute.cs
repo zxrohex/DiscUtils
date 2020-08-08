@@ -366,6 +366,14 @@ namespace DiscUtils.Ntfs
             return true;
         }
 
+        public IEnumerable<CookedDataRuns> GetCookedDataRuns()
+        {
+            foreach (KeyValuePair<AttributeReference, AttributeRecord> extent in _extents)
+            {
+                yield return extent.Value.GetCookedDataRuns();
+            }
+        }
+
         public Range<long, long>[] GetClusters()
         {
             List<Range<long, long>> result = new List<Range<long, long>>();

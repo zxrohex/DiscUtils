@@ -523,6 +523,16 @@ namespace DiscUtils.Ntfs
             }
         }
 
+        public IEnumerable<CookedDataRuns> GetCookedDataRuns(ushort attributeid, AttributeType type)
+        {
+            NtfsAttribute attr = GetAttribute(attributeid, type);
+
+            foreach (var record in attr.Records)
+            {
+                yield return record.GetCookedDataRuns();
+            }
+        }
+
         public void RemoveStream(NtfsStream stream)
         {
             RemoveAttribute(stream.Attribute);

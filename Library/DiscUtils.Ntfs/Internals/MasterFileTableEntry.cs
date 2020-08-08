@@ -167,24 +167,22 @@ namespace DiscUtils.Ntfs.Internals
         public IEnumerable<Range<long, long>> GetClusters(IAttributeLocator attr) =>
             File.GetClusters(attr.Identifier, attr.AttributeType);
 
+        public IEnumerable<CookedDataRuns> GetCookedDataRuns(IAttributeLocator attr) =>
+            File.GetCookedDataRuns(attr.Identifier, attr.AttributeType);
+
         private File _file;
 
         internal File File => _file ?? (_file = new File(_context, _fileRecord));
 
-        public GenericAttribute GetAttributeObject(IAttributeLocator attr)
+        public AttributeFlags GetAttributeFlags(IAttributeLocator attr)
         {
-            using (var attrstream = Open(attr, FileAccess.Read))
+            var attribute = File.GetAttribute(attr.Identifier, attr.AttributeType);
+            if (attribute != null)
             {
-                if (attrstream == null)
-                {
-                    return null;
-                }
-
-                var buffer = new byte[attrstream.Length];
-                attrstream.Read(buffer, 0, buffer.Length);
-                var record = AttributeRecord.FromBytes(buffer, 0, out var length);
-                return GenericAttribute.FromAttributeRecord(_context, record);
+                return attribute.Flags;
             }
+
+            throw new FileNotFoundException();
         }
     }
 }

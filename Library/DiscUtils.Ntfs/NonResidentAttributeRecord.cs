@@ -234,6 +234,8 @@ namespace DiscUtils.Ntfs
             return new NonResidentDataBuffer(context, this);
         }
 
+        public override CookedDataRuns GetCookedDataRuns() => new CookedDataRuns(DataRuns, this);
+
         public override int Write(byte[] buffer, int offset)
         {
             ushort headerLength = 0x40;

@@ -22,26 +22,29 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 
 namespace DiscUtils.Ntfs
 {
-    internal class CookedDataRuns
+    public class CookedDataRuns
     {
         private int _firstDirty = int.MaxValue;
         private int _lastDirty;
         private readonly List<CookedDataRun> _runs;
 
-        public CookedDataRuns()
+        internal CookedDataRuns()
         {
             _runs = new List<CookedDataRun>();
         }
 
-        public CookedDataRuns(IEnumerable<DataRun> rawRuns, NonResidentAttributeRecord attributeExtent)
+        internal CookedDataRuns(IEnumerable<DataRun> rawRuns, NonResidentAttributeRecord attributeExtent)
         {
             _runs = new List<CookedDataRun>();
             Append(rawRuns, attributeExtent);
         }
+
+        public ReadOnlyCollection<CookedDataRun> AsReadOnly() => _runs.AsReadOnly();
 
         public int Count
         {
@@ -106,13 +109,13 @@ namespace DiscUtils.Ntfs
             throw new IOException("Looking for VCN outside of data runs");
         }
 
-        public void Append(DataRun rawRun, NonResidentAttributeRecord attributeExtent)
+        internal void Append(DataRun rawRun, NonResidentAttributeRecord attributeExtent)
         {
             CookedDataRun last = Last;
             _runs.Add(new CookedDataRun(rawRun, NextVirtualCluster, last == null ? 0 : last.StartLcn, attributeExtent));
         }
 
-        public void Append(IEnumerable<DataRun> rawRuns, NonResidentAttributeRecord attributeExtent)
+        internal void Append(IEnumerable<DataRun> rawRuns, NonResidentAttributeRecord attributeExtent)
         {
             long vcn = NextVirtualCluster;
             long lcn = 0;
@@ -124,7 +127,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        public void MakeSparse(int index)
+        internal void MakeSparse(int index)
         {
             if (index < _firstDirty)
             {
@@ -158,7 +161,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        public void MakeNonSparse(int index, IEnumerable<DataRun> rawRuns)
+        internal void MakeNonSparse(int index, IEnumerable<DataRun> rawRuns)
         {
             if (index < _firstDirty)
             {
@@ -214,7 +217,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        public void SplitRun(int runIdx, long vcn)
+        internal void SplitRun(int runIdx, long vcn)
         {
             if (runIdx < _firstDirty)
             {
@@ -261,7 +264,7 @@ namespace DiscUtils.Ntfs
         /// Truncates the set of data runs.
         /// </summary>
         /// <param name="index">The first run to be truncated.</param>
-        public void TruncateAt(int index)
+        internal void TruncateAt(int index)
         {
             while (index < _runs.Count)
             {
