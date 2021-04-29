@@ -109,7 +109,7 @@ namespace DiscUtils.Vmdk
             List<DiskImageFileSpecification> fileSpecs = new List<DiskImageFileSpecification>();
 
             Geometry geometry = Geometry ?? DiskImageFile.DefaultGeometry(Content.Length);
-            Geometry biosGeometry = BiosGeometry ?? Geometry.LbaAssistedBiosGeometry(Content.Length);
+            Geometry biosGeometry = BiosGeometry ?? Geometry.LbaAssistedBiosGeometry(Content.Length, Sizes.Sector);
 
             DescriptorFile baseDescriptor = DiskImageFile.CreateSimpleDiskDescriptor(geometry, biosGeometry, DiskType,
                 AdapterType);

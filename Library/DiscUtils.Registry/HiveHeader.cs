@@ -27,11 +27,11 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Registry
 {
-    internal sealed class HiveHeader : IByteArraySerializable
+    public class HiveHeader : IByteArraySerializable
     {
         public const int HeaderSize = 512;
 
-        private const uint Signature = 0x66676572;
+        public const uint Signature = 0x66676572;
         public uint Checksum;
         public Guid Guid1;
         public Guid Guid2;
@@ -127,7 +127,7 @@ namespace DiscUtils.Registry
             EndianUtilities.WriteBytesLittleEndian(CalcChecksum(buffer, offset), buffer, offset + 0x01FC);
         }
 
-        private static uint CalcChecksum(byte[] buffer, int offset)
+        public static uint CalcChecksum(byte[] buffer, int offset)
         {
             uint sum = 0;
 

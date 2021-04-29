@@ -162,7 +162,7 @@ namespace DiscUtils.Partitions
             foreach (BiosPartitionRecord record in ReadPrimaryRecords(bootSector))
             {
                 // If the partition extends beyond the end of the disk, this is probably an invalid partition table
-                if (record.LBALength != 0xFFFFFFFF &&
+                if (record.PartitionType != BiosPartitionTypes.GptProtective &&
                     (record.LBAStart + (long)record.LBALength) * Sizes.Sector > disk.Length)
                 {
                     return false;
@@ -497,7 +497,7 @@ namespace DiscUtils.Partitions
                     if (IsExtendedPartition(primaryRecord))
                     {
                         extents.AddRange(
-                            new BiosExtendedPartitionTable(_diskData, primaryRecord.LBAStart).GetMetadataDiskExtents());
+                            new BiosExtendedPartitionTable(_diskData, primaryRecord.LBAStart, _diskGeometry).GetMetadataDiskExtents());
                     }
                 }
             }
@@ -634,7 +634,7 @@ namespace DiscUtils.Partitions
 
         private BiosPartitionRecord[] GetExtendedRecords(BiosPartitionRecord r)
         {
-            return new BiosExtendedPartitionTable(_diskData, r.LBAStart).GetPartitions();
+            return new BiosExtendedPartitionTable(_diskData, r.LBAStart, _diskGeometry).GetPartitions();
         }
 
         private void WriteRecord(int i, BiosPartitionRecord newRecord)

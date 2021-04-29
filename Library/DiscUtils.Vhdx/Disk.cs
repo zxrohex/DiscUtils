@@ -329,9 +329,9 @@ namespace DiscUtils.Vhdx
         /// <param name="ownsStream">Indicates if the new instance controls the lifetime of the stream.</param>
         /// <param name="capacity">The desired capacity of the new disk.</param>
         /// <returns>An object that accesses the stream as a VHDX file.</returns>
-        public static Disk InitializeDynamic(Stream stream, Ownership ownsStream, long capacity)
+        public static Disk InitializeDynamic(Stream stream, Ownership ownsStream, long capacity, Geometry geometry)
         {
-            return new Disk(DiskImageFile.InitializeDynamic(stream, ownsStream, capacity), Ownership.Dispose);
+            return new Disk(DiskImageFile.InitializeDynamic(stream, ownsStream, capacity, geometry), Ownership.Dispose);
         }
 
         /// <summary>
@@ -342,9 +342,9 @@ namespace DiscUtils.Vhdx
         /// <param name="capacity">The desired capacity of the new disk.</param>
         /// <param name="blockSize">The size of each block (unit of allocation).</param>
         /// <returns>An object that accesses the stream as a VHDX file.</returns>
-        public static Disk InitializeDynamic(Stream stream, Ownership ownsStream, long capacity, long blockSize)
+        public static Disk InitializeDynamic(Stream stream, Ownership ownsStream, long capacity, Geometry geometry, long blockSize)
         {
-            return new Disk(DiskImageFile.InitializeDynamic(stream, ownsStream, capacity, blockSize), Ownership.Dispose);
+            return new Disk(DiskImageFile.InitializeDynamic(stream, ownsStream, capacity, geometry, blockSize), Ownership.Dispose);
         }
 
         /// <summary>
@@ -423,9 +423,9 @@ namespace DiscUtils.Vhdx
             return new Disk(DiskImageFile.InitializeFixed(fileLocator, path, capacity, geometry), Ownership.Dispose);
         }
 
-        internal static Disk InitializeDynamic(FileLocator fileLocator, string path, long capacity, long blockSize)
+        internal static Disk InitializeDynamic(FileLocator fileLocator, string path, long capacity, Geometry geometry, long blockSize)
         {
-            return new Disk(DiskImageFile.InitializeDynamic(fileLocator, path, capacity, blockSize), Ownership.Dispose);
+            return new Disk(DiskImageFile.InitializeDynamic(fileLocator, path, capacity, geometry, blockSize), Ownership.Dispose);
         }
 
         /// <summary>

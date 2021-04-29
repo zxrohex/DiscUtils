@@ -32,7 +32,7 @@ namespace DiscUtils.Registry
     /// <summary>
     /// A registry hive.
     /// </summary>
-    public sealed class RegistryHive : IDisposable
+    public class RegistryHive : IDisposable
     {
         private const long BinStart = 4 * Sizes.OneKiB;
         private readonly List<BinHeader> _bins;

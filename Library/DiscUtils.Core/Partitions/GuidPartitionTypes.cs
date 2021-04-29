@@ -70,6 +70,21 @@ namespace DiscUtils.Partitions
         public static readonly Guid WindowsLdmData = new Guid("AF9B60A0-1431-4F62-BC68-3311714A69AD");
 
         /// <summary>
+        /// Windows Recovery Environment.
+        /// </summary>
+        public static readonly Guid WindowsRecovery = new Guid("DE94BBA4-06D1-4D40-A16A-BFD50179D6AC");
+
+        /// <summary>
+        /// Windows Storage Spaces pool.
+        /// </summary>
+        public static readonly Guid WindowsStorageSpaces = new Guid("E75CAF8F-F680-4CEE-AFA3-B001E56EFC2D");
+
+        /// <summary>
+        /// Windows Storage Spaces replica.
+        /// </summary>
+        public static readonly Guid WindowsStorageSpacesReplica = new Guid("558D43C5-A1AC-43C0-AAC8-D1472B2923D1");
+
+        /// <summary>
         /// Converts a well known partition type to a Guid.
         /// </summary>
         /// <param name="wellKnown">The value to convert.</param>

@@ -178,7 +178,7 @@ namespace DiscUtils
                 heads <<= 1;
             }
 
-            return new Geometry(cylinders, heads, sectors);
+            return new Geometry(cylinders, heads, sectors, ideGeometry.BytesPerSector);
         }
 
         /// <summary>
@@ -186,7 +186,7 @@ namespace DiscUtils
         /// </summary>
         /// <param name="capacity">The capacity of the disk.</param>
         /// <returns>The geometry a BIOS using the 'LBA Assisted' method for calculating disk geometry will indicate for the disk.</returns>
-        public static Geometry LbaAssistedBiosGeometry(long capacity)
+        public static Geometry LbaAssistedBiosGeometry(long capacity, int bytesPerSector)
         {
             int heads;
             if (capacity <= 504 * Sizes.OneMiB)
@@ -211,8 +211,8 @@ namespace DiscUtils
             }
 
             int sectors = 63;
-            int cylinders = (int)Math.Min(1024, capacity / (sectors * (long)heads * Sizes.Sector));
-            return new Geometry(cylinders, heads, sectors, Sizes.Sector);
+            int cylinders = (int)Math.Min(1024, capacity / (sectors * (long)heads * bytesPerSector));
+            return new Geometry(cylinders, heads, sectors, bytesPerSector);
         }
 
         /// <summary>
@@ -226,13 +226,13 @@ namespace DiscUtils
         {
             if (geometry == null)
             {
-                return LbaAssistedBiosGeometry(capacity);
+                return LbaAssistedBiosGeometry(capacity, Sizes.Sector);
             }
             if (geometry.IsBiosSafe)
             {
                 return geometry;
             }
-            return LbaAssistedBiosGeometry(capacity);
+            return LbaAssistedBiosGeometry(capacity, geometry.BytesPerSector);
         }
 
         /// <summary>
@@ -403,9 +403,15 @@ namespace DiscUtils
         /// <returns>The translated disk geometry.</returns>
         public Geometry TranslateToBios(long capacity, GeometryTranslation translation)
         {
+            var bytesPerSector = BytesPerSector;
+            if (bytesPerSector == 0)
+            {
+                bytesPerSector = Sizes.Sector;
+            }
+
             if (capacity <= 0)
             {
-                capacity = TotalSectorsLong * 512L;
+                capacity = TotalSectorsLong * bytesPerSector;
             }
 
             switch (translation)
@@ -418,10 +424,10 @@ namespace DiscUtils
                     {
                         return this;
                     }
-                    return LbaAssistedBiosGeometry(capacity);
+                    return LbaAssistedBiosGeometry(capacity, bytesPerSector);
 
                 case GeometryTranslation.Lba:
-                    return LbaAssistedBiosGeometry(capacity);
+                    return LbaAssistedBiosGeometry(capacity, bytesPerSector);
 
                 case GeometryTranslation.Large:
                     return LargeBiosGeometry(this);

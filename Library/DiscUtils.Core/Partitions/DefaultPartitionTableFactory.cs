@@ -36,8 +36,9 @@ namespace DiscUtils.Partitions
         {
             if (BiosPartitionTable.IsValid(disk.Content))
             {
-                BiosPartitionTable table = new BiosPartitionTable(disk);
-                if (table.Count == 1 && table[0].BiosType == BiosPartitionTypes.GptProtective)
+                var table = new BiosPartitionTable(disk);
+                var partitions = table.Partitions;
+                if (partitions.Count == 1 && partitions[0].BiosType == BiosPartitionTypes.GptProtective)
                 {
                     return new GuidPartitionTable(disk);
                 }

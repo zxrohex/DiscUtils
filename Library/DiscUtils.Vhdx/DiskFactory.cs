@@ -69,7 +69,7 @@ namespace DiscUtils.Vhdx
                 case "fixed":
                     return Disk.InitializeFixed(locator, path, diskParameters.Capacity, diskParameters.Geometry);
                 case "dynamic":
-                    return Disk.InitializeDynamic(locator, path, diskParameters.Capacity,
+                    return Disk.InitializeDynamic(locator, path, diskParameters.Capacity, diskParameters.Geometry,
                         FileParameters.DefaultDynamicBlockSize);
                 default:
                     throw new ArgumentException(

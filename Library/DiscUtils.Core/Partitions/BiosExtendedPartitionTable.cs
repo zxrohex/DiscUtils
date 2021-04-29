@@ -30,11 +30,13 @@ namespace DiscUtils.Partitions
     {
         private readonly Stream _disk;
         private readonly uint _firstSector;
+        private readonly Geometry _diskGeometry;
 
-        public BiosExtendedPartitionTable(Stream disk, uint firstSector)
+        public BiosExtendedPartitionTable(Stream disk, uint firstSector, Geometry diskGeometry)
         {
             _disk = disk;
             _firstSector = firstSector;
+            _diskGeometry = diskGeometry;
         }
 
         public BiosPartitionRecord[] GetPartitions()
@@ -44,7 +46,7 @@ namespace DiscUtils.Partitions
             uint partPos = _firstSector;
             while (partPos != 0)
             {
-                _disk.Position = (long)partPos * Sizes.Sector;
+                _disk.Position = partPos * _diskGeometry.BytesPerSector;
                 byte[] sector = StreamUtilities.ReadExact(_disk, Sizes.Sector);
                 if (sector[510] != 0x55 || sector[511] != 0xAA)
                 {
