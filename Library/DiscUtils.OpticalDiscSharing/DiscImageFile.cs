@@ -43,6 +43,11 @@ namespace DiscUtils.OpticalDiscSharing
             Content = new BlockCacheStream(Content, Ownership.Dispose);
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => false;
+
         internal override long Capacity
         {
             get { return Content.Length; }

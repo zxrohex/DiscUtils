@@ -71,6 +71,11 @@ namespace DiscUtils.Vdi
             ReadHeader();
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _stream.CanWrite;
+
         internal override long Capacity
         {
             get { return _header.DiskSize; }

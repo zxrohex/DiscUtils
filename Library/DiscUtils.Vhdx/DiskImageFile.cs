@@ -148,6 +148,11 @@ namespace DiscUtils.Vhdx
             }
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _fileStream.CanWrite;
+
         internal override long Capacity
         {
             get { return (long)_metadata.DiskSize; }

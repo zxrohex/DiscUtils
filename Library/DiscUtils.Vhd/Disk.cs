@@ -218,6 +218,11 @@ namespace DiscUtils.Vhd
         }
 
         /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _files[0].Item1.CanWrite;
+
+        /// <summary>
         /// Gets or sets a value indicating whether the VHD footer is written every time a new block is allocated.
         /// </summary>
         /// <remarks>

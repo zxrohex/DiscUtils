@@ -170,6 +170,11 @@ namespace DiscUtils.Vmdk
         }
 
         /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _access.HasFlag(FileAccess.Write);
+
+        /// <summary>
         /// Gets the IDE/SCSI adapter type of the disk.
         /// </summary>
         internal DiskAdapterType AdapterType

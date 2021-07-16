@@ -242,5 +242,7 @@ namespace DiscUtils.Raw
                     throw new ArgumentException("Invalid floppy disk type", nameof(type));
             }
         }
+
+        public override bool CanWrite => Content.CanWrite;
     }
 }

@@ -77,6 +77,11 @@ namespace DiscUtils.Vdi
         }
 
         /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _diskImage.CanWrite;
+
+        /// <summary>
         /// Gets the capacity of the disk (in bytes).
         /// </summary>
         public override long Capacity

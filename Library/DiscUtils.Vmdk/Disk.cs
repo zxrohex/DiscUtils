@@ -108,6 +108,11 @@ namespace DiscUtils.Vmdk
         }
 
         /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _files[0].Item1.CanWrite;
+
+        /// <summary>
         /// Gets the geometry of the disk as it is anticipated a hypervisor BIOS will represent it.
         /// </summary>
         public override Geometry BiosGeometry

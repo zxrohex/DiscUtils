@@ -42,6 +42,11 @@ namespace DiscUtils.Xva
         }
 
         /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => false;
+
+        /// <summary>
         /// Gets the capacity of the layer (in bytes).
         /// </summary>
         internal override long Capacity

@@ -72,6 +72,11 @@ namespace DiscUtils
         }
 
         /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public abstract bool CanWrite { get; }
+
+        /// <summary>
         /// Gets the geometry of the disk.
         /// </summary>
         public abstract Geometry Geometry { get; }

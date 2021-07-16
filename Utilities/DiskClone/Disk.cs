@@ -40,6 +40,11 @@ namespace DiskClone
             _handle = Win32Wrapper.OpenFileHandle(_path);
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => false;
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

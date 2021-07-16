@@ -75,6 +75,11 @@ namespace DiscUtils.OpticalDisk
         }
 
         /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => false;
+
+        /// <summary>
         /// Gets the sector size of the disk (2048 for optical discs).
         /// </summary>
         public override int BlockSize

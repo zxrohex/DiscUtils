@@ -46,6 +46,11 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
             _access = access;
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _access.HasFlag(FileAccess.Write);
+
         public bool IsValid
         {
             get

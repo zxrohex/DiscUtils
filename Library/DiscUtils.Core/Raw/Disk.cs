@@ -84,6 +84,11 @@ namespace DiscUtils.Raw
         }
 
         /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _file.CanWrite;
+
+        /// <summary>
         /// Gets the capacity of the disk (in bytes).
         /// </summary>
         public override long Capacity

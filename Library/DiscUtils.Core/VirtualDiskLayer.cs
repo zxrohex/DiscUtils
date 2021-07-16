@@ -122,5 +122,10 @@ namespace DiscUtils
         /// graceful cleanup of all managed objects should be performed, or <c>false</c>
         /// if running inside destructor.</param>
         protected virtual void Dispose(bool disposing) {}
+
+        /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public abstract bool CanWrite { get; }
     }
 }

@@ -217,6 +217,11 @@ namespace DiscUtils.Vhdx
         }
 
         /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _files[0].Item1.CanWrite;
+
+        /// <summary>
         /// Gets the size of the disk's logical blocks (aka sector size), in bytes.
         /// </summary>
         public override int BlockSize

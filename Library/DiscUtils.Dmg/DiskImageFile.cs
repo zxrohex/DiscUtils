@@ -63,6 +63,11 @@ namespace DiscUtils.Dmg
 
         public UdifBuffer Buffer { get; }
 
+        /// <summary>
+        /// Gets a value indicating whether the layer data is opened for writing.
+        /// </summary>
+        public override bool CanWrite => _stream.CanWrite;
+
         internal override long Capacity
         {
             get { return Buffer == null ? _stream.Length : Buffer.Capacity; }
