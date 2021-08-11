@@ -193,7 +193,7 @@ namespace DiscUtils.Vmdk
         /// <summary>
         /// Gets the capacity of this disk (in bytes).
         /// </summary>
-        internal override long Capacity
+        public override long Capacity
         {
             get
             {
@@ -296,7 +296,7 @@ namespace DiscUtils.Vmdk
         /// <remarks>
         /// Typically used to locate parent disks.
         /// </remarks>
-        internal override FileLocator RelativeFileLocator
+        public override FileLocator RelativeFileLocator
         {
             get { return _fileLocator; }
         }
