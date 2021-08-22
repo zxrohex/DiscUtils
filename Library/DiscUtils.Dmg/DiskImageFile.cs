@@ -68,7 +68,7 @@ namespace DiscUtils.Dmg
         /// </summary>
         public override bool CanWrite => _stream.CanWrite;
 
-        internal override long Capacity
+        public override long Capacity
         {
             get { return Buffer == null ? _stream.Length : Buffer.Capacity; }
         }
@@ -94,7 +94,7 @@ namespace DiscUtils.Dmg
             get { return false; }
         }
 
-        internal override FileLocator RelativeFileLocator
+        public override FileLocator RelativeFileLocator
         {
             get { throw new NotImplementedException(); }
         }

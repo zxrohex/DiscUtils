@@ -118,9 +118,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscUtils.Btrfs", "Library\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{DE170219-2D7C-4D77-80AE-7316BA68EEC3}"
 	ProjectSection(SolutionItems) = preProject
-		Library\common-library.props = Library\common-library.props
 		Tests\common-tests.props = Tests\common-tests.props
 		Utilities\common-utilities.props = Utilities\common-utilities.props
+		Library\Directory.Build.props = Library\Directory.Build.props
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscUtils.VirtualFileSystem", "Library\DiscUtils.VirtualFileSystem\DiscUtils.VirtualFileSystem.csproj", "{DD506E79-41D5-490D-BE12-05F5C7839575}"

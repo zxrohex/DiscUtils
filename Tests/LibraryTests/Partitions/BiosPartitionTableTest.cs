@@ -204,7 +204,7 @@ namespace LibraryTests.Partitions
             long capacity = 300 * 1024L * 1024L * 1024;
             SparseMemoryStream ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.LbaAssistedBiosGeometry(capacity);
+            Geometry geom = Geometry.LbaAssistedBiosGeometry(capacity, 512);
             BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
 
             table.Create(150 * 1024L * 1024L * 1024, WellKnownPartitionType.WindowsNtfs, false);
@@ -227,7 +227,7 @@ namespace LibraryTests.Partitions
             long capacity = 1300 * 1024L * 1024L * 1024;
             SparseMemoryStream ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.LbaAssistedBiosGeometry(capacity);
+            Geometry geom = Geometry.LbaAssistedBiosGeometry(capacity, 512);
             BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
 
             // exception occurs here

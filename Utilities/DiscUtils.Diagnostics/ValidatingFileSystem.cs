@@ -614,7 +614,7 @@ namespace DiscUtils.Diagnostics
         {
             try
             {
-#if NET40
+#if !NETCOREAPP
                 return (TFileSystem)typeof(TFileSystem).GetConstructor(new Type[] { typeof(Stream) }).Invoke(new object[] { stream });
 #else
                 return (TFileSystem)typeof(TFileSystem).GetTypeInfo().GetConstructor(new Type[] { typeof(Stream) }).Invoke(new object[] { stream });
@@ -622,7 +622,7 @@ namespace DiscUtils.Diagnostics
             }
             catch (TargetInvocationException tie)
             {
-#if NET40
+#if !NETCOREAPP
                 FieldInfo remoteStackTraceString = typeof(Exception).GetField("_remoteStackTraceString", BindingFlags.Instance | BindingFlags.NonPublic);
                 remoteStackTraceString.SetValue(tie.InnerException, tie.InnerException.StackTrace + Environment.NewLine);
 
@@ -640,7 +640,7 @@ namespace DiscUtils.Diagnostics
         {
             try
             {
-#if NET40
+#if !NETCOREAPP
                 return (TChecker)typeof(TChecker).GetConstructor(new Type[] { typeof(Stream) }).Invoke(new object[] { stream });
 #else
                 return (TChecker)typeof(TChecker).GetTypeInfo().GetConstructor(new Type[] { typeof(Stream) }).Invoke(new object[] { stream });
@@ -648,7 +648,7 @@ namespace DiscUtils.Diagnostics
             }
             catch (TargetInvocationException tie)
             {
-#if NET40
+#if !NETCOREAPP
                 FieldInfo remoteStackTraceString = typeof(Exception).GetField("_remoteStackTraceString", BindingFlags.Instance | BindingFlags.NonPublic);
                 remoteStackTraceString.SetValue(tie.InnerException, tie.InnerException.StackTrace + Environment.NewLine);
 

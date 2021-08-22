@@ -153,7 +153,7 @@ namespace DiscUtils.Vhdx
         /// </summary>
         public override bool CanWrite => _fileStream.CanWrite;
 
-        internal override long Capacity
+        public override long Capacity
         {
             get { return (long)_metadata.DiskSize; }
         }
@@ -263,7 +263,7 @@ namespace DiscUtils.Vhdx
             }
         }
 
-        internal override FileLocator RelativeFileLocator
+        public override FileLocator RelativeFileLocator
         {
             get { return _fileLocator; }
         }

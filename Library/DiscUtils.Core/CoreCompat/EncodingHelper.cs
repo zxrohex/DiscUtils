@@ -15,7 +15,7 @@ namespace DiscUtils.CoreCompat
 
             _registered = true;
 
-#if !NET40 && !NET45
+#if NETCOREAPP
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 #endif
         }

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>DiscUtils ext filesystem parser</Description>
-    <Authors>Kenneth Bell;LordMike</Authors>
+    <Authors>Kenneth Bell;LordMike;Olof Lagerkvist</Authors>
     <PackageTags>DiscUtils;Filesystem;ext</PackageTags>
   </PropertyGroup>
 

@@ -374,7 +374,7 @@ namespace DiscUtils.Common
         {
             get
             {
-#if NET40
+#if !NETCOREAPP
                 return GetType().Assembly.GetName().Name;
 #else
                 return GetType().GetTypeInfo().Assembly.GetName().Name;
@@ -386,7 +386,7 @@ namespace DiscUtils.Common
         {
             get
             {
-#if NET40
+#if !NETCOREAPP
                 return GetType().Assembly.GetName().Version.ToString(3);
 #else
                 return GetType().GetTypeInfo().Assembly.GetName().Version.ToString(3);
