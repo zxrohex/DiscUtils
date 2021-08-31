@@ -700,6 +700,10 @@ namespace DiscUtils.Vfs
                         continue;
                     }
                 }
+                if(entry == null)
+                {
+                    continue;
+                }
 
                 bool isDir = entry.IsDirectory;
 
@@ -738,6 +742,7 @@ namespace DiscUtils.Vfs
 
                 currentPath = Utilities.ResolvePath(currentPath.TrimEnd('\\'), symlink.TargetPath);
                 currentEntry = GetDirectoryEntry(currentPath);
+
                 if (currentEntry == null)
                 {
                     return null; // throw new FileNotFoundException("Unable to resolve symlink", path);
@@ -746,7 +751,7 @@ namespace DiscUtils.Vfs
                 --resolvesLeft;
             }
 
-            if (currentEntry.IsSymlink)
+            if (currentEntry != null && currentEntry.IsSymlink)
             {
                 return null; // throw new FileNotFoundException("Unable to resolve symlink - too many links", path);
             }
