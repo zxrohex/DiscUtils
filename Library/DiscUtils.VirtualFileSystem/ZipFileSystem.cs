@@ -9,7 +9,7 @@ namespace DiscUtils.VirtualFileSystem
     using Streams;
     using Internal;
 
-#if NET45 || NETSTANDARD2_0
+#if NET45_OR_GREATER || NETSTANDARD2_0
     public class ZipFileSystem : VirtualFileSystem
     {
         private readonly WeakReference _zip;

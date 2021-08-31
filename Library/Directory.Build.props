@@ -3,7 +3,7 @@
   
   <!-- Package related stuff -->
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net35;net40;net48</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net35;net40;net46;net48</TargetFrameworks>
     
     <PackageProjectUrl>https://github.com/DiscUtils/DiscUtils</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -17,9 +17,9 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-19270-01" PrivateAssets="All"/>
-  </ItemGroup>
+  </ItemGroup>-->
   
   <!-- Assembly stuff -->
   <PropertyGroup>

@@ -15,4 +15,9 @@
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.0.0" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework.StartsWith(`net4`))' And '$(TargetFramework.CompareTo(`net45`))' &gt;= 0">
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
 </Project>

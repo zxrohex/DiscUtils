@@ -116,7 +116,17 @@ namespace DiscUtils.Dmg
 
         public override PartitionTable Partitions
         {
-            get { return new UdifPartitionTable(this, _file.Buffer); }
+            get
+            {
+                if (_file.Buffer != null)
+                {
+                    return new UdifPartitionTable(this, _file.Buffer);
+                }
+                else
+                {
+                    return base.Partitions;
+                }
+            }
         }
 
         /// <summary>
