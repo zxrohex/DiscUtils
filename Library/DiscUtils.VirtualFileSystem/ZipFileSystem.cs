@@ -89,7 +89,7 @@ namespace DiscUtils.VirtualFileSystem
 
                             if (data.WriteFromStream(0, file.Open(), file.Length) < file.Length)
                             {
-                                throw new EndOfStreamException("Unexpected end of tar stream");
+                                throw new EndOfStreamException("Unexpected end of zip stream");
                             }
 
                             datastream = new SparseMemoryStream(data, FileAccess.Read);
@@ -100,7 +100,7 @@ namespace DiscUtils.VirtualFileSystem
 
                             if (file.Open().Read(data, 0, data.Length) < file.Length)
                             {
-                                throw new EndOfStreamException("Unexpected end of tar stream");
+                                throw new EndOfStreamException("Unexpected end of zip stream");
                             }
 
                             datastream = new MemoryStream(data, writable: false);
