@@ -90,16 +90,16 @@ namespace DiscUtils.Partitions
             PartitionEntrySize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 84);
             EntriesCrc = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 88);
 
+            // Reject obviously invalid data
+            if (Signature != GptSignature || HeaderSize <= 0)
+            {
+                return false;
+            }
+
             // In case the header has new fields unknown to us, store the entire header
             // as a byte array
             Buffer = new byte[HeaderSize];
             Array.Copy(buffer, offset, Buffer, 0, HeaderSize);
-
-            // Reject obviously invalid data
-            if (Signature != GptSignature || HeaderSize == 0)
-            {
-                return false;
-            }
 
             return Crc == CalcCrc(buffer, offset, HeaderSize);
         }

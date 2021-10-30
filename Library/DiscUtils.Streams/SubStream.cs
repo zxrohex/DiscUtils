@@ -81,7 +81,7 @@ namespace DiscUtils.Streams
             get
             {
                 SparseStream parentAsSparse = _parent as SparseStream;
-                if (parentAsSparse != null)
+                if (parentAsSparse is not null)
                 {
                     return OffsetExtents(parentAsSparse.GetExtentsInRange(_first, _length));
                 }

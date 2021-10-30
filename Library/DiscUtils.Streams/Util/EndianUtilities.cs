@@ -238,7 +238,7 @@ namespace DiscUtils.Streams
         /// this preserves those code points by removing the top 16 bits of each character.</remarks>
         public static void StringToBytes(string value, byte[] dest, int offset, int count)
         {
-            Encoding.GetEncoding(1252).GetBytes(value, 0, Math.Min(count, value.Length), dest, offset);
+            Encoding.GetEncoding(28591).GetBytes(value, 0, Math.Min(count, value.Length), dest, offset);
 
             //    char[] chars = value.ToCharArray(0, Math.Min(value.Length, count));
 
@@ -267,7 +267,7 @@ namespace DiscUtils.Streams
         /// this preserves those code points.</remarks>
         public static string BytesToString(byte[] data, int offset, int count)
         {
-            return Encoding.GetEncoding(1252).GetString(data, offset, count);
+            return Encoding.GetEncoding(28591).GetString(data, offset, count);
 
             //char[] result = new char[count];
 
@@ -297,7 +297,7 @@ namespace DiscUtils.Streams
                 count = z - offset;
             }
 
-            return Encoding.GetEncoding(1252).GetString(data, offset, count);
+            return Encoding.GetEncoding(28591).GetString(data, offset, count);
         }
 
         #endregion

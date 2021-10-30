@@ -383,7 +383,7 @@ namespace DiscUtils.Partitions
                     PartitionEntriesLba = 2
                 };
 
-                // If the disk is writeable, fix up the primary partition table based on the
+                // If the disk is writable, fix up the primary partition table based on the
                 // (valid) secondary table.
                 if (disk.CanWrite)
                 {

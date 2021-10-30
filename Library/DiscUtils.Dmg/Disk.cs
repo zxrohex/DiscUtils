@@ -71,7 +71,7 @@ namespace DiscUtils.Dmg
         {
             get
             {
-                if (_content == null)
+                if (_content is null)
                 {
                     _content = _file.OpenContent(null, Ownership.None);
                 }
@@ -118,7 +118,7 @@ namespace DiscUtils.Dmg
         {
             get
             {
-                if (_file.Buffer != null)
+                if (_file.Buffer is not null)
                 {
                     return new UdifPartitionTable(this, _file.Buffer);
                 }
@@ -160,13 +160,13 @@ namespace DiscUtils.Dmg
             {
                 if (disposing)
                 {
-                    if (_content != null)
+                    if (_content is not null)
                     {
                         _content.Dispose();
                         _content = null;
                     }
 
-                    if (_file != null)
+                    if (_file is not null)
                     {
                         _file.Dispose();
                         _file = null;

@@ -168,7 +168,7 @@ namespace DiscUtils
             get
             {
                 IList<PartitionTable> tables = PartitionTable.GetPartitionTables(this);
-                if (tables == null || tables.Count == 0)
+                if (tables is null || tables.Count == 0)
                 {
                     return null;
                 }
@@ -270,7 +270,7 @@ namespace DiscUtils
                 Geometry = geometry
             };
 
-            if (parameters != null)
+            if (parameters is not null)
             {
                 foreach (string key in parameters.Keys)
                 {
@@ -317,7 +317,7 @@ namespace DiscUtils
                 Geometry = geometry
             };
 
-            if (parameters != null)
+            if (parameters is not null)
             {
                 foreach (string key in parameters.Keys)
                 {
@@ -365,7 +365,7 @@ namespace DiscUtils
                     result = factory.CreateDisk(transport.GetFileLocator(), variant.ToLowerInvariant(), Utilities.GetFileFromPath(path), diskParameters);
                 }
 
-                if (result != null)
+                if (result is not null)
                 {
                     result._transport = transport;
                     transport = null;
@@ -375,7 +375,7 @@ namespace DiscUtils
             }
             finally
             {
-                if (transport != null)
+                if (transport is not null)
                 {
                     transport.Dispose();
                 }
@@ -465,7 +465,7 @@ namespace DiscUtils
                     }
                 }
 
-                if (result != null)
+                if (result is not null)
                 {
                     result._transport = transport;
                     transport = null;
@@ -475,7 +475,7 @@ namespace DiscUtils
             }
             finally
             {
-                if (transport != null)
+                if (transport is not null)
                 {
                     transport.Dispose();
                 }
@@ -491,7 +491,7 @@ namespace DiscUtils
         /// <returns>The Virtual Disk, or <c>null</c> if an unknown disk format.</returns>
         public static VirtualDisk OpenDisk(DiscFileSystem fs, string path, FileAccess access)
         {
-            if (fs == null)
+            if (fs is null)
             {
                 return OpenDisk(path, access);
             }
@@ -541,7 +541,7 @@ namespace DiscUtils
         /// <param name="data">The master boot record, must be 512 bytes in length.</param>
         public virtual void SetMasterBootRecord(byte[] data)
         {
-            if (data == null)
+            if (data is null)
             {
                 throw new ArgumentNullException(nameof(data));
             }
@@ -601,7 +601,7 @@ namespace DiscUtils
                 {
                     Disposing?.Invoke(this, EventArgs.Empty);
 
-                    if (_transport != null)
+                    if (_transport is not null)
                     {
                         _transport.Dispose();
                     }

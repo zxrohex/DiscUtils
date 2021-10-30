@@ -94,7 +94,7 @@ namespace DiscUtils.Registry
         /// </summary>
         public void Dispose()
         {
-            if (_fileStream != null && _ownsStream == Ownership.Dispose)
+            if (_fileStream is not null && _ownsStream == Ownership.Dispose)
             {
                 _fileStream.Dispose();
                 _fileStream = null;
@@ -122,7 +122,7 @@ namespace DiscUtils.Registry
         /// <returns>The new hive.</returns>
         public static RegistryHive Create(Stream stream, Ownership ownership)
         {
-            if (stream == null)
+            if (stream is null)
             {
                 throw new ArgumentNullException(nameof(stream), "Attempt to create registry hive in null stream");
             }
@@ -198,7 +198,7 @@ namespace DiscUtils.Registry
         {
             Bin bin = GetBin(index);
 
-            if (bin != null)
+            if (bin is not null)
             {
                 return (K)bin.TryGetCell(index);
             }
@@ -209,7 +209,7 @@ namespace DiscUtils.Registry
         {
             Bin bin = GetBin(index);
 
-            if (bin != null)
+            if (bin is not null)
             {
                 bin.FreeCell(index);
             }
@@ -224,7 +224,7 @@ namespace DiscUtils.Registry
 
             Bin bin = GetBin(cell.Index);
 
-            if (bin != null)
+            if (bin is not null)
             {
                 if (bin.UpdateCell(cell))
                 {
@@ -254,7 +254,7 @@ namespace DiscUtils.Registry
         {
             Bin bin = GetBin(index);
 
-            if (bin != null)
+            if (bin is not null)
             {
                 return bin.ReadRawCellData(index, maxBytes);
             }
@@ -265,7 +265,7 @@ namespace DiscUtils.Registry
         {
             Bin bin = GetBin(index);
 
-            if (bin != null)
+            if (bin is not null)
             {
                 return bin.WriteRawCellData(index, data, offset, count);
             }
@@ -308,7 +308,7 @@ namespace DiscUtils.Registry
         {
             BinHeader binHeader = FindBin(cellIndex);
 
-            if (binHeader != null)
+            if (binHeader is not null)
             {
                 return LoadBin(binHeader);
             }

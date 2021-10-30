@@ -70,7 +70,7 @@ namespace DiscUtils.Dmg
 
         public override long Capacity
         {
-            get { return Buffer == null ? _stream.Length : Buffer.Capacity; }
+            get { return Buffer is null ? _stream.Length : Buffer.Capacity; }
         }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace DiscUtils.Dmg
 
         public override bool IsSparse
         {
-            get { return Buffer != null; }
+            get { return Buffer is not null; }
         }
 
         /// <summary>
@@ -101,12 +101,12 @@ namespace DiscUtils.Dmg
 
         public override SparseStream OpenContent(SparseStream parentStream, Ownership ownsStream)
         {
-            if (parentStream != null && ownsStream == Ownership.Dispose)
+            if (parentStream is not null && ownsStream == Ownership.Dispose)
             {
                 parentStream.Dispose();
             }
 
-            if (Buffer != null)
+            if (Buffer is not null)
             {
                 SparseStream rawStream = new BufferStream(Buffer, FileAccess.Read);
                 return new BlockCacheStream(rawStream, Ownership.Dispose);
@@ -127,7 +127,7 @@ namespace DiscUtils.Dmg
         {
             try
             {
-                if (_stream != null && _ownsStream == Ownership.Dispose)
+                if (_stream is not null && _ownsStream == Ownership.Dispose)
                 {
                     _stream.Dispose();
                 }
