@@ -22,13 +22,19 @@
 
 using System;
 using System.Collections.Generic;
-using System.Security.AccessControl;
+using DiscUtils.Core.WindowsSecurity.AccessControl;
 using System.Text;
 using DiscUtils.Streams;
-using Microsoft.Win32;
 
 namespace DiscUtils.Registry
 {
+    [Flags]
+    public enum RegistryValueOptions
+    {
+        None = 0,
+        DoNotExpandEnvironmentNames = 1
+    }
+
     /// <summary>
     /// A key within a registry hive.
     /// </summary>
@@ -713,8 +719,7 @@ namespace DiscUtils.Registry
             {
                 ListCell listCell = _hive.GetCell<ListCell>(_cell.SubKeysIndex);
 
-                int cellIndex;
-                if (listCell.FindKey(name, out cellIndex) == 0)
+                if (listCell.FindKey(name, out var cellIndex) == 0)
                 {
                     return cellIndex;
                 }
@@ -813,8 +818,7 @@ namespace DiscUtils.Registry
 
             Cell list = _hive.GetCell<Cell>(subkeyCell.SubKeysIndex);
 
-            SubKeyIndirectListCell indirectList = list as SubKeyIndirectListCell;
-            if (indirectList != null)
+            if (list is SubKeyIndirectListCell indirectList)
             {
                 ////foreach (int listIndex in indirectList.CellIndexes)
                 for (int i = 0; i < indirectList.CellIndexes.Count; ++i)

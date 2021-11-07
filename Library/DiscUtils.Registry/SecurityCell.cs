@@ -21,7 +21,7 @@
 //
 
 using System;
-using System.Security.AccessControl;
+using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Registry
@@ -51,7 +51,7 @@ namespace DiscUtils.Registry
         {
             get
             {
-                int sdLen = SecurityDescriptor.GetSecurityDescriptorBinaryForm().Length;
+                int sdLen = SecurityDescriptor.BinaryLength;
                 return 0x14 + sdLen;
             }
         }
@@ -67,8 +67,7 @@ namespace DiscUtils.Registry
 
             byte[] secDesc = new byte[secDescSize];
             Array.Copy(buffer, offset + 0x14, secDesc, 0, secDescSize);
-            SecurityDescriptor = new RegistrySecurity();
-            SecurityDescriptor.SetSecurityDescriptorBinaryForm(secDesc);
+            SecurityDescriptor = new RegistrySecurity(secDesc, 0);
 
             return 0x14 + secDescSize;
         }
@@ -87,7 +86,7 @@ namespace DiscUtils.Registry
 
         public override string ToString()
         {
-            return "SecDesc:" + SecurityDescriptor.GetSecurityDescriptorSddlForm(AccessControlSections.All) + " (refCount:" +
+            return "SecDesc:" + SecurityDescriptor.GetSddlForm(AccessControlSections.All) + " (refCount:" +
                    UsageCount + ")";
         }
     }

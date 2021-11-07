@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Security.AccessControl;
+using DiscUtils.Core.WindowsSecurity.AccessControl;
 
 namespace DiscUtils.VirtualFileSystem
 {
@@ -43,7 +43,7 @@ namespace DiscUtils.VirtualFileSystem
             parent.AddEntry(name, this);
         }
 
-        public WindowsFileInformation GetStandardInformation() => new WindowsFileInformation
+        public WindowsFileInformation GetStandardInformation() => new()
         {
             ChangeTime = LastWriteTimeUtc.ToLocalTime(),
             CreationTime = CreationTimeUtc.ToLocalTime(),

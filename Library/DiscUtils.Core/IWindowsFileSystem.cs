@@ -20,7 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System.Security.AccessControl;
+using DiscUtils.Core.WindowsSecurity.AccessControl;
 
 namespace DiscUtils
 {

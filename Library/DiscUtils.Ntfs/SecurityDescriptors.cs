@@ -24,7 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Security.AccessControl;
+using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -120,8 +120,7 @@ namespace DiscUtils.Ntfs
 
         public RawSecurityDescriptor GetDescriptorById(uint id)
         {
-            IdIndexData data;
-            if (_idIndex.TryGetValue(new IdIndexKey(id), out data))
+            if (_idIndex.TryGetValue(new IdIndexKey(id), out var data))
             {
                 return ReadDescriptor(data).Descriptor;
             }

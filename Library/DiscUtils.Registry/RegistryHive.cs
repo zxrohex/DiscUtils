@@ -23,7 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Security.AccessControl;
+using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -160,8 +160,7 @@ namespace DiscUtils.Registry
             rootCell.Flags = RegistryKeyFlags.Normal | RegistryKeyFlags.Root;
             newHive.UpdateCell(rootCell, true);
 
-            RegistrySecurity sd = new RegistrySecurity();
-            sd.SetSecurityDescriptorSddlForm("O:BAG:BAD:PAI(A;;KA;;;SY)(A;CI;KA;;;BA)", AccessControlSections.All);
+            RegistrySecurity sd = new RegistrySecurity("O:BAG:BAD:PAI(A;;KA;;;SY)(A;CI;KA;;;BA)");
             SecurityCell secCell = new SecurityCell(sd);
             newHive.UpdateCell(secCell, true);
             secCell.NextIndex = secCell.Index;

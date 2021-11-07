@@ -21,7 +21,7 @@
 //
 
 using System.IO;
-using System.Security.AccessControl;
+using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs

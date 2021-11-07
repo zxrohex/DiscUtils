@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Security.AccessControl;
+using DiscUtils.Core.WindowsSecurity.AccessControl;
 using System.IO;
 using System.Linq;
 
@@ -120,7 +120,7 @@ namespace DiscUtils.VirtualFileSystem
                 throw new IOException("Volume is not writable");
             }
 
-            if (!(_root.ResolvePathToEntry(path) is VirtualFileSystemDirectory directory))
+            if (_root.ResolvePathToEntry(path) is not VirtualFileSystemDirectory directory)
             {
                 throw new DirectoryNotFoundException();
             }
@@ -137,7 +137,7 @@ namespace DiscUtils.VirtualFileSystem
                 throw new IOException("Volume is not writable");
             }
 
-            if (!(_root.ResolvePathToEntry(path) is VirtualFileSystemFile file))
+            if (_root.ResolvePathToEntry(path) is not VirtualFileSystemFile file)
             {
                 throw new FileNotFoundException("File not found", path);
             }
@@ -255,7 +255,7 @@ namespace DiscUtils.VirtualFileSystem
         }
 
         public VirtualFileSystemFile AddFile(string path, byte[] data) =>
-            new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
+            new(AddDirectory(GetPathDirectoryName(path)),
                 Path.GetFileName(path),
                 (mode, access) => new MemoryStream(data, access.HasFlag(FileAccess.Write)))
             {
@@ -263,7 +263,7 @@ namespace DiscUtils.VirtualFileSystem
             };
 
         public VirtualFileSystemFile AddFile(string path, byte[] data, int index, int count) =>
-            new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
+            new(AddDirectory(GetPathDirectoryName(path)),
                 Path.GetFileName(path),
                 (mode, access) => new MemoryStream(data, index, count, access.HasFlag(FileAccess.Write)))
             {
@@ -271,12 +271,12 @@ namespace DiscUtils.VirtualFileSystem
             };
 
         public VirtualFileSystemFile AddFile(string path, FileOpenDelegate open) =>
-            new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
+            new(AddDirectory(GetPathDirectoryName(path)),
                 Path.GetFileName(path),
                 open);
 
         public VirtualFileSystemFile AddFile(string path, DiscFileInfo existingFile) =>
-            new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
+            new(AddDirectory(GetPathDirectoryName(path)),
                 Path.GetFileName(path),
                 existingFile.Open)
             {
@@ -288,7 +288,7 @@ namespace DiscUtils.VirtualFileSystem
             };
 
         public VirtualFileSystemFile AddFile(string path, IFileSystem fileSystem, string existingPath) =>
-            new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
+            new(AddDirectory(GetPathDirectoryName(path)),
                 Path.GetFileName(path),
                 (mode, access) => fileSystem.OpenFile(existingPath, mode, access))
             {
@@ -300,7 +300,7 @@ namespace DiscUtils.VirtualFileSystem
             };
 
         public VirtualFileSystemFile AddFile(string path, string existingPhysicalPath) =>
-            new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
+            new(AddDirectory(GetPathDirectoryName(path)),
                 Path.GetFileName(path),
                 (mode, access) => File.Open(existingPhysicalPath, mode, access))
             {
@@ -358,7 +358,7 @@ namespace DiscUtils.VirtualFileSystem
 
         public override SparseStream OpenFile(string path, FileMode mode, FileAccess access)
         {
-            if (!(_root.ResolvePathToEntry(path) is VirtualFileSystemFile file))
+            if (_root.ResolvePathToEntry(path) is not VirtualFileSystemFile file)
             {
                 if (mode == FileMode.Open)
                 {

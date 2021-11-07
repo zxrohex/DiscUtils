@@ -22,7 +22,7 @@
 
 using System;
 using System.IO;
-using System.Security.AccessControl;
+using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.Registry;
 using Xunit;
 
@@ -39,7 +39,7 @@ namespace LibraryTests.Registry
             Assert.Equal(0, hive.Root.ValueCount);
             Assert.Equal(0, hive.Root.SubKeyCount);
             Assert.NotNull(hive.Root.SubKeys);
-            Assert.Equal("O:BAG:BAD:PAI(A;;KA;;;SY)(A;CI;KA;;;BA)", hive.Root.GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.All));
+            Assert.Equal("O:BAG:BAD:PAI(A;;KA;;;SY)(A;CI;KA;;;BA)", hive.Root.GetAccessControl().GetSddlForm(AccessControlSections.All));
             Assert.Equal(RegistryKeyFlags.Root | RegistryKeyFlags.Normal, hive.Root.Flags);
         }
 

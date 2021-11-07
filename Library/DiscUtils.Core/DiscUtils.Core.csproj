@@ -14,8 +14,4 @@
     <ProjectReference Include="..\DiscUtils.Streams\DiscUtils.Streams.csproj" />
   </ItemGroup>
   
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Security.AccessControl" Version="4.7.0" />
-  </ItemGroup>
-
 </Project>
