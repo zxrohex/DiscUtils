@@ -391,7 +391,7 @@ namespace DiscUtils.Partitions
                 }
             }
 
-            if (_secondaryHeader == null)
+            if (_secondaryHeader is null)
             {
                 _secondaryHeader = new GptHeader(diskGeometry.BytesPerSector);
                 disk.Position = disk.Length - diskGeometry.BytesPerSector;

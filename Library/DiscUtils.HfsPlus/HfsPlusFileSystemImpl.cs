@@ -128,5 +128,7 @@ namespace DiscUtils.HfsPlus
         {
             get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
         }
+
+        public override bool SupportsUsedAvailableSpace => false;
     }
 }

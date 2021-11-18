@@ -225,6 +225,8 @@ namespace DiscUtils.Udf
                 get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
             }
 
+            public override bool SupportsUsedAvailableSpace => false;
+
             protected override File ConvertDirEntryToFile(FileIdentifier dirEntry)
             {
                 return File.FromDescriptor(Context, dirEntry.FileLocation);

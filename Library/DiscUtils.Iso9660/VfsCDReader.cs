@@ -308,6 +308,8 @@ namespace DiscUtils.Iso9660
             get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
         }
 
+        public override bool SupportsUsedAvailableSpace => false;
+
         public Range<long, long>[] PathToClusters(string path)
         {
             ReaderDirEntry entry = GetDirectoryEntry(path);

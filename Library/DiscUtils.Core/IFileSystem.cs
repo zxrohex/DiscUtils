@@ -363,5 +363,11 @@ namespace DiscUtils
         /// Available space of the Filesystem in bytes
         /// </summary>
         long AvailableSpace { get; }
+
+        /// <summary>
+        /// Indication whether the file system supports AvailableSpace,
+        /// UsedSpace and Size properties
+        /// </summary>
+        bool SupportsUsedAvailableSpace { get; }
     }
 }

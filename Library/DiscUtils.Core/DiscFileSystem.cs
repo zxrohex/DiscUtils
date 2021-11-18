@@ -492,6 +492,12 @@ namespace DiscUtils
         /// </summary>
         public abstract long AvailableSpace { get; }
 
+        /// <summary>
+        /// By default, disk file systems support reporting space
+        /// allocation. If not, this property should be overridden.
+        /// </summary>
+        public virtual bool SupportsUsedAvailableSpace => true;
+
         #region IDisposable Members
 
         /// <summary>

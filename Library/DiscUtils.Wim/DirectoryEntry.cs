@@ -68,7 +68,7 @@ namespace DiscUtils.Wim
                 return null;
             }
 
-            DirectoryEntry result = new DirectoryEntry();
+            var result = new DirectoryEntry();
             result.Length = length;
             result.Attributes = (FileAttributes)reader.ReadUInt32();
             result.SecurityId = reader.ReadUInt32();
@@ -105,17 +105,23 @@ namespace DiscUtils.Wim
 
             if (startPos + length > reader.Position)
             {
-                int toRead = (int)(startPos + length - reader.Position);
+                var toRead = (int)(startPos + length - reader.Position);
                 reader.Skip(toRead);
             }
 
             if (result.StreamCount > 0)
             {
                 result.AlternateStreams = new Dictionary<string, AlternateStreamEntry>();
-                for (int i = 0; i < result.StreamCount; ++i)
+                for (var i = 0; i < result.StreamCount; ++i)
                 {
-                    AlternateStreamEntry stream = AlternateStreamEntry.ReadFrom(reader);
-                    result.AlternateStreams.Add(stream.Name, stream);
+                    var stream = AlternateStreamEntry.ReadFrom(reader);
+
+                    // Avoid crashes on badly built WIM files with multiple streams without
+                    // a stream name
+                    if (!result.AlternateStreams.ContainsKey(stream.Name))
+                    {
+                        result.AlternateStreams.Add(stream.Name, stream);
+                    }
                 }
             }
 

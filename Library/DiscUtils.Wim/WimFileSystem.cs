@@ -28,6 +28,8 @@ using DiscUtils.Core.WindowsSecurity.AccessControl;
 using System.Text.RegularExpressions;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace DiscUtils.Wim
 {
@@ -46,17 +48,21 @@ namespace DiscUtils.Wim
         {
             _file = file;
 
-            ShortResourceHeader metaDataFileInfo = _file.LocateImage(index);
+            var metaDataFileInfo = _file.LocateImage(index);
             if (metaDataFileInfo == null)
             {
-                throw new ArgumentException("No such image: " + index, nameof(index));
+                throw new ArgumentException($"No such image: {index}", nameof(index));
             }
 
             _metaDataStream = _file.OpenResourceStream(metaDataFileInfo);
             ReadSecurityDescriptors();
 
             _dirCache = new ObjectCache<long, List<DirectoryEntry>>();
+
+            VolumeLabel = XDocument.Parse(_file.Manifest)?.XPathSelectElement($"WIM/IMAGE[@INDEX=\"{index + 1}\"]/NAME")?.Value;
         }
+
+        public override string VolumeLabel { get; }
 
         /// <summary>
         /// Provides a friendly description of the file system type.
@@ -530,6 +536,8 @@ namespace DiscUtils.Wim
         {
             get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
         }
+
+        public override bool SupportsUsedAvailableSpace => false;
 
         /// <summary>
         /// Disposes of this instance.

@@ -35,7 +35,7 @@ namespace DiscUtils.Streams
         /// <param name="count">The number of bytes to read / write.</param>
         public static void AssertBufferParameters(byte[] buffer, int offset, int count)
         {
-            if (buffer == null)
+            if (buffer is null)
             {
                 throw new ArgumentNullException(nameof(buffer));
             }
