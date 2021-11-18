@@ -138,8 +138,7 @@ namespace DiscUtils.Wim
                 }
             }
 
-            AlternateStreamEntry streamEntry;
-            if (AlternateStreams != null && AlternateStreams.TryGetValue(streamName, out streamEntry))
+            if (AlternateStreams != null && AlternateStreams.TryGetValue(streamName, out var streamEntry))
             {
                 return streamEntry.Hash;
             }
@@ -147,15 +146,14 @@ namespace DiscUtils.Wim
             return new byte[20];
         }
 
-        internal long GetLength(string streamName)
+        internal long GetHeaderLength(string streamName)
         {
             if (string.IsNullOrEmpty(streamName))
             {
                 return Length;
             }
 
-            AlternateStreamEntry streamEntry;
-            if (AlternateStreams != null && AlternateStreams.TryGetValue(streamName, out streamEntry))
+            if (AlternateStreams != null && AlternateStreams.TryGetValue(streamName, out var streamEntry))
             {
                 return streamEntry.Length;
             }

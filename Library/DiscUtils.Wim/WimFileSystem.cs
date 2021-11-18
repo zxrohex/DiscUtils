@@ -476,17 +476,19 @@ namespace DiscUtils.Wim
         /// <returns>The length in bytes.</returns>
         public override long GetFileLength(string path)
         {
-            string filePart;
-            string altStreamPart;
-            SplitFileName(path, out filePart, out altStreamPart);
-
-            DirectoryEntry dirEntry = GetEntry(filePart);
-            if (dirEntry == null)
+            byte[] streamHash = GetFileHash(path);
+            ShortResourceHeader hdr = _file.LocateResource(streamHash);
+            if (hdr == null)
             {
-                throw new FileNotFoundException("No such file or directory", path);
+                if (Utilities.IsAllZeros(streamHash, 0, streamHash.Length))
+                {
+                    return 0;
+                }
+
+                throw new IOException("Unable to locate file contents");
             }
 
-            return dirEntry.GetLength(altStreamPart);
+            return hdr.OriginalSize;
         }
 
         /// <summary>
