@@ -174,7 +174,7 @@ namespace DiscUtils.Archives
             buffer[155] = 0;
         }
 
-        private static string ReadNullTerminatedString(byte[] buffer, int offset, int length)
+        internal static string ReadNullTerminatedString(byte[] buffer, int offset, int length)
         {
             var z = Array.IndexOf(buffer, default, offset, length);
 

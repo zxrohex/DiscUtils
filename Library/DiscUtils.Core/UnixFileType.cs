@@ -80,6 +80,6 @@ namespace DiscUtils
         /// <summary>
         /// TAR long file name entry.
         /// </summary>
-        TarEntryLongLink = 0x3C
+        TarEntryLongLink = 0x4C
     }
 }

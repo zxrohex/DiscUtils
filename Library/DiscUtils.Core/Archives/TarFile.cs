@@ -31,12 +31,13 @@ namespace DiscUtils.Archives
     /// <summary>
     /// Minimal tar file format implementation.
     /// </summary>
-    public class TarFile
+    public class TarFile : IDisposable
     {
         public static int FileDatabufferChunkSize { get; set; } = 32 * 1024 * 1024;
 
-        private Stream _fileStream;
-        private Dictionary<string, TarFileRecord> _files;
+        private readonly Stream _fileStream;
+        private readonly Dictionary<string, TarFileRecord> _files;
+        private bool disposedValue;
 
         /// <summary>
         /// Initializes a new instance of the TarFile class.
@@ -71,7 +72,7 @@ namespace DiscUtils.Archives
                 {
                     var buffer = new byte[hdr.FileLength];
                     _fileStream.Read(buffer, 0, buffer.Length);
-                    long_path = EndianUtilities.BytesToString(buffer, 0, buffer.Length);
+                    long_path = TarHeader.ReadNullTerminatedString(buffer, 0, buffer.Length).TrimEnd(' ');
                     _fileStream.Position += -(buffer.Length & 511) & 511;
                 }
                 else
@@ -95,9 +96,8 @@ namespace DiscUtils.Archives
         /// <returns><c>true</c> if the file could be opened, else <c>false</c>.</returns>
         public bool TryOpenFile(string path, out Stream stream)
         {
-            if (_files.ContainsKey(path))
+            if (_files.TryGetValue(path, out var file))
             {
-                TarFileRecord file = _files[path];
                 stream = new SubStream(_fileStream, file.Start, file.Length);
                 return true;
             }
@@ -114,9 +114,8 @@ namespace DiscUtils.Archives
         /// <exception cref="FileNotFoundException">Thrown if the file is not found.</exception>
         public Stream OpenFile(string path)
         {
-            if (_files.ContainsKey(path))
+            if (_files.TryGetValue(path, out var file))
             {
-                TarFileRecord file = _files[path];
                 return new SubStream(_fileStream, file.Start, file.Length);
             }
 
@@ -220,7 +219,14 @@ namespace DiscUtils.Archives
                         throw new EndOfStreamException("Unexpected end of tar stream");
                     }
 
-                    long_path = EndianUtilities.BytesToString(data, 0, data.Length).TrimEnd(' ');
+                    long_path = TarHeader.ReadNullTerminatedString(data, 0, data.Length).TrimEnd(' ');
+
+                    var moveForward = (int)(-(hdr.FileLength & 511) & 511);
+
+                    if (archive.Read(hdrBuf, 0, moveForward) < moveForward)
+                    {
+                        break;
+                    }
                 }
                 else if (archive.CanSeek)
                 {
@@ -269,6 +275,39 @@ namespace DiscUtils.Archives
                     }
                 }
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: dispose managed state (managed objects)
+                    _fileStream.Dispose();
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+
+                // TODO: set large fields to null
+                _files.Clear();
+
+                disposedValue = true;
+            }
+        }
+
+        // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        ~TarFile()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
