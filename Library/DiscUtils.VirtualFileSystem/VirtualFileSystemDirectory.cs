@@ -16,13 +16,31 @@ namespace DiscUtils.VirtualFileSystem
         }
 
         internal VirtualFileSystemDirectory(VirtualFileSystem fileSystem)
-            : base(fileSystem) => _entries = new Dictionary<string, VirtualFileSystemDirectoryEntry>(StringComparer.OrdinalIgnoreCase);
+            : base(fileSystem)
+        {
+            StringComparer nameComparer;
+            if (!fileSystem.Options.CaseSensitive)
+            {
+                nameComparer = StringComparer.OrdinalIgnoreCase;
+            }
+            else
+            {
+                nameComparer = StringComparer.Ordinal;
+            }
+            _entries = new Dictionary<string, VirtualFileSystemDirectoryEntry>(nameComparer);
+        }
 
         internal VirtualFileSystemDirectory(VirtualFileSystemDirectory parent, string name)
-            : base(parent, name) => _entries = new Dictionary<string, VirtualFileSystemDirectoryEntry>(StringComparer.OrdinalIgnoreCase);
+            : base(parent, name)
+        {
+            _entries = new Dictionary<string, VirtualFileSystemDirectoryEntry>(parent._entries.Comparer);
+        }
 
         internal VirtualFileSystemDirectory(VirtualFileSystemDirectory parent, string name, VirtualFileSystemDirectory existing_link)
-            : base(parent, name) => _entries = existing_link._entries;
+            : base(parent, name)
+        {
+            _entries = existing_link._entries;
+        }
 
         public VirtualFileSystemDirectoryEntry GetEntry(string name)
         {

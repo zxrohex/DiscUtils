@@ -8,6 +8,8 @@
         
         public bool IsThreadSafe { get; set; }
 
+        public bool CaseSensitive { get; set; }
+
         public string VolumeLabel { get; set; }
     }
 }

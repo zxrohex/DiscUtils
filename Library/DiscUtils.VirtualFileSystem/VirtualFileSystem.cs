@@ -34,8 +34,10 @@ namespace DiscUtils.VirtualFileSystem
         private long _used_space;
 
         public VirtualFileSystem(VirtualFileSystemOptions options)
-            : base(options) =>
+            : base(options)
+        {
             _root = new VirtualFileSystemDirectory(this);
+        }
 
         public event EventHandler<CreateFileEventArgs> CreateFile;
 

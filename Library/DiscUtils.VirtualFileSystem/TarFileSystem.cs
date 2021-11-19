@@ -6,6 +6,7 @@ namespace DiscUtils.VirtualFileSystem
     using Archives;
     using Streams;
     using Internal;
+    using System.Diagnostics;
 
     public class TarFileSystem : VirtualFileSystem
     {
@@ -38,7 +39,8 @@ namespace DiscUtils.VirtualFileSystem
         public TarFileSystem(Stream tar_stream, string label, bool ownsStream)
             : base(new VirtualFileSystemOptions
             {
-                VolumeLabel = label
+                VolumeLabel = label,
+                CaseSensitive = true
             })
         {
             if (tar_stream.CanSeek)
@@ -55,9 +57,9 @@ namespace DiscUtils.VirtualFileSystem
             {
                 var path = file.Name;
 
-                if (path.StartsWith("./", StringComparison.Ordinal))
+                if (path.StartsWith(".", StringComparison.Ordinal))
                 {
-                    path = path.Substring(2);
+                    path = path.Substring(1);
                 }
 
                 path = path.Replace('/', '\\');
@@ -72,6 +74,12 @@ namespace DiscUtils.VirtualFileSystem
                 }
                 else
                 {
+                    if (Exists(path))
+                    {
+                        Trace.WriteLine($"TarFileSystem: Duplicate file path '{file.Name}'");
+                        continue;
+                    }
+
                     AddFile(path, file.GetStream() ?? Stream.Null,
                         file.Header.CreationTime.DateTime, file.Header.ModificationTime.DateTime, file.Header.LastAccessTime.DateTime,
                         Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));

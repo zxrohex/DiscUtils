@@ -31,7 +31,7 @@ namespace DiscUtils.Archives
     {
         public const int Length = 512;
 
-        public string FileName { get; }
+        public string FileName { get; internal set; }
         public UnixFilePermissions FileMode { get; }
         public int OwnerId { get; }
         public int GroupId { get; }

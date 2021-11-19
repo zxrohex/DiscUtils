@@ -244,7 +244,9 @@ namespace DiscUtils.Wim
         public long GetFileId(string path)
         {
             DirectoryEntry dirEntry = GetEntry(path);
-            return dirEntry.HardLink == 0 ? -1L : dirEntry.HardLink;
+            return BitConverter.ToInt64(dirEntry.Hash, 0)
+                ^ BitConverter.ToInt64(dirEntry.Hash, 8)
+                ^ BitConverter.ToInt32(dirEntry.Hash, 16);
         }
 
         /// <summary>
@@ -255,13 +257,12 @@ namespace DiscUtils.Wim
         public bool HasHardLinks(string path)
         {
             DirectoryEntry dirEntry = GetEntry(path);
-            return dirEntry.HardLink != 0;
+            return dirEntry.HardLink != 0u;
         }
 
         public int GetHardLinkCount(string path)
         {
-            DirectoryEntry dirEntry = GetEntry(path);
-            return dirEntry.HardLink != 0 ? 2 : 1;
+            return HasHardLinks(path) ? 2 : 1;
         }
 
         /// <summary>

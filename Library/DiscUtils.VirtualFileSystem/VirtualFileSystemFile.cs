@@ -36,7 +36,7 @@ namespace DiscUtils.VirtualFileSystem
 
             Length = stream.Length;
 
-            if (!(stream is SparseStream sparse))
+            if (stream is not SparseStream sparse)
             {
                 sparse = SparseStream.FromStream(stream, Ownership.Dispose);
             }

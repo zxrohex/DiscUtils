@@ -65,6 +65,21 @@ namespace DiscUtils
         /// <summary>
         /// A unix socket.
         /// </summary>
-        Socket = 0xC
+        Socket = 0xC,
+
+        /// <summary>
+        /// TAR regular file entry.
+        /// </summary>
+        TarEntryRegularFile = 0x30,
+
+        /// <summary>
+        /// TAR directory entry.
+        /// </summary>
+        TarEntryDirectory = 0x35,
+
+        /// <summary>
+        /// TAR long file name entry.
+        /// </summary>
+        TarEntryLongLink = 0x3C
     }
 }

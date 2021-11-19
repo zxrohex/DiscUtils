@@ -45,9 +45,11 @@ namespace DiscUtils.Archives
         public TarFile(Stream fileStream)
         {
             _fileStream = fileStream;
-            _files = new Dictionary<string, TarFileRecord>();
+            _files = new Dictionary<string, TarFileRecord>(StringComparer.Ordinal);
 
             var hdrBuf = new byte[512];
+
+            string long_path = null;
 
             for (;;)
             {                
@@ -63,9 +65,25 @@ namespace DiscUtils.Archives
                     break;
                 }
 
-                TarFileRecord record = new TarFileRecord(hdr, _fileStream.Position);
-                _files.Add(hdr.FileName, record);
-                _fileStream.Position += ((hdr.FileLength + 511) / 512) * 512;
+                var record = new TarFileRecord(hdr, _fileStream.Position);
+                if (hdr.FileType == UnixFileType.TarEntryLongLink &&
+                    hdr.FileName.Equals("././@LongLink", StringComparison.Ordinal))
+                {
+                    var buffer = new byte[hdr.FileLength];
+                    _fileStream.Read(buffer, 0, buffer.Length);
+                    long_path = EndianUtilities.BytesToString(buffer, 0, buffer.Length);
+                    _fileStream.Position += -(buffer.Length & 511) & 511;
+                }
+                else
+                {
+                    if (long_path is not null)
+                    {
+                        hdr.FileName = long_path;
+                        long_path = null;
+                    }
+                    _files.Add(hdr.FileName, record);
+                    _fileStream.Position += ((hdr.FileLength + 511) / 512) * 512;
+                }
             }
         }
 
@@ -166,6 +184,8 @@ namespace DiscUtils.Archives
         {
             var hdrBuf = new byte[512];
 
+            string long_path = null;
+
             for (;;)
             {
                 if (StreamUtilities.ReadMaximum(archive, hdrBuf, 0, 512) < 512)
@@ -175,6 +195,12 @@ namespace DiscUtils.Archives
 
                 var hdr = new TarHeader(hdrBuf, 0);
 
+                if (long_path is not null)
+                {
+                    hdr.FileName = long_path;
+                    long_path = null;
+                }
+
                 if (hdr.FileLength == 0 && string.IsNullOrEmpty(hdr.FileName))
                 {
                     break;
@@ -183,6 +209,18 @@ namespace DiscUtils.Archives
                 if (hdr.FileLength == 0)
                 {
                     yield return new TarFileData(hdr, source: null);
+                }
+                else if (hdr.FileType == UnixFileType.TarEntryLongLink &&
+                    hdr.FileName.Equals("././@LongLink", StringComparison.Ordinal))
+                {
+                    var data = new byte[hdr.FileLength];
+
+                    if (archive.Read(data, 0, data.Length) < hdr.FileLength)
+                    {
+                        throw new EndOfStreamException("Unexpected end of tar stream");
+                    }
+
+                    long_path = EndianUtilities.BytesToString(data, 0, data.Length).TrimEnd(' ');
                 }
                 else if (archive.CanSeek)
                 {
