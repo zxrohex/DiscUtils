@@ -76,7 +76,7 @@ namespace LibraryTests
             DiscFileSystem fs = fsFactory();
 
             DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo(new String('X', 256));
-            Assert.Throws<IOException>(() => dirInfo.Create());
+            Assert.Throws<IOException>(dirInfo.Create);
         }
 
         [Theory]

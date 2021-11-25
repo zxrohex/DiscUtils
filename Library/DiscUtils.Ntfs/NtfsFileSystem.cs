@@ -28,6 +28,7 @@ using DiscUtils.Core.WindowsSecurity.AccessControl;
 using System.Text.RegularExpressions;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using System.Linq;
 
 namespace DiscUtils.Ntfs
 {
@@ -515,17 +516,19 @@ namespace DiscUtils.Ntfs
         {
             using (new NtfsTransaction())
             {
-                DirectoryEntry parentDirEntry = GetDirectoryEntry(path);
+                var parentDirEntry = GetDirectoryEntry(path);
                 if (parentDirEntry == null)
                 {
                     throw new DirectoryNotFoundException(string.Format(CultureInfo.InvariantCulture,
                         "The directory '{0}' does not exist", path));
                 }
 
-                Directory parentDir = GetDirectory(parentDirEntry.Reference);
+                var parentDir = GetDirectory(parentDirEntry.Reference);
 
-                return Utilities.Map(parentDir.GetAllEntries(true),
-                    m => Utilities.CombinePaths(path, m.Details.FileName));
+                return parentDir
+                    .GetAllEntries(filter: true)
+                    .Select(m => Utilities.CombinePaths(path, m.Details.FileName))
+                    .ToArray();
             }
         }
 
@@ -1102,7 +1105,7 @@ namespace DiscUtils.Ntfs
 
             writer.WriteLine(linePrefix);
             writer.WriteLine(linePrefix + "DIRECTORY TREE");
-            writer.WriteLine(linePrefix + @"\ (5)");
+            writer.WriteLine(linePrefix + $"{Path.DirectorySeparatorChar} (5)");
             DumpDirectory(GetDirectory(MasterFileTable.RootDirIndex), writer, linePrefix); // 5 = Root Dir
         }
 
@@ -1716,7 +1719,7 @@ namespace DiscUtils.Ntfs
         {
             using (new NtfsTransaction())
             {
-                string[] pathElements = path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
 
                 Directory focusDir = GetDirectory(MasterFileTable.RootDirIndex);
                 DirectoryEntry focusDirEntry = focusDir.DirectoryEntry;
@@ -2118,7 +2121,7 @@ namespace DiscUtils.Ntfs
 
         private DirectoryEntry GetDirectoryEntry(Directory dir, string path)
         {
-            string[] pathElements = path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
             return GetDirectoryEntry(dir, pathElements, 0);
         }
 

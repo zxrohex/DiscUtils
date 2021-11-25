@@ -7,6 +7,7 @@ namespace DiscUtils.VirtualFileSystem
 {
     using Internal;
     using Streams;
+    using System.Text.RegularExpressions;
 
     public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFileSystemBuilder
     {
@@ -177,17 +178,18 @@ namespace DiscUtils.VirtualFileSystem
                 .ToArray();
         }
 
-        public static Func<string, bool> GetFilter(string searchPattern)
+        public static Func<string, bool> GetFilter(string pattern)
         {
-            if (string.IsNullOrEmpty(searchPattern) ||
-                searchPattern.Equals("*", StringComparison.Ordinal) ||
-                searchPattern.Equals("*.*", StringComparison.Ordinal))
+            if (string.IsNullOrEmpty(pattern) ||
+                pattern.Equals("*", StringComparison.Ordinal) ||
+                pattern.Equals("*.*", StringComparison.Ordinal))
             {
                 return name => true;
             }
             else
             {
-                return Utilities.ConvertWildcardsToRegEx(searchPattern).IsMatch;
+                var query = $"^{Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", "[^.]")}$";
+                return new Regex(query, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant).IsMatch;
             }
         }
 

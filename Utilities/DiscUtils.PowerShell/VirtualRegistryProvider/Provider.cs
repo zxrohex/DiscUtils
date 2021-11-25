@@ -454,7 +454,7 @@ namespace DiscUtils.PowerShell.VirtualRegistryProvider
                 filePath = path.Substring(0, mountSepIdx);
                 relPath = path.Substring(mountSepIdx + 1);
 
-                if (relPath.Length > 0 && relPath[0] == '\\')
+                if (relPath.Length > 0 && relPath[0] == Path.DirectorySeparatorChar)
                 {
                     relPath = relPath.Substring(1);
                 }
@@ -488,7 +488,7 @@ namespace DiscUtils.PowerShell.VirtualRegistryProvider
             }
 
             psObj.Properties.Add(new PSNoteProperty("Property", valueNames));
-            WriteItemObject(psObj, path.Trim('\\'), true);
+            WriteItemObject(psObj, path.Trim('\\', '/'), true);
         }
 
         private bool IsMatch(string valueName, Collection<string> filters)

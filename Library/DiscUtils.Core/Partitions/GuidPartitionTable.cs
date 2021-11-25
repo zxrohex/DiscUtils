@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -91,9 +92,7 @@ namespace DiscUtils.Partitions
         {
             get
             {
-                return
-                    new ReadOnlyCollection<PartitionInfo>(Utilities.Map(GetAllEntries(),
-                        e => new GuidPartitionInfo(this, e)));
+                return GetAllEntries().Select(e => new GuidPartitionInfo(this, e) as PartitionInfo).ToList().AsReadOnly();
             }
         }
 

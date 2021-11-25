@@ -63,7 +63,7 @@ namespace DiscUtils
                 return null;
             }
 
-            string ourFullPath = GetFullPath(string.Empty) + @"\";
+            string ourFullPath = GetFullPath(string.Empty) + Path.DirectorySeparatorChar;
             string otherFullPath = fileLocator.GetFullPath(path);
 
             return Utilities.MakeRelativePath(otherFullPath, ourFullPath);

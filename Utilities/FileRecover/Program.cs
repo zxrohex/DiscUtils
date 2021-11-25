@@ -195,7 +195,7 @@ namespace FileRecover
                 }
             }
 
-            return parentPath + "\\" + fna.FileName;
+            return parentPath + Path.DirectorySeparatorChar + fna.FileName;
         }
 
         private static void Pump(IBuffer inBuffer, Stream outStream)

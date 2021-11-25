@@ -30,6 +30,7 @@ using DiscUtils.Internal;
 using DiscUtils.Streams;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using System.Linq;
 
 namespace DiscUtils.Wim
 {
@@ -328,16 +329,16 @@ namespace DiscUtils.Wim
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
         public override string[] GetFileSystemEntries(string path)
         {
-            DirectoryEntry parentDirEntry = GetEntry(path);
+            var parentDirEntry = GetEntry(path);
             if (parentDirEntry == null)
             {
                 throw new DirectoryNotFoundException(string.Format(CultureInfo.InvariantCulture,
                     "The directory '{0}' does not exist", path));
             }
 
-            List<DirectoryEntry> parentDir = GetDirectory(parentDirEntry.SubdirOffset);
+            var parentDir = GetDirectory(parentDirEntry.SubdirOffset);
 
-            return Utilities.Map(parentDir, m => Utilities.CombinePaths(path, m.FileName));
+            return parentDir.Select(m => Utilities.CombinePaths(path, m.FileName)).ToArray();
         }
 
         /// <summary>
@@ -630,17 +631,17 @@ namespace DiscUtils.Wim
 
         private DirectoryEntry GetEntry(string path)
         {
-            if (path.EndsWith(@"\", StringComparison.Ordinal))
+            if (path.EndsWithDirectorySeparator())
             {
                 path = path.Substring(0, path.Length - 1);
             }
 
-            if (!string.IsNullOrEmpty(path) && !path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(path) && !path.StartsWithDirectorySeparator())
             {
-                path = @"\" + path;
+                path = Path.DirectorySeparatorChar + path;
             }
 
-            return GetEntry(GetDirectory(0), path.Split('\\'));
+            return GetEntry(GetDirectory(0), path.Split('\\', '/'));
         }
 
         private DirectoryEntry GetEntry(List<DirectoryEntry> dir, string[] path)

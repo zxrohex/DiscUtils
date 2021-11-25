@@ -464,7 +464,7 @@ namespace DiscUtils.SquashFs
         private BuilderDirectory CreateDirectory(string path, int user, int group, UnixFilePermissions permissions)
         {
             BuilderDirectory currentDir = GetRoot();
-            string[] elems = path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] elems = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
 
             for (int i = 0; i < elems.Length; ++i)
             {
@@ -498,7 +498,7 @@ namespace DiscUtils.SquashFs
         public bool Exists(string path)
         {
             BuilderDirectory currentDir = GetRoot();
-            string[] elems = path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] elems = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
 
             for (int i = 0; i < elems.Length; ++i)
             {

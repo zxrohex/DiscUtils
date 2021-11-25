@@ -67,7 +67,7 @@ namespace DiscUtils.Streams
 
         protected virtual byte[] GetBuffer()
         {
-            throw new NotSupportedException("Derived class should implement");
+            throw new NotImplementedException($"Derived class '{GetType().FullName}' should implement GetBuffer()");
         }
     }
 }

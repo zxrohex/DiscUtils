@@ -42,9 +42,7 @@ namespace DiscUtils
     /// ways for data redundancy or other purposes.</para>
     /// </remarks>
     public sealed class VolumeManager
-#if !NETSTANDARD
         : MarshalByRefObject
-#endif
     {
         private static List<LogicalVolumeFactory> s_logicalVolumeFactories;
         private readonly List<VirtualDisk> _disks;

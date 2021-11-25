@@ -100,7 +100,7 @@ namespace DiscUtils.Vhdx
             {
                 if (_diskType != DiskType.Dynamic)
                 {
-                    throw new NotSupportedException("Creation of only dynamic disks currently implemented");
+                    throw new NotSupportedException("Creation of Vhdx currently only supports dynamically expanding format");
                 }
 
                 List<BuilderExtent> extents = new List<BuilderExtent>();

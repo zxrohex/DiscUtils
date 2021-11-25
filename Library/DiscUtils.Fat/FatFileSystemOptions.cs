@@ -32,6 +32,13 @@ namespace DiscUtils.Fat
     {
         private Encoding _encoding;
 
+#if NETSTANDARD || NETCOREAPP
+        static FatFileSystemOptions()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        }
+#endif
+
         internal FatFileSystemOptions()
         {
             FileNameEncoding = Encoding.GetEncoding(437);
@@ -60,7 +67,7 @@ namespace DiscUtils.Fat
             {
                 if (!value.IsSingleByte)
                 {
-                    throw new ArgumentException(value.EncodingName + " is not a single byte encoding");
+                    throw new ArgumentException($"{value.EncodingName} is not a single byte encoding");
                 }
 
                 _encoding = value;

@@ -48,7 +48,7 @@ namespace DiscUtils.Internal
 
         public VirtualDisk OpenDisk(DiscFileSystem fileSystem, string path, FileAccess access)
         {
-            return OpenDisk(new DiscFileLocator(fileSystem, @"\"), path, access);
+            return OpenDisk(new DiscFileLocator(fileSystem, Utilities.DirectorySeparatorString), path, access);
         }
 
         public abstract VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access);

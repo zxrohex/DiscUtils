@@ -20,9 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-#if !NETSTANDARD
 using System;
-#endif
 using DiscUtils.Streams;
 
 namespace DiscUtils
@@ -31,9 +29,7 @@ namespace DiscUtils
     /// Base class that holds information about a disk volume.
     /// </summary>
     public abstract class VolumeInfo
-#if !NETSTANDARD
         : MarshalByRefObject
-#endif
     {
         internal VolumeInfo() {}
 

@@ -151,7 +151,7 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
             Object obj = FindItemByPath(Utilities.NormalizePath(path), false, readOnly);
             if (obj != null)
             {
-                WriteItemObject(obj, path.Trim('\\'), true);
+                WriteItemObject(obj, path.Trim(Path.DirectorySeparatorChar), true);
             }
         }
 
@@ -335,7 +335,7 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
                 return;
             }
 
-            string newFullName = Path.Combine(Path.GetDirectoryName(fsiObj.FullName.TrimEnd('\\')), newName);
+            string newFullName = Path.Combine(Path.GetDirectoryName(fsiObj.FullName.TrimEnd('\\', '/')), newName);
 
             if (obj is DiscDirectoryInfo)
             {
@@ -575,7 +575,7 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
                 }
             }
 
-            List<string> pathElems = new List<string>(relPath.Split(new string[] { @"\" }, StringSplitOptions.RemoveEmptyEntries));
+            List<string> pathElems = new List<string>(relPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries));
 
             if (pathElems.Count == 0)
             {
@@ -620,7 +620,7 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
                     pathElems.RemoveAt(0);
                 }
 
-                string fsPath = string.Join(@"\", pathElems.ToArray());
+                string fsPath = string.Join(Internal.Utilities.DirectorySeparatorString, pathElems.ToArray());
                 if (fs.DirectoryExists(fsPath))
                 {
                     return fs.GetDirectoryInfo(fsPath);
@@ -733,7 +733,7 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
 
         private void EnumerateDisk(VirtualDisk vd, string path, bool recurse, bool namesOnly)
         {
-            if (!path.TrimEnd('\\').EndsWith("!"))
+            if (!path.TrimEnd('\\', '/').EndsWith("!"))
             {
                 path += "!";
             }

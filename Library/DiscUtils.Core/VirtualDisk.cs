@@ -34,9 +34,7 @@ namespace DiscUtils
     /// Base class representing virtual hard disks.
     /// </summary>
     public abstract class VirtualDisk :
-#if !NETSTANDARD
         MarshalByRefObject, 
-#endif
         IDisposable
     {
         private VirtualDiskTransport _transport;
@@ -426,7 +424,7 @@ namespace DiscUtils
 
             if (!VirtualDiskManager.DiskTransports.TryGetValue(uri.Scheme.ToUpperInvariant(), out var transportType))
             {
-                throw new FileNotFoundException(string.Format(CultureInfo.InvariantCulture, "Unable to parse path '{0}'", path), path);
+                throw new FileNotFoundException(string.Format(CultureInfo.InvariantCulture, "Unable to parse path '{0}'", uri), path);
             }
 
             VirtualDiskTransport transport = (VirtualDiskTransport)Activator.CreateInstance(transportType);
@@ -637,9 +635,9 @@ namespace DiscUtils
 
             // Built-in Uri class does cope well with query params on file Uris, so do some
             // parsing ourselves...
-            if (path.Length >= 1 && path[0] == '\\')
+            if (path.Length >= 1 && (path[0] == '\\' || path[0] == '/'))
             {
-                UriBuilder builder = new UriBuilder("file:" + path.Replace('\\', '/'));
+                UriBuilder builder = new UriBuilder("file://" + path.Replace('\\', '/'));
                 return builder.Uri;
             }
             if (path.StartsWith("//", StringComparison.OrdinalIgnoreCase))

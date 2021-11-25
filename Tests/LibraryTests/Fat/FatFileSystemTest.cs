@@ -42,7 +42,7 @@ namespace LibraryTests.Fat
             FatFileSystem fs = FatFileSystem.FormatFloppy(ms, FloppyDiskType.HighDensity, "KBFLOPPY   ");
         }
 
-        [Fact]
+        [Fact(Skip = "Saving LFN not yet implemented")]
         public void Cyrillic()
         {
 #if NET40
@@ -64,7 +64,7 @@ namespace LibraryTests.Fat
 
                 string[] dirs = fs.GetDirectories("");
                 Assert.Single(dirs);
-                Assert.Equal(upperDE, dirs[0]); // Uppercase
+                Assert.Equal(upperDE, fs.GetShortName(dirs[0])); // Uppercase
 
                 Assert.True(fs.DirectoryExists(lowerDE));
                 Assert.True(fs.DirectoryExists(upperDE));
@@ -126,13 +126,15 @@ namespace LibraryTests.Fat
             FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
 
             fs.CreateDirectory(@"UnItTeSt");
-            Assert.Equal("UNITTEST", fs.Root.GetDirectories("UNITTEST")[0].Name);
+            var entry = fs.Root.GetDirectories("UNITTEST")[0];
+            Assert.Equal("UnItTeSt", entry.Name);
+            Assert.Equal("UNITTEST", fs.GetShortName(entry.FullName));
 
             fs.CreateDirectory(@"folder\subflder");
-            Assert.Equal("FOLDER", fs.Root.GetDirectories("FOLDER")[0].Name);
+            Assert.Equal("FOLDER", fs.GetShortName(fs.Root.GetDirectories("FOLDER")[0].FullName));
 
             fs.CreateDirectory(@"folder\subflder");
-            Assert.Equal("SUBFLDER", fs.Root.GetDirectories("FOLDER")[0].GetDirectories("SUBFLDER")[0].Name);
+            Assert.Equal("SUBFLDER", fs.GetShortName(fs.Root.GetDirectories("FOLDER")[0].GetDirectories("SUBFLDER")[0].FullName));
 
         }
 

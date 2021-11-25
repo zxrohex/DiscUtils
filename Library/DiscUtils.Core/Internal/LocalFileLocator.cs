@@ -98,7 +98,7 @@ namespace DiscUtils.Internal
 
         public override string ResolveRelativePath(string path)
         {
-            return Path.Combine(_dir, path);
+            return Utilities.ResolveRelativePath(_dir, path);
         }
     }
 }

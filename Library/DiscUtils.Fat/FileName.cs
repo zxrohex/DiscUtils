@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using DiscUtils.Internal;
@@ -56,9 +57,7 @@ namespace DiscUtils.Fat
                 var lfn_chars = new char[13 * lfn_entries];
 
                 for (var i = lfn_entries;
-                    i > 0 &&
-                    (data[offset] & 0x3f) == i &&
-                    data[offset + 11] == 0x0f;
+                    i > 0 && (data[offset] & 0x3f) == i && data[offset + 11] == 0x0f;
                     i--, offset += 32)
                 {
                     Buffer.BlockCopy(data, offset + 1, lfn_chars, 26 * (i - 1), 10);
@@ -83,6 +82,11 @@ namespace DiscUtils.Fat
 
         public FileName(string name, Encoding encoding)
         {
+            if (name is null || name.Length > 255)
+            {
+                throw new IOException($"Too long name: '{name}'");
+            }
+
             _raw = new byte[11];
 
             byte[] bytes = encoding.GetBytes(name.ToUpperInvariant());
@@ -271,18 +275,15 @@ namespace DiscUtils.Fat
 
         public bool IsMatch(Regex regex, Encoding encoding)
         {
-            if (!string.IsNullOrEmpty(_lfn) && regex.IsMatch(_lfn))
+            var search_name = GetDisplayName(encoding);
+            if (search_name.IndexOf('.') < 0)
             {
-                return true;
+                search_name += '.';
             }
-            
-            return regex.IsMatch(GetShortName(encoding));
+            return regex.IsMatch(search_name);
         }
 
-        public string GetRawName(Encoding encoding)
-        {
-            return encoding.GetString(_raw, 0, 11).TrimEnd();
-        }
+        public string GetRawName(Encoding encoding) => encoding.GetString(_raw, 0, 11).TrimEnd();
 
         public FileName Deleted()
         {
@@ -308,10 +309,7 @@ namespace DiscUtils.Fat
             Array.Copy(_raw, 0, data, offset, 11);
         }
 
-        public override bool Equals(object other)
-        {
-            return Equals(other as FileName);
-        }
+        public override bool Equals(object other) => other is FileName otherName && Equals(this, otherName);
 
         public override int GetHashCode()
         {
@@ -349,17 +347,10 @@ namespace DiscUtils.Fat
         }
 
         private static bool Contains(byte[] array, byte val) => Array.IndexOf(array, val) >= 0;
-        //{
-        //    foreach (byte b in array)
-        //    {
-        //        if (b == val)
-        //        {
-        //            return true;
-        //        }
-        //    }
 
-        //    return false;
-        //}
+        public string Lfn => _lfn;
+
+        public string ShortName => GetShortName(Encoding.ASCII);
 
         public override string ToString() => GetDisplayName(Encoding.ASCII);
     }

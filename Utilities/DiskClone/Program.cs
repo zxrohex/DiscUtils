@@ -365,9 +365,9 @@ namespace DiskClone
                     }
 
                     string volPath = sourceVolume[i];
-                    if (volPath[volPath.Length - 1] != '\\')
+                    if (volPath[volPath.Length - 1] != Path.DirectorySeparatorChar)
                     {
-                        volPath += @"\";
+                        volPath += Path.DirectorySeparatorChar;
                     }
 
                     cloneVolumes.Add(new CloneVolume { Path = volPath, SourceExtent = sourceExtents[0] });

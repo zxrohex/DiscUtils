@@ -45,9 +45,9 @@ namespace DiscUtils
         public NativeFileSystem(string basePath, bool readOnly)
         {
             BasePath = basePath;
-            if (!BasePath.EndsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (BasePath[BasePath.Length - 1] != Path.DirectorySeparatorChar)
             {
-                BasePath += @"\";
+                BasePath += Path.DirectorySeparatorChar;
             }
 
             _readOnly = readOnly;
@@ -123,12 +123,12 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (sourceFile.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (sourceFile.StartsWithDirectorySeparator())
             {
                 sourceFile = sourceFile.Substring(1);
             }
 
-            if (destinationFile.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (destinationFile.StartsWithDirectorySeparator())
             {
                 destinationFile = destinationFile.Substring(1);
             }
@@ -147,7 +147,7 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -166,7 +166,7 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -208,7 +208,7 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -223,7 +223,7 @@ namespace DiscUtils
         /// <returns>true if the directory exists.</returns>
         public override bool DirectoryExists(string path)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -238,7 +238,7 @@ namespace DiscUtils
         /// <returns>true if the file exists.</returns>
         public override bool FileExists(string path)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -288,7 +288,7 @@ namespace DiscUtils
         /// <returns>Array of directories matching the search pattern.</returns>
         public override string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -338,7 +338,7 @@ namespace DiscUtils
         /// <returns>Array of files matching the search pattern.</returns>
         public override string[] GetFiles(string path, string searchPattern, SearchOption searchOption)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -376,7 +376,7 @@ namespace DiscUtils
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
         public override string[] GetFileSystemEntries(string path, string searchPattern)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -407,12 +407,12 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (sourceDirectoryName.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (sourceDirectoryName.StartsWithDirectorySeparator())
             {
                 sourceDirectoryName = sourceDirectoryName.Substring(1);
             }
 
-            if (destinationDirectoryName.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (destinationDirectoryName.StartsWithDirectorySeparator())
             {
                 destinationDirectoryName = destinationDirectoryName.Substring(1);
             }
@@ -444,7 +444,7 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (destinationName.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (destinationName.StartsWithDirectorySeparator())
             {
                 destinationName = destinationName.Substring(1);
             }
@@ -461,7 +461,7 @@ namespace DiscUtils
                 }
             }
 
-            if (sourceName.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (sourceName.StartsWithDirectorySeparator())
             {
                 sourceName = sourceName.Substring(1);
             }
@@ -494,7 +494,7 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -517,7 +517,7 @@ namespace DiscUtils
         /// <returns>The attributes of the file or directory.</returns>
         public override FileAttributes GetAttributes(string path)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -537,7 +537,7 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -572,7 +572,7 @@ namespace DiscUtils
         /// <returns>The creation time.</returns>
         public override DateTime GetCreationTimeUtc(string path)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -592,7 +592,7 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -627,7 +627,7 @@ namespace DiscUtils
         /// <returns>The last access time.</returns>
         public override DateTime GetLastAccessTimeUtc(string path)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -647,7 +647,7 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -682,7 +682,7 @@ namespace DiscUtils
         /// <returns>The last write time.</returns>
         public override DateTime GetLastWriteTimeUtc(string path)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -702,7 +702,7 @@ namespace DiscUtils
                 throw new UnauthorizedAccessException();
             }
 
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }
@@ -717,7 +717,7 @@ namespace DiscUtils
         /// <returns>The length in bytes.</returns>
         public override long GetFileLength(string path)
         {
-            if (path.StartsWith(@"\", StringComparison.OrdinalIgnoreCase))
+            if (path.StartsWithDirectorySeparator())
             {
                 path = path.Substring(1);
             }

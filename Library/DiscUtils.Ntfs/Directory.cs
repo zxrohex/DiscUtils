@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using DiscUtils.Internal;
 
@@ -59,12 +60,14 @@ namespace DiscUtils.Ntfs
 
         public IEnumerable<DirectoryEntry> GetAllEntries(bool filter)
         {
-            IEnumerable<DirectoryIndexEntry> entries = filter ? FilterEntries(Index.Entries) : Index.Entries;
+            var entries = Index.Entries;
 
-            foreach (DirectoryIndexEntry entry in entries)
+            if (filter)
             {
-                yield return new DirectoryEntry(this, entry.Value, entry.Key);
+                entries = entries.Where(FilterEntry);
             }
+
+            return entries.Select(entry => new DirectoryEntry(this, entry.Value, entry.Key));
         }
 
         public void UpdateEntry(DirectoryEntry entry)
@@ -91,7 +94,7 @@ namespace DiscUtils.Ntfs
 
         public override string ToString()
         {
-            return base.ToString() + @"\";
+            return base.ToString() + Path.DirectorySeparatorChar;
         }
 
         internal new static Directory CreateNew(INtfsContext context, FileAttributeFlags parentDirFlags)
@@ -230,33 +233,22 @@ namespace DiscUtils.Ntfs
             return candidate;
         }
 
-        private List<DirectoryIndexEntry> FilterEntries(IEnumerable<DirectoryIndexEntry> entriesIter)
+        private bool FilterEntry(DirectoryIndexEntry entry)
         {
-            List<DirectoryIndexEntry> entries = new List<DirectoryIndexEntry>();
-
             // Weed out short-name entries for files and any hidden / system / metadata files.
-            foreach (var entry in entriesIter)
+            if ((entry.Key.Flags & FileAttributeFlags.Hidden) != 0
+                && _context.Options.HideHiddenFiles
+                || (entry.Key.Flags & FileAttributeFlags.System) != 0
+                && _context.Options.HideSystemFiles
+                || entry.Value.MftIndex < 24
+                && _context.Options.HideMetafiles
+                || entry.Key.FileNameNamespace == FileNameNamespace.Dos
+                && _context.Options.HideDosFileNames)
             {
-                if ((entry.Key.Flags & FileAttributeFlags.Hidden) != 0 && _context.Options.HideHiddenFiles)
-                {
-                    continue;
-                }
-                if ((entry.Key.Flags & FileAttributeFlags.System) != 0 && _context.Options.HideSystemFiles)
-                {
-                    continue;
-                }
-                if (entry.Value.MftIndex < 24 && _context.Options.HideMetafiles)
-                {
-                    continue;
-                }
-                if (entry.Key.FileNameNamespace == FileNameNamespace.Dos && _context.Options.HideDosFileNames)
-                {
-                    continue;
-                }
-                entries.Add(entry);
+                return false;
             }
 
-            return entries;
+            return true;
         }
 
         private sealed class FileNameQuery : IComparable<byte[]>

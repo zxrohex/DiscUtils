@@ -143,7 +143,7 @@ namespace DiscUtils.Iso9660
         /// </remarks>
         public BuildDirectoryInfo AddDirectory(string name)
         {
-            string[] nameElements = name.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] nameElements = name.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
             return GetDirectory(nameElements, nameElements.Length, true);
         }
 
@@ -474,7 +474,7 @@ namespace DiscUtils.Iso9660
         /// <returns>BuildDirectoryMember object representing already added file.</returns>
         public BuildDirectoryMember GetFile(string path)
         {
-            var nameElements = path.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            var nameElements = path.Split(new char[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
             var dir = GetDirectory(nameElements, nameElements.Length - 1, true);
 
             if (dir.TryGetMember(nameElements[nameElements.Length - 1], out var existing))
@@ -494,7 +494,7 @@ namespace DiscUtils.Iso9660
 
         private void CheckDirectoryForFilePath(string name, out string[] nameElements, out BuildDirectoryInfo dir)
         {
-            nameElements = name.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            nameElements = name.Split(new char[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
             dir = GetDirectory(nameElements, nameElements.Length - 1, true);
 
             if (dir.TryGetMember(nameElements[nameElements.Length - 1], out _))

@@ -513,7 +513,7 @@ namespace DiscUtils.Fat
             {
                 if (newValue != FileAttributes.Directory)
                 {
-                    throw new NotSupportedException("The attributes of the root directory cannot be modified");
+                    throw new IOException("The attributes of the root directory cannot be modified");
                 }
 
                 return;
@@ -590,7 +590,7 @@ namespace DiscUtils.Fat
             // Simulate a root directory entry - doesn't really exist though
             if (IsRootPath(path))
             {
-                throw new NotSupportedException("Root directory cannot be modified");
+                throw new IOException("Root directory cannot be modified");
             }
 
             DirectoryEntry dirEntry = GetDirectoryEntry(path);
@@ -651,7 +651,7 @@ namespace DiscUtils.Fat
             {
                 if (newTime != Epoch)
                 {
-                    throw new NotSupportedException("The creation time of the root directory cannot be modified");
+                    throw new IOException("The creation time of the root directory cannot be modified");
                 }
 
                 return;
@@ -686,7 +686,7 @@ namespace DiscUtils.Fat
             {
                 if (ConvertFromUtc(newTime) != Epoch)
                 {
-                    throw new NotSupportedException("The last write time of the root directory cannot be modified");
+                    throw new IOException("The last write time of the root directory cannot be modified");
                 }
 
                 return;
@@ -721,7 +721,7 @@ namespace DiscUtils.Fat
             {
                 if (newTime != Epoch)
                 {
-                    throw new NotSupportedException("The last access time of the root directory cannot be modified");
+                    throw new IOException("The last access time of the root directory cannot be modified");
                 }
 
                 return;
@@ -756,7 +756,7 @@ namespace DiscUtils.Fat
             {
                 if (ConvertFromUtc(newTime) != Epoch)
                 {
-                    throw new NotSupportedException("The last write time of the root directory cannot be modified");
+                    throw new IOException("The last write time of the root directory cannot be modified");
                 }
 
                 return;
@@ -791,7 +791,7 @@ namespace DiscUtils.Fat
             {
                 if (newTime != Epoch)
                 {
-                    throw new NotSupportedException("The last write time of the root directory cannot be modified");
+                    throw new IOException("The last write time of the root directory cannot be modified");
                 }
 
                 return;
@@ -826,7 +826,7 @@ namespace DiscUtils.Fat
             {
                 if (ConvertFromUtc(newTime) != Epoch)
                 {
-                    throw new NotSupportedException("The last write time of the root directory cannot be modified");
+                    throw new IOException("The last write time of the root directory cannot be modified");
                 }
 
                 return;
@@ -932,7 +932,7 @@ namespace DiscUtils.Fat
         /// <param name="path">The directory to create.</param>
         public override void CreateDirectory(string path)
         {
-            string[] pathElements = path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
 
             Directory focusDir = _rootDir;
 
@@ -1311,7 +1311,7 @@ namespace DiscUtils.Fat
         {
             Directory parent;
 
-            if (string.IsNullOrEmpty(path) || path == "\\")
+            if (string.IsNullOrEmpty(path) || path == @"\" || path == "/")
             {
                 return _rootDir;
             }
@@ -1625,7 +1625,7 @@ namespace DiscUtils.Fat
 
         private static bool IsRootPath(string path)
         {
-            return string.IsNullOrEmpty(path) || path == @"\";
+            return string.IsNullOrEmpty(path) || path == @"\" || path == "/";
         }
 
         private static DateTime DefaultTimeConverter(DateTime time, bool toUtc)
@@ -1721,7 +1721,7 @@ namespace DiscUtils.Fat
 
         private long GetDirectoryEntry(Directory dir, string path, out Directory parent)
         {
-            string[] pathElements = path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
             return GetDirectoryEntry(dir, pathElements, 0, out parent);
         }
 

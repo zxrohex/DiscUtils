@@ -238,8 +238,9 @@ namespace DiscUtils.Internal
         /// <returns>The directory part.</returns>
         public static string GetDirectoryFromPath(string path)
         {
-            string trimmed = path.TrimEnd('\\');
+            string trimmed = path.TrimEnd('\\', '/');
 
+#if NETFRAMEWORK && !NET461_OR_GREATER
             int index = trimmed.LastIndexOf('\\');
             if (index < 0)
             {
@@ -247,6 +248,9 @@ namespace DiscUtils.Internal
             }
 
             return trimmed.Substring(0, index);
+#else
+            return Path.GetDirectoryName(path);
+#endif
         }
 
         /// <summary>
@@ -256,8 +260,9 @@ namespace DiscUtils.Internal
         /// <returns>The file part of the path.</returns>
         public static string GetFileFromPath(string path)
         {
-            string trimmed = path.Trim('\\');
+            string trimmed = path.TrimEnd('\\', '/');
 
+#if NETFRAMEWORK && !NET461_OR_GREATER
             int index = trimmed.LastIndexOf('\\');
             if (index < 0)
             {
@@ -265,6 +270,9 @@ namespace DiscUtils.Internal
             }
 
             return trimmed.Substring(index + 1);
+#else
+            return Path.GetFileName(path);
+#endif
         }
 
         /// <summary>
@@ -275,6 +283,7 @@ namespace DiscUtils.Internal
         /// <returns>The combined path.</returns>
         public static string CombinePaths(string a, string b)
         {
+#if NETFRAMEWORK && !NET461_OR_GREATER
             if (string.IsNullOrEmpty(a) || (b.Length > 0 && b[0] == '\\'))
             {
                 return b;
@@ -284,6 +293,9 @@ namespace DiscUtils.Internal
                 return a;
             }
             return a.TrimEnd('\\') + '\\' + b.TrimStart('\\');
+#else
+            return Path.Combine(a, b);
+#endif
         }
 
         /// <summary>
@@ -306,12 +318,12 @@ namespace DiscUtils.Internal
                 return relativePath;
             }
 
-            if (!basePath.EndsWith(@"\"))
-                basePath = Path.GetDirectoryName(basePath);
+            basePath = Path.GetDirectoryName(basePath);
 
-            string merged = Path.GetFullPath(Path.Combine(basePath, relativePath));
+            var merged = Path.GetFullPath(Path.Combine(basePath, relativePath));
 
-            if (basePath.StartsWith(@"\") && merged.Length > 2 && merged[1].Equals(':'))
+            if ((basePath[0] == '\\' || basePath[0] == '/') &&
+                merged.Length > 2 && merged[1] == ':' && merged[2] == '\\')
             {
                 return merged.Substring(2);
             }
@@ -321,7 +333,7 @@ namespace DiscUtils.Internal
 
         public static string ResolvePath(string basePath, string path)
         {
-            if (!path.StartsWith("\\", StringComparison.OrdinalIgnoreCase))
+            if (path.Length == 0 || (path[0] != '\\' && path[0] != '/'))
             {
                 return ResolveRelativePath(basePath, path);
             }
@@ -330,21 +342,19 @@ namespace DiscUtils.Internal
 
         public static string MakeRelativePath(string path, string basePath)
         {
-            List<string> pathElements =
-                new List<string>(path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries));
-            List<string> basePathElements =
-                new List<string>(basePath.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries));
+            var pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            var basePathElements = basePath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
 
-            if (!basePath.EndsWith("\\", StringComparison.Ordinal) && basePathElements.Count > 0)
+            if (basePathElements.Length > 0 && basePath[basePath.Length - 1] != Path.DirectorySeparatorChar)
             {
-                basePathElements.RemoveAt(basePathElements.Count - 1);
+                Array.Resize(ref basePathElements, basePathElements.Length - 1);
             }
 
             // Find first part of paths that don't match
             int i = 0;
-            while (i < Math.Min(pathElements.Count - 1, basePathElements.Count))
+            while (i < Math.Min(pathElements.Length - 1, basePathElements.Length))
             {
-                if (pathElements[i].ToUpperInvariant() != basePathElements[i].ToUpperInvariant())
+                if (!pathElements[i].Equals(basePathElements[i], StringComparison.OrdinalIgnoreCase))
                 {
                     break;
                 }
@@ -354,39 +364,39 @@ namespace DiscUtils.Internal
 
             // For each remaining part of the base path, insert '..'
             StringBuilder result = new StringBuilder();
-            if (i == basePathElements.Count)
+            if (i == basePathElements.Length)
             {
-                result.Append(@".\");
+                result.Append(@$".{Path.DirectorySeparatorChar}");
             }
-            else if (i < basePathElements.Count)
+            else if (i < basePathElements.Length)
             {
-                for (int j = 0; j < basePathElements.Count - i; ++j)
+                for (int j = 0; j < basePathElements.Length - i; ++j)
                 {
-                    result.Append(@"..\");
+                    result.Append(@$"..{Path.DirectorySeparatorChar}");
                 }
             }
 
             // For each remaining part of the path, add the path element
-            for (int j = i; j < pathElements.Count - 1; ++j)
+            for (int j = i; j < pathElements.Length - 1; ++j)
             {
                 result.Append(pathElements[j]);
-                result.Append(@"\");
+                result.Append(Path.DirectorySeparatorChar);
             }
 
-            result.Append(pathElements[pathElements.Count - 1]);
+            result.Append(pathElements[pathElements.Length - 1]);
 
             // If the target was a directory, put the terminator back
-            if (path.EndsWith(@"\", StringComparison.Ordinal))
+            if (path[path.Length - 1] == Path.DirectorySeparatorChar)
             {
-                result.Append(@"\");
+                result.Append(Path.DirectorySeparatorChar);
             }
 
             return result.ToString();
         }
 
-        #endregion
+#endregion
         
-        #region Filesystem Support
+#region Filesystem Support
 
         /// <summary>
         /// Indicates if a file name matches the 8.3 pattern.
@@ -455,14 +465,12 @@ namespace DiscUtils.Internal
         /// </remarks>
         public static Regex ConvertWildcardsToRegEx(string pattern)
         {
-#if false
             if (!pattern.Contains("."))
             {
                 pattern += ".";
             }
-#endif
 
-            string query = "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", "[^.]") + "$";
+            var query = $"^{Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", "[^.]")}$";
             return new Regex(query, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
 
@@ -518,6 +526,13 @@ namespace DiscUtils.Internal
                 UnixFilePermissions.OwnerExecute | UnixFilePermissions.GroupExecute | UnixFilePermissions.OthersExecute;
         }
 
+        public static string DirectorySeparatorString { get; } = Path.DirectorySeparatorChar.ToString();
+
+        public static bool StartsWithDirectorySeparator(this string path) =>
+            path is not null && path.Length > 0 && (path[0] == '/' || path[0] == '\\');
+
+        public static bool EndsWithDirectorySeparator(this string path) =>
+            path is not null && path.Length > 0 && (path[path.Length - 1] == '/' || path[path.Length - 1] == '\\');
 
         #endregion
     }

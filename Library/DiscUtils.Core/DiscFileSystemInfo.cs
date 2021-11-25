@@ -38,8 +38,10 @@ namespace DiscUtils
                 throw new ArgumentNullException(nameof(path));
             }
 
+            var wrongPathSep = System.IO.Path.DirectorySeparatorChar == '\\' ? '/' : '\\';
+
             FileSystem = fileSystem;
-            Path = path.Trim('\\');
+            Path = path.Replace(wrongPathSep, System.IO.Path.DirectorySeparatorChar).Trim(System.IO.Path.DirectorySeparatorChar);
         }
 
         /// <summary>
@@ -215,5 +217,7 @@ namespace DiscUtils
         {
             return Path.GetHashCode() ^ FileSystem.GetHashCode();
         }
+
+        public override string ToString() => FullName;
     }
 }

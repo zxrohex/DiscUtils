@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -474,7 +475,7 @@ namespace DiscUtils.Ntfs
                     else
                     {
                         fileId = f.IndexInMft | ((long)stream.Attribute.Id << 32);
-                        fileToPaths[fileId] = Utilities.Map(f.Names, n => $"{n}:{stream.Name}:{_self.Context.AttributeDefinitions.ToString(stream.AttributeType)}");
+                        fileToPaths[fileId] = f.Names.Select(n => $"{n}:{stream.Name}:{_self.Context.AttributeDefinitions.ToString(stream.AttributeType)}").ToArray();
                     }
 
                     ClusterRoles roles = ClusterRoles.None;

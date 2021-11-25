@@ -294,7 +294,7 @@ namespace DiscUtils.Fat
             // Update internal structures to reflect new entry (as if read from disk)
             _entries.Add(pos, newEntry);
 
-            HandleAccessed(true);
+            HandleAccessed(forWrite: true);
 
             return pos;
         }

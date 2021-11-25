@@ -87,7 +87,7 @@ namespace LibraryTests
             ms.SetLength(1024 * 1024);
 
             DiscUtils.Raw.Disk rawDisk = new DiscUtils.Raw.Disk(ms, Ownership.Dispose);
-            Assert.Throws<ArgumentException>(() => rawDisk.SetMasterBootRecord(new byte[511]));
+            Assert.Throws<ArgumentException>(() => rawDisk.SetMasterBootRecord(new byte[513]));
         }
     }
 }
