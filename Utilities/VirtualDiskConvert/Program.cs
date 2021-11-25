@@ -40,6 +40,7 @@ namespace VirtualDiskConvert
 
         static void Main(string[] args)
         {
+            DiscUtils.Containers.SetupHelper.SetupContainers();
             SetupHelper.RegisterAssembly(typeof(NtfsFileSystem).Assembly);
 
             Program program = new Program();

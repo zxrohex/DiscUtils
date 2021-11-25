@@ -1,12 +1,21 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29806.167
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Library", "Library", "{E20ADC28-C578-4EF4-A6A2-18DCE2C40984}"
+	ProjectSection(SolutionItems) = preProject
+		Library\Directory.Build.props = Library\Directory.Build.props
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utilities", "Utilities", "{ACF7813E-5C0D-4900-BAD6-4169A2E013AE}"
+	ProjectSection(SolutionItems) = preProject
+		Utilities\Directory.build.props = Utilities\Directory.build.props
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{94C9C1CB-7CD2-4327-AEC0-DDE375C85CEF}"
+	ProjectSection(SolutionItems) = preProject
+		Tests\Directory.build.props = Tests\Directory.build.props
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscUtils.Core", "Library\DiscUtils.Core\DiscUtils.Core.csproj", "{1D40DF20-B233-4A06-965D-60C37410234D}"
 EndProject
@@ -117,11 +126,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscUtils.Btrfs", "Library\DiscUtils.Btrfs\DiscUtils.Btrfs.csproj", "{FAA5ADC9-49ED-4949-B53B-9EC93AE35893}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{DE170219-2D7C-4D77-80AE-7316BA68EEC3}"
-	ProjectSection(SolutionItems) = preProject
-		Tests\common-tests.props = Tests\common-tests.props
-		Utilities\common-utilities.props = Utilities\common-utilities.props
-		Library\Directory.Build.props = Library\Directory.Build.props
-	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscUtils.VirtualFileSystem", "Library\DiscUtils.VirtualFileSystem\DiscUtils.VirtualFileSystem.csproj", "{DD506E79-41D5-490D-BE12-05F5C7839575}"
 EndProject

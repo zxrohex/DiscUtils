@@ -1,13 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="../common-utilities.props" />
+  
 
   <PropertyGroup>
-    <TargetFramework>net40</TargetFramework>
+    <TargetFrameworks>net40</TargetFrameworks>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
+
+
+  <ItemGroup Condition=" '$(TargetFramework.CompareTo(`net5`))' &gt;= 0">
+    <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.0.8" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DiscUtils.Common\DiscUtils.Common.csproj" />
@@ -16,11 +21,8 @@
     <ProjectReference Include="..\..\Library\DiscUtils.FileSystems\DiscUtils.FileSystems.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="System.Management.Automation" Version="6.1.7601.17515" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net40' ">
+  <ItemGroup Condition=" '$(TargetFramework.CompareTo(`net5`))' &lt; 0">
+    <PackageReference Include="Microsoft.PowerShell.5.ReferenceAssemblies" Version="1.1.0" />
     <Reference Include="System.Configuration.Install" />
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />

@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="../common-utilities.props" />
+  
 
   <PropertyGroup>
-    <TargetFramework>net40</TargetFramework>
+    <TargetFrameworks>net40;net46;net48</TargetFrameworks>
     <DebugType>portable</DebugType>
     <OutputType>Exe</OutputType>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DiscUtils.Common\DiscUtils.Common.csproj" />
+    <ProjectReference Include="..\..\Library\DiscUtils.Containers\DiscUtils.Containers.csproj" />
     <ProjectReference Include="..\..\Library\DiscUtils.Core\DiscUtils.Core.csproj" />
     <ProjectReference Include="..\..\Library\DiscUtils.Ntfs\DiscUtils.Ntfs.csproj" />
   </ItemGroup>

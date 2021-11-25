@@ -49,6 +49,7 @@ namespace DiskClone
 
         static void Main(string[] args)
         {
+            DiscUtils.Containers.SetupHelper.SetupContainers();
             Program program = new Program();
             program.Run(args);
         }

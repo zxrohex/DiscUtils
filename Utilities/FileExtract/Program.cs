@@ -24,7 +24,6 @@ using System;
 using System.IO;
 using DiscUtils;
 using DiscUtils.Common;
-using DiscUtils.FileSystems;
 
 namespace FileExtract
 {
@@ -38,7 +37,8 @@ namespace FileExtract
 
         static void Main(string[] args)
         {
-            SetupHelper.SetupFileSystems();
+            DiscUtils.Containers.SetupHelper.SetupContainers();
+            DiscUtils.FileSystems.SetupHelper.SetupFileSystems();
 
             Program program = new Program();
             program.Run(args);

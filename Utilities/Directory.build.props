@@ -3,6 +3,8 @@
   <!-- Package related stuff -->
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <TargetFrameworks>net40;net46;net48;netcoreapp3.1</TargetFrameworks>
+    <RollForward>LatestMajor</RollForward>
   </PropertyGroup>
 
 </Project>

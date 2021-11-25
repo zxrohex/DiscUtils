@@ -70,6 +70,7 @@ namespace DiskDump
 
         protected override void DoRun()
         {
+            DiscUtils.Containers.SetupHelper.SetupContainers();
             DiscUtils.FileSystems.SetupHelper.SetupFileSystems();
 
             Console.OutputEncoding = Encoding.UTF8;
