@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -168,8 +169,20 @@ namespace DiscUtils.Streams
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int ReadByte()
+        {
+            byte b = 0;
+            if (Read(MemoryMarshal.CreateSpan(ref b, sizeof(byte))) != 1)
+            {
+                return -1;
+            }
+            return b;
+        }
+
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
             new(Read(buffer.Span));
+
+        public override void WriteByte(byte value) => base.Write(MemoryMarshal.CreateReadOnlySpan(ref value, sizeof(byte)));
 
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
         {

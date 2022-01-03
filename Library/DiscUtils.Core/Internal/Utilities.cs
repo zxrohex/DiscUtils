@@ -309,16 +309,23 @@ namespace DiscUtils.Internal
         /// </returns>
         public static string ResolveRelativePath(string basePath, string relativePath)
         {
-            if (string.IsNullOrEmpty(basePath))
+            if (string.IsNullOrWhiteSpace(basePath))
             {
                 return relativePath;
             }
 
             basePath = Path.GetDirectoryName(basePath);
 
+            if (string.IsNullOrWhiteSpace(basePath))
+            {
+                return relativePath;
+            }
+
             var merged = Path.GetFullPath(Path.Combine(basePath, relativePath));
 
-            if (merged.Length > 2 && merged[1] == ':' && merged[2] == '\\')
+            if (merged.Length > 2 && 
+                (basePath[0] == '\\' || basePath[0] == '/') &&
+                merged[1] == ':' && merged[2] == '\\')
             {
                 return merged.Substring(2);
             }
