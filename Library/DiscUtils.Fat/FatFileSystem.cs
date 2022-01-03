@@ -932,7 +932,7 @@ namespace DiscUtils.Fat
         /// <param name="path">The directory to create.</param>
         public override void CreateDirectory(string path)
         {
-            string[] pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
 
             Directory focusDir = _rootDir;
 
@@ -1721,7 +1721,7 @@ namespace DiscUtils.Fat
 
         private long GetDirectoryEntry(Directory dir, string path, out Directory parent)
         {
-            string[] pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
             return GetDirectoryEntry(dir, pathElements, 0, out parent);
         }
 

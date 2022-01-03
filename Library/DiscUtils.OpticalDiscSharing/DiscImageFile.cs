@@ -85,10 +85,5 @@ namespace DiscUtils.OpticalDiscSharing
 
             return SparseStream.FromStream(Content, Ownership.None);
         }
-
-        public override string[] GetParentLocations()
-        {
-            return new string[0];
-        }
     }
 }

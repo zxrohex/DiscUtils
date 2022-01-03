@@ -1719,7 +1719,7 @@ namespace DiscUtils.Ntfs
         {
             using (new NtfsTransaction())
             {
-                string[] pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
 
                 Directory focusDir = GetDirectory(MasterFileTable.RootDirIndex);
                 DirectoryEntry focusDirEntry = focusDir.DirectoryEntry;
@@ -2121,7 +2121,7 @@ namespace DiscUtils.Ntfs
 
         private DirectoryEntry GetDirectoryEntry(Directory dir, string path)
         {
-            string[] pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
             return GetDirectoryEntry(dir, pathElements, 0);
         }
 

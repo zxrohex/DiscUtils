@@ -7,49 +7,24 @@ namespace DiscUtils.CoreCompat
 {
     internal static class ReflectionHelper
     {
-        public static bool IsEnum(Type type)
-        {
-            return type.IsEnum;
-        }
+#if NETFRAMEWORK && !NET451_OR_GREATER
+        public static int SizeOf<T>() => Marshal.SizeOf(typeof(T));
+#else
+        public static int SizeOf<T>() => Marshal.SizeOf<T>();
+#endif
 
-        public static Attribute GetCustomAttribute(PropertyInfo property, Type attributeType)
-        {
-            return Attribute.GetCustomAttribute(property, attributeType);
-        }
+#if NETFRAMEWORK && !NET45_OR_GREATER
+        public static T GetCustomAttribute<T>(this MemberInfo memberInfo) where T : Attribute =>
+            Attribute.GetCustomAttribute(memberInfo, typeof(T)) as T;
 
-        public static Attribute GetCustomAttribute(PropertyInfo property, Type attributeType, bool inherit)
-        {
-            return Attribute.GetCustomAttribute(property, attributeType, inherit);
-        }
+        public static T GetCustomAttribute<T>(this MemberInfo memberInfo, bool inherit) where T : Attribute =>
+            Attribute.GetCustomAttribute(memberInfo, typeof(T), inherit) as T;
 
-        public static Attribute GetCustomAttribute(FieldInfo field, Type attributeType)
-        {
-            return Attribute.GetCustomAttribute(field, attributeType);
-        }
+        public static T[] GetCustomAttributes<T>(this MemberInfo memberInfo) where T : Attribute =>
+            Attribute.GetCustomAttributes(memberInfo, typeof(T)) as T[];
 
-        public static Attribute GetCustomAttribute(Type type, Type attributeType)
-        {
-            return Attribute.GetCustomAttribute(type, attributeType);
-        }
-
-        public static Attribute GetCustomAttribute(Type type, Type attributeType, bool inherit)
-        {
-            return Attribute.GetCustomAttribute(type, attributeType);
-        }
-
-        public static IEnumerable<Attribute> GetCustomAttributes(Type type, Type attributeType, bool inherit)
-        {
-            return Attribute.GetCustomAttributes(type, attributeType);
-        }
-
-        public static Assembly GetAssembly(Type type)
-        {
-            return type.Assembly;
-        }
-
-        public static int SizeOf<T>()
-        {
-            return Marshal.SizeOf(typeof(T));
-        }
+        public static T[] GetCustomAttributes<T>(this MemberInfo memberInfo, bool inherit) where T : Attribute =>
+            Attribute.GetCustomAttributes(memberInfo, typeof(T), inherit) as T[];
+#endif
     }
 }

@@ -101,14 +101,5 @@ namespace DiscUtils.Xva
 
             return new DiskStream(_vm.Archive, _capacity, _location);
         }
-
-        /// <summary>
-        /// Gets the possible locations of the parent file (if any).
-        /// </summary>
-        /// <returns>Array of strings, empty if no parent.</returns>
-        public override string[] GetParentLocations()
-        {
-            return new string[0];
-        }
     }
 }

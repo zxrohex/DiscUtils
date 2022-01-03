@@ -67,7 +67,7 @@ namespace LibraryTests.Ntfs
 #endif
         }
 
-        [Fact]
+        [WindowsOnlyFact]
         public void Compress()
         {
             object instance = CreateInstance<NtfsFileSystem>("DiscUtils.Ntfs.LZNT1");
@@ -88,7 +88,7 @@ namespace LibraryTests.Ntfs
             Assert.True(compressedLength < _uncompressedData.Length * 0.66);
         }
 
-        [Fact]
+        [WindowsOnlyFact]
         public void CompressMidSourceBuffer()
         {
             object instance = CreateInstance<NtfsFileSystem>("DiscUtils.Ntfs.LZNT1");
@@ -110,7 +110,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, NativeDecompress(compressedData, 0, compressedLength));
         }
 
-        [Fact]
+        [WindowsOnlyFact]
         public void CompressMidDestBuffer()
         {
             object instance = CreateInstance<NtfsFileSystem>("DiscUtils.Ntfs.LZNT1");
@@ -131,7 +131,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, NativeDecompress(compressedData, 32 * 1024, compressedLength));
         }
 
-        [Fact]
+        [WindowsOnlyFact]
         public void Compress1KBlockSize()
         {
             object instance = CreateInstance<NtfsFileSystem>("DiscUtils.Ntfs.LZNT1");
@@ -159,7 +159,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(rightSizedDuDecompressed, NativeDecompress(compressedData, 0, compressedLength));
         }
 
-        [Fact]
+        [WindowsOnlyFact]
         public void Compress1KBlock()
         {
             object instance = CreateInstance<NtfsFileSystem>("DiscUtils.Ntfs.LZNT1");
@@ -207,7 +207,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(CompressionResult.Incompressible, compressor.Compress(uncompressed, 0, uncompressed.Length, compressed, 0, ref numCompressed));
         }
 
-        [Fact]
+        [WindowsOnlyFact]
         public void Decompress()
         {
             object instance = CreateInstance<NtfsFileSystem>("DiscUtils.Ntfs.LZNT1");
@@ -225,7 +225,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, decompressed);
         }
 
-        [Fact]
+        [WindowsOnlyFact]
         public void DecompressMidSourceBuffer()
         {
             object instance = CreateInstance<NtfsFileSystem>("DiscUtils.Ntfs.LZNT1");
@@ -247,7 +247,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, decompressed);
         }
 
-        [Fact]
+        [WindowsOnlyFact]
         public void DecompressMidDestBuffer()
         {
             object instance = CreateInstance<NtfsFileSystem>("DiscUtils.Ntfs.LZNT1");
@@ -267,7 +267,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, decompressed);
         }
 
-        [Fact]
+        [WindowsOnlyFact]
         public void Decompress1KBlockSize()
         {
             object instance = CreateInstance<NtfsFileSystem>("DiscUtils.Ntfs.LZNT1");

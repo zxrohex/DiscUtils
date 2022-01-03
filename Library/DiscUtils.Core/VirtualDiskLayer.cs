@@ -113,7 +113,12 @@ namespace DiscUtils
         /// Gets the possible locations of the parent file (if any).
         /// </summary>
         /// <returns>Array of strings, empty if no parent.</returns>
-        public abstract string[] GetParentLocations();
+        public virtual string[] GetParentLocations() =>
+#if NET461_OR_GREATER || NETSTANDARD || NETCOREAPP
+            Array.Empty<string>();
+#else
+            new string[0];
+#endif
 
         /// <summary>
         /// Disposes of underlying resources.

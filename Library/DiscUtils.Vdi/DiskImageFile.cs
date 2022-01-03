@@ -208,16 +208,6 @@ namespace DiscUtils.Vdi
         }
 
         /// <summary>
-        /// Gets the possible locations of the parent file (if any).
-        /// </summary>
-        /// <returns>Array of strings, empty if no parent.</returns>
-        public override string[] GetParentLocations()
-        {
-            // Until diff/undo supported
-            return new string[0];
-        }
-
-        /// <summary>
         /// Disposes of underlying resources.
         /// </summary>
         /// <param name="disposing">Set to <c>true</c> if called within Dispose(),

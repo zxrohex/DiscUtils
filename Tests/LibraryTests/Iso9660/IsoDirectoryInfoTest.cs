@@ -51,19 +51,23 @@ namespace LibraryTests.Iso9660
             CDBuilder builder = new CDBuilder();
             CDReader fs = new CDReader(builder.Build(), false);
 
-            Assert.Equal(@"\", fs.Root.FullName);
-            Assert.Equal(@"SOMEDIR\", fs.GetDirectoryInfo(@"SOMEDIR").FullName);
-            Assert.Equal(@"SOMEDIR\CHILDDIR\", fs.GetDirectoryInfo(@"SOMEDIR\CHILDDIR").FullName);
+            var sep = Path.DirectorySeparatorChar;
+
+            Assert.Equal($"{sep}", fs.Root.FullName);
+            Assert.Equal($"SOMEDIR{sep}", fs.GetDirectoryInfo($"SOMEDIR").FullName);
+            Assert.Equal($"SOMEDIR{sep}CHILDDIR{sep}", fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR").FullName);
         }
 
         [Fact]
         public void SimpleSearch()
         {
+            var sep = Path.DirectorySeparatorChar;
+
             CDBuilder builder = new CDBuilder();
-            builder.AddFile(@"SOMEDIR\CHILDDIR\GCHILDIR\FILE.TXT", new byte[0]);
+            builder.AddFile($"SOMEDIR{sep}CHILDDIR{sep}GCHILDIR{sep}FILE.TXT", new byte[0]);
             CDReader fs = new CDReader(builder.Build(), false);
 
-            DiscDirectoryInfo di = fs.GetDirectoryInfo(@"SOMEDIR\CHILDDIR");
+            DiscDirectoryInfo di = fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR");
             DiscFileInfo[] fis = di.GetFiles("*.*", SearchOption.AllDirectories);
         }
 
@@ -99,23 +103,27 @@ namespace LibraryTests.Iso9660
             Assert.Equal(4, fs.Root.GetDirectories("*.*", SearchOption.AllDirectories).Length);
             Assert.Equal(2, fs.Root.GetDirectories("*.*", SearchOption.TopDirectoryOnly).Length);
 
+            var sep = Path.DirectorySeparatorChar;
+
             Assert.Single(fs.Root.GetDirectories("*.DIR", SearchOption.AllDirectories));
-            Assert.Equal(@"A.DIR\", fs.Root.GetDirectories("*.DIR", SearchOption.AllDirectories)[0].FullName);
+            Assert.Equal($"A.DIR{sep}", fs.Root.GetDirectories("*.DIR", SearchOption.AllDirectories)[0].FullName);
 
             Assert.Single(fs.Root.GetDirectories("GCHILD", SearchOption.AllDirectories));
-            Assert.Equal(@"SOMEDIR\CHILD\GCHILD\", fs.Root.GetDirectories("GCHILD", SearchOption.AllDirectories)[0].FullName);
+            Assert.Equal($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}", fs.Root.GetDirectories("GCHILD", SearchOption.AllDirectories)[0].FullName);
         }
 
         [Fact]
         public void GetFiles()
         {
+            var sep = Path.DirectorySeparatorChar;
+
             CDBuilder builder = new CDBuilder();
-            builder.AddDirectory(@"SOMEDIR\CHILD\GCHILD");
-            builder.AddDirectory(@"AAA.DIR");
-            builder.AddFile(@"FOO.TXT", new byte[10]);
-            builder.AddFile(@"SOMEDIR\CHILD.TXT", new byte[10]);
-            builder.AddFile(@"SOMEDIR\FOO.TXT", new byte[10]);
-            builder.AddFile(@"SOMEDIR\CHILD\GCHILD\BAR.TXT", new byte[10]);
+            builder.AddDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
+            builder.AddDirectory($"AAA.DIR");
+            builder.AddFile($"FOO.TXT", new byte[10]);
+            builder.AddFile($"SOMEDIR{sep}CHILD.TXT", new byte[10]);
+            builder.AddFile($"SOMEDIR{sep}FOO.TXT", new byte[10]);
+            builder.AddFile($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}BAR.TXT", new byte[10]);
             CDReader fs = new CDReader(builder.Build(), false);
 
             Assert.Single(fs.Root.GetFiles());
@@ -130,13 +138,15 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void GetFileSystemInfos()
         {
+            var sep = Path.DirectorySeparatorChar;
+
             CDBuilder builder = new CDBuilder();
-            builder.AddDirectory(@"SOMEDIR\CHILD\GCHILD");
-            builder.AddDirectory(@"AAA.EXT");
-            builder.AddFile(@"FOO.TXT", new byte[10]);
-            builder.AddFile(@"SOMEDIR\CHILD.TXT", new byte[10]);
-            builder.AddFile(@"SOMEDIR\FOO.TXT", new byte[10]);
-            builder.AddFile(@"SOMEDIR\CHILD\GCHILD\BAR.TXT", new byte[10]);
+            builder.AddDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
+            builder.AddDirectory($"AAA.EXT");
+            builder.AddFile($"FOO.TXT", new byte[10]);
+            builder.AddFile($"SOMEDIR{sep}CHILD.TXT", new byte[10]);
+            builder.AddFile($"SOMEDIR{sep}FOO.TXT", new byte[10]);
+            builder.AddFile($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}BAR.TXT", new byte[10]);
             CDReader fs = new CDReader(builder.Build(), false);
 
             Assert.Equal(3, fs.Root.GetFileSystemInfos().Length);

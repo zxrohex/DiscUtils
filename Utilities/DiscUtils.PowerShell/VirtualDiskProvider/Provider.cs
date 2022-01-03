@@ -322,10 +322,9 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
 
         protected override void RenameItem(string path, string newName)
         {
-            object obj = FindItemByPath(Utilities.NormalizePath(path), true, false);
+            var obj = FindItemByPath(Utilities.NormalizePath(path), true, false);
 
-            DiscFileSystemInfo fsiObj = obj as DiscFileSystemInfo;
-            if (fsiObj == null)
+            if (obj is not DiscFileSystemInfo fsiObj)
             {
                 WriteError(new ErrorRecord(
                     new InvalidOperationException("Cannot move items to this location"),
@@ -335,32 +334,30 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
                 return;
             }
 
-            string newFullName = Path.Combine(Path.GetDirectoryName(fsiObj.FullName.TrimEnd('\\', '/')), newName);
+            var newFullName = Path.Combine(Path.GetDirectoryName(fsiObj.FullName.TrimEnd(Internal.Utilities.PathSeparators)), newName);
 
-            if (obj is DiscDirectoryInfo)
+            if (obj is DiscDirectoryInfo dirObj)
             {
-                DiscDirectoryInfo dirObj = (DiscDirectoryInfo)obj;
                 dirObj.MoveTo(newFullName);
             }
             else
             {
-                DiscFileInfo fileObj = (DiscFileInfo)obj;
+                var fileObj = obj as DiscFileInfo;
                 fileObj.MoveTo(newFullName);
             }
         }
 
         protected override void CopyItem(string path, string copyPath, bool recurse)
         {
-            DiscDirectoryInfo destDir;
             string destFileName = null;
 
             object destObj = FindItemByPath(Utilities.NormalizePath(copyPath), true, false);
-            destDir = destObj as DiscDirectoryInfo;
+            DiscDirectoryInfo destDir = destObj as DiscDirectoryInfo;
             if (destDir != null)
             {
                 destFileName = GetChildName(path);
             }
-            else if (destObj == null || destObj is DiscFileInfo)
+            else if (destObj is null or DiscFileInfo)
             {
                 destObj = FindItemByPath(Utilities.NormalizePath(GetParentPath(copyPath, null)), true, false);
                 destDir = destObj as DiscDirectoryInfo;
@@ -575,7 +572,7 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
                 }
             }
 
-            List<string> pathElems = new List<string>(relPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries));
+            List<string> pathElems = new List<string>(relPath.Split(Internal.Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries));
 
             if (pathElems.Count == 0)
             {
@@ -733,7 +730,7 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
 
         private void EnumerateDisk(VirtualDisk vd, string path, bool recurse, bool namesOnly)
         {
-            if (!path.TrimEnd('\\', '/').EndsWith("!"))
+            if (!path.TrimEnd(Internal.Utilities.PathSeparators).EndsWith("!"))
             {
                 path += "!";
             }

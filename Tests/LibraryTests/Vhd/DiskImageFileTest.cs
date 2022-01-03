@@ -22,6 +22,7 @@
 
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using DiscUtils;
 using DiscUtils.Streams;
 using DiscUtils.Vhd;
@@ -66,13 +67,19 @@ namespace LibraryTests.Vhd
 
             using (DiskImageFile diffFile = new DiskImageFile(diffStream))
             {
+                var BasePath = @"E:\FOO\";
+                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    BasePath = "/foo/";
+                }
+
                 // Testing the obsolete method - disable warning
 #pragma warning disable 618
-                string[] locations = diffFile.GetParentLocations(@"E:\FOO\");
+                string[] locations = diffFile.GetParentLocations(BasePath);
 #pragma warning restore 618
                 Assert.Equal(2, locations.Length);
                 Assert.Equal(@"C:\TEMP\Base.vhd", locations[0]);
-                Assert.Equal(@"E:\FOO\Base.vhd", locations[1]);
+                Assert.Equal($"{BasePath}Base.vhd", locations[1]);
             }
 
             using (DiskImageFile diffFile = new DiskImageFile(diffStream))
@@ -81,7 +88,7 @@ namespace LibraryTests.Vhd
                 string[] locations = diffFile.GetParentLocations();
                 Assert.Equal(2, locations.Length);
                 Assert.Equal(@"C:\TEMP\Base.vhd", locations[0]);
-                Assert.Equal(@".\Base.vhd", locations[1]);
+                Assert.Equal($".{Path.DirectorySeparatorChar}Base.vhd", locations[1]);
             }
         }
 

@@ -9,9 +9,9 @@ namespace DiscUtils.Transports
     {
         public static void SetupTransports()
         {
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(NfsFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Disc)));
+            Setup.SetupHelper.RegisterAssembly(typeof(Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(NfsFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Disc).Assembly);
         }
     }
 }

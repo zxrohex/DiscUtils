@@ -488,7 +488,7 @@ namespace DiscUtils.PowerShell.VirtualRegistryProvider
             }
 
             psObj.Properties.Add(new PSNoteProperty("Property", valueNames));
-            WriteItemObject(psObj, path.Trim('\\', '/'), true);
+            WriteItemObject(psObj, path.Trim(Internal.Utilities.PathSeparators), true);
         }
 
         private bool IsMatch(string valueName, Collection<string> filters)

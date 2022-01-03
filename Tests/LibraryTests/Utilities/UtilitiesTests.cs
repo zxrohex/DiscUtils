@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Xunit;
 
 namespace LibraryTests.Utilities
@@ -8,10 +9,11 @@ namespace LibraryTests.Utilities
         [Fact]
         public void CanResolveRelativePath()
         {
-            CheckResolvePath(@"\etc\rc.d", @"init.d", @"\etc\init.d");
-            CheckResolvePath(@"\etc\rc.d\", @"init.d", @"\etc\rc.d\init.d");
-            // For example: (\TEMP\Foo.txt, ..\..\Bar.txt) gives (\Bar.txt).
-            CheckResolvePath(@"\TEMP\Foo.txt", @"..\..\Bar.txt", @"\Bar.txt");
+            var sep = Path.DirectorySeparatorChar;
+            CheckResolvePath($"{sep}etc{sep}rc.d", $"init.d", $"{sep}etc{sep}init.d");
+            CheckResolvePath($"{sep}etc{sep}rc.d{sep}", $"init.d", $"{sep}etc{sep}rc.d{sep}init.d");
+            // For example: ({sep}TEMP{sep}Foo.txt, ..{sep}..{sep}Bar.txt) gives ({sep}Bar.txt).
+            CheckResolvePath($"{sep}TEMP{sep}Foo.txt", $"..{sep}..{sep}Bar.txt", $"{sep}Bar.txt");
         }
 
         private void CheckResolvePath(string basePath, string relativePath, string expectedResult)

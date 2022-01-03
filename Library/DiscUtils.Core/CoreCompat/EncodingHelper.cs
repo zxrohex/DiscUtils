@@ -1,6 +1,4 @@
-﻿#if !NET40 && !NET45
-using System.Text;
-#endif
+﻿using System.Text;
 
 namespace DiscUtils.CoreCompat
 {
@@ -15,7 +13,7 @@ namespace DiscUtils.CoreCompat
 
             _registered = true;
 
-#if NETCOREAPP
+#if NETSTANDARD || NETCOREAPP
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 #endif
         }

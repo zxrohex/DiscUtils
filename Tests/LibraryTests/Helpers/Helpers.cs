@@ -20,7 +20,7 @@ namespace LibraryTests.Helpers
 
         public static Stream LoadDataFile(string name)
         {
-            Assembly assembly = ReflectionHelper.GetAssembly(typeof(Helpers));
+            Assembly assembly = typeof(Helpers).Assembly;
 
             string formattedName = $"{assembly.GetName().Name}._Data.{name}";
             if (assembly.GetManifestResourceNames().Contains(formattedName))

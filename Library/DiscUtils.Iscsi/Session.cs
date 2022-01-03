@@ -303,7 +303,7 @@ namespace DiscUtils.Iscsi
             PropertyInfo[] properties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             foreach (PropertyInfo propInfo in properties)
             {
-                ProtocolKeyAttribute attr = (ProtocolKeyAttribute)ReflectionHelper.GetCustomAttribute(propInfo, typeof(ProtocolKeyAttribute));
+                ProtocolKeyAttribute attr = propInfo.GetCustomAttribute<ProtocolKeyAttribute>();
 
                 if (attr != null)
                 {
@@ -323,7 +323,7 @@ namespace DiscUtils.Iscsi
             PropertyInfo[] properties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             foreach (PropertyInfo propInfo in properties)
             {
-                ProtocolKeyAttribute attr = (ProtocolKeyAttribute)ReflectionHelper.GetCustomAttribute(propInfo, typeof(ProtocolKeyAttribute));
+                ProtocolKeyAttribute attr = propInfo.GetCustomAttribute<ProtocolKeyAttribute>();
                 if (attr != null)
                 {
                     if (inParameters[attr.Name] != null)

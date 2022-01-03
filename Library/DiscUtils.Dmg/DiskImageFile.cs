@@ -114,15 +114,6 @@ namespace DiscUtils.Dmg
             return SparseStream.FromStream(_stream, Ownership.None);
         }
 
-        /// <summary>
-        /// Gets the location of the parent file, given a base path.
-        /// </summary>
-        /// <returns>Array of candidate file locations.</returns>
-        public override string[] GetParentLocations()
-        {
-            return new string[0];
-        }
-
         protected override void Dispose(bool disposing)
         {
             try

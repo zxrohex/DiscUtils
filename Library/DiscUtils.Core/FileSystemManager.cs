@@ -54,7 +54,10 @@ namespace DiscUtils
         /// <param name="factory">The detector for the new file systems.</param>
         public static void RegisterFileSystems(VfsFileSystemFactory factory)
         {
-            _factories.Add(factory);
+            lock (_factories)
+            {
+                _factories.Add(factory);
+            }
         }
 
         /// <summary>
@@ -67,7 +70,10 @@ namespace DiscUtils
         /// </remarks>
         public static void RegisterFileSystems(Assembly assembly)
         {
-            _factories.AddRange(DetectFactories(assembly));
+            lock (_factories)
+            {
+                _factories.AddRange(DetectFactories(assembly));
+            }
         }
 
         /// <summary>
@@ -97,9 +103,11 @@ namespace DiscUtils
         {
             foreach (Type type in assembly.GetTypes())
             {
-                Attribute attrib = ReflectionHelper.GetCustomAttribute(type, typeof(VfsFileSystemFactoryAttribute), false);
+                Attribute attrib = type.GetCustomAttribute<VfsFileSystemFactoryAttribute>(false);
                 if (attrib == null)
+                {
                     continue;
+                }
 
                 yield return (VfsFileSystemFactory)Activator.CreateInstance(type);
             }
@@ -110,9 +118,12 @@ namespace DiscUtils
             BufferedStream detectStream = new BufferedStream(stream);
             List<FileSystemInfo> detected = new List<FileSystemInfo>();
 
-            foreach (VfsFileSystemFactory factory in _factories)
+            lock (_factories)
             {
-                detected.AddRange(factory.Detect(detectStream, volume));
+                foreach (VfsFileSystemFactory factory in _factories)
+                {
+                    detected.AddRange(factory.Detect(detectStream, volume));
+                }
             }
 
             return detected.ToArray();

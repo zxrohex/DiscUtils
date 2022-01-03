@@ -102,13 +102,15 @@ namespace LibraryTests.Iso9660
             MemoryStream ms = new MemoryStream();
             SparseStream.Pump(builder.Build(), ms);
 
+            var sep = Path.DirectorySeparatorChar;
+
             CDReader reader = new CDReader(ms, true, false);
-            Assert.Equal("\\FILE.TXT;1", reader.GetFiles("")[0]);
-            Assert.Equal("\\FILE.TXT;1", reader.GetFileSystemEntries("")[0]);
+            Assert.Equal($"{sep}FILE.TXT;1", reader.GetFiles("")[0]);
+            Assert.Equal($"{sep}FILE.TXT;1", reader.GetFileSystemEntries("")[0]);
 
             reader = new CDReader(ms, true, true);
-            Assert.Equal("\\FILE.TXT", reader.GetFiles("")[0]);
-            Assert.Equal("\\FILE.TXT", reader.GetFileSystemEntries("")[0]);
+            Assert.Equal($"{sep}FILE.TXT", reader.GetFiles("")[0]);
+            Assert.Equal($"{sep}FILE.TXT", reader.GetFileSystemEntries("")[0]);
         }
     }
 }

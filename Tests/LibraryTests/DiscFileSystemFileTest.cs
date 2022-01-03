@@ -291,9 +291,11 @@ namespace LibraryTests
         {
             DiscFileSystem fs = fsFactory();
 
+            var sep = Path.DirectorySeparatorChar;
+
             Assert.Equal("foo.txt", fs.GetFileInfo("foo.txt").Name);
-            Assert.Equal("foo.txt", fs.GetFileInfo(@"path\foo.txt").Name);
-            Assert.Equal("foo.txt", fs.GetFileInfo(@"\foo.txt").Name);
+            Assert.Equal("foo.txt", fs.GetFileInfo($"path{sep}foo.txt").Name);
+            Assert.Equal("foo.txt", fs.GetFileInfo($"{sep}foo.txt").Name);
         }
 
         [Theory]
@@ -542,12 +544,14 @@ namespace LibraryTests
         {
             DiscFileSystem fs = fsFactory();
 
-            fs.CreateDirectory(@"SOMEDIR\ADIR");
-            using (Stream s = fs.OpenFile(@"SOMEDIR\ADIR\FILE.TXT", FileMode.Create)) { }
+            var sep = Path.DirectorySeparatorChar;
 
-            DiscFileInfo fi = fs.GetFileInfo(@"SOMEDIR\ADIR\FILE.TXT");
-            Assert.Equal(fs.GetDirectoryInfo(@"SOMEDIR\ADIR"), fi.Parent);
-            Assert.Equal(fs.GetDirectoryInfo(@"SOMEDIR\ADIR"), fi.Directory);
+            fs.CreateDirectory($"SOMEDIR{sep}ADIR");
+            using (Stream s = fs.OpenFile($"SOMEDIR{sep}ADIR{sep}FILE.TXT", FileMode.Create)) { }
+
+            DiscFileInfo fi = fs.GetFileInfo($"SOMEDIR{sep}ADIR{sep}FILE.TXT");
+            Assert.Equal(fs.GetDirectoryInfo($"SOMEDIR{sep}ADIR"), fi.Parent);
+            Assert.Equal(fs.GetDirectoryInfo($"SOMEDIR{sep}ADIR"), fi.Directory);
         }
 
         [Theory]

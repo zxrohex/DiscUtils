@@ -47,7 +47,7 @@ namespace DiscUtils
         {
             foreach (Type type in assembly.GetTypes())
             {
-                VirtualDiskFactoryAttribute diskFactoryAttribute = (VirtualDiskFactoryAttribute)ReflectionHelper.GetCustomAttribute(type, typeof(VirtualDiskFactoryAttribute), false);
+                VirtualDiskFactoryAttribute diskFactoryAttribute = type.GetCustomAttribute<VirtualDiskFactoryAttribute>(false);
                 if (diskFactoryAttribute != null)
                 {
                     VirtualDiskFactory factory = (VirtualDiskFactory)Activator.CreateInstance(type);
@@ -59,7 +59,7 @@ namespace DiscUtils
                     }
                 }
 
-                VirtualDiskTransportAttribute diskTransportAttribute = ReflectionHelper.GetCustomAttribute(type, typeof(VirtualDiskTransportAttribute), false) as VirtualDiskTransportAttribute;
+                VirtualDiskTransportAttribute diskTransportAttribute = type.GetCustomAttribute<VirtualDiskTransportAttribute>(false);
                 if (diskTransportAttribute != null)
                 {
                     DiskTransports.Add(diskTransportAttribute.Scheme.ToUpperInvariant(), type);

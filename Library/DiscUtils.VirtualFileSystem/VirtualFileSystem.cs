@@ -20,7 +20,7 @@ namespace DiscUtils.VirtualFileSystem
                 return string.Empty;
             }
 
-            var index = path.LastIndexOfAny(new[] { '\\', '/' });
+            var index = path.LastIndexOfAny(Utilities.PathSeparators);
 
             if (index >= 0)
             {

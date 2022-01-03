@@ -828,14 +828,14 @@ namespace DiscUtils.Nfs
         private Nfs3FileHandle GetParentDirectory(string path)
         {
             string[] dirs = Utilities.GetDirectoryFromPath(path)
-                                     .Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                                     .Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
             Nfs3FileHandle parent = GetDirectory(_client.RootHandle, dirs);
             return parent;
         }
 
         private Nfs3FileHandle GetDirectory(string path)
         {
-            string[] dirs = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] dirs = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
             return GetDirectory(_client.RootHandle, dirs);
         }
 

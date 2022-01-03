@@ -208,25 +208,27 @@ namespace LibraryTests.Fat
         [Fact]
         public void HonoursReadOnly()
         {
+            var sep = Path.DirectorySeparatorChar;
+
             SparseMemoryStream diskStream = new SparseMemoryStream();
             FatFileSystem fs = FatFileSystem.FormatFloppy(diskStream, FloppyDiskType.HighDensity, "FLOPPY_IMG ");
 
             fs.CreateDirectory(@"AAA");
             fs.CreateDirectory(@"BAR");
-            using (Stream t = fs.OpenFile(@"BAR\AAA.TXT", FileMode.Create, FileAccess.ReadWrite)) { }
-            using (Stream s = fs.OpenFile(@"BAR\FOO.TXT", FileMode.Create, FileAccess.ReadWrite))
+            using (Stream t = fs.OpenFile($"BAR{sep}AAA.TXT", FileMode.Create, FileAccess.ReadWrite)) { }
+            using (Stream s = fs.OpenFile($"BAR{sep}FOO.TXT", FileMode.Create, FileAccess.ReadWrite))
             {
                 StreamWriter w = new StreamWriter(s);
                 w.WriteLine("FOO - some sample text");
                 w.Flush();
             }
-            fs.SetLastAccessTimeUtc(@"BAR", new DateTime(1980, 1, 1));
-            fs.SetLastAccessTimeUtc(@"BAR\FOO.TXT", new DateTime(1980, 1, 1));
+            fs.SetLastAccessTimeUtc($"BAR", new DateTime(1980, 1, 1));
+            fs.SetLastAccessTimeUtc($"BAR{sep}FOO.TXT", new DateTime(1980, 1, 1));
 
             // Check we can access a file without any errors
             SparseStream roDiskStream = SparseStream.ReadOnly(diskStream, Ownership.None);
             FatFileSystem fatFs = new FatFileSystem(roDiskStream);
-            using (Stream fileStream = fatFs.OpenFile(@"BAR\FOO.TXT", FileMode.Open))
+            using (Stream fileStream = fatFs.OpenFile($"BAR{sep}FOO.TXT", FileMode.Open))
             {
                 fileStream.ReadByte();
             }

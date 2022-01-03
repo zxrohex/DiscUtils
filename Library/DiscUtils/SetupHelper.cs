@@ -24,33 +24,33 @@ namespace DiscUtils.Complete
     {
         public static void SetupComplete()
         {
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Store)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(BtrfsFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(ExtFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(FatFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(HfsPlusFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Iscsi.Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(BuildFileInfo)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(DnsClient)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Nfs3Status)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(NtfsFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(DiscInfo)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Disc)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(RegistryHive)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(SdiFile)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(SquashFileSystemBuilder)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Swap.SwapFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(UdfReader)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Vdi.Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Vhd.Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Vhdx.Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Vmdk.Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(VirtualFileSystem.VirtualFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(WimFile)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(XfsFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Xva.Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Lvm.LogicalVolumeManager)));
+            Setup.SetupHelper.RegisterAssembly(typeof(Store).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(BtrfsFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(ExtFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(FatFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(HfsPlusFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Iscsi.Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(BuildFileInfo).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(DnsClient).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Nfs3Status).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(NtfsFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(DiscInfo).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Disc).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(RegistryHive).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(SdiFile).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(SquashFileSystemBuilder).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Swap.SwapFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(UdfReader).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Vdi.Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Vhd.Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Vhdx.Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Vmdk.Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(VirtualFileSystem.VirtualFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(WimFile).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(XfsFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Xva.Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Lvm.LogicalVolumeManager).Assembly);
         }
     }
 }

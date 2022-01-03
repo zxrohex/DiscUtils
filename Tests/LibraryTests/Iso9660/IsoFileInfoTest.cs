@@ -139,13 +139,15 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void Parent()
         {
+            var sep = Path.DirectorySeparatorChar;
+
             CDBuilder builder = new CDBuilder();
-            builder.AddFile(@"SOMEDIR\ADIR\FILE.TXT", new byte[] { 1 });
+            builder.AddFile($"SOMEDIR{sep}ADIR{sep}FILE.TXT", new byte[] { 1 });
             CDReader fs = new CDReader(builder.Build(), false);
 
-            DiscFileInfo fi = fs.GetFileInfo(@"SOMEDIR\ADIR\FILE.TXT");
-            Assert.Equal(fs.GetDirectoryInfo(@"SOMEDIR\ADIR"), fi.Parent);
-            Assert.Equal(fs.GetDirectoryInfo(@"SOMEDIR\ADIR"), fi.Directory);
+            DiscFileInfo fi = fs.GetFileInfo($"SOMEDIR{sep}ADIR{sep}FILE.TXT");
+            Assert.Equal(fs.GetDirectoryInfo($"SOMEDIR{sep}ADIR"), fi.Parent);
+            Assert.Equal(fs.GetDirectoryInfo($"SOMEDIR{sep}ADIR"), fi.Directory);
         }
     }
 }

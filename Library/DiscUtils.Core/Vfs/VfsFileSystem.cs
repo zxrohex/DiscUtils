@@ -630,7 +630,7 @@ namespace DiscUtils.Vfs
 
         private TDirEntry GetDirectoryEntry(TDirectory dir, string path)
         {
-            string[] pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
             return GetDirectoryEntry(dir, pathElements, 0);
         }
 
@@ -736,7 +736,7 @@ namespace DiscUtils.Vfs
                     return null; // throw new FileNotFoundException("Unable to resolve symlink", path);
                 }
 
-                currentPath = Utilities.ResolvePath(currentPath.TrimEnd('\\', '/'), symlink.TargetPath);
+                currentPath = Utilities.ResolvePath(currentPath.TrimEnd(Utilities.PathSeparators), symlink.TargetPath);
                 currentEntry = GetDirectoryEntry(currentPath);
 
                 if (currentEntry == null)

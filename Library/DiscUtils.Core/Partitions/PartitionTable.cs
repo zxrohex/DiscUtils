@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Reflection;
 using DiscUtils.CoreCompat;
 using DiscUtils.Raw;
 using DiscUtils.Streams;
@@ -61,9 +62,9 @@ namespace DiscUtils.Partitions
                 {
                     List<PartitionTableFactory> factories = new List<PartitionTableFactory>();
 
-                    foreach (Type type in ReflectionHelper.GetAssembly(typeof(VolumeManager)).GetTypes())
+                    foreach (Type type in typeof(VolumeManager).Assembly.GetTypes())
                     {
-                        foreach (PartitionTableFactoryAttribute attr in ReflectionHelper.GetCustomAttributes(type, typeof(PartitionTableFactoryAttribute), false))
+                        foreach (PartitionTableFactoryAttribute attr in type.GetCustomAttributes<PartitionTableFactoryAttribute>(false))
                         {
                             factories.Add((PartitionTableFactory)Activator.CreateInstance(type));
                         }

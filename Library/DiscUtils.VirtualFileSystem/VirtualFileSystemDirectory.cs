@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DiscUtils.Internal;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -70,7 +71,7 @@ namespace DiscUtils.VirtualFileSystem
 
         public VirtualFileSystemDirectory CreateSubDirectoryTree(string path)
         {
-            var path_elements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            var path_elements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
 
             var directory = this;
 
@@ -152,7 +153,7 @@ namespace DiscUtils.VirtualFileSystem
         }
 
         public VirtualFileSystemDirectoryEntry ResolvePathToEntry(string path) =>
-            ResolvePath(path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries), 0);
+            ResolvePath(path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries), 0);
 
         private VirtualFileSystemDirectoryEntry ResolvePath(string[] path, int pathindex)
         {

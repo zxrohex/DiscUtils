@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -111,9 +112,9 @@ namespace DiscUtils
         {
             Dictionary<string, VirtualDiskFactory> typeMap = new Dictionary<string, VirtualDiskFactory>();
 
-            foreach (Type type in ReflectionHelper.GetAssembly(typeof(VirtualDisk)).GetTypes())
+            foreach (Type type in typeof(VirtualDisk).Assembly.GetTypes())
             {
-                VirtualDiskFactoryAttribute attr = (VirtualDiskFactoryAttribute)ReflectionHelper.GetCustomAttribute(type, typeof(VirtualDiskFactoryAttribute), false);
+                VirtualDiskFactoryAttribute attr = type.GetCustomAttribute<VirtualDiskFactoryAttribute>(false);
                 if (attr != null)
                 {
                     VirtualDiskFactory factory = (VirtualDiskFactory)Activator.CreateInstance(type);

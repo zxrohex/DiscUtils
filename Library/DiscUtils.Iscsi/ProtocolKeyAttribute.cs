@@ -67,7 +67,7 @@ namespace DiscUtils.Iscsi
             {
                 return ((int)value).ToString(CultureInfo.InvariantCulture);
             }
-            if (ReflectionHelper.IsEnum(valueType))
+            if (valueType.IsEnum)
             {
                 FieldInfo[] infos = valueType.GetFields();
 
@@ -78,8 +78,8 @@ namespace DiscUtils.Iscsi
                         object literalValue = info.GetValue(null);
                         if (literalValue.Equals(value))
                         {
-                            Attribute attr = ReflectionHelper.GetCustomAttribute(info, typeof(ProtocolKeyValueAttribute));
-                            return ((ProtocolKeyValueAttribute)attr).Name;
+                            var attr = info.GetCustomAttribute<ProtocolKeyValueAttribute>();
+                            return attr.Name;
                         }
                     }
                 }
@@ -103,15 +103,15 @@ namespace DiscUtils.Iscsi
             {
                 return int.Parse(value, CultureInfo.InvariantCulture);
             }
-            if (ReflectionHelper.IsEnum(valueType))
+            if (valueType.IsEnum)
             {
                 FieldInfo[] infos = valueType.GetFields();
                 foreach (FieldInfo info in infos)
                 {
                     if (info.IsLiteral)
                     {
-                        Attribute attr = ReflectionHelper.GetCustomAttribute(info, typeof(ProtocolKeyValueAttribute));
-                        if (attr != null && ((ProtocolKeyValueAttribute)attr).Name == value)
+                        var attr = info.GetCustomAttribute<ProtocolKeyValueAttribute>();
+                        if (attr != null && attr.Name == value)
                         {
                             return info.GetValue(null);
                         }

@@ -9,13 +9,13 @@ namespace DiscUtils.Containers
     {
         public static void SetupContainers()
         {
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(BuildFileInfo)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Vhd.Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Vhdx.Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Vmdk.Disk)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(WimFile)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Xva.Disk)));
+            Setup.SetupHelper.RegisterAssembly(typeof(Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(BuildFileInfo).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Vhd.Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Vhdx.Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Vmdk.Disk).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(WimFile).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Xva.Disk).Assembly);
         }
     }
 }

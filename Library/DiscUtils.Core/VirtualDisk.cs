@@ -637,17 +637,17 @@ namespace DiscUtils
             // parsing ourselves...
             if (path.Length >= 1 && (path[0] == '\\' || path[0] == '/'))
             {
-                UriBuilder builder = new UriBuilder("file://" + path.Replace('\\', '/'));
+                UriBuilder builder = new UriBuilder($"file://{path.Replace('\\', '/')}");
                 return builder.Uri;
             }
             if (path.StartsWith("//", StringComparison.OrdinalIgnoreCase))
             {
-                UriBuilder builder = new UriBuilder("file:" + path);
+                UriBuilder builder = new UriBuilder($"file:{path}");
                 return builder.Uri;
             }
             if (path.Length >= 2 && path[1] == ':')
             {
-                UriBuilder builder = new UriBuilder("file:///" + path.Replace('\\', '/'));
+                UriBuilder builder = new UriBuilder($"file:///{path.Replace('\\', '/')}");
                 return builder.Uri;
             }
             return new Uri(path);

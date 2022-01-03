@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using DiscUtils.Core.WindowsSecurity.AccessControl;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Internal;
 
 namespace DiscUtils.Registry
 {
@@ -483,7 +484,7 @@ namespace DiscUtils.Registry
                 return this;
             }
 
-            string[] split = subkey.Split(new[] { '\\', '/' }, 2);
+            string[] split = subkey.Split(Utilities.PathSeparators, 2);
             int cellIndex = FindSubKeyCell(split[0]);
 
             if (cellIndex < 0)
@@ -521,7 +522,7 @@ namespace DiscUtils.Registry
                 return this;
             }
 
-            string[] split = path.Split(new[] { '\\', '/' }, 2);
+            string[] split = path.Split(Utilities.PathSeparators, 2);
             int cellIndex = FindSubKeyCell(split[0]);
 
             if (cellIndex < 0)
@@ -582,7 +583,7 @@ namespace DiscUtils.Registry
                 throw new ArgumentException("Invalid SubKey", nameof(subkey));
             }
 
-            string[] split = subkey.Split(new[] { '\\', '/' }, 2);
+            string[] split = subkey.Split(Utilities.PathSeparators, 2);
 
             int subkeyCellIndex = FindSubKeyCell(split[0]);
             if (subkeyCellIndex < 0)

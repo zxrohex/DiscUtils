@@ -5,6 +5,10 @@
     <IsPackable>false</IsPackable>
     <TargetFrameworks>net40;net45;net48;netcoreapp3.1</TargetFrameworks>
     <RollForward>LatestMajor</RollForward>
+    <LangVersion>Latest</LangVersion>
+    <SignAssembly>true</SignAssembly>
+    <DelaySign>false</DelaySign>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)../SigningKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
 </Project>

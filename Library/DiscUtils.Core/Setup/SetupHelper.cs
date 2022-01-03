@@ -17,7 +17,7 @@ namespace DiscUtils.Setup
             _alreadyLoaded = new HashSet<string>();
 
             // Register the core DiscUtils lib
-            RegisterAssembly(ReflectionHelper.GetAssembly(typeof(SetupHelper)));
+            RegisterAssembly(typeof(SetupHelper).Assembly);
         }
 
         /// <summary>

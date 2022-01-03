@@ -49,16 +49,18 @@ namespace LibraryTests.SquashFs
         [Fact]
         public void CreateDirs()
         {
+            var sep = Path.DirectorySeparatorChar;
+
             MemoryStream fsImage = new MemoryStream();
 
             SquashFileSystemBuilder builder = new SquashFileSystemBuilder();
-            builder.AddFile(@"\adir\anotherdir\file", new MemoryStream(new byte[] { 1, 2, 3, 4 }));
+            builder.AddFile($"{sep}adir{sep}anotherdir{sep}file", new MemoryStream(new byte[] { 1, 2, 3, 4 }));
             builder.Build(fsImage);
 
             SquashFileSystemReader reader = new SquashFileSystemReader(fsImage);
-            Assert.True(reader.DirectoryExists(@"adir"));
-            Assert.True(reader.DirectoryExists(@"adir\anotherdir"));
-            Assert.True(reader.FileExists(@"adir\anotherdir\file"));
+            Assert.True(reader.DirectoryExists($"adir"));
+            Assert.True(reader.DirectoryExists($"adir{sep}anotherdir"));
+            Assert.True(reader.FileExists($"adir{sep}anotherdir{sep}file"));
         }
 
         [Fact]

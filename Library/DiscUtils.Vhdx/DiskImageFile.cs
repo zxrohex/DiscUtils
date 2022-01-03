@@ -872,17 +872,17 @@ namespace DiscUtils.Vhdx
 
             if (locator.Entries.TryGetValue("relative_path", out value))
             {
-                paths.Add(fileLocator.ResolveRelativePath(value));
+                paths.Add(fileLocator.ResolveRelativePath(value.Replace('\\', Path.DirectorySeparatorChar)));
             }
 
             if (locator.Entries.TryGetValue("volume_path", out value))
             {
-                paths.Add(value);
+                paths.Add(value.Replace('\\', Path.DirectorySeparatorChar));
             }
 
             if (locator.Entries.TryGetValue("absolute_win32_path", out value))
             {
-                paths.Add(value);
+                paths.Add(value.Replace('\\', Path.DirectorySeparatorChar));
             }
 
             return paths.ToArray();

@@ -238,9 +238,9 @@ namespace DiscUtils.Internal
         /// <returns>The directory part.</returns>
         public static string GetDirectoryFromPath(string path)
         {
-            string trimmed = path.TrimEnd('\\', '/');
+            string trimmed = path.TrimEnd(PathSeparators);
 
-            int index = trimmed.LastIndexOf('\\');
+            int index = trimmed.LastIndexOfAny(PathSeparators);
             if (index < 0)
             {
                 return string.Empty; // No directory, just a file name
@@ -256,19 +256,15 @@ namespace DiscUtils.Internal
         /// <returns>The file part of the path.</returns>
         public static string GetFileFromPath(string path)
         {
-            string trimmed = path.TrimEnd('\\', '/');
+            string trimmed = path.TrimEnd(PathSeparators);
 
-#if NETFRAMEWORK && !NET461_OR_GREATER
-            int index = trimmed.LastIndexOf('\\');
+            int index = trimmed.LastIndexOfAny(PathSeparators);
             if (index < 0)
             {
                 return trimmed; // No directory, just a file name
             }
 
             return trimmed.Substring(index + 1);
-#else
-            return Path.GetFileName(trimmed);
-#endif
         }
 
         /// <summary>
@@ -342,10 +338,12 @@ namespace DiscUtils.Internal
             return path;
         }
 
+        internal static readonly char[] PathSeparators = { '\\', '/' };
+
         public static string MakeRelativePath(string path, string basePath)
         {
-            var pathElements = path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
-            var basePathElements = basePath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            var pathElements = path.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
+            var basePathElements = basePath.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
 
             if (basePathElements.Length > 0 && basePath[basePath.Length - 1] != Path.DirectorySeparatorChar)
             {

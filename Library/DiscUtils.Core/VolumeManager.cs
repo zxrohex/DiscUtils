@@ -50,7 +50,7 @@ namespace DiscUtils
 
         private Dictionary<string, PhysicalVolumeInfo> _physicalVolumes;
         private Dictionary<string, LogicalVolumeInfo> _logicalVolumes;
-        private static readonly Assembly _coreAssembly = ReflectionHelper.GetAssembly(typeof(VolumeManager));
+        private static readonly Assembly _coreAssembly = typeof(VolumeManager).Assembly;
 
         /// <summary>
         /// Initializes a new instance of the VolumeManager class.
@@ -101,7 +101,7 @@ namespace DiscUtils
         {
             foreach (Type type in assembly.GetTypes())
             {
-                foreach (LogicalVolumeFactoryAttribute attr in ReflectionHelper.GetCustomAttributes(type, typeof(LogicalVolumeFactoryAttribute), false))
+                foreach (LogicalVolumeFactoryAttribute attr in type.GetCustomAttributes<LogicalVolumeFactoryAttribute>(false))
                 {
                     yield return (LogicalVolumeFactory)Activator.CreateInstance(type);
                 }

@@ -119,13 +119,20 @@ namespace LibraryTests.Registry
         [Fact]
         public void SetEnvStringValue()
         {
+            var windir = Environment.GetEnvironmentVariable("windir");
+            if (string.IsNullOrWhiteSpace(windir))
+            {
+                windir = "/Windows";
+                Environment.SetEnvironmentVariable("windir", windir);
+            }
+
             hive.Root.SetValue("value", "string", RegistryValueType.ExpandString);
             Assert.Equal(RegistryValueType.ExpandString, hive.Root.GetValueType("value"));
             Assert.Equal("string", (string)hive.Root.GetValue("value"));
 
             hive.Root.SetValue("value", "str%windir%ing", RegistryValueType.ExpandString);
             Assert.Equal(RegistryValueType.ExpandString, hive.Root.GetValueType("value"));
-            Assert.Equal("str" + Environment.GetEnvironmentVariable("windir") + "ing", (string)hive.Root.GetValue("value"));
+            Assert.Equal($"str{windir}ing", (string)hive.Root.GetValue("value"));
 
             hive.Root.SetValue("emptyvalue", "", RegistryValueType.ExpandString);
             Assert.Equal(RegistryValueType.ExpandString, hive.Root.GetValueType("emptyvalue"));

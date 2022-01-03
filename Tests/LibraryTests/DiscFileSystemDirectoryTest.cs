@@ -47,7 +47,9 @@ namespace LibraryTests
         {
             DiscFileSystem fs = fsFactory();
 
-            DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo(@"SOMEDIR\CHILDDIR");
+            var sep = Path.DirectorySeparatorChar;
+
+            DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR");
             dirInfo.Create();
 
             Assert.Single(fs.Root.GetDirectories());
@@ -99,23 +101,27 @@ namespace LibraryTests
             DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo(@"SOMEDIR\CHILDDIR");
             dirInfo.Create();
 
-            Assert.True(fs.GetDirectoryInfo(@"\").Exists);
-            Assert.True(fs.GetDirectoryInfo(@"SOMEDIR").Exists);
-            Assert.True(fs.GetDirectoryInfo(@"SOMEDIR\CHILDDIR").Exists);
-            Assert.True(fs.GetDirectoryInfo(@"SOMEDIR\CHILDDIR\").Exists);
-            Assert.False(fs.GetDirectoryInfo(@"NONDIR").Exists);
-            Assert.False(fs.GetDirectoryInfo(@"SOMEDIR\NONDIR").Exists);
+            var sep = Path.DirectorySeparatorChar;
+
+            Assert.True(fs.GetDirectoryInfo($"{sep}").Exists);
+            Assert.True(fs.GetDirectoryInfo($"SOMEDIR").Exists);
+            Assert.True(fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR").Exists);
+            Assert.True(fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR{sep}").Exists);
+            Assert.False(fs.GetDirectoryInfo($"NONDIR").Exists);
+            Assert.False(fs.GetDirectoryInfo($"SOMEDIR{sep}NONDIR").Exists);
         }
 
         [Theory]
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void FullName(NewFileSystemDelegate fsFactory)
         {
+            var sep = Path.DirectorySeparatorChar;
+
             DiscFileSystem fs = fsFactory();
 
-            Assert.Equal(@"\", fs.Root.FullName);
-            Assert.Equal(@"SOMEDIR\", fs.GetDirectoryInfo(@"SOMEDIR").FullName);
-            Assert.Equal(@"SOMEDIR\CHILDDIR\", fs.GetDirectoryInfo(@"SOMEDIR\CHILDDIR").FullName);
+            Assert.Equal($"{sep}", fs.Root.FullName);
+            Assert.Equal($"SOMEDIR{sep}", fs.GetDirectoryInfo($"SOMEDIR").FullName);
+            Assert.Equal($"SOMEDIR{sep}CHILDDIR{sep}", fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR").FullName);
         }
 
         [Theory]
@@ -137,10 +143,12 @@ namespace LibraryTests
         {
             DiscFileSystem fs = fsFactory();
 
-            fs.CreateDirectory(@"Fred\child");
+            var sep = Path.DirectorySeparatorChar;
+
+            fs.CreateDirectory($"Fred{sep}child");
             Assert.Single(fs.Root.GetDirectories());
 
-            fs.Root.GetDirectories(@"Fred")[0].Delete(true);
+            fs.Root.GetDirectories($"Fred")[0].Delete(true);
             Assert.Empty(fs.Root.GetDirectories());
         }
 
@@ -182,10 +190,12 @@ namespace LibraryTests
             DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo(@"SOMEDIR");
             Assert.NotNull(dirInfo);
 
+            var sep = Path.DirectorySeparatorChar;
+
             for (int i = 0; i < 2000; ++i)
             {
-                fs.CreateDirectory(@"SOMEDIR\Fred");
-                dirInfo.GetDirectories(@"Fred")[0].Delete();
+                fs.CreateDirectory($"SOMEDIR{sep}Fred");
+                dirInfo.GetDirectories($"Fred")[0].Delete();
             }
         }
 
@@ -195,8 +205,10 @@ namespace LibraryTests
         {
             DiscFileSystem fs = fsFactory();
 
-            fs.CreateDirectory(@"SOMEDIR\CHILD\GCHILD");
-            fs.GetDirectoryInfo(@"SOMEDIR\CHILD").MoveTo("NEWDIR");
+            var sep = Path.DirectorySeparatorChar;
+
+            fs.CreateDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
+            fs.GetDirectoryInfo($"SOMEDIR{sep}CHILD").MoveTo("NEWDIR");
 
             Assert.Equal(2, fs.Root.GetDirectories().Length);
             Assert.Empty(fs.Root.GetDirectories("SOMEDIR")[0].GetDirectories());
@@ -216,14 +228,16 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void GetDirectories(NewFileSystemDelegate fsFactory)
         {
+            var sep = Path.DirectorySeparatorChar;
+
             DiscFileSystem fs = fsFactory();
 
-            fs.CreateDirectory(@"SOMEDIR\CHILD\GCHILD");
-            fs.CreateDirectory(@"A.DIR");
+            fs.CreateDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
+            fs.CreateDirectory($"A.DIR");
 
             Assert.Equal(2, fs.Root.GetDirectories().Length);
 
-            DiscDirectoryInfo someDir = fs.Root.GetDirectories(@"SoMeDir")[0];
+            DiscDirectoryInfo someDir = fs.Root.GetDirectories($"SoMeDir")[0];
             Assert.Single(fs.Root.GetDirectories("SOMEDIR"));
             Assert.Equal("SOMEDIR", someDir.Name);
 
@@ -235,10 +249,10 @@ namespace LibraryTests
             Assert.Equal(2, fs.Root.GetDirectories("*.*", SearchOption.TopDirectoryOnly).Length);
 
             Assert.Single(fs.Root.GetDirectories("*.DIR", SearchOption.AllDirectories));
-            Assert.Equal(@"A.DIR\", fs.Root.GetDirectories("*.DIR", SearchOption.AllDirectories)[0].FullName);
+            Assert.Equal($"A.DIR{sep}", fs.Root.GetDirectories("*.DIR", SearchOption.AllDirectories)[0].FullName);
 
             Assert.Single(fs.Root.GetDirectories("GCHILD", SearchOption.AllDirectories));
-            Assert.Equal(@"SOMEDIR\CHILD\GCHILD\", fs.Root.GetDirectories("GCHILD", SearchOption.AllDirectories)[0].FullName);
+            Assert.Equal($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}", fs.Root.GetDirectories("GCHILD", SearchOption.AllDirectories)[0].FullName);
         }
 
         [Theory]
@@ -256,12 +270,14 @@ namespace LibraryTests
         {
             DiscFileSystem fs = fsFactory();
 
-            fs.CreateDirectory(@"SOMEDIR\CHILD\GCHILD");
-            fs.CreateDirectory(@"AAA.DIR");
-            using (Stream s = fs.OpenFile(@"FOO.TXT", FileMode.Create)) { }
-            using (Stream s = fs.OpenFile(@"SOMEDIR\CHILD.TXT", FileMode.Create)) { }
-            using (Stream s = fs.OpenFile(@"SOMEDIR\FOO.TXT", FileMode.Create)) { }
-            using (Stream s = fs.OpenFile(@"SOMEDIR\CHILD\GCHILD\BAR.TXT", FileMode.Create)) { }
+            var sep = Path.DirectorySeparatorChar;
+
+            fs.CreateDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
+            fs.CreateDirectory($"AAA.DIR");
+            using (Stream s = fs.OpenFile($"FOO.TXT", FileMode.Create)) { }
+            using (Stream s = fs.OpenFile($"SOMEDIR{sep}CHILD.TXT", FileMode.Create)) { }
+            using (Stream s = fs.OpenFile($"SOMEDIR{sep}FOO.TXT", FileMode.Create)) { }
+            using (Stream s = fs.OpenFile($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}BAR.TXT", FileMode.Create)) { }
 
             Assert.Single(fs.Root.GetFiles());
             Assert.Equal("FOO.TXT", fs.Root.GetFiles()[0].FullName);
@@ -276,14 +292,16 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void GetFileSystemInfos(NewFileSystemDelegate fsFactory)
         {
+            var sep = Path.DirectorySeparatorChar;
+
             DiscFileSystem fs = fsFactory();
 
-            fs.CreateDirectory(@"SOMEDIR\CHILD\GCHILD");
-            fs.CreateDirectory(@"AAA.EXT");
-            using (Stream s = fs.OpenFile(@"FOO.TXT", FileMode.Create)) { }
-            using (Stream s = fs.OpenFile(@"SOMEDIR\CHILD.EXT", FileMode.Create)) { }
-            using (Stream s = fs.OpenFile(@"SOMEDIR\FOO.TXT", FileMode.Create)) { }
-            using (Stream s = fs.OpenFile(@"SOMEDIR\CHILD\GCHILD\BAR.TXT", FileMode.Create)) { }
+            fs.CreateDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
+            fs.CreateDirectory($"AAA.EXT");
+            using (Stream s = fs.OpenFile($"FOO.TXT", FileMode.Create)) { }
+            using (Stream s = fs.OpenFile($"SOMEDIR{sep}CHILD.EXT", FileMode.Create)) { }
+            using (Stream s = fs.OpenFile($"SOMEDIR{sep}FOO.TXT", FileMode.Create)) { }
+            using (Stream s = fs.OpenFile($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}BAR.TXT", FileMode.Create)) { }
 
             Assert.Equal(3, fs.Root.GetFileSystemInfos().Length);
 
@@ -341,13 +359,15 @@ namespace LibraryTests
         {
             DiscFileSystem fs = fsFactory();
 
+            var sep = Path.DirectorySeparatorChar;
+
             fs.CreateDirectory("DIR");
             DiscDirectoryInfo di = fs.GetDirectoryInfo("DIR");
 
             DateTime baseTime = DateTime.Now - TimeSpan.FromDays(2);
             di.LastAccessTime = baseTime;
 
-            fs.CreateDirectory(@"DIR\CHILD");
+            fs.CreateDirectory($"DIR{sep}CHILD");
 
             Assert.True(baseTime < di.LastAccessTime);
         }
@@ -358,13 +378,15 @@ namespace LibraryTests
         {
             DiscFileSystem fs = fsFactory();
 
+            var sep = Path.DirectorySeparatorChar;
+
             fs.CreateDirectory("DIR");
             DiscDirectoryInfo di = fs.GetDirectoryInfo("DIR");
 
             DateTime baseTime = DateTime.Now - TimeSpan.FromMinutes(10);
             di.LastWriteTime = baseTime;
 
-            fs.CreateDirectory(@"DIR\CHILD");
+            fs.CreateDirectory($"DIR{sep}CHILD");
 
             Assert.True(baseTime < di.LastWriteTime);
         }

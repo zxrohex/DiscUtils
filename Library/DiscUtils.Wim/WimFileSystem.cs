@@ -641,7 +641,7 @@ namespace DiscUtils.Wim
                 path = Path.DirectorySeparatorChar + path;
             }
 
-            return GetEntry(GetDirectory(0), path.Split('\\', '/'));
+            return GetEntry(GetDirectory(0), path.Split(Utilities.PathSeparators));
         }
 
         private DirectoryEntry GetEntry(List<DirectoryEntry> dir, string[] path)

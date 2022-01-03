@@ -529,7 +529,7 @@ namespace DiscUtils.Vmdk
         /// <returns>The parent locations as an array.</returns>
         public override string[] GetParentLocations()
         {
-            return new[] { _descriptor.ParentFileNameHint };
+            return new[] { _descriptor.ParentFileNameHint.Replace('\\', Path.DirectorySeparatorChar) };
         }
 
         /// <summary>

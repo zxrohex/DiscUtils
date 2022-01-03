@@ -13,13 +13,13 @@ namespace DiscUtils.FileSystems
     {
         public static void SetupFileSystems()
         {
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(ExtFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(FatFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(HfsPlusFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(NtfsFileSystem)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(Disc)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(SquashFileSystemBuilder)));
-            Setup.SetupHelper.RegisterAssembly(ReflectionHelper.GetAssembly(typeof(XfsFileSystem)));
+            Setup.SetupHelper.RegisterAssembly(typeof(ExtFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(FatFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(HfsPlusFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(NtfsFileSystem).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(Disc).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(SquashFileSystemBuilder).Assembly);
+            Setup.SetupHelper.RegisterAssembly(typeof(XfsFileSystem).Assembly);
         }
     }
 }

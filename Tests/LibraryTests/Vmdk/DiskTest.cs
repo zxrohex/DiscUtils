@@ -97,10 +97,12 @@ namespace LibraryTests.Vmdk
         [Fact]
         public void InitializeDifferencing()
         {
+            var sep = Path.DirectorySeparatorChar;
+
             DiscFileSystem fs = new InMemoryFileSystem();
 
-            DiskImageFile baseFile = DiskImageFile.Initialize(fs, @"\base\base.vmdk", 16 * 1024L * 1024 * 1024, DiskCreateType.MonolithicSparse);
-            using (Disk disk = Disk.InitializeDifferencing(fs, @"\diff\diff.vmdk", DiskCreateType.MonolithicSparse, @"\base\base.vmdk"))
+            DiskImageFile baseFile = DiskImageFile.Initialize(fs, $"{sep}base{sep}base.vmdk", 16 * 1024L * 1024 * 1024, DiskCreateType.MonolithicSparse);
+            using (Disk disk = Disk.InitializeDifferencing(fs, $"{sep}diff{sep}diff.vmdk", DiskCreateType.MonolithicSparse, $"{sep}base{sep}base.vmdk"))
             {
                 Assert.NotNull(disk);
                 Assert.True(disk.Geometry.Capacity > 15.8 * 1024L * 1024 * 1024 && disk.Geometry.Capacity < 16 * 1024L * 1024 * 1024);
@@ -114,8 +116,8 @@ namespace LibraryTests.Vmdk
                 Assert.Single(paths);
                 Assert.Equal("diff.vmdk", paths[0]);
             }
-            Assert.True(fs.GetFileLength(@"\diff\diff.vmdk") > 2 * 1024 * 1024);
-            Assert.True(fs.GetFileLength(@"\diff\diff.vmdk") < 4 * 1024 * 1024);
+            Assert.True(fs.GetFileLength($"{sep}diff{sep}diff.vmdk") > 2 * 1024 * 1024);
+            Assert.True(fs.GetFileLength($"{sep}diff{sep}diff.vmdk") < 4 * 1024 * 1024);
         }
 
         [Fact]
@@ -123,16 +125,18 @@ namespace LibraryTests.Vmdk
         {
             DiscFileSystem fs = new InMemoryFileSystem();
 
-            DiskImageFile baseFile = DiskImageFile.Initialize(fs, @"\dir\subdir\base.vmdk", 16 * 1024L * 1024 * 1024, DiskCreateType.MonolithicSparse);
-            using (Disk disk = Disk.InitializeDifferencing(fs, @"\dir\diff.vmdk", DiskCreateType.MonolithicSparse, @"subdir\base.vmdk"))
+            var sep = Path.DirectorySeparatorChar;
+
+            DiskImageFile baseFile = DiskImageFile.Initialize(fs, $"{sep}dir{sep}subdir{sep}base.vmdk", 16 * 1024L * 1024 * 1024, DiskCreateType.MonolithicSparse);
+            using (Disk disk = Disk.InitializeDifferencing(fs, $"{sep}dir{sep}diff.vmdk", DiskCreateType.MonolithicSparse, $"subdir{sep}base.vmdk"))
             {
                 Assert.NotNull(disk);
                 Assert.True(disk.Geometry.Capacity > 15.8 * 1024L * 1024 * 1024 && disk.Geometry.Capacity < 16 * 1024L * 1024 * 1024);
                 Assert.True(disk.Content.Length == 16 * 1024L * 1024 * 1024);
                 Assert.Equal(2, new List<VirtualDiskLayer>(disk.Layers).Count);
             }
-            Assert.True(fs.GetFileLength(@"\dir\diff.vmdk") > 2 * 1024 * 1024);
-            Assert.True(fs.GetFileLength(@"\dir\diff.vmdk") < 4 * 1024 * 1024);
+            Assert.True(fs.GetFileLength($"{sep}dir{sep}diff.vmdk") > 2 * 1024 * 1024);
+            Assert.True(fs.GetFileLength($"{sep}dir{sep}diff.vmdk") < 4 * 1024 * 1024);
         }
 
         [Fact]
