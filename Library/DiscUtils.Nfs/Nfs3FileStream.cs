@@ -96,6 +96,26 @@ namespace DiscUtils.Nfs
             return toCopy;
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int Read(Span<byte> buffer)
+        {
+            int numToRead = (int)Math.Min(_client.FileSystemInfo.ReadMaxBytes, buffer.Length);
+            Nfs3ReadResult readResult = _client.Read(_handle, _position, numToRead);
+
+            int toCopy = Math.Min(buffer.Length, readResult.Count);
+
+            readResult.Data.AsSpan(0, toCopy).CopyTo(buffer);
+
+            if (readResult.Eof)
+            {
+                _length = _position + readResult.Count;
+            }
+
+            _position += toCopy;
+            return toCopy;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             long newPos = offset;

@@ -26,7 +26,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Udf
 {
-    internal class FileContentBuffer : IBuffer
+    internal class FileContentBuffer : Streams.Buffer
     {
         private readonly uint _blockSize;
         private readonly UdfContext _context;
@@ -43,27 +43,27 @@ namespace DiscUtils.Udf
             LoadExtents();
         }
 
-        public bool CanRead
+        public override bool CanRead
         {
             get { return true; }
         }
 
-        public bool CanWrite
+        public override bool CanWrite
         {
             get { return false; }
         }
 
-        public long Capacity
+        public override long Capacity
         {
             get { return (long)_fileEntry.InformationLength; }
         }
 
-        public IEnumerable<StreamExtent> Extents
+        public override IEnumerable<StreamExtent> Extents
         {
             get { throw new NotImplementedException(); }
         }
 
-        public int Read(long pos, byte[] buffer, int offset, int count)
+        public override int Read(long pos, byte[] buffer, int offset, int count)
         {
             if (_fileEntry.InformationControlBlock.AllocationType == AllocationType.Embedded)
             {
@@ -80,24 +80,46 @@ namespace DiscUtils.Udf
             return ReadFromExtents(pos, buffer, offset, count);
         }
 
-        public void Write(long pos, byte[] buffer, int offset, int count)
+        public override void Write(long pos, byte[] buffer, int offset, int count)
         {
             throw new NotImplementedException();
         }
 
-        public void Clear(long pos, int count)
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            if (_fileEntry.InformationControlBlock.AllocationType == AllocationType.Embedded)
+            {
+                byte[] srcBuffer = _fileEntry.AllocationDescriptors;
+                if (pos > srcBuffer.Length)
+                {
+                    return 0;
+                }
+
+                int toCopy = (int)Math.Min(srcBuffer.Length - pos, buffer.Length);
+                srcBuffer.AsSpan((int)pos, toCopy).CopyTo(buffer);
+                return toCopy;
+            }
+            return ReadFromExtents(pos, buffer);
+        }
+
+        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+            throw new NotImplementedException();
+#endif
+
+        public override void Clear(long pos, int count)
         {
             throw new NotSupportedException();
         }
 
-        public void Flush() {}
+        public override void Flush() {}
 
-        public void SetCapacity(long value)
+        public override void SetCapacity(long value)
         {
             throw new NotImplementedException();
         }
 
-        public IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
         {
             throw new NotImplementedException();
         }
@@ -210,6 +232,42 @@ namespace DiscUtils.Udf
 
             return totalRead;
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        private int ReadFromExtents(long pos, Span<byte> buffer)
+        {
+            int totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
+            int totalRead = 0;
+
+            while (totalRead < totalToRead)
+            {
+                CookedExtent extent = FindExtent(pos + totalRead);
+
+                long extentOffset = pos + totalRead - extent.FileContentOffset;
+                int toRead = (int)Math.Min(totalToRead - totalRead, extent.Length - extentOffset);
+
+                Partition part;
+                if (extent.Partition != int.MaxValue)
+                {
+                    part = _context.LogicalPartitions[extent.Partition];
+                }
+                else
+                {
+                    part = _partition;
+                }
+
+                int numRead = part.Content.Read(extent.StartPos + extentOffset, buffer.Slice(totalRead, toRead));
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
 
         private CookedExtent FindExtent(long pos)
         {

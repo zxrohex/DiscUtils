@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
 
@@ -107,10 +109,178 @@ namespace DiscUtils.Ext
             return totalRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (pos > _inode.FileSize)
+            {
+                return 0;
+            }
+
+            long blockSize = _context.SuperBlock.BlockSize;
+
+            int totalRead = 0;
+            int totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
+
+            ExtentBlock extents = _inode.Extents;
+
+            while (totalBytesRemaining > 0)
+            {
+                uint logicalBlock = (uint)((pos + totalRead) / blockSize);
+                int blockOffset = (int)(pos + totalRead - logicalBlock * blockSize);
+
+                int numRead = 0;
+
+                Extent extent = FindExtent(extents, logicalBlock);
+                if (extent == null)
+                {
+                    throw new IOException("Unable to find extent for block " + logicalBlock);
+                }
+                if (extent.FirstLogicalBlock > logicalBlock)
+                {
+                    numRead =
+                        (int)
+                        Math.Min(totalBytesRemaining,
+                            (extent.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+                    Array.Clear(buffer, offset + totalRead, numRead);
+                }
+                else
+                {
+                    long physicalBlock = logicalBlock - extent.FirstLogicalBlock + (long)extent.FirstPhysicalBlock;
+                    int toRead =
+                        (int)
+                        Math.Min(totalBytesRemaining,
+                            (extent.NumBlocks - (logicalBlock - extent.FirstLogicalBlock)) * blockSize - blockOffset);
+
+                    _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
+                    numRead = await _context.RawStream.ReadAsync(buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
+                }
+
+                totalBytesRemaining -= numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (pos > _inode.FileSize)
+            {
+                return 0;
+            }
+
+            long blockSize = _context.SuperBlock.BlockSize;
+
+            int totalRead = 0;
+            int totalBytesRemaining = (int)Math.Min(buffer.Length, _inode.FileSize - pos);
+
+            ExtentBlock extents = _inode.Extents;
+
+            while (totalBytesRemaining > 0)
+            {
+                uint logicalBlock = (uint)((pos + totalRead) / blockSize);
+                int blockOffset = (int)(pos + totalRead - logicalBlock * blockSize);
+
+                int numRead = 0;
+
+                Extent extent = FindExtent(extents, logicalBlock);
+                if (extent == null)
+                {
+                    throw new IOException("Unable to find extent for block " + logicalBlock);
+                }
+                if (extent.FirstLogicalBlock > logicalBlock)
+                {
+                    numRead =
+                        (int)
+                        Math.Min(totalBytesRemaining,
+                            (extent.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+                    buffer.Span.Slice(totalRead, numRead).Clear();
+                }
+                else
+                {
+                    long physicalBlock = logicalBlock - extent.FirstLogicalBlock + (long)extent.FirstPhysicalBlock;
+                    int toRead =
+                        (int)
+                        Math.Min(totalBytesRemaining,
+                            (extent.NumBlocks - (logicalBlock - extent.FirstLogicalBlock)) * blockSize - blockOffset);
+
+                    _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
+                    numRead = await _context.RawStream.ReadAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+                }
+
+                totalBytesRemaining -= numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            if (pos > _inode.FileSize)
+            {
+                return 0;
+            }
+
+            long blockSize = _context.SuperBlock.BlockSize;
+
+            int totalRead = 0;
+            int totalBytesRemaining = (int)Math.Min(buffer.Length, _inode.FileSize - pos);
+
+            ExtentBlock extents = _inode.Extents;
+
+            while (totalBytesRemaining > 0)
+            {
+                uint logicalBlock = (uint)((pos + totalRead) / blockSize);
+                int blockOffset = (int)(pos + totalRead - logicalBlock * blockSize);
+
+                int numRead = 0;
+
+                Extent extent = FindExtent(extents, logicalBlock);
+                if (extent == null)
+                {
+                    throw new IOException("Unable to find extent for block " + logicalBlock);
+                }
+                if (extent.FirstLogicalBlock > logicalBlock)
+                {
+                    numRead =
+                        (int)
+                        Math.Min(totalBytesRemaining,
+                            (extent.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+                    buffer.Slice(totalRead, numRead).Clear();
+                }
+                else
+                {
+                    long physicalBlock = logicalBlock - extent.FirstLogicalBlock + (long)extent.FirstPhysicalBlock;
+                    int toRead =
+                        (int)
+                        Math.Min(totalBytesRemaining,
+                            (extent.NumBlocks - (logicalBlock - extent.FirstLogicalBlock)) * blockSize - blockOffset);
+
+                    _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
+                    numRead = _context.RawStream.Read(buffer.Slice(totalRead, toRead));
+                }
+
+                totalBytesRemaining -= numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
         public override void Write(long pos, byte[] buffer, int offset, int count)
         {
             throw new NotImplementedException();
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+            throw new NotImplementedException();
+#endif
 
         public override void SetCapacity(long value)
         {

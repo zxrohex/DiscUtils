@@ -20,8 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -109,10 +112,34 @@ namespace DiscUtils.Streams
             WrappedStream.Flush();
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task FlushAsync(CancellationToken cancellationToken) =>
+            WrappedStream.FlushAsync(cancellationToken);
+#endif
+
         public override int Read(byte[] buffer, int offset, int count)
         {
             return WrappedStream.Read(buffer, offset, count);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            return WrappedStream.ReadAsync(buffer, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            return WrappedStream.ReadAsync(buffer, cancellationToken);
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            return WrappedStream.Read(buffer);
+        }
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {
@@ -141,6 +168,25 @@ namespace DiscUtils.Streams
         {
             WrappedStream.Write(buffer, offset, count);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            return WrappedStream.WriteAsync(buffer, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            return WrappedStream.WriteAsync(buffer, cancellationToken);
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            WrappedStream.Write(buffer);
+        }
+#endif
 
         protected override void Dispose(bool disposing)
         {

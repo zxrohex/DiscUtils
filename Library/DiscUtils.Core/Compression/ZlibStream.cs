@@ -23,6 +23,8 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Compression
@@ -184,6 +186,22 @@ namespace DiscUtils.Compression
             _adler32.Process(buffer, offset, numRead);
             return numRead;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+            ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+
+        public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
+
+        public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckParams(buffer, offset, count);
+
+            int numRead = await _deflateStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            _adler32.Process(buffer, offset, numRead);
+            return numRead;
+        }
+#endif
 
         /// <summary>
         /// Seeks to a new position.

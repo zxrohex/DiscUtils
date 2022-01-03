@@ -629,7 +629,7 @@ namespace DiscUtils.Vhd
                     }
                     else
                     {
-                        relPaths.Add(fileLocator.ResolveRelativePath(locationVal));
+                        relPaths.Add(fileLocator.ResolveRelativePath(locationVal.Replace('\\', Path.DirectorySeparatorChar)));
                     }
                 }
             }

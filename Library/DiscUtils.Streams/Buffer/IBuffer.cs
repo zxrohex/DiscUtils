@@ -20,7 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -65,6 +68,40 @@ namespace DiscUtils.Streams
         /// <returns>The actual number of bytes read.</returns>
         int Read(long pos, byte[] buffer, int offset, int count);
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Reads from the buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken);
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Reads from the buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Reads from the buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        int Read(long pos, Span<byte> buffer);
+#endif
+
         /// <summary>
         /// Writes a byte array into the buffer.
         /// </summary>
@@ -73,6 +110,37 @@ namespace DiscUtils.Streams
         /// <param name="offset">The start offset within the source byte array.</param>
         /// <param name="count">The number of bytes to write.</param>
         void Write(long pos, byte[] buffer, int offset, int count);
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Writes a byte array into the buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the buffer.</param>
+        /// <param name="buffer">The source byte array.</param>
+        /// <param name="offset">The start offset within the source byte array.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken);
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Writes a byte array into the buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the buffer.</param>
+        /// <param name="buffer">The source byte array.</param>
+        /// <param name="offset">The start offset within the source byte array.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Writes a byte array into the buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the buffer.</param>
+        /// <param name="buffer">The source byte array.</param>
+        /// <param name="offset">The start offset within the source byte array.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        void Write(long pos, ReadOnlySpan<byte> buffer);
+#endif
 
         /// <summary>
         /// Clears bytes from the buffer.

@@ -22,6 +22,7 @@
 
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
+using System.IO;
 
 namespace DiscUtils.Ext
 {
@@ -36,7 +37,7 @@ namespace DiscUtils.Ext
             {
                 IBuffer content = FileContent;
                 byte[] data = StreamUtilities.ReadExact(content, 0, (int)content.Capacity);
-                return EndianUtilities.BytesToZString(data, 0, data.Length).Replace('/', '\\');
+                return EndianUtilities.BytesToZString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
             }
         }
     }

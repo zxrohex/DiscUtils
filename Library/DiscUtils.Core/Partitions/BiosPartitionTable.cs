@@ -57,6 +57,8 @@ namespace DiscUtils.Partitions
             Init(disk, diskGeometry);
         }
 
+        public Geometry DiskGeometry => _diskGeometry;
+
         /// <summary>
         /// Gets a collection of the partitions for storing Operating System file-systems.
         /// </summary>
@@ -82,7 +84,14 @@ namespace DiscUtils.Partitions
         /// </summary>
         public override Guid DiskGuid
         {
-            get { return Guid.Empty; }
+            get
+            {
+                _diskData.Position = 0;
+                var rawsig = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
+                var guid = new byte[16];
+                System.Buffer.BlockCopy(rawsig, 0x1B8, guid, 0, 4);
+                return new(guid);
+            }
         }
 
         /// <summary>
@@ -219,14 +228,14 @@ namespace DiscUtils.Partitions
             Stream data = disk;
 
             byte[] bootSector;
-            if (data.Length >= Sizes.Sector)
+            if (data.Length >= diskGeometry.BytesPerSector)
             {
                 data.Position = 0;
-                bootSector = StreamUtilities.ReadExact(data, Sizes.Sector);
+                bootSector = StreamUtilities.ReadExact(data, diskGeometry.BytesPerSector);
             }
             else
             {
-                bootSector = new byte[Sizes.Sector];
+                bootSector = new byte[diskGeometry.BytesPerSector];
             }
 
             // Wipe all four 16-byte partition table entries
@@ -262,7 +271,7 @@ namespace DiscUtils.Partitions
             long lastLba = allocationGeometry.ToLogicalBlockAddress(last);
 
             return CreatePrimaryByCylinder(0, allocationGeometry.Cylinders - 1,
-                ConvertType(type, (lastLba - startLba) * Sizes.Sector), active);
+                ConvertType(type, (lastLba - startLba) * _diskGeometry.BytesPerSector), active);
         }
 
         /// <summary>
@@ -348,7 +357,7 @@ namespace DiscUtils.Partitions
             long start = FindGap(size / _diskGeometry.BytesPerSector, alignment / _diskGeometry.BytesPerSector);
 
             return CreatePrimaryBySector(start, start + sectorLength - 1,
-                ConvertType(type, sectorLength * Sizes.Sector), active);
+                ConvertType(type, sectorLength * _diskGeometry.BytesPerSector), active);
         }
 
         /// <summary>
@@ -471,12 +480,16 @@ namespace DiscUtils.Partitions
         /// <remarks>The supplied index is the index within the primary partition, see <c>PrimaryIndex</c> on <c>BiosPartitionInfo</c>.</remarks>
         public void SetActivePartition(int index)
         {
-            List<BiosPartitionRecord> records = new List<BiosPartitionRecord>(GetPrimaryRecords());
+            var records = GetPrimaryRecords();
 
-            for (int i = 0; i < records.Count; ++i)
+            for (var i = 0; i < records.Length; ++i)
             {
-                records[i].Status = i == index ? (byte)0x80 : (byte)0x00;
-                WriteRecord(i, records[i]);
+                var new_status = i == index ? (byte)0x80 : (byte)0x00;
+                if (records[i].Status != new_status)
+                {
+                    records[i].Status = new_status;
+                    WriteRecord(i, records[i]);
+                }
             }
         }
 
@@ -484,7 +497,7 @@ namespace DiscUtils.Partitions
         /// Gets all of the disk ranges containing partition table metadata.
         /// </summary>
         /// <returns>Set of stream extents, indicated as byte offset from the start of the disk.</returns>
-        public IEnumerable<StreamExtent> GetMetadataDiskExtents()
+        public List<StreamExtent> GetMetadataDiskExtents()
         {
             List<StreamExtent> extents = new List<StreamExtent>();
 
@@ -514,7 +527,7 @@ namespace DiscUtils.Partitions
         public void UpdateBiosGeometry(Geometry geometry)
         {
             _diskData.Position = 0;
-            byte[] bootSector = StreamUtilities.ReadExact(_diskData, Sizes.Sector);
+            byte[] bootSector = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
 
             BiosPartitionRecord[] records = ReadPrimaryRecords(bootSector);
             for (int i = 0; i < records.Length; ++i)
@@ -602,7 +615,7 @@ namespace DiscUtils.Partitions
             }
         }
 
-        private BiosPartitionRecord[] GetAllRecords()
+        private List<BiosPartitionRecord> GetAllRecords()
         {
             List<BiosPartitionRecord> newList = new List<BiosPartitionRecord>();
 
@@ -621,13 +634,13 @@ namespace DiscUtils.Partitions
                 }
             }
 
-            return newList.ToArray();
+            return newList;
         }
 
         private BiosPartitionRecord[] GetPrimaryRecords()
         {
             _diskData.Position = 0;
-            byte[] bootSector = StreamUtilities.ReadExact(_diskData, Sizes.Sector);
+            byte[] bootSector = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
 
             return ReadPrimaryRecords(bootSector);
         }
@@ -640,7 +653,7 @@ namespace DiscUtils.Partitions
         private void WriteRecord(int i, BiosPartitionRecord newRecord)
         {
             _diskData.Position = 0;
-            byte[] bootSector = StreamUtilities.ReadExact(_diskData, Sizes.Sector);
+            byte[] bootSector = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
             newRecord.WriteTo(bootSector, 0x01BE + i * 16);
             _diskData.Position = 0;
             _diskData.Write(bootSector, 0, bootSector.Length);
@@ -724,7 +737,7 @@ namespace DiscUtils.Partitions
             _diskGeometry = diskGeometry;
 
             _diskData.Position = 0;
-            byte[] bootSector = StreamUtilities.ReadExact(_diskData, Sizes.Sector);
+            byte[] bootSector = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
             if (bootSector[510] != 0x55 || bootSector[511] != 0xAA)
             {
                 throw new IOException("Invalid boot sector - no magic number 0xAA55");

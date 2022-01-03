@@ -46,7 +46,7 @@ namespace DiscUtils.Xfs
                 IBuffer content = FileContent;
                 byte[] data = StreamUtilities.ReadExact(content, 0, (int)Inode.Length);
 
-                return Context.Options.FileNameEncoding.GetString(data, 0, data.Length).Replace('/', '\\');
+                return Context.Options.FileNameEncoding.GetString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
             }
         }
     }

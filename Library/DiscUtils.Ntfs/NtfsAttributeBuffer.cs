@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
 
@@ -127,6 +129,168 @@ namespace DiscUtils.Ntfs
             return totalToRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            AttributeRecord record = _attribute.PrimaryRecord;
+
+            if (!CanRead)
+            {
+                throw new IOException("Attempt to read from file not opened for read");
+            }
+
+            StreamUtilities.AssertBufferParameters(buffer, offset, count);
+
+            if (pos >= Capacity)
+            {
+                return 0;
+            }
+
+            // Limit read to length of attribute
+            int totalToRead = (int)Math.Min(count, Capacity - pos);
+            int toRead = totalToRead;
+
+            // Handle uninitialized bytes at end of attribute
+            if (pos + totalToRead > record.InitializedDataLength)
+            {
+                if (pos >= record.InitializedDataLength)
+                {
+                    // We're just reading zero bytes from the uninitialized area
+                    Array.Clear(buffer, offset, totalToRead);
+                    pos += totalToRead;
+                    return totalToRead;
+                }
+
+                // Partial read of uninitialized area
+                Array.Clear(buffer, offset + (int)(record.InitializedDataLength - pos),
+                    (int)(pos + toRead - record.InitializedDataLength));
+                toRead = (int)(record.InitializedDataLength - pos);
+            }
+
+            int numRead = 0;
+            while (numRead < toRead)
+            {
+                IBuffer extentBuffer = _attribute.RawBuffer;
+
+                int justRead = await extentBuffer.ReadAsync(pos + numRead, buffer, offset + numRead, toRead - numRead, cancellationToken).ConfigureAwait(false);
+                if (justRead == 0)
+                {
+                    break;
+                }
+
+                numRead += justRead;
+            }
+
+            return totalToRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            AttributeRecord record = _attribute.PrimaryRecord;
+
+            if (!CanRead)
+            {
+                throw new IOException("Attempt to read from file not opened for read");
+            }
+
+            if (pos >= Capacity)
+            {
+                return 0;
+            }
+
+            // Limit read to length of attribute
+            int totalToRead = (int)Math.Min(buffer.Length, Capacity - pos);
+            int toRead = totalToRead;
+
+            // Handle uninitialized bytes at end of attribute
+            if (pos + totalToRead > record.InitializedDataLength)
+            {
+                if (pos >= record.InitializedDataLength)
+                {
+                    // We're just reading zero bytes from the uninitialized area
+                    buffer.Span[..totalToRead].Clear();
+                    pos += totalToRead;
+                    return totalToRead;
+                }
+
+                // Partial read of uninitialized area
+                buffer.Span.Slice((int)(record.InitializedDataLength - pos),
+                    (int)(pos + toRead - record.InitializedDataLength)).Clear();
+                toRead = (int)(record.InitializedDataLength - pos);
+            }
+
+            int numRead = 0;
+            while (numRead < toRead)
+            {
+                IBuffer extentBuffer = _attribute.RawBuffer;
+
+                int justRead = await extentBuffer.ReadAsync(pos + numRead, buffer[numRead..toRead], cancellationToken).ConfigureAwait(false);
+                if (justRead == 0)
+                {
+                    break;
+                }
+
+                numRead += justRead;
+            }
+
+            return totalToRead;
+        }
+
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            AttributeRecord record = _attribute.PrimaryRecord;
+
+            if (!CanRead)
+            {
+                throw new IOException("Attempt to read from file not opened for read");
+            }
+
+            if (pos >= Capacity)
+            {
+                return 0;
+            }
+
+            // Limit read to length of attribute
+            int totalToRead = (int)Math.Min(buffer.Length, Capacity - pos);
+            int toRead = totalToRead;
+
+            // Handle uninitialized bytes at end of attribute
+            if (pos + totalToRead > record.InitializedDataLength)
+            {
+                if (pos >= record.InitializedDataLength)
+                {
+                    // We're just reading zero bytes from the uninitialized area
+                    buffer[..totalToRead].Clear();
+                    pos += totalToRead;
+                    return totalToRead;
+                }
+
+                // Partial read of uninitialized area
+                buffer.Slice((int)(record.InitializedDataLength - pos),
+                    (int)(pos + toRead - record.InitializedDataLength)).Clear();
+                toRead = (int)(record.InitializedDataLength - pos);
+            }
+
+            int numRead = 0;
+            while (numRead < toRead)
+            {
+                IBuffer extentBuffer = _attribute.RawBuffer;
+
+                int justRead = extentBuffer.Read(pos + numRead, buffer[numRead..toRead]);
+                if (justRead == 0)
+                {
+                    break;
+                }
+
+                numRead += justRead;
+            }
+
+            return totalToRead;
+        }
+#endif
+
         public override void SetCapacity(long value)
         {
             if (!CanWrite)
@@ -166,6 +330,78 @@ namespace DiscUtils.Ntfs
                 _file.MarkMftRecordDirty();
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            AttributeRecord record = _attribute.PrimaryRecord;
+
+            if (!CanWrite)
+            {
+                throw new IOException("Attempt to write to file not opened for write");
+            }
+
+            StreamUtilities.AssertBufferParameters(buffer, offset, count);
+
+            if (count == 0)
+            {
+                return;
+            }
+
+            await _attribute.RawBuffer.WriteAsync(pos, buffer, offset, count, cancellationToken).ConfigureAwait(false);
+
+            if (!record.IsNonResident)
+            {
+                _file.MarkMftRecordDirty();
+            }
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            AttributeRecord record = _attribute.PrimaryRecord;
+
+            if (!CanWrite)
+            {
+                throw new IOException("Attempt to write to file not opened for write");
+            }
+
+            if (buffer.Length == 0)
+            {
+                return;
+            }
+
+            await _attribute.RawBuffer.WriteAsync(pos, buffer, cancellationToken).ConfigureAwait(false);
+
+            if (!record.IsNonResident)
+            {
+                _file.MarkMftRecordDirty();
+            }
+        }
+
+        public override void Write(long pos, ReadOnlySpan<byte> buffer)
+        {
+            AttributeRecord record = _attribute.PrimaryRecord;
+
+            if (!CanWrite)
+            {
+                throw new IOException("Attempt to write to file not opened for write");
+            }
+
+            if (buffer.Length == 0)
+            {
+                return;
+            }
+
+            _attribute.RawBuffer.Write(pos, buffer);
+
+            if (!record.IsNonResident)
+            {
+                _file.MarkMftRecordDirty();
+            }
+        }
+#endif
 
         public override void Clear(long pos, int count)
         {

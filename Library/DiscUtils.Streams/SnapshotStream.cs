@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -234,6 +236,18 @@ namespace DiscUtils.Streams
             _baseStream.Flush();
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Flushes the stream.
+        /// </summary>
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            CheckFrozen();
+
+            return _baseStream.FlushAsync(cancellationToken);
+        }
+#endif
+
         /// <summary>
         /// Reads data from the stream.
         /// </summary>
@@ -296,6 +310,199 @@ namespace DiscUtils.Streams
 
             return numRead;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Reads data from the stream.
+        /// </summary>
+        /// <param name="buffer">The buffer to fill.</param>
+        /// <param name="offset">The buffer offset to start from.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The number of bytes read.</returns>
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            int numRead;
+
+            if (_diffStream == null)
+            {
+                _baseStream.Position = _position;
+                numRead = await _baseStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                if (_position > _diffStream.Length)
+                {
+                    throw new IOException("Attempt to read beyond end of file");
+                }
+
+                int toRead = (int)Math.Min(count, _diffStream.Length - _position);
+
+                // If the read is within the base stream's range, then touch it first to get the
+                // (potentially) stale data.
+                if (_position < _baseStream.Length)
+                {
+                    int baseToRead = (int)Math.Min(toRead, _baseStream.Length - _position);
+                    _baseStream.Position = _position;
+
+                    int totalBaseRead = 0;
+                    while (totalBaseRead < baseToRead)
+                    {
+                        totalBaseRead += await _baseStream.ReadAsync(buffer, offset + totalBaseRead, baseToRead - totalBaseRead, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
+                // Now overlay any data from the overlay stream (if any)
+                IEnumerable<StreamExtent> overlayExtents = StreamExtent.Intersect(_diffExtents,
+                    new StreamExtent(_position, toRead));
+                foreach (StreamExtent extent in overlayExtents)
+                {
+                    _diffStream.Position = extent.Start;
+                    int overlayNumRead = 0;
+                    while (overlayNumRead < extent.Length)
+                    {
+                        overlayNumRead += await _diffStream.ReadAsync(
+                            buffer,
+                            (int)(offset + (extent.Start - _position) + overlayNumRead),
+                            (int)(extent.Length - overlayNumRead), cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
+                numRead = toRead;
+            }
+
+            _position += numRead;
+
+            return numRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Reads data from the stream.
+        /// </summary>
+        /// <param name="buffer">The buffer to fill.</param>
+        /// <param name="offset">The buffer offset to start from.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The number of bytes read.</returns>
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            int numRead;
+
+            if (_diffStream == null)
+            {
+                _baseStream.Position = _position;
+                numRead = await _baseStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                if (_position > _diffStream.Length)
+                {
+                    throw new IOException("Attempt to read beyond end of file");
+                }
+
+                int toRead = (int)Math.Min(buffer.Length, _diffStream.Length - _position);
+
+                // If the read is within the base stream's range, then touch it first to get the
+                // (potentially) stale data.
+                if (_position < _baseStream.Length)
+                {
+                    int baseToRead = (int)Math.Min(toRead, _baseStream.Length - _position);
+                    _baseStream.Position = _position;
+
+                    int totalBaseRead = 0;
+                    while (totalBaseRead < baseToRead)
+                    {
+                        totalBaseRead += await _baseStream.ReadAsync(buffer[totalBaseRead..baseToRead], cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
+                // Now overlay any data from the overlay stream (if any)
+                IEnumerable<StreamExtent> overlayExtents = StreamExtent.Intersect(_diffExtents,
+                    new StreamExtent(_position, toRead));
+                foreach (StreamExtent extent in overlayExtents)
+                {
+                    _diffStream.Position = extent.Start;
+                    int overlayNumRead = 0;
+                    while (overlayNumRead < extent.Length)
+                    {
+                        overlayNumRead += await _diffStream.ReadAsync(
+                            buffer.Slice(
+                            (int)((extent.Start - _position) + overlayNumRead),
+                            (int)(extent.Length - overlayNumRead)), cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
+                numRead = toRead;
+            }
+
+            _position += numRead;
+
+            return numRead;
+        }
+
+        /// <summary>
+        /// Reads data from the stream.
+        /// </summary>
+        /// <param name="buffer">The buffer to fill.</param>
+        /// <param name="offset">The buffer offset to start from.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The number of bytes read.</returns>
+        public override int Read(Span<byte> buffer)
+        {
+            int numRead;
+
+            if (_diffStream == null)
+            {
+                _baseStream.Position = _position;
+                numRead = _baseStream.Read(buffer);
+            }
+            else
+            {
+                if (_position > _diffStream.Length)
+                {
+                    throw new IOException("Attempt to read beyond end of file");
+                }
+
+                int toRead = (int)Math.Min(buffer.Length, _diffStream.Length - _position);
+
+                // If the read is within the base stream's range, then touch it first to get the
+                // (potentially) stale data.
+                if (_position < _baseStream.Length)
+                {
+                    int baseToRead = (int)Math.Min(toRead, _baseStream.Length - _position);
+                    _baseStream.Position = _position;
+
+                    int totalBaseRead = 0;
+                    while (totalBaseRead < baseToRead)
+                    {
+                        totalBaseRead += _baseStream.Read(buffer[totalBaseRead..baseToRead]);
+                    }
+                }
+
+                // Now overlay any data from the overlay stream (if any)
+                IEnumerable<StreamExtent> overlayExtents = StreamExtent.Intersect(_diffExtents,
+                    new StreamExtent(_position, toRead));
+                foreach (StreamExtent extent in overlayExtents)
+                {
+                    _diffStream.Position = extent.Start;
+                    int overlayNumRead = 0;
+                    while (overlayNumRead < extent.Length)
+                    {
+                        overlayNumRead += _diffStream.Read(
+                            buffer.Slice(
+                            (int)((extent.Start - _position) + overlayNumRead),
+                            (int)(extent.Length - overlayNumRead)));
+                    }
+                }
+
+                numRead = toRead;
+            }
+
+            _position += numRead;
+
+            return numRead;
+        }
+#endif
 
         /// <summary>
         /// Moves the stream position.
@@ -372,6 +579,100 @@ namespace DiscUtils.Streams
                 _position += count;
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Writes data to the stream at the current location.
+        /// </summary>
+        /// <param name="buffer">The data to write.</param>
+        /// <param name="offset">The first byte to write from buffer.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckFrozen();
+
+            if (_diffStream != null)
+            {
+                _diffStream.Position = _position;
+                await _diffStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+
+                // Beware of Linq's delayed model - force execution now by placing into a list.
+                // Without this, large execution chains can build up (v. slow) and potential for stack overflow.
+                _diffExtents =
+                    new List<StreamExtent>(StreamExtent.Union(_diffExtents, new StreamExtent(_position, count)));
+
+                _position += count;
+            }
+            else
+            {
+                _baseStream.Position = _position;
+                await _baseStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+                _position += count;
+            }
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Writes data to the stream at the current location.
+        /// </summary>
+        /// <param name="buffer">The data to write.</param>
+        /// <param name="offset">The first byte to write from buffer.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            CheckFrozen();
+
+            if (_diffStream != null)
+            {
+                _diffStream.Position = _position;
+                await _diffStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+
+                // Beware of Linq's delayed model - force execution now by placing into a list.
+                // Without this, large execution chains can build up (v. slow) and potential for stack overflow.
+                _diffExtents =
+                    new List<StreamExtent>(StreamExtent.Union(_diffExtents, new StreamExtent(_position, buffer.Length)));
+
+                _position += buffer.Length;
+            }
+            else
+            {
+                _baseStream.Position = _position;
+                await _baseStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+                _position += buffer.Length;
+            }
+        }
+
+        /// <summary>
+        /// Writes data to the stream at the current location.
+        /// </summary>
+        /// <param name="buffer">The data to write.</param>
+        /// <param name="offset">The first byte to write from buffer.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            CheckFrozen();
+
+            if (_diffStream != null)
+            {
+                _diffStream.Position = _position;
+                _diffStream.Write(buffer);
+
+                // Beware of Linq's delayed model - force execution now by placing into a list.
+                // Without this, large execution chains can build up (v. slow) and potential for stack overflow.
+                _diffExtents =
+                    new List<StreamExtent>(StreamExtent.Union(_diffExtents, new StreamExtent(_position, buffer.Length)));
+
+                _position += buffer.Length;
+            }
+            else
+            {
+                _baseStream.Position = _position;
+                _baseStream.Write(buffer);
+                _position += buffer.Length;
+            }
+        }
+#endif
 
         /// <summary>
         /// Disposes of this instance.

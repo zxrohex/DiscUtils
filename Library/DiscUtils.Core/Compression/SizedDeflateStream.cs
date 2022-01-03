@@ -20,9 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams;
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Compression
 {
@@ -60,5 +63,38 @@ namespace DiscUtils.Compression
             _position += read;
             return read;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+            ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+
+        public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
+
+        public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            var read = await base.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            _position += read;
+            return read;
+        }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+        public override int Read(Span<byte> buffer)
+        {
+            var read = base.Read(buffer);
+            _position += read;
+            return read;
+        }
+
+        public async override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var read = await base.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            _position += read;
+            return read;
+        }
+
+#endif
+
+#endif
     }
 }

@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Vmdk
@@ -109,6 +111,14 @@ namespace DiscUtils.Vmdk
                 _streamView.Position = diskOffset - Start;
                 return _streamView.Read(block, offset, count);
             }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override int Read(long diskOffset, Span<byte> block)
+            {
+                _streamView.Position = diskOffset - Start;
+                return _streamView.Read(block);
+            }
+#endif
 
             public override void DisposeReadState()
             {
@@ -199,6 +209,28 @@ namespace DiscUtils.Vmdk
                 _content.Position = _grainMapping[grainIdx] * grainSize + grainOffset;
                 return _content.Read(block, offset, maxToRead);
             }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override int Read(long diskOffset, Span<byte> block)
+            {
+                long relOffset = diskOffset - Start;
+
+                if (relOffset < _grainTableStream.Length)
+                {
+                    _grainTableStream.Position = relOffset;
+                    return _grainTableStream.Read(block);
+                }
+                long grainSize = _header.GrainSize * Sizes.Sector;
+                int grainIdx = (int)((relOffset - _grainTableStream.Length) / grainSize);
+                long grainOffset = relOffset - _grainTableStream.Length - grainIdx * grainSize;
+
+                int maxToRead =
+                    (int)Math.Min(block.Length, grainSize * _grainContiguousRangeMapping[grainIdx] - grainOffset);
+
+                _content.Position = _grainMapping[grainIdx] * grainSize + grainOffset;
+                return _content.Read(block[..maxToRead]);
+            }
+#endif
 
             public override void DisposeReadState()
             {

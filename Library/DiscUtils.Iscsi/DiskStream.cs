@@ -99,6 +99,31 @@ namespace DiscUtils.Iscsi
             return numCopied;
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int Read(Span<byte> buffer)
+        {
+            if (!CanRead)
+            {
+                throw new InvalidOperationException("Attempt to read from read-only stream");
+            }
+
+            int maxToRead = (int)Math.Min(_length - _position, buffer.Length);
+
+            long firstBlock = _position / _blockSize;
+            long lastBlock = MathUtilities.Ceil(_position + maxToRead, _blockSize);
+
+            byte[] tempBuffer = new byte[(lastBlock - firstBlock) * _blockSize];
+            int numRead = _session.Read(_lun, firstBlock, (short)(lastBlock - firstBlock), tempBuffer, 0);
+
+            int numCopied = Math.Min(maxToRead, numRead);
+            tempBuffer.AsSpan((int)(_position - firstBlock * _blockSize), numCopied).CopyTo(buffer);
+
+            _position += numCopied;
+
+            return numCopied;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             long effectiveOffset = offset;

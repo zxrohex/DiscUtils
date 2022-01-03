@@ -314,6 +314,36 @@ namespace DiscUtils.Ntfs
             }
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void ReadClusters(long startVcn, int count, Span<byte> buffer)
+        {
+            int runIdx = 0;
+            int totalRead = 0;
+            while (totalRead < count)
+            {
+                long focusVcn = startVcn + totalRead;
+
+                runIdx = _cookedRuns.FindDataRun(focusVcn, runIdx);
+                CookedDataRun run = _cookedRuns[runIdx];
+
+                int toRead = (int)Math.Min(count - totalRead, run.Length - (focusVcn - run.StartVcn));
+
+                if (run.IsSparse)
+                {
+                    buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster).Clear();
+                }
+                else
+                {
+                    long lcn = _cookedRuns[runIdx].StartLcn + (focusVcn - run.StartVcn);
+                    _fsStream.Position = lcn * _bytesPerCluster;
+                    StreamUtilities.ReadExact(_fsStream, buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster));
+                }
+
+                totalRead += toRead;
+            }
+        }
+#endif
+
         public override int WriteClusters(long startVcn, int count, byte[] buffer, int offset)
         {
             StreamUtilities.AssertBufferParameters(buffer, offset, count * _bytesPerCluster);
@@ -343,6 +373,36 @@ namespace DiscUtils.Ntfs
 
             return 0;
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer)
+        {
+            int runIdx = 0;
+            int totalWritten = 0;
+            while (totalWritten < count)
+            {
+                long focusVcn = startVcn + totalWritten;
+
+                runIdx = _cookedRuns.FindDataRun(focusVcn, runIdx);
+                CookedDataRun run = _cookedRuns[runIdx];
+
+                if (run.IsSparse)
+                {
+                    throw new NotImplementedException("Writing to sparse datarun");
+                }
+
+                int toWrite = (int)Math.Min(count - totalWritten, run.Length - (focusVcn - run.StartVcn));
+
+                long lcn = _cookedRuns[runIdx].StartLcn + (focusVcn - run.StartVcn);
+                _fsStream.Position = lcn * _bytesPerCluster;
+                _fsStream.Write(buffer.Slice(totalWritten * _bytesPerCluster, toWrite * _bytesPerCluster));
+
+                totalWritten += toWrite;
+            }
+
+            return 0;
+        }
+#endif
 
         public override int ClearClusters(long startVcn, int count)
         {

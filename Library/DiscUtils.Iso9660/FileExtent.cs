@@ -20,8 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Iso9660
@@ -75,6 +78,82 @@ namespace DiscUtils.Iso9660
 
             return totalRead;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+        {
+            long relPos = diskOffset - Start;
+            int totalRead = 0;
+
+            // Don't arbitrarily set position, just in case stream implementation is
+            // non-seeking, and we're doing sequential reads
+            if (_readStream.Position != relPos)
+            {
+                _readStream.Position = relPos;
+            }
+
+            // Read up to EOF
+            int numRead = await _readStream.ReadAsync(block, offset, count, cancellationToken).ConfigureAwait(false);
+            totalRead += numRead;
+            while (numRead > 0 && totalRead < count)
+            {
+                numRead = await _readStream.ReadAsync(block, offset + totalRead, count - totalRead, cancellationToken).ConfigureAwait(false);
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
+        {
+            long relPos = diskOffset - Start;
+            int totalRead = 0;
+
+            // Don't arbitrarily set position, just in case stream implementation is
+            // non-seeking, and we're doing sequential reads
+            if (_readStream.Position != relPos)
+            {
+                _readStream.Position = relPos;
+            }
+
+            // Read up to EOF
+            int numRead = await _readStream.ReadAsync(block, cancellationToken).ConfigureAwait(false);
+            totalRead += numRead;
+            while (numRead > 0 && totalRead < block.Length)
+            {
+                numRead = await _readStream.ReadAsync(block[totalRead..], cancellationToken).ConfigureAwait(false);
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+
+        public override int Read(long diskOffset, Span<byte> block)
+        {
+            long relPos = diskOffset - Start;
+            int totalRead = 0;
+
+            // Don't arbitrarily set position, just in case stream implementation is
+            // non-seeking, and we're doing sequential reads
+            if (_readStream.Position != relPos)
+            {
+                _readStream.Position = relPos;
+            }
+
+            // Read up to EOF
+            int numRead = _readStream.Read(block);
+            totalRead += numRead;
+            while (numRead > 0 && totalRead < block.Length)
+            {
+                numRead = _readStream.Read(block[totalRead..]);
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
 
         public override void DisposeReadState()
         {

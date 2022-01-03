@@ -24,6 +24,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -245,7 +247,7 @@ namespace DiscUtils.Diagnostics
                 }
                 return result;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 if (_active && _traceReads)
                 {
@@ -254,6 +256,35 @@ namespace DiscUtils.Diagnostics
                 throw;
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+            ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+
+        public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
+
+        public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            long position = _wrapped.Position;
+            try
+            {
+                int result = await _wrapped.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+                if (_active && _traceReads)
+                {
+                    CreateAndAddRecord("READ", position, count, result);
+                }
+                return result;
+            }
+            catch (Exception e)
+            {
+                if (_active && _traceReads)
+                {
+                    CreateAndAddRecord("READ", position, count, e);
+                }
+                throw;
+            }
+        }
+#endif
 
         /// <summary>
         /// Moves the stream position.

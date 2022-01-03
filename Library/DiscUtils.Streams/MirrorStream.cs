@@ -23,6 +23,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -94,13 +97,35 @@ namespace DiscUtils.Streams
 
         public override void Flush()
         {
-            _wrapped[0].Flush();
+            foreach (var stream in _wrapped)
+            {
+                stream.Flush();
+            }
         }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
             return _wrapped[0].Read(buffer, offset, count);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            return _wrapped[0].ReadAsync(buffer, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            return _wrapped[0].ReadAsync(buffer, cancellationToken);
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            return _wrapped[0].Read(buffer);
+        }
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {
@@ -146,6 +171,63 @@ namespace DiscUtils.Streams
                 stream.Write(buffer, offset, count);
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            long pos = _wrapped[0].Position;
+
+            if (pos + count > _length)
+            {
+                throw new IOException("Attempt to write beyond end of mirrored stream");
+            }
+
+            return Task.WhenAll(_wrapped.Select(stream =>
+            {
+                stream.Position = pos;
+                return stream.WriteAsync(buffer, offset, count, cancellationToken);
+            }));
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            long pos = _wrapped[0].Position;
+
+            if (pos + buffer.Length > _length)
+            {
+                throw new IOException("Attempt to write beyond end of mirrored stream");
+            }
+
+            return new(Task.WhenAll(_wrapped.Select(stream =>
+            {
+                stream.Position = pos;
+                return stream.WriteAsync(buffer, cancellationToken).AsTask();
+            })));
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            long pos = _wrapped[0].Position;
+
+            if (pos + buffer.Length > _length)
+            {
+                throw new IOException("Attempt to write beyond end of mirrored stream");
+            }
+
+            foreach (SparseStream stream in _wrapped)
+            {
+                stream.Position = pos;
+                stream.Write(buffer);
+            }
+        }
+#endif
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task FlushAsync(CancellationToken cancellationToken) =>
+            Task.WhenAll(_wrapped.Select(stream => stream.FlushAsync(cancellationToken)));
+#endif
 
         protected override void Dispose(bool disposing)
         {

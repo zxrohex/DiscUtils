@@ -24,6 +24,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -165,6 +167,79 @@ namespace DiscUtils.Streams
             return totalRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            int totalRead = 0;
+            int numRead = 0;
+
+            do
+            {
+                long activeStreamStartPos;
+                int activeStream = GetActiveStream(out activeStreamStartPos);
+
+                _streams[activeStream].Position = _position - activeStreamStartPos;
+
+                numRead = await _streams[activeStream].ReadAsync(buffer, offset + totalRead, count - totalRead, cancellationToken).ConfigureAwait(false);
+
+                totalRead += numRead;
+                _position += numRead;
+            } while (numRead != 0);
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            int totalRead = 0;
+            int numRead = 0;
+
+            do
+            {
+                long activeStreamStartPos;
+                int activeStream = GetActiveStream(out activeStreamStartPos);
+
+                _streams[activeStream].Position = _position - activeStreamStartPos;
+
+                numRead = await _streams[activeStream].ReadAsync(buffer[totalRead..], cancellationToken).ConfigureAwait(false);
+
+                totalRead += numRead;
+                _position += numRead;
+            } while (numRead != 0);
+
+            return totalRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            CheckDisposed();
+
+            int totalRead = 0;
+            int numRead = 0;
+
+            do
+            {
+                long activeStreamStartPos;
+                int activeStream = GetActiveStream(out activeStreamStartPos);
+
+                _streams[activeStream].Position = _position - activeStreamStartPos;
+
+                numRead = _streams[activeStream].Read(buffer[totalRead..]);
+
+                totalRead += numRead;
+                _position += numRead;
+            } while (numRead != 0);
+
+            return totalRead;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             CheckDisposed();
@@ -235,6 +310,112 @@ namespace DiscUtils.Streams
                 _position += numToWrite;
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            int totalWritten = 0;
+            while (totalWritten != count)
+            {
+                // Offset of the stream = streamOffset
+                long streamOffset;
+                int streamIdx = GetActiveStream(out streamOffset);
+
+                // Offset within the stream = streamPos
+                long streamPos = _position - streamOffset;
+                _streams[streamIdx].Position = streamPos;
+
+                // Write (limited to the stream's length), except for final stream - that may be
+                // extendable
+                int numToWrite;
+                if (streamIdx == _streams.Length - 1)
+                {
+                    numToWrite = count - totalWritten;
+                }
+                else
+                {
+                    numToWrite = (int)Math.Min(count - totalWritten, _streams[streamIdx].Length - streamPos);
+                }
+
+                await _streams[streamIdx].WriteAsync(buffer, offset + totalWritten, numToWrite, cancellationToken).ConfigureAwait(false);
+
+                totalWritten += numToWrite;
+                _position += numToWrite;
+            }
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            int totalWritten = 0;
+            while (totalWritten != buffer.Length)
+            {
+                // Offset of the stream = streamOffset
+                long streamOffset;
+                int streamIdx = GetActiveStream(out streamOffset);
+
+                // Offset within the stream = streamPos
+                long streamPos = _position - streamOffset;
+                _streams[streamIdx].Position = streamPos;
+
+                // Write (limited to the stream's length), except for final stream - that may be
+                // extendable
+                int numToWrite;
+                if (streamIdx == _streams.Length - 1)
+                {
+                    numToWrite = buffer.Length - totalWritten;
+                }
+                else
+                {
+                    numToWrite = (int)Math.Min(buffer.Length - totalWritten, _streams[streamIdx].Length - streamPos);
+                }
+
+                await _streams[streamIdx].WriteAsync(buffer.Slice(totalWritten, numToWrite), cancellationToken).ConfigureAwait(false);
+
+                totalWritten += numToWrite;
+                _position += numToWrite;
+            }
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            CheckDisposed();
+
+            int totalWritten = 0;
+            while (totalWritten != buffer.Length)
+            {
+                // Offset of the stream = streamOffset
+                long streamOffset;
+                int streamIdx = GetActiveStream(out streamOffset);
+
+                // Offset within the stream = streamPos
+                long streamPos = _position - streamOffset;
+                _streams[streamIdx].Position = streamPos;
+
+                // Write (limited to the stream's length), except for final stream - that may be
+                // extendable
+                int numToWrite;
+                if (streamIdx == _streams.Length - 1)
+                {
+                    numToWrite = buffer.Length - totalWritten;
+                }
+                else
+                {
+                    numToWrite = (int)Math.Min(buffer.Length - totalWritten, _streams[streamIdx].Length - streamPos);
+                }
+
+                _streams[streamIdx].Write(buffer.Slice(totalWritten, numToWrite));
+
+                totalWritten += numToWrite;
+                _position += numToWrite;
+            }
+        }
+#endif
 
         protected override void Dispose(bool disposing)
         {

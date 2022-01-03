@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
@@ -71,6 +72,13 @@ namespace DiscUtils.Ntfs
             _rawStream.ReadClusters(startVcn, count, buffer, offset);
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void ReadClusters(long startVcn, int count, Span<byte> buffer)
+        {
+            _rawStream.ReadClusters(startVcn, count, buffer);
+        }
+#endif
+
         public override int WriteClusters(long startVcn, int count, byte[] buffer, int offset)
         {
             int clustersAllocated = 0;
@@ -78,6 +86,16 @@ namespace DiscUtils.Ntfs
             clustersAllocated += _rawStream.WriteClusters(startVcn, count, buffer, offset);
             return clustersAllocated;
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer)
+        {
+            int clustersAllocated = 0;
+            clustersAllocated += _rawStream.AllocateClusters(startVcn, count);
+            clustersAllocated += _rawStream.WriteClusters(startVcn, count, buffer);
+            return clustersAllocated;
+        }
+#endif
 
         public override int ClearClusters(long startVcn, int count)
         {

@@ -26,6 +26,8 @@ namespace DiscUtils.Xfs
     using DiscUtils.Streams;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     internal class ExtentStream : BuiltStream
     {
@@ -40,9 +42,43 @@ namespace DiscUtils.Xfs
         {
             if (Position + count > Length)
             {
-                count = (int) (Length - Position);
+                count = (int)(Length - Position);
             }
             return base.Read(buffer, offset, count);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <inheritdoc />
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (Position + count > Length)
+            {
+                count = (int)(Length - Position);
+            }
+            return base.ReadAsync(buffer, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <inheritdoc />
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (Position + buffer.Length > Length)
+            {
+                buffer = buffer[..(int)(Length - Position)];
+            }
+            return base.ReadAsync(buffer, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public override int Read(Span<byte> buffer)
+        {
+            if (Position + buffer.Length > Length)
+            {
+                buffer = buffer[..(int)(Length - Position)];
+            }
+            return base.Read(buffer);
+        }
+#endif
     }
 }

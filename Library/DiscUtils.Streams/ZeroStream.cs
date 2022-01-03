@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -108,6 +110,85 @@ namespace DiscUtils.Streams
 
             return numToClear;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (_position > _length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+
+            if (_position == _length)
+            {
+                if (_atEof)
+                {
+                    throw new IOException("Attempt to read beyond end of stream");
+                }
+                _atEof = true;
+                return Task.FromResult(0);
+            }
+
+            int numToClear = (int)Math.Min(count, _length - _position);
+            Array.Clear(buffer, offset, numToClear);
+            _position += numToClear;
+
+            return Task.FromResult(numToClear);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_position > _length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+
+            if (_position == _length)
+            {
+                if (_atEof)
+                {
+                    throw new IOException("Attempt to read beyond end of stream");
+                }
+                _atEof = true;
+                return new(0);
+            }
+
+            int numToClear = (int)Math.Min(buffer.Length, _length - _position);
+            buffer.Span[..numToClear].Clear();
+            _position += numToClear;
+
+            return new(numToClear);
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (_position > _length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+
+            if (_position == _length)
+            {
+                if (_atEof)
+                {
+                    throw new IOException("Attempt to read beyond end of stream");
+                }
+                _atEof = true;
+                return 0;
+            }
+
+            int numToClear = (int)Math.Min(buffer.Length, _length - _position);
+            buffer[..numToClear].Clear();
+            _position += numToClear;
+
+            return numToClear;
+        }
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {

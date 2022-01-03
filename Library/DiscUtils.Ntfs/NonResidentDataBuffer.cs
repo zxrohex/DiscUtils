@@ -158,6 +158,56 @@ namespace DiscUtils.Ntfs
             throw new NotSupportedException();
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            if (!CanRead)
+            {
+                throw new IOException("Attempt to read from file not opened for read");
+            }
+
+            // Limit read to length of attribute
+            int totalToRead = (int)Math.Min(buffer.Length, Capacity - pos);
+            if (totalToRead <= 0)
+            {
+                return 0;
+            }
+
+            long focusPos = pos;
+            while (focusPos < pos + totalToRead)
+            {
+                long vcn = focusPos / _bytesPerCluster;
+                long remaining = pos + totalToRead - focusPos;
+                long clusterOffset = focusPos - vcn * _bytesPerCluster;
+
+                if (vcn * _bytesPerCluster != focusPos || remaining < _bytesPerCluster)
+                {
+                    // Unaligned or short read
+                    _activeStream.ReadClusters(vcn, 1, _ioBuffer, 0);
+
+                    int toRead = (int)Math.Min(remaining, _bytesPerCluster - clusterOffset);
+
+                    _ioBuffer.AsSpan((int)clusterOffset, toRead).CopyTo(buffer[(int)(focusPos - pos)..]);
+
+                    focusPos += toRead;
+                }
+                else
+                {
+                    // Aligned, full cluster reads...
+                    int fullClusters = (int)(remaining / _bytesPerCluster);
+                    _activeStream.ReadClusters(vcn, fullClusters, buffer[(int)(focusPos - pos)..]);
+
+                    focusPos += fullClusters * _bytesPerCluster;
+                }
+            }
+
+            return totalToRead;
+        }
+
+        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+            throw new NotSupportedException();
+#endif
+
         public override void SetCapacity(long value)
         {
             throw new NotSupportedException();

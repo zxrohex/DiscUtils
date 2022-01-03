@@ -23,11 +23,13 @@
 using System;
 using System.IO;
 using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Xva
 {
-#if NETSTANDARD
+#if NETSTANDARD || NETCOREAPP || NET461_OR_GREATER
     internal class HashStreamCore : Stream
     {
         private readonly IncrementalHash _hashAlg;
@@ -90,6 +92,53 @@ namespace DiscUtils.Xva
             return numRead;
         }
 
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (Position != _hashPos)
+            {
+                throw new InvalidOperationException("Reads must be contiguous");
+            }
+
+            int numRead = await _wrapped.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+
+            _hashAlg.AppendData(buffer, offset, numRead);
+            _hashPos += numRead;
+
+            return numRead;
+        }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (Position != _hashPos)
+            {
+                throw new InvalidOperationException("Reads must be contiguous");
+            }
+
+            int numRead = await _wrapped.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+
+            _hashAlg.AppendData(buffer.Span[..numRead]);
+            _hashPos += numRead;
+
+            return numRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (Position != _hashPos)
+            {
+                throw new InvalidOperationException("Reads must be contiguous");
+            }
+
+            int numRead = _wrapped.Read(buffer);
+
+            _hashAlg.AppendData(buffer[..numRead]);
+            _hashPos += numRead;
+
+            return numRead;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             return _wrapped.Seek(offset, origin);
@@ -122,7 +171,7 @@ namespace DiscUtils.Xva
         }
     }
 #else
-    internal class HashStreamDotnet : Stream
+        internal class HashStreamDotnet : Stream
     {
         private Stream _wrapped;
         private Ownership _ownWrapped;
@@ -205,6 +254,29 @@ namespace DiscUtils.Xva
         {
             _wrapped.Write(buffer, offset, count);
         }
+
+#if NET45_OR_GREATER
+        public override Task FlushAsync(CancellationToken cancellationToken) =>
+            _wrapped.FlushAsync(cancellationToken);
+
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (Position != _hashPos)
+            {
+                throw new InvalidOperationException("Reads must be contiguous");
+            }
+
+            int numRead = await _wrapped.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+
+            _hashAlg.TransformBlock(buffer, offset, numRead, buffer, offset);
+            _hashPos += numRead;
+
+            return numRead;
+        }
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
+#endif
 
         protected override void Dispose(bool disposing)
         {

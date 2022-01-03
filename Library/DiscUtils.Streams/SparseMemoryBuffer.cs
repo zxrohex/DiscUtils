@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -154,6 +156,43 @@ namespace DiscUtils.Streams
             return totalRead;
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Reads a section of the sparse buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the sparse buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            int totalRead = 0;
+
+            while (buffer.Length > 0 && pos < _capacity)
+            {
+                int chunk = (int)(pos / ChunkSize);
+                int chunkOffset = (int)(pos % ChunkSize);
+                int numToRead = (int)Math.Min(Math.Min(ChunkSize - chunkOffset, _capacity - pos), buffer.Length);
+
+                if (!_buffers.TryGetValue(chunk, out byte[] chunkBuffer))
+                {
+                    buffer[..numToRead].Clear();
+                }
+                else
+                {
+                    chunkBuffer.AsSpan(chunkOffset, numToRead).CopyTo(buffer);
+                }
+
+                totalRead += numToRead;
+                buffer = buffer[numToRead..];
+                pos += numToRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
         /// <summary>
         /// Writes a byte array into the sparse buffer.
         /// </summary>
@@ -184,6 +223,32 @@ namespace DiscUtils.Streams
 
             _capacity = Math.Max(_capacity, pos);
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void Write(long pos, ReadOnlySpan<byte> buffer)
+        {
+            while (buffer.Length > 0)
+            {
+                int chunk = (int)(pos / ChunkSize);
+                int chunkOffset = (int)(pos % ChunkSize);
+                int numToWrite = Math.Min(ChunkSize - chunkOffset, buffer.Length);
+
+                if (!_buffers.TryGetValue(chunk, out byte[] chunkBuffer))
+                {
+                    chunkBuffer = new byte[ChunkSize];
+                    _buffers[chunk] = chunkBuffer;
+                }
+
+                buffer[..numToWrite].CopyTo(chunkBuffer.AsSpan(chunkOffset));
+
+                buffer = buffer[numToWrite..];
+
+                pos += numToWrite;
+            }
+
+            _capacity = Math.Max(_capacity, pos);
+        }
+#endif
 
         /// <summary>
         /// Clears bytes from the buffer.

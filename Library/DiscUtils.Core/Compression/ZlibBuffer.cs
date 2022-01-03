@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
 
@@ -68,10 +70,55 @@ namespace DiscUtils.Compression
             return read;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (pos != position)
+            {
+                throw new NotSupportedException();
+            }
+
+            int read = await _stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            position += read;
+            return read;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (pos != position)
+            {
+                throw new NotSupportedException();
+            }
+
+            int read = await _stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            position += read;
+            return read;
+        }
+
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            if (pos != position)
+            {
+                throw new NotSupportedException();
+            }
+
+            int read = _stream.Read(buffer);
+            position += read;
+            return read;
+        }
+#endif
+
         public override void Write(long pos, byte[] buffer, int offset, int count)
         {
             throw new NotImplementedException();
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+            throw new NotImplementedException();
+#endif
 
         public override void SetCapacity(long value)
         {

@@ -63,6 +63,19 @@ namespace DiscUtils.Iso9660
             return numRead;
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int Read(long diskOffset, Span<byte> block)
+        {
+            long relPos = diskOffset - Start;
+
+            int numRead = (int)Math.Min(block.Length, _readCache.Length - relPos);
+
+            _readCache.AsSpan((int)relPos, numRead).CopyTo(block);
+
+            return numRead;
+        }
+#endif
+
         public override void DisposeReadState()
         {
             _readCache = null;

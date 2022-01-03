@@ -10,10 +10,6 @@ using System.Runtime.Versioning;
 
 [assembly: ComVisible(false)]
 
-#if NET5_0_OR_GREATER
-[assembly: SupportedOSPlatform("windows")]
-#endif
-
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 
 [assembly: Guid("bd86e3f8-850f-4f99-a387-1096505c3f39")]

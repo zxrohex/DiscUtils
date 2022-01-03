@@ -20,7 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -60,6 +63,28 @@ namespace DiscUtils.Streams
             _stream.Position = diskOffset - Start;
             return _stream.Read(block, offset, count);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+        {
+            _stream.Position = diskOffset - Start;
+            return _stream.ReadAsync(block, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
+        {
+            _stream.Position = diskOffset - Start;
+            return _stream.ReadAsync(block, cancellationToken);
+        }
+
+        public override int Read(long diskOffset, Span<byte> block)
+        {
+            _stream.Position = diskOffset - Start;
+            return _stream.Read(block);
+        }
+#endif
 
         public override void DisposeReadState() {}
     }

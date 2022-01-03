@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System.IO;
 using System.Text;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
@@ -39,7 +40,7 @@ namespace DiscUtils.Btrfs
             {
                 IBuffer content = FileContent;
                 byte[] data = StreamUtilities.ReadExact(content, 0, (int)content.Capacity);
-                return Encoding.UTF8.GetString(data, 0, data.Length).Replace('/', '\\');
+                return Encoding.UTF8.GetString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
             }
         }
     }

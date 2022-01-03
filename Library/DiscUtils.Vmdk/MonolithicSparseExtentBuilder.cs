@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Vmdk
@@ -270,6 +272,79 @@ namespace DiscUtils.Vmdk
                 _content.Position = readStart;
                 return _content.Read(block, offset, toRead);
             }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+            public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+            {
+                long start = diskOffset - Start;
+                long grainSizeBytes = _grainSize * Sizes.Sector;
+
+                long outputGrain = start / grainSizeBytes;
+                long outputGrainOffset = start % grainSizeBytes;
+
+                long grainStart = (_grainMapRanges[outputGrain].Offset + _grainMapOffsets[outputGrain]) * grainSizeBytes;
+                long maxRead = (_grainMapRanges[outputGrain].Count - _grainMapOffsets[outputGrain]) * grainSizeBytes;
+
+                long readStart = grainStart + outputGrainOffset;
+                int toRead = (int)Math.Min(count, maxRead - outputGrainOffset);
+
+                if (readStart > _content.Length)
+                {
+                    Array.Clear(block, offset, toRead);
+                    return Task.FromResult(toRead);
+                }
+                _content.Position = readStart;
+                return _content.ReadAsync(block, offset, toRead, cancellationToken);
+            }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
+            {
+                long start = diskOffset - Start;
+                long grainSizeBytes = _grainSize * Sizes.Sector;
+
+                long outputGrain = start / grainSizeBytes;
+                long outputGrainOffset = start % grainSizeBytes;
+
+                long grainStart = (_grainMapRanges[outputGrain].Offset + _grainMapOffsets[outputGrain]) * grainSizeBytes;
+                long maxRead = (_grainMapRanges[outputGrain].Count - _grainMapOffsets[outputGrain]) * grainSizeBytes;
+
+                long readStart = grainStart + outputGrainOffset;
+                int toRead = (int)Math.Min(block.Length, maxRead - outputGrainOffset);
+
+                if (readStart > _content.Length)
+                {
+                    block.Span[..toRead].Clear();
+                    return new(toRead);
+                }
+                _content.Position = readStart;
+                return _content.ReadAsync(block[..toRead], cancellationToken);
+            }
+
+            public override int Read(long diskOffset, Span<byte> block)
+            {
+                long start = diskOffset - Start;
+                long grainSizeBytes = _grainSize * Sizes.Sector;
+
+                long outputGrain = start / grainSizeBytes;
+                long outputGrainOffset = start % grainSizeBytes;
+
+                long grainStart = (_grainMapRanges[outputGrain].Offset + _grainMapOffsets[outputGrain]) * grainSizeBytes;
+                long maxRead = (_grainMapRanges[outputGrain].Count - _grainMapOffsets[outputGrain]) * grainSizeBytes;
+
+                long readStart = grainStart + outputGrainOffset;
+                int toRead = (int)Math.Min(block.Length, maxRead - outputGrainOffset);
+
+                if (readStart > _content.Length)
+                {
+                    block[..toRead].Clear();
+                    return toRead;
+                }
+                _content.Position = readStart;
+                return _content.Read(block[..toRead]);
+            }
+#endif
 
             public override void DisposeReadState()
             {

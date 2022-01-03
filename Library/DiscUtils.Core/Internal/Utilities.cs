@@ -240,7 +240,6 @@ namespace DiscUtils.Internal
         {
             string trimmed = path.TrimEnd('\\', '/');
 
-#if NETFRAMEWORK && !NET461_OR_GREATER
             int index = trimmed.LastIndexOf('\\');
             if (index < 0)
             {
@@ -248,9 +247,6 @@ namespace DiscUtils.Internal
             }
 
             return trimmed.Substring(0, index);
-#else
-            return Path.GetDirectoryName(path);
-#endif
         }
 
         /// <summary>
@@ -271,7 +267,7 @@ namespace DiscUtils.Internal
 
             return trimmed.Substring(index + 1);
 #else
-            return Path.GetFileName(path);
+            return Path.GetFileName(trimmed);
 #endif
         }
 
@@ -322,8 +318,7 @@ namespace DiscUtils.Internal
 
             var merged = Path.GetFullPath(Path.Combine(basePath, relativePath));
 
-            if ((basePath[0] == '\\' || basePath[0] == '/') &&
-                merged.Length > 2 && merged[1] == ':' && merged[2] == '\\')
+            if (merged.Length > 2 && merged[1] == ':' && merged[2] == '\\')
             {
                 return merged.Substring(2);
             }
@@ -534,6 +529,6 @@ namespace DiscUtils.Internal
         public static bool EndsWithDirectorySeparator(this string path) =>
             path is not null && path.Length > 0 && (path[path.Length - 1] == '/' || path[path.Length - 1] == '\\');
 
-        #endregion
+#endregion
     }
 }

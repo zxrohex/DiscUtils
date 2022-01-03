@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs
@@ -149,6 +151,41 @@ namespace DiscUtils.Ntfs
             }
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            AssertOpen();
+            StreamUtilities.AssertBufferParameters(buffer, offset, count);
+
+            using (new NtfsTransaction())
+            {
+                return await _baseStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            }
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int Read(Span<byte> buffer)
+        {
+            AssertOpen();
+
+            using (new NtfsTransaction())
+            {
+                return _baseStream.Read(buffer);
+            }
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            AssertOpen();
+
+            using (new NtfsTransaction())
+            {
+                return await _baseStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            }
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             AssertOpen();
@@ -182,6 +219,49 @@ namespace DiscUtils.Ntfs
                 _baseStream.Write(buffer, offset, count);
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            AssertOpen();
+            StreamUtilities.AssertBufferParameters(buffer, offset, count);
+
+            using (new NtfsTransaction())
+            {
+                _isDirty = true;
+                await _baseStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            }
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            AssertOpen();
+
+            using (new NtfsTransaction())
+            {
+                _isDirty = true;
+                _baseStream.Write(buffer);
+            }
+        }
+
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            AssertOpen();
+
+            using (new NtfsTransaction())
+            {
+                _isDirty = true;
+                await _baseStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+            }
+        }
+#endif
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task FlushAsync(CancellationToken cancellationToken) =>
+            _baseStream.FlushAsync(cancellationToken);
+#endif
 
         public override void Clear(int count)
         {

@@ -17,7 +17,7 @@
         /// <returns>DateTimeOffset.</returns>
         public static DateTimeOffset FromUnixTimeSeconds(this long seconds)
         {
-#if NETSTANDARD
+#if NETSTANDARD || NETCOREAPP || NET461_OR_GREATER
             return DateTimeOffset.FromUnixTimeSeconds(seconds);
 #else
             DateTimeOffset dateTimeOffset = new DateTimeOffset(DateTimeOffsetExtensions.UnixEpoch);

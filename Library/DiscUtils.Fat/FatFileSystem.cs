@@ -922,7 +922,7 @@ namespace DiscUtils.Fat
             using (Stream sourceStream = new FatFileStream(this, sourceDir, sourceEntryId, FileAccess.Read),
                           destStream = new FatFileStream(this, destDir, destEntryId, FileAccess.Write))
             {
-                StreamUtilities.PumpStreams(sourceStream, destStream);
+                sourceStream.CopyTo(destStream);
             }
         }
 

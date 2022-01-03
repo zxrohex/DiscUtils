@@ -21,7 +21,7 @@ namespace DiscUtils.HfsPlus
                     using (StreamReader reader = new StreamReader(stream))
                     {
                         _targetPath = reader.ReadToEnd();
-                        _targetPath = _targetPath.Replace('/', '\\');
+                        _targetPath = _targetPath.Replace('/', Path.DirectorySeparatorChar);
                     }
                 }
 

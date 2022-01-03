@@ -22,6 +22,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -56,6 +58,34 @@ namespace DiscUtils.Streams
             }
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
+        public static IAsyncResult AsAsyncResult<T>(this Task<T> task, AsyncCallback callback, object state)
+        {
+            var returntask = task.ContinueWith((t, _) => t.Result, state, TaskScheduler.Default);
+
+            if (callback is not null)
+            {
+                returntask.ContinueWith(callback.Invoke, TaskScheduler.Default);
+            }
+
+            return returntask;
+        }
+
+        public static IAsyncResult AsAsyncResult(this Task task, AsyncCallback callback, object state)
+        {
+            var returntask = task.ContinueWith((t, _) => { }, state, TaskScheduler.Default);
+
+            if (callback is not null)
+            {
+                returntask.ContinueWith(callback.Invoke, TaskScheduler.Default);
+            }
+
+            return returntask;
+        }
+
+#endif
+
         #region Stream Manipulation
 
         /// <summary>
@@ -75,13 +105,90 @@ namespace DiscUtils.Streams
 
                 if (numRead == 0)
                 {
-                    throw new EndOfStreamException("Unable to complete read of " + originalCount + " bytes");
+                    throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
                 }
 
                 offset += numRead;
                 count -= numRead;
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or throw EndOfStreamException.
+        /// </summary>
+        /// <param name="stream">The stream to read.</param>
+        /// <param name="buffer">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        public static async Task ReadExactAsync(Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            int originalCount = count;
+
+            while (count > 0)
+            {
+                int numRead = await stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+
+                if (numRead == 0)
+                {
+                    throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
+                }
+
+                offset += numRead;
+                count -= numRead;
+            }
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or throw EndOfStreamException.
+        /// </summary>
+        /// <param name="stream">The stream to read.</param>
+        /// <param name="buffer">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        public static async ValueTask ReadExactAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            int originalCount = buffer.Length;
+
+            while (buffer.Length > 0)
+            {
+                int numRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+
+                if (numRead == 0)
+                {
+                    throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
+                }
+
+                buffer = buffer[numRead..];
+            }
+        }
+
+        /// <summary>
+        /// Read bytes until buffer filled or throw EndOfStreamException.
+        /// </summary>
+        /// <param name="stream">The stream to read.</param>
+        /// <param name="buffer">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        public static void ReadExact(Stream stream, Span<byte> buffer)
+        {
+            int originalCount = buffer.Length;
+
+            while (buffer.Length > 0)
+            {
+                int numRead = stream.Read(buffer);
+
+                if (numRead == 0)
+                {
+                    throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
+                }
+
+                buffer = buffer[numRead..];
+            }
+        }
+#endif
 
         /// <summary>
         /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -97,6 +204,23 @@ namespace DiscUtils.Streams
 
             return buffer;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or throw EndOfStreamException.
+        /// </summary>
+        /// <param name="stream">The stream to read.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The data read from the stream.</returns>
+        public static async Task<byte[]> ReadExactAsync(Stream stream, int count, CancellationToken cancellationToken)
+        {
+            byte[] buffer = new byte[count];
+
+            await ReadExactAsync(stream, buffer, 0, count, cancellationToken).ConfigureAwait(false);
+
+            return buffer;
+        }
+#endif
 
         /// <summary>
         /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -116,7 +240,7 @@ namespace DiscUtils.Streams
 
                 if (numRead == 0)
                 {
-                    throw new EndOfStreamException("Unable to complete read of " + originalCount + " bytes");
+                    throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
                 }
 
                 pos += numRead;
@@ -124,6 +248,89 @@ namespace DiscUtils.Streams
                 count -= numRead;
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or throw EndOfStreamException.
+        /// </summary>
+        /// <param name="buffer">The stream to read.</param>
+        /// <param name="pos">The position in buffer to read from.</param>
+        /// <param name="data">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        public static async Task ReadExactAsync(IBuffer buffer, long pos, byte[] data, int offset, int count, CancellationToken cancellationToken)
+        {
+            int originalCount = count;
+
+            while (count > 0)
+            {
+                int numRead = await buffer.ReadAsync(pos, data, offset, count, cancellationToken).ConfigureAwait(false);
+
+                if (numRead == 0)
+                {
+                    throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
+                }
+
+                pos += numRead;
+                offset += numRead;
+                count -= numRead;
+            }
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or throw EndOfStreamException.
+        /// </summary>
+        /// <param name="buffer">The stream to read.</param>
+        /// <param name="pos">The position in buffer to read from.</param>
+        /// <param name="data">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        public static async ValueTask ReadExactAsync(IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
+        {
+            int originalCount = data.Length;
+
+            while (data.Length > 0)
+            {
+                int numRead = await buffer.ReadAsync(pos, data, cancellationToken).ConfigureAwait(false);
+
+                if (numRead == 0)
+                {
+                    throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
+                }
+
+                pos += numRead;
+                data = data[numRead..];
+            }
+        }
+
+        /// <summary>
+        /// Read bytes until buffer filled or throw EndOfStreamException.
+        /// </summary>
+        /// <param name="buffer">The stream to read.</param>
+        /// <param name="pos">The position in buffer to read from.</param>
+        /// <param name="data">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        public static void ReadExact(IBuffer buffer, long pos, Span<byte> data)
+        {
+            int originalCount = data.Length;
+
+            while (data.Length > 0)
+            {
+                int numRead = buffer.Read(pos, data);
+
+                if (numRead == 0)
+                {
+                    throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
+                }
+
+                pos += numRead;
+                data = data[numRead..];
+            }
+        }
+#endif
 
         /// <summary>
         /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -140,6 +347,24 @@ namespace DiscUtils.Streams
 
             return result;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or throw EndOfStreamException.
+        /// </summary>
+        /// <param name="buffer">The buffer to read.</param>
+        /// <param name="pos">The position in buffer to read from.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The data read from the stream.</returns>
+        public static async Task<byte[]> ReadExactAsync(IBuffer buffer, long pos, int count, CancellationToken cancellationToken)
+        {
+            byte[] result = new byte[count];
+
+            await ReadExactAsync(buffer, pos, result, 0, count, cancellationToken).ConfigureAwait(false);
+
+            return result;
+        }
+#endif
 
         /// <summary>
         /// Read bytes until buffer filled or EOF.
@@ -169,6 +394,95 @@ namespace DiscUtils.Streams
 
             return totalRead;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or EOF.
+        /// </summary>
+        /// <param name="stream">The stream to read.</param>
+        /// <param name="buffer">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The number of bytes actually read.</returns>
+        public static async Task<int> ReadMaximumAsync(Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            int totalRead = 0;
+
+            while (count > 0)
+            {
+                int numRead = await stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                offset += numRead;
+                count -= numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or EOF.
+        /// </summary>
+        /// <param name="stream">The stream to read.</param>
+        /// <param name="buffer">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The number of bytes actually read.</returns>
+        public static async ValueTask<int> ReadMaximumAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            int totalRead = 0;
+
+            while (buffer.Length > 0)
+            {
+                int numRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                buffer = buffer[numRead..];
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+
+        /// <summary>
+        /// Read bytes until buffer filled or EOF.
+        /// </summary>
+        /// <param name="stream">The stream to read.</param>
+        /// <param name="buffer">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The number of bytes actually read.</returns>
+        public static int ReadMaximum(Stream stream, Span<byte> buffer)
+        {
+            int totalRead = 0;
+
+            while (buffer.Length > 0)
+            {
+                int numRead = stream.Read(buffer);
+
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                buffer = buffer[numRead..];
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
 
         /// <summary>
         /// Read bytes until buffer filled or EOF.
@@ -201,6 +515,101 @@ namespace DiscUtils.Streams
             return totalRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or EOF.
+        /// </summary>
+        /// <param name="buffer">The stream to read.</param>
+        /// <param name="pos">The position in buffer to read from.</param>
+        /// <param name="data">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The number of bytes actually read.</returns>
+        public static async Task<int> ReadMaximumAsync(IBuffer buffer, long pos, byte[] data, int offset, int count, CancellationToken cancellationToken)
+        {
+            int totalRead = 0;
+
+            while (count > 0)
+            {
+                int numRead = await buffer.ReadAsync(pos, data, offset, count, cancellationToken).ConfigureAwait(false);
+
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                pos += numRead;
+                offset += numRead;
+                count -= numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or EOF.
+        /// </summary>
+        /// <param name="buffer">The stream to read.</param>
+        /// <param name="pos">The position in buffer to read from.</param>
+        /// <param name="data">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The number of bytes actually read.</returns>
+        public static async ValueTask<int> ReadMaximumAsync(IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
+        {
+            int totalRead = 0;
+
+            while (data.Length > 0)
+            {
+                int numRead = await buffer.ReadAsync(pos, data, cancellationToken).ConfigureAwait(false);
+
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                pos += numRead;
+                data = data[numRead..];
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+
+        /// <summary>
+        /// Read bytes until buffer filled or EOF.
+        /// </summary>
+        /// <param name="buffer">The stream to read.</param>
+        /// <param name="pos">The position in buffer to read from.</param>
+        /// <param name="data">The buffer to populate.</param>
+        /// <param name="offset">Offset in the buffer to start.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The number of bytes actually read.</returns>
+        public static int ReadMaximum(IBuffer buffer, long pos, Span<byte> data)
+        {
+            int totalRead = 0;
+
+            while (data.Length > 0)
+            {
+                int numRead = buffer.Read(pos, data);
+
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                pos += numRead;
+                data = data[numRead..];
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
         /// <summary>
         /// Read bytes until buffer filled or throw EndOfStreamException.
         /// </summary>
@@ -211,6 +620,18 @@ namespace DiscUtils.Streams
             return ReadExact(buffer, 0, (int)buffer.Capacity);
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Read bytes until buffer filled or throw EndOfStreamException.
+        /// </summary>
+        /// <param name="buffer">The buffer to read.</param>
+        /// <returns>The data read from the stream.</returns>
+        public static Task<byte[]> ReadAllAsync(IBuffer buffer, CancellationToken cancellationToken)
+        {
+            return ReadExactAsync(buffer, 0, (int)buffer.Capacity, cancellationToken);
+        }
+#endif
+
         /// <summary>
         /// Reads a disk sector (512 bytes).
         /// </summary>
@@ -220,6 +641,18 @@ namespace DiscUtils.Streams
         {
             return ReadExact(stream, Sizes.Sector);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Reads a disk sector (512 bytes).
+        /// </summary>
+        /// <param name="stream">The stream to read.</param>
+        /// <returns>The sector data as a byte array.</returns>
+        public static Task<byte[]> ReadSectorAsync(Stream stream, CancellationToken cancellationToken)
+        {
+            return ReadExactAsync(stream, Sizes.Sector, cancellationToken);
+        }
+#endif
 
         /// <summary>
         /// Reads a structure from a stream.
@@ -266,23 +699,6 @@ namespace DiscUtils.Streams
             stream.Write(buffer, 0, buffer.Length);
         }
 
-        /// <summary>
-        /// Copies the contents of one stream to another.
-        /// </summary>
-        /// <param name="source">The stream to copy from.</param>
-        /// <param name="dest">The destination stream.</param>
-        /// <remarks>Copying starts at the current stream positions.</remarks>
-        public static void PumpStreams(Stream source, Stream dest)
-        {
-            byte[] buffer = new byte[8192];
-            int numRead;
-
-            while ((numRead = source.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                dest.Write(buffer, 0, numRead);
-            }
-        }
-
-        #endregion
+#endregion
     }
 }

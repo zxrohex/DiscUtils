@@ -22,6 +22,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -118,6 +120,70 @@ namespace DiscUtils.Streams
                 (int)Math.Min(count, Math.Min(_length - pos, int.MaxValue)));
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Reads from the buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        public override Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to read negative bytes");
+            }
+
+            if (pos >= _length)
+            {
+                return Task.FromResult(0);
+            }
+
+            return _parent.ReadAsync(pos + _first, buffer, offset,
+                (int)Math.Min(count, Math.Min(_length - pos, int.MaxValue)), cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Reads from the buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        public override ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (pos >= _length)
+            {
+                return new(0);
+            }
+
+            return _parent.ReadAsync(pos + _first, buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))], cancellationToken);
+        }
+
+        /// <summary>
+        /// Reads from the buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            if (pos >= _length)
+            {
+                return 0;
+            }
+
+            return _parent.Read(pos + _first, buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))]);
+        }
+#endif
+
         /// <summary>
         /// Writes a byte array into the buffer.
         /// </summary>
@@ -139,6 +205,66 @@ namespace DiscUtils.Streams
 
             _parent.Write(pos + _first, buffer, offset, count);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Writes a byte array into the buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the buffer.</param>
+        /// <param name="buffer">The source byte array.</param>
+        /// <param name="offset">The start offset within the source byte array.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write negative bytes");
+            }
+
+            if (pos + count > _length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write beyond end of substream");
+            }
+
+            return _parent.WriteAsync(pos + _first, buffer, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Writes a byte array into the buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the buffer.</param>
+        /// <param name="buffer">The source byte array.</param>
+        /// <param name="offset">The start offset within the source byte array.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (pos + buffer.Length > _length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(buffer.Length), "Attempt to write beyond end of substream");
+            }
+
+            return _parent.WriteAsync(pos + _first, buffer, cancellationToken);
+        }
+
+        /// <summary>
+        /// Writes a byte array into the buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the buffer.</param>
+        /// <param name="buffer">The source byte array.</param>
+        /// <param name="offset">The start offset within the source byte array.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override void Write(long pos, ReadOnlySpan<byte> buffer)
+        {
+            if (pos + buffer.Length > _length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(buffer.Length), "Attempt to write beyond end of substream");
+            }
+
+            _parent.Write(pos + _first, buffer);
+        }
+#endif
 
         /// <summary>
         /// Sets the capacity of the buffer, truncating if appropriate.

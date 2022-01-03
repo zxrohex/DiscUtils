@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -227,6 +229,205 @@ namespace DiscUtils.Vmdk
             return totalRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (_position > Length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+
+            if (_position == Length)
+            {
+                if (_atEof)
+                {
+                    throw new IOException("Attempt to read beyond end of stream");
+                }
+                _atEof = true;
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(count, Length - _position);
+            int totalRead = 0;
+            int numRead;
+
+            do
+            {
+                int grainTable = (int)(_position / _gtCoverage);
+                int grainTableOffset = (int)(_position - grainTable * _gtCoverage);
+                numRead = 0;
+
+                if (!LoadGrainTable(grainTable))
+                {
+                    // Read from parent stream, to at most the end of grain table's coverage
+                    _parentDiskStream.Position = _position + _diskOffset;
+                    numRead = await _parentDiskStream.ReadAsync(buffer, offset + totalRead,
+                        (int)Math.Min(maxToRead - totalRead, _gtCoverage - grainTableOffset), cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    int grainSize = (int)(_header.GrainSize * Sizes.Sector);
+                    int grain = grainTableOffset / grainSize;
+                    int grainOffset = grainTableOffset - grain * grainSize;
+
+                    int numToRead = Math.Min(maxToRead - totalRead, grainSize - grainOffset);
+
+                    if (GetGrainTableEntry(grain) == 0)
+                    {
+                        _parentDiskStream.Position = _position + _diskOffset;
+                        numRead = await _parentDiskStream.ReadAsync(buffer, offset + totalRead, numToRead, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        int bufferOffset = offset + totalRead;
+                        long grainStart = (long)GetGrainTableEntry(grain) * Sizes.Sector;
+                        numRead = await ReadGrainAsync(buffer, bufferOffset, grainStart, grainOffset, numToRead, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
+                _position += numRead;
+                totalRead += numRead;
+            } while (numRead != 0 && totalRead < maxToRead);
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (_position > Length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+
+            if (_position == Length)
+            {
+                if (_atEof)
+                {
+                    throw new IOException("Attempt to read beyond end of stream");
+                }
+                _atEof = true;
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(buffer.Length, Length - _position);
+            int totalRead = 0;
+            int numRead;
+
+            do
+            {
+                int grainTable = (int)(_position / _gtCoverage);
+                int grainTableOffset = (int)(_position - grainTable * _gtCoverage);
+                numRead = 0;
+
+                if (!LoadGrainTable(grainTable))
+                {
+                    // Read from parent stream, to at most the end of grain table's coverage
+                    _parentDiskStream.Position = _position + _diskOffset;
+                    numRead = await _parentDiskStream.ReadAsync(buffer.Slice(totalRead,
+                        (int)Math.Min(maxToRead - totalRead, _gtCoverage - grainTableOffset)), cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    int grainSize = (int)(_header.GrainSize * Sizes.Sector);
+                    int grain = grainTableOffset / grainSize;
+                    int grainOffset = grainTableOffset - grain * grainSize;
+
+                    int numToRead = Math.Min(maxToRead - totalRead, grainSize - grainOffset);
+
+                    if (GetGrainTableEntry(grain) == 0)
+                    {
+                        _parentDiskStream.Position = _position + _diskOffset;
+                        numRead = await _parentDiskStream.ReadAsync(buffer.Slice(totalRead, numToRead), cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        int bufferOffset = totalRead;
+                        long grainStart = (long)GetGrainTableEntry(grain) * Sizes.Sector;
+                        numRead = await ReadGrainAsync(buffer.Slice(bufferOffset, numToRead), grainStart, grainOffset, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
+                _position += numRead;
+                totalRead += numRead;
+            } while (numRead != 0 && totalRead < maxToRead);
+
+            return totalRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            CheckDisposed();
+
+            if (_position > Length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+
+            if (_position == Length)
+            {
+                if (_atEof)
+                {
+                    throw new IOException("Attempt to read beyond end of stream");
+                }
+                _atEof = true;
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(buffer.Length, Length - _position);
+            int totalRead = 0;
+            int numRead;
+
+            do
+            {
+                int grainTable = (int)(_position / _gtCoverage);
+                int grainTableOffset = (int)(_position - grainTable * _gtCoverage);
+                numRead = 0;
+
+                if (!LoadGrainTable(grainTable))
+                {
+                    // Read from parent stream, to at most the end of grain table's coverage
+                    _parentDiskStream.Position = _position + _diskOffset;
+                    numRead = _parentDiskStream.Read(buffer.Slice(totalRead,
+                        (int)Math.Min(maxToRead - totalRead, _gtCoverage - grainTableOffset)));
+                }
+                else
+                {
+                    int grainSize = (int)(_header.GrainSize * Sizes.Sector);
+                    int grain = grainTableOffset / grainSize;
+                    int grainOffset = grainTableOffset - grain * grainSize;
+
+                    int numToRead = Math.Min(maxToRead - totalRead, grainSize - grainOffset);
+
+                    if (GetGrainTableEntry(grain) == 0)
+                    {
+                        _parentDiskStream.Position = _position + _diskOffset;
+                        numRead = _parentDiskStream.Read(buffer.Slice(totalRead, numToRead));
+                    }
+                    else
+                    {
+                        int bufferOffset = totalRead;
+                        long grainStart = (long)GetGrainTableEntry(grain) * Sizes.Sector;
+                        numRead = ReadGrain(buffer.Slice(bufferOffset, numToRead), grainStart, grainOffset);
+                    }
+                }
+
+                _position += numRead;
+                totalRead += numRead;
+            } while (numRead != 0 && totalRead < maxToRead);
+
+            return totalRead;
+        }
+#endif
+
         public override void SetLength(long value)
         {
             CheckDisposed();
@@ -357,6 +558,28 @@ namespace DiscUtils.Vmdk
             _fileStream.Position = grainStart + grainOffset;
             return _fileStream.Read(buffer, bufferOffset, numToRead);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        protected virtual Task<int> ReadGrainAsync(byte[] buffer, int bufferOffset, long grainStart, int grainOffset, int numToRead, CancellationToken cancellationToken)
+        {
+            _fileStream.Position = grainStart + grainOffset;
+            return _fileStream.ReadAsync(buffer, bufferOffset, numToRead, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        protected virtual ValueTask<int> ReadGrainAsync(Memory<byte> buffer, long grainStart, int grainOffset, CancellationToken cancellationToken)
+        {
+            _fileStream.Position = grainStart + grainOffset;
+            return _fileStream.ReadAsync(buffer, cancellationToken);
+        }
+
+        protected virtual int ReadGrain(Span<byte> buffer, long grainStart, int grainOffset)
+        {
+            _fileStream.Position = grainStart + grainOffset;
+            return _fileStream.Read(buffer);
+        }
+#endif
 
         protected virtual StreamExtent MapGrain(long grainStart, int grainOffset, int numToRead)
         {

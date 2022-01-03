@@ -32,7 +32,7 @@ namespace DiscUtils.Fat
     {
         private Encoding _encoding;
 
-#if NETSTANDARD || NETCOREAPP
+#if !NETFRAMEWORK
         static FatFileSystemOptions()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);

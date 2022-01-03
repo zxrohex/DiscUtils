@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -158,6 +160,223 @@ namespace DiscUtils.Streams
             return totalRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (_position >= _length)
+            {
+                return 0;
+            }
+            if (_position + count > _length)
+            {
+                count = (int)(_length - _position);
+            }
+
+            int totalRead = 0;
+            while (totalRead < count && _position < _length)
+            {
+                // If current region is outside the area of interest, clean it up
+                if (_currentExtent != null &&
+                    (_position < _currentExtent.Start || _position >= _currentExtent.Start + _currentExtent.Length))
+                {
+                    _currentExtent.DisposeReadState();
+                    _currentExtent = null;
+                }
+
+                // If we need to find a new region, look for it
+                if (_currentExtent == null)
+                {
+                    using (SearchExtent searchExtent = new SearchExtent(_position))
+                    {
+                        int idx = _extents.BinarySearch(searchExtent, new ExtentRangeComparer());
+                        if (idx >= 0)
+                        {
+                            BuilderExtent extent = _extents[idx];
+                            extent.PrepareForRead();
+                            _currentExtent = extent;
+                        }
+                    }
+                }
+
+                int numRead;
+
+                // If the block is outside any known extent, defer to base stream.
+                if (_currentExtent == null)
+                {
+                    _baseStream.Position = _position;
+                    BuilderExtent nextExtent = FindNext(_position);
+                    if (nextExtent != null)
+                    {
+                        numRead = await _baseStream.ReadAsync(buffer, offset + totalRead,
+                            (int)Math.Min(count - totalRead, nextExtent.Start - _position), cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        numRead = await _baseStream.ReadAsync(buffer, offset + totalRead, count - totalRead, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    numRead = await _currentExtent.ReadAsync(_position, buffer, offset + totalRead, count - totalRead, cancellationToken).ConfigureAwait(false);
+                }
+
+                if (numRead <= 0)
+                {
+                    break;
+                }
+
+                _position += numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_position >= _length)
+            {
+                return 0;
+            }
+            if (_position + buffer.Length > _length)
+            {
+                buffer = buffer[..(int)(_length - _position)];
+            }
+
+            int totalRead = 0;
+            while (totalRead < buffer.Length && _position < _length)
+            {
+                // If current region is outside the area of interest, clean it up
+                if (_currentExtent != null &&
+                    (_position < _currentExtent.Start || _position >= _currentExtent.Start + _currentExtent.Length))
+                {
+                    _currentExtent.DisposeReadState();
+                    _currentExtent = null;
+                }
+
+                // If we need to find a new region, look for it
+                if (_currentExtent == null)
+                {
+                    using (SearchExtent searchExtent = new SearchExtent(_position))
+                    {
+                        int idx = _extents.BinarySearch(searchExtent, new ExtentRangeComparer());
+                        if (idx >= 0)
+                        {
+                            BuilderExtent extent = _extents[idx];
+                            extent.PrepareForRead();
+                            _currentExtent = extent;
+                        }
+                    }
+                }
+
+                int numRead;
+
+                // If the block is outside any known extent, defer to base stream.
+                if (_currentExtent == null)
+                {
+                    _baseStream.Position = _position;
+                    BuilderExtent nextExtent = FindNext(_position);
+                    if (nextExtent != null)
+                    {
+                        numRead = await _baseStream.ReadAsync(buffer.Slice(totalRead,
+                            (int)Math.Min(buffer.Length - totalRead, nextExtent.Start - _position)), cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        numRead = await _baseStream.ReadAsync(buffer[totalRead..], cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    numRead = await _currentExtent.ReadAsync(_position, buffer[totalRead..], cancellationToken).ConfigureAwait(false);
+                }
+
+                if (numRead <= 0)
+                {
+                    break;
+                }
+
+                _position += numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (_position >= _length)
+            {
+                return 0;
+            }
+            if (_position + buffer.Length > _length)
+            {
+                buffer = buffer[..(int)(_length - _position)];
+            }
+
+            int totalRead = 0;
+            while (totalRead < buffer.Length && _position < _length)
+            {
+                // If current region is outside the area of interest, clean it up
+                if (_currentExtent != null &&
+                    (_position < _currentExtent.Start || _position >= _currentExtent.Start + _currentExtent.Length))
+                {
+                    _currentExtent.DisposeReadState();
+                    _currentExtent = null;
+                }
+
+                // If we need to find a new region, look for it
+                if (_currentExtent == null)
+                {
+                    using (SearchExtent searchExtent = new SearchExtent(_position))
+                    {
+                        int idx = _extents.BinarySearch(searchExtent, new ExtentRangeComparer());
+                        if (idx >= 0)
+                        {
+                            BuilderExtent extent = _extents[idx];
+                            extent.PrepareForRead();
+                            _currentExtent = extent;
+                        }
+                    }
+                }
+
+                int numRead;
+
+                // If the block is outside any known extent, defer to base stream.
+                if (_currentExtent == null)
+                {
+                    _baseStream.Position = _position;
+                    BuilderExtent nextExtent = FindNext(_position);
+                    if (nextExtent != null)
+                    {
+                        numRead = _baseStream.Read(buffer.Slice(totalRead,
+                            (int)Math.Min(buffer.Length - totalRead, nextExtent.Start - _position)));
+                    }
+                    else
+                    {
+                        numRead = _baseStream.Read(buffer[totalRead..]);
+                    }
+                }
+                else
+                {
+                    numRead = _currentExtent.Read(_position, buffer[totalRead..]);
+                }
+
+                if (numRead <= 0)
+                {
+                    break;
+                }
+
+                _position += numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             long newPos = offset;
@@ -260,6 +479,19 @@ namespace DiscUtils.Streams
                 // Not valid to use this 'dummy' extent for actual construction
                 throw new NotSupportedException();
             }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+            public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
+                throw new NotImplementedException();
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken) =>
+                throw new NotImplementedException();
+
+            public override int Read(long diskOffset, Span<byte> block) =>
+                throw new NotImplementedException();
+#endif
 
             public override void DisposeReadState()
             {

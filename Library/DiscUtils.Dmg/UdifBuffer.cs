@@ -24,6 +24,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Compression;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
@@ -112,10 +114,142 @@ namespace DiscUtils.Dmg
             return totalCopied;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            int totalCopied = 0;
+            long currentPos = pos;
+
+            while (totalCopied < count && currentPos < Capacity)
+            {
+                LoadRun(currentPos);
+
+                int bufferOffset = (int)(currentPos - (_activeRunOffset + _activeRun.SectorStart * Sizes.Sector));
+                int toCopy = (int)Math.Min(_activeRun.SectorCount * Sizes.Sector - bufferOffset, count - totalCopied);
+
+                switch (_activeRun.Type)
+                {
+                    case RunType.Zeros:
+                        Array.Clear(buffer, offset + totalCopied, toCopy);
+                        break;
+
+                    case RunType.Raw:
+                        _stream.Position = _activeRun.CompOffset + bufferOffset;
+                        await StreamUtilities.ReadExactAsync(_stream, buffer, offset + totalCopied, toCopy, cancellationToken).ConfigureAwait(false);
+                        break;
+
+                    case RunType.AdcCompressed:
+                    case RunType.ZlibCompressed:
+                    case RunType.BZlibCompressed:
+                    case RunType.LzfseCompressed:
+                        Array.Copy(_decompBuffer, bufferOffset, buffer, offset + totalCopied, toCopy);
+                        break;
+
+                    default:
+                        throw new NotImplementedException("Reading from run of type " + _activeRun.Type);
+                }
+
+                currentPos += toCopy;
+                totalCopied += toCopy;
+            }
+
+            return totalCopied;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            int totalCopied = 0;
+            long currentPos = pos;
+
+            while (totalCopied < buffer.Length && currentPos < Capacity)
+            {
+                LoadRun(currentPos);
+
+                int bufferOffset = (int)(currentPos - (_activeRunOffset + _activeRun.SectorStart * Sizes.Sector));
+                int toCopy = (int)Math.Min(_activeRun.SectorCount * Sizes.Sector - bufferOffset, buffer.Length - totalCopied);
+
+                switch (_activeRun.Type)
+                {
+                    case RunType.Zeros:
+                        buffer.Span.Slice(totalCopied, toCopy).Clear();
+                        break;
+
+                    case RunType.Raw:
+                        _stream.Position = _activeRun.CompOffset + bufferOffset;
+                        await StreamUtilities.ReadExactAsync(_stream, buffer.Slice(totalCopied, toCopy), cancellationToken).ConfigureAwait(false);
+                        break;
+
+                    case RunType.AdcCompressed:
+                    case RunType.ZlibCompressed:
+                    case RunType.BZlibCompressed:
+                    case RunType.LzfseCompressed:
+                        _decompBuffer.AsMemory(bufferOffset, toCopy).CopyTo(buffer[totalCopied..]);
+                        break;
+
+                    default:
+                        throw new NotImplementedException("Reading from run of type " + _activeRun.Type);
+                }
+
+                currentPos += toCopy;
+                totalCopied += toCopy;
+            }
+
+            return totalCopied;
+        }
+
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            int totalCopied = 0;
+            long currentPos = pos;
+
+            while (totalCopied < buffer.Length && currentPos < Capacity)
+            {
+                LoadRun(currentPos);
+
+                int bufferOffset = (int)(currentPos - (_activeRunOffset + _activeRun.SectorStart * Sizes.Sector));
+                int toCopy = (int)Math.Min(_activeRun.SectorCount * Sizes.Sector - bufferOffset, buffer.Length - totalCopied);
+
+                switch (_activeRun.Type)
+                {
+                    case RunType.Zeros:
+                        buffer.Slice(totalCopied, toCopy).Clear();
+                        break;
+
+                    case RunType.Raw:
+                        _stream.Position = _activeRun.CompOffset + bufferOffset;
+                        StreamUtilities.ReadExact(_stream, buffer.Slice(totalCopied, toCopy));
+                        break;
+
+                    case RunType.AdcCompressed:
+                    case RunType.ZlibCompressed:
+                    case RunType.BZlibCompressed:
+                    case RunType.LzfseCompressed:
+                        _decompBuffer.AsSpan(bufferOffset, toCopy).CopyTo(buffer[totalCopied..]);
+                        break;
+
+                    default:
+                        throw new NotImplementedException("Reading from run of type " + _activeRun.Type);
+                }
+
+                currentPos += toCopy;
+                totalCopied += toCopy;
+            }
+
+            return totalCopied;
+        }
+#endif
+
         public override void Write(long pos, byte[] buffer, int offset, int count)
         {
             throw new NotSupportedException();
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+            throw new NotSupportedException();
+#endif
 
         public override void SetCapacity(long value)
         {

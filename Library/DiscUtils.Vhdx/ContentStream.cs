@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -236,6 +238,253 @@ namespace DiscUtils.Vhdx
             return totalRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (_atEof || _position > _length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of file");
+            }
+
+            if (_position == _length)
+            {
+                _atEof = true;
+                return 0;
+            }
+
+            if (_position % _metadata.LogicalSectorSize != 0 || count % _metadata.LogicalSectorSize != 0)
+            {
+                throw new IOException("Unaligned read");
+            }
+
+            int totalToRead = (int)Math.Min(_length - _position, count);
+            int totalRead = 0;
+
+            while (totalRead < totalToRead)
+            {
+                Chunk chunk = GetChunk(_position + totalRead, out _, out var blockIndex, out var sectorIndex);
+
+                int blockOffset = (int)(sectorIndex * _metadata.LogicalSectorSize);
+                int blockBytesRemaining = (int)(_fileParameters.BlockSize - blockOffset);
+
+                PayloadBlockStatus blockStatus = chunk.GetBlockStatus(blockIndex);
+                if (blockStatus == PayloadBlockStatus.FullyPresent)
+                {
+                    _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
+                    int read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer, offset + totalRead,
+                        Math.Min(blockBytesRemaining, totalToRead - totalRead), cancellationToken).ConfigureAwait(false);
+
+                    totalRead += read;
+                }
+                else if (blockStatus == PayloadBlockStatus.PartiallyPresent)
+                {
+                    BlockBitmap bitmap = chunk.GetBlockBitmap(blockIndex);
+
+                    int numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
+                    int toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
+                    int read;
+
+                    if (present)
+                    {
+                        _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
+                        read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _parentStream.Position = _position + totalRead;
+                        read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    totalRead += read;
+                }
+                else if (blockStatus == PayloadBlockStatus.NotPresent)
+                {
+                    _parentStream.Position = _position + totalRead;
+                    int read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer, offset + totalRead,
+                        Math.Min(blockBytesRemaining, totalToRead - totalRead), cancellationToken).ConfigureAwait(false);
+
+                    totalRead += read;
+                }
+                else
+                {
+                    int zeroed = Math.Min(blockBytesRemaining, totalToRead - totalRead);
+                    Array.Clear(buffer, offset + totalRead, zeroed);
+                    totalRead += zeroed;
+                }
+            }
+
+            _position += totalRead;
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (_atEof || _position > _length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of file");
+            }
+
+            if (_position == _length)
+            {
+                _atEof = true;
+                return 0;
+            }
+
+            if (_position % _metadata.LogicalSectorSize != 0 || buffer.Length % _metadata.LogicalSectorSize != 0)
+            {
+                throw new IOException("Unaligned read");
+            }
+
+            int totalToRead = (int)Math.Min(_length - _position, buffer.Length);
+            int totalRead = 0;
+
+            while (totalRead < totalToRead)
+            {
+                Chunk chunk = GetChunk(_position + totalRead, out _, out var blockIndex, out var sectorIndex);
+
+                int blockOffset = (int)(sectorIndex * _metadata.LogicalSectorSize);
+                int blockBytesRemaining = (int)(_fileParameters.BlockSize - blockOffset);
+
+                PayloadBlockStatus blockStatus = chunk.GetBlockStatus(blockIndex);
+                if (blockStatus == PayloadBlockStatus.FullyPresent)
+                {
+                    _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
+                    int read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer.Slice(totalRead,
+                        Math.Min(blockBytesRemaining, totalToRead - totalRead)), cancellationToken).ConfigureAwait(false);
+
+                    totalRead += read;
+                }
+                else if (blockStatus == PayloadBlockStatus.PartiallyPresent)
+                {
+                    BlockBitmap bitmap = chunk.GetBlockBitmap(blockIndex);
+
+                    int numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
+                    int toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
+                    int read;
+
+                    if (present)
+                    {
+                        _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
+                        read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _parentStream.Position = _position + totalRead;
+                        read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+                    }
+
+                    totalRead += read;
+                }
+                else if (blockStatus == PayloadBlockStatus.NotPresent)
+                {
+                    _parentStream.Position = _position + totalRead;
+                    int read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer.Slice(totalRead,
+                        Math.Min(blockBytesRemaining, totalToRead - totalRead)), cancellationToken).ConfigureAwait(false);
+
+                    totalRead += read;
+                }
+                else
+                {
+                    int zeroed = Math.Min(blockBytesRemaining, totalToRead - totalRead);
+                    buffer.Span.Slice(totalRead, zeroed).Clear();
+                    totalRead += zeroed;
+                }
+            }
+
+            _position += totalRead;
+            return totalRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            CheckDisposed();
+
+            if (_atEof || _position > _length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of file");
+            }
+
+            if (_position == _length)
+            {
+                _atEof = true;
+                return 0;
+            }
+
+            if (_position % _metadata.LogicalSectorSize != 0 || buffer.Length % _metadata.LogicalSectorSize != 0)
+            {
+                throw new IOException("Unaligned read");
+            }
+
+            int totalToRead = (int)Math.Min(_length - _position, buffer.Length);
+            int totalRead = 0;
+
+            while (totalRead < totalToRead)
+            {
+                Chunk chunk = GetChunk(_position + totalRead, out _, out var blockIndex, out var sectorIndex);
+
+                int blockOffset = (int)(sectorIndex * _metadata.LogicalSectorSize);
+                int blockBytesRemaining = (int)(_fileParameters.BlockSize - blockOffset);
+
+                PayloadBlockStatus blockStatus = chunk.GetBlockStatus(blockIndex);
+                if (blockStatus == PayloadBlockStatus.FullyPresent)
+                {
+                    _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
+                    int read = StreamUtilities.ReadMaximum(_fileStream, buffer.Slice(totalRead,
+                        Math.Min(blockBytesRemaining, totalToRead - totalRead)));
+
+                    totalRead += read;
+                }
+                else if (blockStatus == PayloadBlockStatus.PartiallyPresent)
+                {
+                    BlockBitmap bitmap = chunk.GetBlockBitmap(blockIndex);
+
+                    int numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
+                    int toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
+                    int read;
+
+                    if (present)
+                    {
+                        _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
+                        read = StreamUtilities.ReadMaximum(_fileStream, buffer.Slice(totalRead, toRead));
+                    }
+                    else
+                    {
+                        _parentStream.Position = _position + totalRead;
+                        read = StreamUtilities.ReadMaximum(_parentStream, buffer.Slice(totalRead, toRead));
+                    }
+
+                    totalRead += read;
+                }
+                else if (blockStatus == PayloadBlockStatus.NotPresent)
+                {
+                    _parentStream.Position = _position + totalRead;
+                    int read = StreamUtilities.ReadMaximum(_parentStream, buffer.Slice(totalRead,
+                        Math.Min(blockBytesRemaining, totalToRead - totalRead)));
+
+                    totalRead += read;
+                }
+                else
+                {
+                    int zeroed = Math.Min(blockBytesRemaining, totalToRead - totalRead);
+                    buffer.Slice(totalRead, zeroed).Clear();
+                    totalRead += zeroed;
+                }
+            }
+
+            _position += totalRead;
+            return totalRead;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             CheckDisposed();
@@ -316,6 +565,160 @@ namespace DiscUtils.Vhdx
 
             _position += totalWritten;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (!CanWrite)
+            {
+                throw new InvalidOperationException("Attempt to write to read-only VHDX");
+            }
+
+            if (_position % _metadata.LogicalSectorSize != 0 || count % _metadata.LogicalSectorSize != 0)
+            {
+                throw new IOException("Unaligned read");
+            }
+
+            int totalWritten = 0;
+
+            while (totalWritten < count)
+            {
+                Chunk chunk = GetChunk(_position + totalWritten, out _, out var blockIndex, out var sectorIndex);
+
+                int blockOffset = (int)(sectorIndex * _metadata.LogicalSectorSize);
+                int blockBytesRemaining = (int)(_fileParameters.BlockSize - blockOffset);
+
+                PayloadBlockStatus blockStatus = chunk.GetBlockStatus(blockIndex);
+                if (blockStatus != PayloadBlockStatus.FullyPresent && blockStatus != PayloadBlockStatus.PartiallyPresent)
+                {
+                    blockStatus = chunk.AllocateSpaceForBlock(blockIndex);
+                }
+
+                int toWrite = Math.Min(blockBytesRemaining, count - totalWritten);
+                _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
+                await _fileStream.WriteAsync(buffer, offset + totalWritten, toWrite, cancellationToken).ConfigureAwait(false);
+
+                if (blockStatus == PayloadBlockStatus.PartiallyPresent)
+                {
+                    BlockBitmap bitmap = chunk.GetBlockBitmap(blockIndex);
+                    bool changed = bitmap.MarkSectorsPresent(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
+
+                    if (changed)
+                    {
+                        chunk.WriteBlockBitmap(blockIndex);
+                    }
+                }
+
+                totalWritten += toWrite;
+            }
+
+            _position += totalWritten;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (!CanWrite)
+            {
+                throw new InvalidOperationException("Attempt to write to read-only VHDX");
+            }
+
+            if (_position % _metadata.LogicalSectorSize != 0 || buffer.Length % _metadata.LogicalSectorSize != 0)
+            {
+                throw new IOException("Unaligned read");
+            }
+
+            int totalWritten = 0;
+
+            while (totalWritten < buffer.Length)
+            {
+                Chunk chunk = GetChunk(_position + totalWritten, out _, out var blockIndex, out var sectorIndex);
+
+                int blockOffset = (int)(sectorIndex * _metadata.LogicalSectorSize);
+                int blockBytesRemaining = (int)(_fileParameters.BlockSize - blockOffset);
+
+                PayloadBlockStatus blockStatus = chunk.GetBlockStatus(blockIndex);
+                if (blockStatus != PayloadBlockStatus.FullyPresent && blockStatus != PayloadBlockStatus.PartiallyPresent)
+                {
+                    blockStatus = chunk.AllocateSpaceForBlock(blockIndex);
+                }
+
+                int toWrite = Math.Min(blockBytesRemaining, buffer.Length - totalWritten);
+                _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
+                await _fileStream.WriteAsync(buffer.Slice(totalWritten, toWrite), cancellationToken).ConfigureAwait(false);
+
+                if (blockStatus == PayloadBlockStatus.PartiallyPresent)
+                {
+                    BlockBitmap bitmap = chunk.GetBlockBitmap(blockIndex);
+                    bool changed = bitmap.MarkSectorsPresent(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
+
+                    if (changed)
+                    {
+                        chunk.WriteBlockBitmap(blockIndex);
+                    }
+                }
+
+                totalWritten += toWrite;
+            }
+
+            _position += totalWritten;
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            CheckDisposed();
+
+            if (!CanWrite)
+            {
+                throw new InvalidOperationException("Attempt to write to read-only VHDX");
+            }
+
+            if (_position % _metadata.LogicalSectorSize != 0 || buffer.Length % _metadata.LogicalSectorSize != 0)
+            {
+                throw new IOException("Unaligned read");
+            }
+
+            int totalWritten = 0;
+
+            while (totalWritten < buffer.Length)
+            {
+                Chunk chunk = GetChunk(_position + totalWritten, out _, out var blockIndex, out var sectorIndex);
+
+                int blockOffset = (int)(sectorIndex * _metadata.LogicalSectorSize);
+                int blockBytesRemaining = (int)(_fileParameters.BlockSize - blockOffset);
+
+                PayloadBlockStatus blockStatus = chunk.GetBlockStatus(blockIndex);
+                if (blockStatus != PayloadBlockStatus.FullyPresent && blockStatus != PayloadBlockStatus.PartiallyPresent)
+                {
+                    blockStatus = chunk.AllocateSpaceForBlock(blockIndex);
+                }
+
+                int toWrite = Math.Min(blockBytesRemaining, buffer.Length - totalWritten);
+                _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
+                _fileStream.Write(buffer.Slice(totalWritten, toWrite));
+
+                if (blockStatus == PayloadBlockStatus.PartiallyPresent)
+                {
+                    BlockBitmap bitmap = chunk.GetBlockBitmap(blockIndex);
+                    bool changed = bitmap.MarkSectorsPresent(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
+
+                    if (changed)
+                    {
+                        chunk.WriteBlockBitmap(blockIndex);
+                    }
+                }
+
+                totalWritten += toWrite;
+            }
+
+            _position += totalWritten;
+        }
+#endif
 
         protected override void Dispose(bool disposing)
         {

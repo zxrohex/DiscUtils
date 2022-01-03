@@ -21,6 +21,8 @@
 //
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -56,6 +58,34 @@ namespace DiscUtils.Streams
             Array.Copy(_buffer, startOffset, block, offset, numBytes);
             return numBytes;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+        {
+            int startOffset = (int)(diskOffset - Start);
+            int numBytes = (int)Math.Min(Length - startOffset, count);
+            Array.Copy(_buffer, startOffset, block, offset, numBytes);
+            return Task.FromResult(numBytes);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
+        {
+            int startOffset = (int)(diskOffset - Start);
+            int numBytes = (int)Math.Min(Length - startOffset, block.Length);
+            _buffer.AsMemory().Slice(startOffset, numBytes).CopyTo(block);
+            return new(numBytes);
+        }
+
+        public override int Read(long diskOffset, Span<byte> block)
+        {
+            int startOffset = (int)(diskOffset - Start);
+            int numBytes = (int)Math.Min(Length - startOffset, block.Length);
+            _buffer.AsSpan().Slice(startOffset, numBytes).CopyTo(block);
+            return numBytes;
+        }
+#endif
 
         public override void DisposeReadState()
         {

@@ -24,6 +24,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Archives;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -167,6 +169,130 @@ namespace DiscUtils.Xva
             _position += numRead;
             return numRead;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (_position == _length)
+            {
+                return 0;
+            }
+
+            if (_position > _length)
+            {
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+
+            int chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
+
+            if (_currentChunkIndex != chunk || _currentChunkData == null)
+            {
+                if (_currentChunkData != null)
+                {
+                    _currentChunkData.Dispose();
+                    _currentChunkData = null;
+                }
+
+                if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
+                {
+                    _currentChunkData = new ZeroStream(Sizes.OneMiB);
+                }
+
+                _currentChunkIndex = chunk;
+            }
+
+            long chunkOffset = _position % Sizes.OneMiB;
+            int toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), count);
+
+            _currentChunkData.Position = chunkOffset;
+
+            int numRead = await _currentChunkData.ReadAsync(buffer, offset, toRead, cancellationToken).ConfigureAwait(false);
+            _position += numRead;
+            return numRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_position == _length)
+            {
+                return 0;
+            }
+
+            if (_position > _length)
+            {
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+
+            int chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
+
+            if (_currentChunkIndex != chunk || _currentChunkData == null)
+            {
+                if (_currentChunkData != null)
+                {
+                    _currentChunkData.Dispose();
+                    _currentChunkData = null;
+                }
+
+                if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
+                {
+                    _currentChunkData = new ZeroStream(Sizes.OneMiB);
+                }
+
+                _currentChunkIndex = chunk;
+            }
+
+            long chunkOffset = _position % Sizes.OneMiB;
+            int toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), buffer.Length);
+
+            _currentChunkData.Position = chunkOffset;
+
+            int numRead = await _currentChunkData.ReadAsync(buffer[..toRead], cancellationToken).ConfigureAwait(false);
+            _position += numRead;
+            return numRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (_position == _length)
+            {
+                return 0;
+            }
+
+            if (_position > _length)
+            {
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+
+            int chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
+
+            if (_currentChunkIndex != chunk || _currentChunkData == null)
+            {
+                if (_currentChunkData != null)
+                {
+                    _currentChunkData.Dispose();
+                    _currentChunkData = null;
+                }
+
+                if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
+                {
+                    _currentChunkData = new ZeroStream(Sizes.OneMiB);
+                }
+
+                _currentChunkIndex = chunk;
+            }
+
+            long chunkOffset = _position % Sizes.OneMiB;
+            int toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), buffer.Length);
+
+            _currentChunkData.Position = chunkOffset;
+
+            int numRead = _currentChunkData.Read(buffer[..toRead]);
+            _position += numRead;
+            return numRead;
+        }
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {

@@ -22,6 +22,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -79,6 +81,106 @@ namespace DiscUtils.Streams
             _position += available;
             return available;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            int startOffset = (int)(_position % _blockSize);
+            if (startOffset == 0 && (count % _blockSize == 0 || _position + count == Length))
+            {
+                // Aligned read - pass through to underlying stream.
+                WrappedStream.Position = _position;
+                int numRead = await WrappedStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+                _position += numRead;
+                return numRead;
+            }
+
+            long startPos = MathUtilities.RoundDown(_position, _blockSize);
+            long endPos = MathUtilities.RoundUp(_position + count, _blockSize);
+
+            if (endPos - startPos > int.MaxValue)
+            {
+                throw new IOException("Oversized read, after alignment");
+            }
+
+            byte[] tempBuffer = new byte[endPos - startPos];
+
+            WrappedStream.Position = startPos;
+            int read = await WrappedStream.ReadAsync(tempBuffer, 0, tempBuffer.Length, cancellationToken).ConfigureAwait(false);
+            int available = Math.Min(count, read - startOffset);
+
+            Array.Copy(tempBuffer, startOffset, buffer, offset, available);
+
+            _position += available;
+            return available;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int Read(Span<byte> buffer)
+        {
+            int startOffset = (int)(_position % _blockSize);
+            if (startOffset == 0 && (buffer.Length % _blockSize == 0 || _position + buffer.Length == Length))
+            {
+                // Aligned read - pass through to underlying stream.
+                WrappedStream.Position = _position;
+                int numRead = WrappedStream.Read(buffer);
+                _position += numRead;
+                return numRead;
+            }
+
+            long startPos = MathUtilities.RoundDown(_position, _blockSize);
+            long endPos = MathUtilities.RoundUp(_position + buffer.Length, _blockSize);
+
+            if (endPos - startPos > int.MaxValue)
+            {
+                throw new IOException("Oversized read, after alignment");
+            }
+
+            byte[] tempBuffer = new byte[endPos - startPos];
+
+            WrappedStream.Position = startPos;
+            int read = WrappedStream.Read(tempBuffer, 0, tempBuffer.Length);
+            int available = Math.Min(buffer.Length, read - startOffset);
+
+            tempBuffer.AsSpan(startOffset, available).CopyTo(buffer);
+
+            _position += available;
+            return available;
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            int startOffset = (int)(_position % _blockSize);
+            if (startOffset == 0 && (buffer.Length % _blockSize == 0 || _position + buffer.Length == Length))
+            {
+                // Aligned read - pass through to underlying stream.
+                WrappedStream.Position = _position;
+                int numRead = await WrappedStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                _position += numRead;
+                return numRead;
+            }
+
+            long startPos = MathUtilities.RoundDown(_position, _blockSize);
+            long endPos = MathUtilities.RoundUp(_position + buffer.Length, _blockSize);
+
+            if (endPos - startPos > int.MaxValue)
+            {
+                throw new IOException("Oversized read, after alignment");
+            }
+
+            byte[] tempBuffer = new byte[endPos - startPos];
+
+            WrappedStream.Position = startPos;
+            int read = await WrappedStream.ReadAsync(tempBuffer, 0, tempBuffer.Length, cancellationToken).ConfigureAwait(false);
+            int available = Math.Min(buffer.Length, read - startOffset);
+
+            tempBuffer.AsMemory(startOffset, available).CopyTo(buffer);
+
+            _position += available;
+            return available;
+        }
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {

@@ -20,9 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Fat
 {
@@ -107,7 +110,7 @@ namespace DiscUtils.Fat
 
         public event FirstClusterChangedDelegate FirstClusterChanged;
 
-        public override void Flush() {}
+        public override void Flush() { }
 
         public override int Read(byte[] buffer, int offset, int count)
         {

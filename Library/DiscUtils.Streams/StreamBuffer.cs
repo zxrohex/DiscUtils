@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -120,6 +122,52 @@ namespace DiscUtils.Streams
             return _stream.Read(buffer, offset, count);
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Reads from the buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        public override Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            _stream.Position = pos;
+            return _stream.ReadAsync(buffer, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Reads from the buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        public override ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            _stream.Position = pos;
+            return _stream.ReadAsync(buffer, cancellationToken);
+        }
+
+        /// <summary>
+        /// Reads from the buffer into a byte array.
+        /// </summary>
+        /// <param name="pos">The offset within the buffer to start reading.</param>
+        /// <param name="buffer">The destination byte array.</param>
+        /// <param name="offset">The start offset within the destination buffer.</param>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            _stream.Position = pos;
+            return _stream.Read(buffer);
+        }
+#endif
+
         /// <summary>
         /// Writes a byte array into the buffer.
         /// </summary>
@@ -132,6 +180,49 @@ namespace DiscUtils.Streams
             _stream.Position = pos;
             _stream.Write(buffer, offset, count);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        /// <summary>
+        /// Writes a byte array into the buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the buffer.</param>
+        /// <param name="buffer">The source byte array.</param>
+        /// <param name="offset">The start offset within the source byte array.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            _stream.Position = pos;
+            return _stream.WriteAsync(buffer, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Writes a byte array into the buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the buffer.</param>
+        /// <param name="buffer">The source byte array.</param>
+        /// <param name="offset">The start offset within the source byte array.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            _stream.Position = pos;
+            return _stream.WriteAsync(buffer, cancellationToken);
+        }
+
+        /// <summary>
+        /// Writes a byte array into the buffer.
+        /// </summary>
+        /// <param name="pos">The start offset within the buffer.</param>
+        /// <param name="buffer">The source byte array.</param>
+        /// <param name="offset">The start offset within the source byte array.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override void Write(long pos, ReadOnlySpan<byte> buffer)
+        {
+            _stream.Position = pos;
+            _stream.Write(buffer);
+        }
+#endif
 
         /// <summary>
         /// Flushes all data to the underlying storage.

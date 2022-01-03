@@ -23,6 +23,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -139,6 +142,100 @@ namespace DiscUtils.Streams
             return totalRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (!CanRead)
+            {
+                throw new InvalidOperationException("Attempt to read to non-readable stream");
+            }
+
+            int maxToRead = (int)Math.Min(_length - _position, count);
+
+            int totalRead = 0;
+            while (totalRead < maxToRead)
+            {
+                long stripe = _position / _stripeSize;
+                long stripeOffset = _position % _stripeSize;
+                int stripeToRead = (int)Math.Min(maxToRead - totalRead, _stripeSize - stripeOffset);
+
+                int streamIdx = (int)(stripe % _wrapped.Count);
+                long streamStripe = stripe / _wrapped.Count;
+
+                Stream targetStream = _wrapped[streamIdx];
+                targetStream.Position = streamStripe * _stripeSize + stripeOffset;
+
+                int numRead = await targetStream.ReadAsync(buffer, offset + totalRead, stripeToRead, cancellationToken).ConfigureAwait(false);
+                _position += numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (!CanRead)
+            {
+                throw new InvalidOperationException("Attempt to read to non-readable stream");
+            }
+
+            int maxToRead = (int)Math.Min(_length - _position, buffer.Length);
+
+            int totalRead = 0;
+            while (totalRead < maxToRead)
+            {
+                long stripe = _position / _stripeSize;
+                long stripeOffset = _position % _stripeSize;
+                int stripeToRead = (int)Math.Min(maxToRead - totalRead, _stripeSize - stripeOffset);
+
+                int streamIdx = (int)(stripe % _wrapped.Count);
+                long streamStripe = stripe / _wrapped.Count;
+
+                Stream targetStream = _wrapped[streamIdx];
+                targetStream.Position = streamStripe * _stripeSize + stripeOffset;
+
+                int numRead = await targetStream.ReadAsync(buffer.Slice(totalRead, stripeToRead), cancellationToken).ConfigureAwait(false);
+                _position += numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (!CanRead)
+            {
+                throw new InvalidOperationException("Attempt to read to non-readable stream");
+            }
+
+            int maxToRead = (int)Math.Min(_length - _position, buffer.Length);
+
+            int totalRead = 0;
+            while (totalRead < maxToRead)
+            {
+                long stripe = _position / _stripeSize;
+                long stripeOffset = _position % _stripeSize;
+                int stripeToRead = (int)Math.Min(maxToRead - totalRead, _stripeSize - stripeOffset);
+
+                int streamIdx = (int)(stripe % _wrapped.Count);
+                long streamStripe = stripe / _wrapped.Count;
+
+                Stream targetStream = _wrapped[streamIdx];
+                targetStream.Position = streamStripe * _stripeSize + stripeOffset;
+
+                int numRead = targetStream.Read(buffer.Slice(totalRead, stripeToRead));
+                _position += numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             long effectiveOffset = offset;
@@ -197,6 +294,108 @@ namespace DiscUtils.Streams
                 totalWritten += stripeToWrite;
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (!CanWrite)
+            {
+                throw new InvalidOperationException("Attempt to write to read-only stream");
+            }
+
+            if (_position + count > _length)
+            {
+                throw new IOException("Attempt to write beyond end of stream");
+            }
+
+            int totalWritten = 0;
+            while (totalWritten < count)
+            {
+                long stripe = _position / _stripeSize;
+                long stripeOffset = _position % _stripeSize;
+                int stripeToWrite = (int)Math.Min(count - totalWritten, _stripeSize - stripeOffset);
+
+                int streamIdx = (int)(stripe % _wrapped.Count);
+                long streamStripe = stripe / _wrapped.Count;
+
+                Stream targetStream = _wrapped[streamIdx];
+                targetStream.Position = streamStripe * _stripeSize + stripeOffset;
+                await targetStream.WriteAsync(buffer, offset + totalWritten, stripeToWrite, cancellationToken).ConfigureAwait(false);
+
+                _position += stripeToWrite;
+                totalWritten += stripeToWrite;
+            }
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (!CanWrite)
+            {
+                throw new InvalidOperationException("Attempt to write to read-only stream");
+            }
+
+            if (_position + buffer.Length > _length)
+            {
+                throw new IOException("Attempt to write beyond end of stream");
+            }
+
+            int totalWritten = 0;
+            while (totalWritten < buffer.Length)
+            {
+                long stripe = _position / _stripeSize;
+                long stripeOffset = _position % _stripeSize;
+                int stripeToWrite = (int)Math.Min(buffer.Length - totalWritten, _stripeSize - stripeOffset);
+
+                int streamIdx = (int)(stripe % _wrapped.Count);
+                long streamStripe = stripe / _wrapped.Count;
+
+                Stream targetStream = _wrapped[streamIdx];
+                targetStream.Position = streamStripe * _stripeSize + stripeOffset;
+                await targetStream.WriteAsync(buffer.Slice(totalWritten, stripeToWrite), cancellationToken).ConfigureAwait(false);
+
+                _position += stripeToWrite;
+                totalWritten += stripeToWrite;
+            }
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            if (!CanWrite)
+            {
+                throw new InvalidOperationException("Attempt to write to read-only stream");
+            }
+
+            if (_position + buffer.Length > _length)
+            {
+                throw new IOException("Attempt to write beyond end of stream");
+            }
+
+            int totalWritten = 0;
+            while (totalWritten < buffer.Length)
+            {
+                long stripe = _position / _stripeSize;
+                long stripeOffset = _position % _stripeSize;
+                int stripeToWrite = (int)Math.Min(buffer.Length - totalWritten, _stripeSize - stripeOffset);
+
+                int streamIdx = (int)(stripe % _wrapped.Count);
+                long streamStripe = stripe / _wrapped.Count;
+
+                Stream targetStream = _wrapped[streamIdx];
+                targetStream.Position = streamStripe * _stripeSize + stripeOffset;
+                targetStream.Write(buffer.Slice(totalWritten, stripeToWrite));
+
+                _position += stripeToWrite;
+                totalWritten += stripeToWrite;
+            }
+        }
+#endif
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task FlushAsync(CancellationToken cancellationToken) =>
+            Task.WhenAll(_wrapped.Select(stream => stream.FlushAsync(cancellationToken)));
+#endif
 
         protected override void Dispose(bool disposing)
         {

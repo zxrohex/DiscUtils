@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -104,6 +106,10 @@ namespace DiscUtils.Streams
         /// <returns>The read-only stream.</returns>
         public static SparseStream ReadOnly(SparseStream toWrap, Ownership ownership)
         {
+            if (toWrap is SparseReadOnlyWrapperStream)
+            {
+                return toWrap;
+            }
             return new SparseReadOnlyWrapperStream(toWrap, ownership);
         }
 
@@ -135,6 +141,42 @@ namespace DiscUtils.Streams
         {
             return StreamExtent.Intersect(Extents, new[] { new StreamExtent(start, count) });
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+            ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+
+        public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            Task.FromResult(Read(buffer, offset, count));
+
+        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+            WriteAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+
+        public override void EndWrite(IAsyncResult asyncResult) => ((Task)asyncResult).Wait();
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            Write(buffer, offset, count);
+#if NET461_OR_GREATER || NETSTANDARD || NETCOREAPP
+            return Task.CompletedTask;
+#else
+            return Task.FromResult(0);
+#endif
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            new(Read(buffer.Span));
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            Write(buffer.Span);
+            return new();
+        }
+#endif
 
         private class SparseReadOnlyWrapperStream : SparseStream
         {
@@ -185,6 +227,25 @@ namespace DiscUtils.Streams
             {
                 return _wrapped.Read(buffer, offset, count);
             }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
+            }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+            {
+                return _wrapped.ReadAsync(buffer, cancellationToken);
+            }
+
+            public override int Read(Span<byte> buffer)
+            {
+                return _wrapped.Read(buffer);
+            }
+#endif
 
             public override long Seek(long offset, SeekOrigin origin)
             {
@@ -288,6 +349,25 @@ namespace DiscUtils.Streams
                 return _wrapped.Read(buffer, offset, count);
             }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
+            }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+            {
+                return _wrapped.ReadAsync(buffer, cancellationToken);
+            }
+
+            public override int Read(Span<byte> buffer)
+            {
+                return _wrapped.Read(buffer);
+            }
+#endif
+
             public override long Seek(long offset, SeekOrigin origin)
             {
                 return _wrapped.Seek(offset, origin);
@@ -307,6 +387,45 @@ namespace DiscUtils.Streams
 
                 _wrapped.Write(buffer, offset, count);
             }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                if (_extents != null)
+                {
+                    throw new InvalidOperationException("Attempt to write to stream with explicit extents");
+                }
+
+                return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
+            }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+            {
+                if (_extents != null)
+                {
+                    throw new InvalidOperationException("Attempt to write to stream with explicit extents");
+                }
+
+                return _wrapped.WriteAsync(buffer, cancellationToken);
+            }
+
+            public override void Write(ReadOnlySpan<byte> buffer)
+            {
+                if (_extents != null)
+                {
+                    throw new InvalidOperationException("Attempt to write to stream with explicit extents");
+                }
+
+                _wrapped.Write(buffer);
+            }
+#endif
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+            public override Task FlushAsync(CancellationToken cancellationToken) =>
+                _wrapped.FlushAsync(cancellationToken);
+#endif
 
             protected override void Dispose(bool disposing)
             {

@@ -26,7 +26,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.SquashFs
 {
-    internal class FileContentBuffer : IBuffer
+    internal class FileContentBuffer : Streams.Buffer
     {
         private const uint InvalidFragmentKey = 0xFFFFFFFF;
 
@@ -58,27 +58,27 @@ namespace DiscUtils.SquashFs
             }
         }
 
-        public bool CanRead
+        public override bool CanRead
         {
             get { return true; }
         }
 
-        public bool CanWrite
+        public override bool CanWrite
         {
             get { return false; }
         }
 
-        public long Capacity
+        public override long Capacity
         {
             get { return _inode.FileSize; }
         }
 
-        public IEnumerable<StreamExtent> Extents
+        public override IEnumerable<StreamExtent> Extents
         {
             get { return new[] { new StreamExtent(0, Capacity) }; }
         }
 
-        public int Read(long pos, byte[] buffer, int offset, int count)
+        public override int Read(long pos, byte[] buffer, int offset, int count)
         {
             if (pos > _inode.FileSize)
             {
@@ -120,24 +120,70 @@ namespace DiscUtils.SquashFs
             return totalRead;
         }
 
-        public void Write(long pos, byte[] buffer, int offset, int count)
+        public override void Write(long pos, byte[] buffer, int offset, int count)
         {
             throw new NotSupportedException();
         }
 
-        public void Clear(long pos, int count)
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            if (pos > _inode.FileSize)
+            {
+                return 0;
+            }
+
+            long startOfFragment = _blockLengths.Length * _context.SuperBlock.BlockSize;
+            long currentPos = pos;
+            int totalRead = 0;
+            int totalToRead = (int)Math.Min(_inode.FileSize - pos, buffer.Length);
+            int currentBlock = 0;
+            long currentBlockDiskStart = _inode.StartBlock;
+            while (totalRead < totalToRead)
+            {
+                if (currentPos >= startOfFragment)
+                {
+                    int read = ReadFrag((int)(currentPos - startOfFragment), buffer[totalRead..totalToRead]);
+                    return totalRead + read;
+                }
+
+                int targetBlock = (int)(currentPos / _context.SuperBlock.BlockSize);
+                while (currentBlock < targetBlock)
+                {
+                    currentBlockDiskStart += _blockLengths[currentBlock] & 0x7FFFFF;
+                    ++currentBlock;
+                }
+
+                int blockOffset = (int)(pos % _context.SuperBlock.BlockSize);
+
+                Block block = _context.ReadBlock(currentBlockDiskStart, _blockLengths[currentBlock]);
+
+                int toCopy = Math.Min(block.Available - blockOffset, totalToRead - totalRead);
+                block.Data.AsSpan(blockOffset, toCopy).CopyTo(buffer[totalRead..]);
+                totalRead += toCopy;
+                currentPos += toCopy;
+            }
+
+            return totalRead;
+        }
+
+        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+            throw new NotSupportedException();
+#endif
+
+        public override void Clear(long pos, int count)
         {
             throw new NotSupportedException();
         }
 
-        public void Flush() {}
+        public override void Flush() {}
 
-        public void SetCapacity(long value)
+        public override void SetCapacity(long value)
         {
             throw new NotSupportedException();
         }
 
-        public IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
         {
             return StreamExtent.Intersect(Extents, new StreamExtent(start, count));
         }
@@ -168,5 +214,34 @@ namespace DiscUtils.SquashFs
             Array.Copy(frag.Data, (int)(_inode.FragmentOffset + pos), buffer, offset, toCopy);
             return toCopy;
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        private int ReadFrag(int pos, Span<byte> buffer)
+        {
+            int fragRecordsPerBlock = 8192 / FragmentRecord.RecordSize;
+            int fragTable = (int)_inode.FragmentKey / fragRecordsPerBlock;
+            int recordOffset = (int)(_inode.FragmentKey % fragRecordsPerBlock) * FragmentRecord.RecordSize;
+
+            byte[] fragRecordData = new byte[FragmentRecord.RecordSize];
+
+            _context.FragmentTableReaders[fragTable].SetPosition(0, recordOffset);
+            _context.FragmentTableReaders[fragTable].Read(fragRecordData, 0, fragRecordData.Length);
+
+            FragmentRecord fragRecord = new FragmentRecord();
+            fragRecord.ReadFrom(fragRecordData, 0);
+
+            Block frag = _context.ReadBlock(fragRecord.StartBlock, fragRecord.CompressedSize);
+
+            // Attempt to read data beyond end of fragment
+            if (pos > frag.Available)
+            {
+                return 0;
+            }
+
+            int toCopy = (int)Math.Min(frag.Available - (_inode.FragmentOffset + pos), buffer.Length);
+            frag.Data.AsSpan((int)(_inode.FragmentOffset + pos), toCopy).CopyTo(buffer);
+            return toCopy;
+        }
+#endif
     }
 }

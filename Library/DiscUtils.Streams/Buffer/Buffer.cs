@@ -22,6 +22,8 @@
 
 using System.Collections.Generic;
 using System;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace DiscUtils.Streams
 {
@@ -113,5 +115,35 @@ namespace DiscUtils.Streams
         /// <param name="count">The number of bytes of interest.</param>
         /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
         public abstract IEnumerable<StreamExtent> GetExtentsInRange(long start, long count);
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public virtual Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            Task.FromResult(Read(pos, buffer, offset, count));
+
+        public virtual Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            Write(pos, buffer, offset, count);
+#if NET461_OR_GREATER || NETSTANDARD || NETCOREAPP
+            return Task.CompletedTask;
+#else
+            return Task.FromResult(0);
+#endif
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public abstract int Read(long pos, Span<byte> buffer);
+        
+        public virtual ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken) =>
+            new(Read(pos, buffer.Span));
+
+        public abstract void Write(long pos, ReadOnlySpan<byte> buffer);
+        
+        public virtual ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            Write(pos, buffer.Span);
+            return new();
+        }
+#endif
     }
 }

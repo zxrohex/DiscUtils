@@ -24,6 +24,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -1243,6 +1245,21 @@ namespace DiscUtils.Ntfs
                 return _wrapped.Read(buffer, offset, count);
             }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override int Read(Span<byte> buffer) =>
+                _wrapped.Read(buffer);
+#endif
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+                _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+                _wrapped.ReadAsync(buffer, cancellationToken);
+#endif
+
             public override long Seek(long offset, SeekOrigin origin)
             {
                 return _wrapped.Seek(offset, origin);
@@ -1263,6 +1280,45 @@ namespace DiscUtils.Ntfs
 
                 _wrapped.Write(buffer, offset, count);
             }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                if (_wrapped.Position + count > Length)
+                {
+                    ChangeAttributeResidencyByLength(_wrapped.Position + count);
+                }
+
+                return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
+            }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override void Write(ReadOnlySpan<byte> buffer)
+            {
+                if (_wrapped.Position + buffer.Length > Length)
+                {
+                    ChangeAttributeResidencyByLength(_wrapped.Position + buffer.Length);
+                }
+
+                _wrapped.Write(buffer);
+            }
+
+            public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+            {
+                if (_wrapped.Position + buffer.Length > Length)
+                {
+                    ChangeAttributeResidencyByLength(_wrapped.Position + buffer.Length);
+                }
+
+                return _wrapped.WriteAsync(buffer, cancellationToken);
+            }
+#endif
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+            public override Task FlushAsync(CancellationToken cancellationToken) =>
+                _wrapped.FlushAsync(cancellationToken);
+#endif
 
             public override void Clear(int count)
             {

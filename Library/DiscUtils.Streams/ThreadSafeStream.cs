@@ -235,6 +235,27 @@ namespace DiscUtils.Streams
             }
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Reads data from the stream.
+        /// </summary>
+        /// <param name="buffer">The buffer to fill.</param>
+        /// <param name="offset">The first byte in buffer to fill.</param>
+        /// <param name="count">The requested number of bytes to read.</param>
+        /// <returns>The actual number of bytes read.</returns>
+        public override int Read(Span<byte> buffer)
+        {
+            lock (_common)
+            {
+                SparseStream wrapped = Wrapped;
+                wrapped.Position = _position;
+                int numRead = wrapped.Read(buffer);
+                _position += numRead;
+                return numRead;
+            }
+        }
+#endif
+
         /// <summary>
         /// Changes the current stream position (each view has it's own Position).
         /// </summary>
@@ -293,6 +314,31 @@ namespace DiscUtils.Streams
             }
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        /// <summary>
+        /// Writes data to the stream (not currently supported).
+        /// </summary>
+        /// <param name="buffer">The data to write.</param>
+        /// <param name="offset">The first byte to write.</param>
+        /// <param name="count">The number of bytes to write.</param>
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            lock (_common)
+            {
+                SparseStream wrapped = Wrapped;
+
+                if (_position + buffer.Length > wrapped.Length)
+                {
+                    throw new IOException("Attempt to extend stream");
+                }
+
+                wrapped.Position = _position;
+                wrapped.Write(buffer);
+                _position += buffer.Length;
+            }
+        }
+#endif
+
         /// <summary>
         /// Disposes of this instance, invalidating any remaining views.
         /// </summary>
@@ -323,14 +369,14 @@ namespace DiscUtils.Streams
             public SparseStream WrappedStream;
             public Ownership WrappedStreamOwnership;
 
-            #region IDisposable Members
+#region IDisposable Members
 
             public void Dispose()
             {
                 WrappedStream = null;
             }
 
-            #endregion
+#endregion
         }
     }
 }

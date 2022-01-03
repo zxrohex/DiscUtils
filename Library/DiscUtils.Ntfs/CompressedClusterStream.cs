@@ -103,6 +103,30 @@ namespace DiscUtils.Ntfs
             }
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void ReadClusters(long startVcn, int count, Span<byte> buffer)
+        {
+            if (buffer.Length < count * _bytesPerCluster + buffer.Length)
+            {
+                throw new ArgumentException("Cluster buffer too small", nameof(buffer));
+            }
+
+            int totalRead = 0;
+            while (totalRead < count)
+            {
+                long focusVcn = startVcn + totalRead;
+                LoadCache(focusVcn);
+
+                int cacheOffset = (int)(focusVcn - _cacheBufferVcn);
+                int toCopy = Math.Min(_attr.CompressionUnitSize - cacheOffset, count - totalRead);
+
+                _cacheBuffer.AsSpan(cacheOffset * _bytesPerCluster, toCopy * _bytesPerCluster).CopyTo(buffer[(totalRead * _bytesPerCluster)..]);
+
+                totalRead += toCopy;
+            }
+        }
+#endif
+
         public override int WriteClusters(long startVcn, int count, byte[] buffer, int offset)
         {
             if (buffer.Length < count * _bytesPerCluster + offset)
@@ -146,6 +170,51 @@ namespace DiscUtils.Ntfs
 
             return totalAllocated;
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer)
+        {
+            if (buffer.Length < count * _bytesPerCluster + buffer.Length)
+            {
+                throw new ArgumentException("Cluster buffer too small", nameof(buffer));
+            }
+
+            int totalAllocated = 0;
+
+            int totalWritten = 0;
+            while (totalWritten < count)
+            {
+                long focusVcn = startVcn + totalWritten;
+                long cuStart = CompressionStart(focusVcn);
+
+                if (cuStart == focusVcn && count - totalWritten >= _attr.CompressionUnitSize)
+                {
+                    // Aligned write...
+                    var bytes = buffer[(totalWritten * _bytesPerCluster)..].ToArray();
+                    totalAllocated += CompressAndWriteClusters(focusVcn, _attr.CompressionUnitSize, bytes, 0);
+
+                    totalWritten += _attr.CompressionUnitSize;
+                }
+                else
+                {
+                    // Unaligned, so go through cache
+                    LoadCache(focusVcn);
+
+                    int cacheOffset = (int)(focusVcn - _cacheBufferVcn);
+                    int toCopy = Math.Min(count - totalWritten, _attr.CompressionUnitSize - cacheOffset);
+
+                    buffer.Slice(totalWritten * _bytesPerCluster, toCopy * _bytesPerCluster).CopyTo(_cacheBuffer.AsSpan(cacheOffset * _bytesPerCluster));
+
+                    totalAllocated += CompressAndWriteClusters(_cacheBufferVcn, _attr.CompressionUnitSize, _cacheBuffer,
+                        0);
+
+                    totalWritten += toCopy;
+                }
+            }
+
+            return totalAllocated;
+        }
+#endif
 
         public override int ClearClusters(long startVcn, int count)
         {

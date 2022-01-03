@@ -22,6 +22,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Compression;
 using DiscUtils.Streams;
 
@@ -127,6 +129,49 @@ namespace DiscUtils.Wim
             _position += numToRead;
             return numToRead;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (_position > Length)
+            {
+                return Task.FromResult(0);
+            }
+
+            int numToRead = (int)Math.Min(count, _bufferCount - _position);
+            Array.Copy(_buffer, (int)_position, buffer, offset, numToRead);
+            _position += numToRead;
+            return Task.FromResult(numToRead);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_position > Length)
+            {
+                return new(0);
+            }
+
+            int numToRead = (int)Math.Min(buffer.Length, _bufferCount - _position);
+            _buffer.AsMemory((int)_position, numToRead).CopyTo(buffer);
+            _position += numToRead;
+            return new(numToRead);
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (_position > Length)
+            {
+                return 0;
+            }
+
+            int numToRead = (int)Math.Min(buffer.Length, _bufferCount - _position);
+            _buffer.AsSpan((int)_position, numToRead).CopyTo(buffer);
+            _position += numToRead;
+            return numToRead;
+        }
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {

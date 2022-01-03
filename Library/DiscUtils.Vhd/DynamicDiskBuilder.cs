@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Vhd
@@ -139,6 +141,14 @@ namespace DiscUtils.Vhd
                 return _dataStream.Read(block, offset, count);
             }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override int Read(long diskOffset, Span<byte> block)
+            {
+                _dataStream.Position = diskOffset - Start;
+                return _dataStream.Read(block);
+            }
+#endif
+
             public override void DisposeReadState()
             {
                 if (_dataStream != null)
@@ -211,6 +221,20 @@ namespace DiscUtils.Vhd
                 _content.Position = position - _bitmapStream.Length;
                 return _content.Read(block, offset, count);
             }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override int Read(long diskOffset, Span<byte> block)
+            {
+                long position = diskOffset - Start;
+                if (position < _bitmapStream.Length)
+                {
+                    _bitmapStream.Position = position;
+                    return _bitmapStream.Read(block);
+                }
+                _content.Position = position - _bitmapStream.Length;
+                return _content.Read(block);
+            }
+#endif
 
             public override void DisposeReadState()
             {

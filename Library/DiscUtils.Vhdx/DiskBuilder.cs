@@ -264,6 +264,18 @@ namespace DiscUtils.Vhdx
                 return numRead;
             }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            public override int Read(long diskOffset, Span<byte> block)
+            {
+                int start = (int)Math.Min(diskOffset - Start, _batData.Length);
+                int numRead = Math.Min(block.Length, _batData.Length - start);
+
+                _batData.AsSpan(start, numRead).CopyTo(block);
+
+                return numRead;
+            }
+#endif
+
             public override void DisposeReadState()
             {
                 _batData = null;

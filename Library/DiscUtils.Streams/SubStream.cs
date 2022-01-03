@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams
 {
@@ -140,6 +142,55 @@ namespace DiscUtils.Streams
             return numRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to read negative bytes");
+            }
+
+            if (_position > _length)
+            {
+                return 0;
+            }
+
+            _parent.Position = _first + _position;
+            int numRead = await _parent.ReadAsync(buffer, offset,
+                (int)Math.Min(count, Math.Min(_length - _position, int.MaxValue)), cancellationToken).ConfigureAwait(false);
+            _position += numRead;
+            return numRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_position > _length)
+            {
+                return 0;
+            }
+
+            _parent.Position = _first + _position;
+            int numRead = await _parent.ReadAsync(buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - _position, int.MaxValue))], cancellationToken).ConfigureAwait(false);
+            _position += numRead;
+            return numRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (_position > _length)
+            {
+                return 0;
+            }
+
+            _parent.Position = _first + _position;
+            int numRead = _parent.Read(buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - _position, int.MaxValue))]);
+            _position += numRead;
+            return numRead;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             long absNewPos = offset;
@@ -182,6 +233,56 @@ namespace DiscUtils.Streams
             _parent.Write(buffer, offset, count);
             _position += count;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write negative bytes");
+            }
+
+            if (_position + count > _length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write beyond end of substream");
+            }
+
+            _parent.Position = _first + _position;
+            await _parent.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            _position += count;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_position + buffer.Length > _length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(buffer.Length), "Attempt to write beyond end of substream");
+            }
+
+            _parent.Position = _first + _position;
+            await _parent.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+            _position += buffer.Length;
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            if (_position + buffer.Length > _length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(buffer.Length), "Attempt to write beyond end of substream");
+            }
+
+            _parent.Position = _first + _position;
+            _parent.Write(buffer);
+            _position += buffer.Length;
+        }
+#endif
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task FlushAsync(CancellationToken cancellationToken) =>
+            _parent.FlushAsync(cancellationToken);
+#endif
 
         protected override void Dispose(bool disposing)
         {

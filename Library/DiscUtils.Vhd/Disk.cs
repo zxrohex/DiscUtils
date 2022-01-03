@@ -540,7 +540,10 @@ namespace DiscUtils.Vhd
 
                 if (!found)
                 {
-                    throw new IOException($"Failed to find parent for disk '{file.FullPath}'.{Environment.NewLine}{Environment.NewLine}Paths tried:{Environment.NewLine}{string.Join(Environment.NewLine, parent_locations)}");
+                    throw new IOException(@$"Failed to find parent for disk '{file.FullPath}'.
+
+Paths tried:
+{string.Join(Environment.NewLine, parent_locations)}");
                 }
             }
         }

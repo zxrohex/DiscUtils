@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
 
@@ -89,10 +91,118 @@ namespace DiscUtils.HfsPlus
             return totalRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            int totalRead = 0;
+
+            int limitedCount = (int)Math.Min(count, Math.Max(0, Capacity - pos));
+
+            while (totalRead < limitedCount)
+            {
+                long extentLogicalStart;
+                ExtentDescriptor extent = FindExtent(pos, out extentLogicalStart);
+                long extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
+                long extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
+
+                long extentOffset = pos + totalRead - extentLogicalStart;
+                int toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
+
+                // Remaining in extent can create a situation where amount to read is zero, and that appears
+                // to be OK, just need to exit thie while loop to avoid infinite loop.
+                if (toRead == 0)
+                {
+                    break;
+                }
+
+                Stream volStream = _context.VolumeStream;
+                volStream.Position = extentStreamStart + extentOffset;
+                int numRead = await volStream.ReadAsync(buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
+
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            int totalRead = 0;
+
+            int limitedCount = (int)Math.Min(buffer.Length, Math.Max(0, Capacity - pos));
+
+            while (totalRead < limitedCount)
+            {
+                long extentLogicalStart;
+                ExtentDescriptor extent = FindExtent(pos, out extentLogicalStart);
+                long extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
+                long extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
+
+                long extentOffset = pos + totalRead - extentLogicalStart;
+                int toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
+
+                // Remaining in extent can create a situation where amount to read is zero, and that appears
+                // to be OK, just need to exit thie while loop to avoid infinite loop.
+                if (toRead == 0)
+                {
+                    break;
+                }
+
+                Stream volStream = _context.VolumeStream;
+                volStream.Position = extentStreamStart + extentOffset;
+                int numRead = await volStream.ReadAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            int totalRead = 0;
+
+            int limitedCount = (int)Math.Min(buffer.Length, Math.Max(0, Capacity - pos));
+
+            while (totalRead < limitedCount)
+            {
+                long extentLogicalStart;
+                ExtentDescriptor extent = FindExtent(pos, out extentLogicalStart);
+                long extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
+                long extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
+
+                long extentOffset = pos + totalRead - extentLogicalStart;
+                int toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
+
+                // Remaining in extent can create a situation where amount to read is zero, and that appears
+                // to be OK, just need to exit thie while loop to avoid infinite loop.
+                if (toRead == 0)
+                {
+                    break;
+                }
+
+                Stream volStream = _context.VolumeStream;
+                volStream.Position = extentStreamStart + extentOffset;
+                int numRead = volStream.Read(buffer.Slice(totalRead, toRead));
+
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
         public override void Write(long pos, byte[] buffer, int offset, int count)
         {
             throw new NotSupportedException();
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+            throw new NotSupportedException();
+#endif
 
         public override void SetCapacity(long value)
         {

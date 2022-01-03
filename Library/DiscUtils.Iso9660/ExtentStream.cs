@@ -22,6 +22,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Iso9660
 {
@@ -93,6 +95,55 @@ namespace DiscUtils.Iso9660
             _position += numRead;
             return numRead;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (_position > _dataLength)
+            {
+                return 0;
+            }
+
+            int toRead = (int)Math.Min((uint)count, _dataLength - _position);
+
+            _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
+            int numRead = await _isoStream.ReadAsync(buffer, offset, toRead, cancellationToken).ConfigureAwait(false);
+            _position += numRead;
+            return numRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override int Read(Span<byte> buffer)
+        {
+            if (_position > _dataLength)
+            {
+                return 0;
+            }
+
+            int toRead = (int)Math.Min((uint)buffer.Length, _dataLength - _position);
+
+            _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
+            int numRead = _isoStream.Read(buffer[..toRead]);
+            _position += numRead;
+            return numRead;
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_position > _dataLength)
+            {
+                return 0;
+            }
+
+            int toRead = (int)Math.Min((uint)buffer.Length, _dataLength - _position);
+
+            _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
+            int numRead = await _isoStream.ReadAsync(buffer[..toRead], cancellationToken).ConfigureAwait(false);
+            _position += numRead;
+            return numRead;
+        }
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {

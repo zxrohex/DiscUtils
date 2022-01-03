@@ -26,6 +26,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -240,6 +242,107 @@ namespace DiscUtils.Compression
             _position += numRead;
             return numRead;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+            ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+
+        public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
+
+        public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer));
+            }
+
+            if (buffer.Length < offset + count)
+            {
+                throw new ArgumentException("Buffer smaller than declared");
+            }
+
+            if (offset < 0)
+            {
+                throw new ArgumentException("Offset less than zero", nameof(offset));
+            }
+
+            if (count < 0)
+            {
+                throw new ArgumentException("Count less than zero", nameof(count));
+            }
+
+            if (_eof)
+            {
+                return 0;
+            }
+
+            if (count == 0)
+            {
+                return 0;
+            }
+
+            int numRead = await _rleStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            if (numRead == 0)
+            {
+                // If there was an existing block, check it's crc.
+                if (_calcBlockCrc != null)
+                {
+                    if (_blockCrc != _calcBlockCrc.Value)
+                    {
+                        throw new InvalidDataException("Decompression failed - block CRC mismatch");
+                    }
+
+                    _calcCompoundCrc = ((_calcCompoundCrc << 1) | (_calcCompoundCrc >> 31)) ^ _blockCrc;
+                }
+
+                // Read a new block (if any), if none - check the overall CRC before returning
+                if (ReadBlock() == 0)
+                {
+                    _eof = true;
+                    if (_calcCompoundCrc != _compoundCrc)
+                    {
+                        throw new InvalidDataException("Decompression failed - compound CRC");
+                    }
+
+                    return 0;
+                }
+
+                numRead = await _rleStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            }
+
+            _calcBlockCrc.Process(buffer, offset, numRead);
+
+            // Pre-read next block, so a client that knows the decompressed length will still
+            // have the overall CRC calculated.
+            if (_rleStream.AtEof)
+            {
+                // If there was an existing block, check it's crc.
+                if (_calcBlockCrc != null)
+                {
+                    if (_blockCrc != _calcBlockCrc.Value)
+                    {
+                        throw new InvalidDataException("Decompression failed - block CRC mismatch");
+                    }
+                }
+
+                _calcCompoundCrc = ((_calcCompoundCrc << 1) | (_calcCompoundCrc >> 31)) ^ _blockCrc;
+                if (ReadBlock() == 0)
+                {
+                    _eof = true;
+                    if (_calcCompoundCrc != _compoundCrc)
+                    {
+                        throw new InvalidDataException("Decompression failed - compound CRC mismatch");
+                    }
+
+                    return numRead;
+                }
+            }
+
+            _position += numRead;
+            return numRead;
+        }
+
+#endif
 
         /// <summary>
         /// Changes the current stream position.

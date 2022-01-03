@@ -26,6 +26,8 @@ using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
 
@@ -90,10 +92,90 @@ namespace DiscUtils.OpticalDiscSharing
             }
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            HttpWebResponse response = await SendRequestAsync(() =>
+            {
+                HttpWebRequest wr = (HttpWebRequest)WebRequest.Create(_uri);
+                wr.Method = "GET";
+                wr.AddRange((int)pos, (int)(pos + count - 1));
+                return wr;
+            }).ConfigureAwait(false);
+
+            using (Stream s = response.GetResponseStream())
+            {
+                int total = (int)response.ContentLength;
+                int read = 0;
+                while (read < Math.Min(total, count))
+                {
+                    read += await s.ReadAsync(buffer, offset + read, count - read).ConfigureAwait(false);
+                }
+
+                return read;
+            }
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            HttpWebResponse response = await SendRequestAsync(() =>
+            {
+                HttpWebRequest wr = (HttpWebRequest)WebRequest.Create(_uri);
+                wr.Method = "GET";
+                wr.AddRange((int)pos, (int)(pos + buffer.Length - 1));
+                return wr;
+            }).ConfigureAwait(false);
+
+            using (Stream s = response.GetResponseStream())
+            {
+                int total = (int)response.ContentLength;
+                int read = 0;
+                while (read < Math.Min(total, buffer.Length))
+                {
+                    read += await s.ReadAsync(buffer[read..], cancellationToken).ConfigureAwait(false);
+                }
+
+                return read;
+            }
+        }
+
+        public override int Read(long pos, Span<byte> buffer)
+        {
+            var count = buffer.Length;
+
+            HttpWebResponse response = SendRequest(() =>
+            {
+                HttpWebRequest wr = (HttpWebRequest)WebRequest.Create(_uri);
+                wr.Method = "GET";
+                wr.AddRange((int)pos, (int)(pos + count - 1));
+                return wr;
+            });
+
+            using (Stream s = response.GetResponseStream())
+            {
+                int total = (int)response.ContentLength;
+                int read = 0;
+                while (read < Math.Min(total, buffer.Length))
+                {
+                    read += s.Read(buffer[read..]);
+                }
+
+                return read;
+            }
+        }
+#endif
+
         public override void Write(long pos, byte[] buffer, int offset, int count)
         {
             throw new InvalidOperationException("Attempt to write to shared optical disc");
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+            throw new InvalidOperationException("Attempt to write to shared optical disc");
+#endif
 
         public override void SetCapacity(long value)
         {
@@ -180,6 +262,50 @@ namespace DiscUtils.OpticalDiscSharing
                 throw;
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        private async Task<HttpWebResponse> SendRequestAsync(WebRequestCreator wrc)
+        {
+            HttpWebRequest wr = wrc();
+            if (_authHeader != null)
+            {
+                wr.Headers["Authorization"] = _authHeader;
+            }
+
+            try
+            {
+                return (HttpWebResponse)await wr.GetResponseAsync().ConfigureAwait(false);
+            }
+            catch (WebException we)
+            {
+                HttpWebResponse wresp = (HttpWebResponse)we.Response;
+
+                if (wresp.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    string authMethod;
+                    Dictionary<string, string> authParams = ParseAuthenticationHeader(wresp.Headers["WWW-Authenticate"], out authMethod);
+
+                    if (authMethod != "Digest")
+                    {
+                        throw;
+                    }
+
+                    string resp = CalcDigestResponse(authParams["nonce"], wr.RequestUri.AbsolutePath, wr.Method, authParams["realm"]);
+
+                    _authHeader = "Digest username=\"" + _userName + "\", realm=\"ODS\", nonce=\"" + authParams["nonce"] + "\", uri=\"" + wr.RequestUri.AbsolutePath + "\", response=\"" + resp + "\"";
+
+                    (wresp as IDisposable).Dispose();
+
+                    wr = wrc();
+                    wr.Headers["Authorization"] = _authHeader;
+
+                    return (HttpWebResponse)await wr.GetResponseAsync().ConfigureAwait(false);
+                }
+
+                throw;
+            }
+        }
+#endif
 
         private string CalcDigestResponse(string nonce, string uriPath, string method, string realm)
         {

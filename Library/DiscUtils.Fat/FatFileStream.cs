@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Fat
@@ -118,10 +120,68 @@ namespace DiscUtils.Fat
             _stream.Flush();
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
+        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        {
+            didWrite = true;
+            return _stream.BeginWrite(buffer, offset, count, callback, state);
+        }
+
+        public override void EndWrite(IAsyncResult asyncResult) => _stream.EndWrite(asyncResult);
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            didWrite = true;
+            return _stream.WriteAsync(buffer, offset, count, cancellationToken);
+        }
+
+        public override Task FlushAsync(CancellationToken cancellationToken) => _stream.FlushAsync(cancellationToken);
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            didWrite = true;
+            _stream.Write(buffer);
+        }
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            didWrite = true;
+            return _stream.WriteAsync(buffer, cancellationToken);
+        }
+
+#endif
+
+#endif
+
         public override int Read(byte[] buffer, int offset, int count)
         {
             return _stream.Read(buffer, offset, count);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+            _stream.BeginRead(buffer, offset, count, callback, state);
+
+        public override int EndRead(IAsyncResult asyncResult) =>
+            _stream.EndRead(asyncResult);
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            _stream.ReadAsync(buffer, offset, count, cancellationToken);
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+        public override int Read(Span<byte> buffer) =>
+            _stream.Read(buffer);
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            _stream.ReadAsync(buffer, cancellationToken);
+
+#endif
+
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {

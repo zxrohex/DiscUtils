@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -199,6 +201,163 @@ namespace DiscUtils.Vdi
             return numRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (_atEof || _position > _fileHeader.DiskSize)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of file");
+            }
+
+            if (_position == _fileHeader.DiskSize)
+            {
+                _atEof = true;
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(count, _fileHeader.DiskSize - _position);
+            int numRead = 0;
+
+            while (numRead < maxToRead)
+            {
+                int block = (int)(_position / _fileHeader.BlockSize);
+                int offsetInBlock = (int)(_position % _fileHeader.BlockSize);
+
+                int toRead = Math.Min(maxToRead - numRead, _fileHeader.BlockSize - offsetInBlock);
+
+                if (_blockTable[block] == BlockFree)
+                {
+                    // TODO: Use parent
+                    Array.Clear(buffer, offset + numRead, toRead);
+                }
+                else if (_blockTable[block] == BlockZero)
+                {
+                    Array.Clear(buffer, offset + numRead, toRead);
+                }
+                else
+                {
+                    long blockOffset = _blockTable[block] * (_fileHeader.BlockSize + _fileHeader.BlockExtraSize);
+                    long filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
+                                   offsetInBlock;
+                    _fileStream.Position = filePos;
+                    await StreamUtilities.ReadExactAsync(_fileStream, buffer, offset + numRead, toRead, cancellationToken).ConfigureAwait(false);
+                }
+
+                _position += toRead;
+                numRead += toRead;
+            }
+
+            return numRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (_atEof || _position > _fileHeader.DiskSize)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of file");
+            }
+
+            if (_position == _fileHeader.DiskSize)
+            {
+                _atEof = true;
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(buffer.Length, _fileHeader.DiskSize - _position);
+            int numRead = 0;
+
+            while (numRead < maxToRead)
+            {
+                int block = (int)(_position / _fileHeader.BlockSize);
+                int offsetInBlock = (int)(_position % _fileHeader.BlockSize);
+
+                int toRead = Math.Min(maxToRead - numRead, _fileHeader.BlockSize - offsetInBlock);
+
+                if (_blockTable[block] == BlockFree)
+                {
+                    // TODO: Use parent
+                    buffer.Span.Slice(numRead, toRead).Clear();
+                }
+                else if (_blockTable[block] == BlockZero)
+                {
+                    buffer.Span.Slice(numRead, toRead).Clear();
+                }
+                else
+                {
+                    long blockOffset = _blockTable[block] * (_fileHeader.BlockSize + _fileHeader.BlockExtraSize);
+                    long filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
+                                   offsetInBlock;
+                    _fileStream.Position = filePos;
+                    await StreamUtilities.ReadExactAsync(_fileStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                }
+
+                _position += toRead;
+                numRead += toRead;
+            }
+
+            return numRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            CheckDisposed();
+
+            if (_atEof || _position > _fileHeader.DiskSize)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of file");
+            }
+
+            if (_position == _fileHeader.DiskSize)
+            {
+                _atEof = true;
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(buffer.Length, _fileHeader.DiskSize - _position);
+            int numRead = 0;
+
+            while (numRead < maxToRead)
+            {
+                int block = (int)(_position / _fileHeader.BlockSize);
+                int offsetInBlock = (int)(_position % _fileHeader.BlockSize);
+
+                int toRead = Math.Min(maxToRead - numRead, _fileHeader.BlockSize - offsetInBlock);
+
+                if (_blockTable[block] == BlockFree)
+                {
+                    // TODO: Use parent
+                    buffer.Slice(numRead, toRead).Clear();
+                }
+                else if (_blockTable[block] == BlockZero)
+                {
+                    buffer.Slice(numRead, toRead).Clear();
+                }
+                else
+                {
+                    long blockOffset = _blockTable[block] * (_fileHeader.BlockSize + _fileHeader.BlockExtraSize);
+                    long filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
+                                   offsetInBlock;
+                    _fileStream.Position = filePos;
+                    StreamUtilities.ReadExact(_fileStream, buffer.Slice(numRead, toRead));
+                }
+
+                _position += toRead;
+                numRead += toRead;
+            }
+
+            return numRead;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             CheckDisposed();
@@ -326,6 +485,106 @@ namespace DiscUtils.Vdi
                 _position += toWrite;
             }
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (!CanWrite)
+            {
+                throw new IOException("Attempt to write to read-only stream");
+            }
+
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), count, "Attempt to write negative number of bytes");
+            }
+
+            if (_atEof || _position + count > _fileHeader.DiskSize)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to write beyond end of file");
+            }
+
+            // On first write, notify event listeners - they just get to find out that some
+            // write occurred, not about each write.
+            if (!_writeNotified)
+            {
+                OnWriteOccurred();
+                _writeNotified = true;
+            }
+
+            int numWritten = 0;
+            while (numWritten < count)
+            {
+                int block = (int)(_position / _fileHeader.BlockSize);
+                int offsetInBlock = (int)(_position % _fileHeader.BlockSize);
+
+                int toWrite = Math.Min(count - numWritten, _fileHeader.BlockSize - offsetInBlock);
+
+                // Optimize away zero-writes
+                if (_blockTable[block] == BlockZero
+                    || (_blockTable[block] == BlockFree && toWrite == _fileHeader.BlockSize))
+                {
+                    if (Utilities.IsAllZeros(buffer, offset + numWritten, toWrite))
+                    {
+                        numWritten += toWrite;
+                        _position += toWrite;
+                        continue;
+                    }
+                }
+
+                if (_blockTable[block] == BlockFree || _blockTable[block] == BlockZero)
+                {
+                    byte[] writeBuffer = buffer;
+                    int writeBufferOffset = offset + numWritten;
+
+                    if (toWrite != _fileHeader.BlockSize)
+                    {
+                        writeBuffer = new byte[_fileHeader.BlockSize];
+                        if (_blockTable[block] == BlockFree)
+                        {
+                            // TODO: Use parent stream data...
+                        }
+
+                        // Copy actual data into temporary buffer, then this is a full block write.
+                        Array.Copy(buffer, offset + numWritten, writeBuffer, offsetInBlock, toWrite);
+                        writeBufferOffset = 0;
+                    }
+
+                    long blockOffset = (long)_fileHeader.BlocksAllocated *
+                                       (_fileHeader.BlockSize + _fileHeader.BlockExtraSize);
+                    long filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset;
+
+                    _fileStream.Position = filePos;
+                    await _fileStream.WriteAsync(writeBuffer, writeBufferOffset, _fileHeader.BlockSize, cancellationToken).ConfigureAwait(false);
+
+                    _blockTable[block] = (uint)_fileHeader.BlocksAllocated;
+
+                    // Update the file header on disk, to indicate where the next free block is
+                    _fileHeader.BlocksAllocated++;
+                    _fileStream.Position = PreHeaderRecord.Size;
+                    _fileHeader.Write(_fileStream);
+
+                    // Update the block table on disk, to indicate where this block is
+                    WriteBlockTableEntry(block);
+                }
+                else
+                {
+                    // Existing block, simply overwrite the existing data
+                    long blockOffset = _blockTable[block] * (_fileHeader.BlockSize + _fileHeader.BlockExtraSize);
+                    long filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
+                                   offsetInBlock;
+                    _fileStream.Position = filePos;
+                    await _fileStream.WriteAsync(buffer, offset + numWritten, toWrite, cancellationToken).ConfigureAwait(false);
+                }
+
+                numWritten += toWrite;
+                _position += toWrite;
+            }
+        }
+#endif
 
         protected override void Dispose(bool disposing)
         {

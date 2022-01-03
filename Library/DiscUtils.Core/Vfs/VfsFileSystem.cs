@@ -724,7 +724,7 @@ namespace DiscUtils.Vfs
             TDirEntry currentEntry = entry;
             if (path.Length > 0 && path[0] != '\\' && path[0] != '/')
             {
-                path = '\\' + path;
+                path = Path.DirectorySeparatorChar + path;
             }
             string currentPath = path;
             int resolvesLeft = 20;

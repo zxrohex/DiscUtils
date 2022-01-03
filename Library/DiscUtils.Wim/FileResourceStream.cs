@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Wim
@@ -146,6 +148,118 @@ namespace DiscUtils.Wim
 
             return totalRead;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (_position >= Length)
+            {
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(Length - _position, count);
+
+            int totalRead = 0;
+            while (totalRead < maxToRead)
+            {
+                int chunk = (int)(_position / _chunkSize);
+                int chunkOffset = (int)(_position % _chunkSize);
+                int numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
+
+                if (_currentChunk != chunk)
+                {
+                    _currentChunkStream = OpenChunkStream(chunk);
+                    _currentChunk = chunk;
+                }
+
+                _currentChunkStream.Position = chunkOffset;
+                int numRead = await _currentChunkStream.ReadAsync(buffer, offset + totalRead, numToRead, cancellationToken).ConfigureAwait(false);
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                _position += numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_position >= Length)
+            {
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(Length - _position, buffer.Length);
+
+            int totalRead = 0;
+            while (totalRead < maxToRead)
+            {
+                int chunk = (int)(_position / _chunkSize);
+                int chunkOffset = (int)(_position % _chunkSize);
+                int numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
+
+                if (_currentChunk != chunk)
+                {
+                    _currentChunkStream = OpenChunkStream(chunk);
+                    _currentChunk = chunk;
+                }
+
+                _currentChunkStream.Position = chunkOffset;
+                int numRead = await _currentChunkStream.ReadAsync(buffer.Slice(totalRead, numToRead), cancellationToken).ConfigureAwait(false);
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                _position += numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (_position >= Length)
+            {
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(Length - _position, buffer.Length);
+
+            int totalRead = 0;
+            while (totalRead < maxToRead)
+            {
+                int chunk = (int)(_position / _chunkSize);
+                int chunkOffset = (int)(_position % _chunkSize);
+                int numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
+
+                if (_currentChunk != chunk)
+                {
+                    _currentChunkStream = OpenChunkStream(chunk);
+                    _currentChunk = chunk;
+                }
+
+                _currentChunkStream.Position = chunkOffset;
+                int numRead = _currentChunkStream.Read(buffer.Slice(totalRead, numToRead));
+                if (numRead == 0)
+                {
+                    return totalRead;
+                }
+
+                _position += numRead;
+                totalRead += numRead;
+            }
+
+            return totalRead;
+        }
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {

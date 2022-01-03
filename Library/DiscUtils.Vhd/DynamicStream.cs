@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Vhd
@@ -353,6 +355,313 @@ namespace DiscUtils.Vhd
             return numRead;
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (_atEof || _position > _length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of file");
+            }
+
+            if (_position == _length)
+            {
+                _atEof = true;
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(count, _length - _position);
+            int numRead = 0;
+
+            while (numRead < maxToRead)
+            {
+                long block = _position / _dynamicHeader.BlockSize;
+                uint offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
+
+                if (PopulateBlockBitmap(block))
+                {
+                    int sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
+                    int offsetInSector = (int)(offsetInBlock % Sizes.Sector);
+                    int toRead = (int)Math.Min(maxToRead - numRead, _dynamicHeader.BlockSize - offsetInBlock);
+
+                    // 512 - offsetInSector);
+
+                    if (offsetInSector != 0 || toRead < Sizes.Sector)
+                    {
+                        byte mask = (byte)(1 << (7 - sectorInBlock % 8));
+                        if ((_blockBitmaps[block][sectorInBlock / 8] & mask) != 0)
+                        {
+                            _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
+                                                   Sizes.Sector + _blockBitmapSize + offsetInSector;
+                            await StreamUtilities.ReadExactAsync(_fileStream, buffer, offset + numRead, toRead, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _parentStream.Position = _position;
+                            await StreamUtilities.ReadExactAsync(_parentStream, buffer, offset + numRead, toRead, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        numRead += toRead;
+                        _position += toRead;
+                    }
+                    else
+                    {
+                        // Processing at least one whole sector, read as many as possible
+                        int toReadSectors = toRead / Sizes.Sector;
+
+                        byte mask = (byte)(1 << (7 - sectorInBlock % 8));
+                        bool readFromParent = (_blockBitmaps[block][sectorInBlock / 8] & mask) == 0;
+
+                        int numSectors = 1;
+                        while (numSectors < toReadSectors)
+                        {
+                            mask = (byte)(1 << (7 - (sectorInBlock + numSectors) % 8));
+                            if ((_blockBitmaps[block][(sectorInBlock + numSectors) / 8] & mask) == 0 != readFromParent)
+                            {
+                                break;
+                            }
+
+                            ++numSectors;
+                        }
+
+                        toRead = numSectors * Sizes.Sector;
+
+                        if (readFromParent)
+                        {
+                            _parentStream.Position = _position;
+                            await StreamUtilities.ReadExactAsync(_parentStream, buffer, offset + numRead, toRead, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
+                                                   Sizes.Sector + _blockBitmapSize;
+                            await StreamUtilities.ReadExactAsync(_fileStream, buffer, offset + numRead, toRead, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        numRead += toRead;
+                        _position += toRead;
+                    }
+                }
+                else
+                {
+                    int toRead = Math.Min(maxToRead - numRead, (int)(_dynamicHeader.BlockSize - offsetInBlock));
+                    _parentStream.Position = _position;
+                    await StreamUtilities.ReadExactAsync(_parentStream, buffer, offset + numRead, toRead, cancellationToken).ConfigureAwait(false);
+                    numRead += toRead;
+                    _position += toRead;
+                }
+            }
+
+            return numRead;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (_atEof || _position > _length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of file");
+            }
+
+            if (_position == _length)
+            {
+                _atEof = true;
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(buffer.Length, _length - _position);
+            int numRead = 0;
+
+            while (numRead < maxToRead)
+            {
+                long block = _position / _dynamicHeader.BlockSize;
+                uint offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
+
+                if (PopulateBlockBitmap(block))
+                {
+                    int sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
+                    int offsetInSector = (int)(offsetInBlock % Sizes.Sector);
+                    int toRead = (int)Math.Min(maxToRead - numRead, _dynamicHeader.BlockSize - offsetInBlock);
+
+                    // 512 - offsetInSector);
+
+                    if (offsetInSector != 0 || toRead < Sizes.Sector)
+                    {
+                        byte mask = (byte)(1 << (7 - sectorInBlock % 8));
+                        if ((_blockBitmaps[block][sectorInBlock / 8] & mask) != 0)
+                        {
+                            _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
+                                                   Sizes.Sector + _blockBitmapSize + offsetInSector;
+                            await StreamUtilities.ReadExactAsync(_fileStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _parentStream.Position = _position;
+                            await StreamUtilities.ReadExactAsync(_parentStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                        }
+
+                        numRead += toRead;
+                        _position += toRead;
+                    }
+                    else
+                    {
+                        // Processing at least one whole sector, read as many as possible
+                        int toReadSectors = toRead / Sizes.Sector;
+
+                        byte mask = (byte)(1 << (7 - sectorInBlock % 8));
+                        bool readFromParent = (_blockBitmaps[block][sectorInBlock / 8] & mask) == 0;
+
+                        int numSectors = 1;
+                        while (numSectors < toReadSectors)
+                        {
+                            mask = (byte)(1 << (7 - (sectorInBlock + numSectors) % 8));
+                            if ((_blockBitmaps[block][(sectorInBlock + numSectors) / 8] & mask) == 0 != readFromParent)
+                            {
+                                break;
+                            }
+
+                            ++numSectors;
+                        }
+
+                        toRead = numSectors * Sizes.Sector;
+
+                        if (readFromParent)
+                        {
+                            _parentStream.Position = _position;
+                            await StreamUtilities.ReadExactAsync(_parentStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
+                                                   Sizes.Sector + _blockBitmapSize;
+                            await StreamUtilities.ReadExactAsync(_fileStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                        }
+
+                        numRead += toRead;
+                        _position += toRead;
+                    }
+                }
+                else
+                {
+                    int toRead = Math.Min(maxToRead - numRead, (int)(_dynamicHeader.BlockSize - offsetInBlock));
+                    _parentStream.Position = _position;
+                    await StreamUtilities.ReadExactAsync(_parentStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                    numRead += toRead;
+                    _position += toRead;
+                }
+            }
+
+            return numRead;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            CheckDisposed();
+
+            if (_atEof || _position > _length)
+            {
+                _atEof = true;
+                throw new IOException("Attempt to read beyond end of file");
+            }
+
+            if (_position == _length)
+            {
+                _atEof = true;
+                return 0;
+            }
+
+            int maxToRead = (int)Math.Min(buffer.Length, _length - _position);
+            int numRead = 0;
+
+            while (numRead < maxToRead)
+            {
+                long block = _position / _dynamicHeader.BlockSize;
+                uint offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
+
+                if (PopulateBlockBitmap(block))
+                {
+                    int sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
+                    int offsetInSector = (int)(offsetInBlock % Sizes.Sector);
+                    int toRead = (int)Math.Min(maxToRead - numRead, _dynamicHeader.BlockSize - offsetInBlock);
+
+                    // 512 - offsetInSector);
+
+                    if (offsetInSector != 0 || toRead < Sizes.Sector)
+                    {
+                        byte mask = (byte)(1 << (7 - sectorInBlock % 8));
+                        if ((_blockBitmaps[block][sectorInBlock / 8] & mask) != 0)
+                        {
+                            _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
+                                                   Sizes.Sector + _blockBitmapSize + offsetInSector;
+                            StreamUtilities.ReadExact(_fileStream, buffer.Slice(numRead, toRead));
+                        }
+                        else
+                        {
+                            _parentStream.Position = _position;
+                            StreamUtilities.ReadExact(_parentStream, buffer.Slice(numRead, toRead));
+                        }
+
+                        numRead += toRead;
+                        _position += toRead;
+                    }
+                    else
+                    {
+                        // Processing at least one whole sector, read as many as possible
+                        int toReadSectors = toRead / Sizes.Sector;
+
+                        byte mask = (byte)(1 << (7 - sectorInBlock % 8));
+                        bool readFromParent = (_blockBitmaps[block][sectorInBlock / 8] & mask) == 0;
+
+                        int numSectors = 1;
+                        while (numSectors < toReadSectors)
+                        {
+                            mask = (byte)(1 << (7 - (sectorInBlock + numSectors) % 8));
+                            if ((_blockBitmaps[block][(sectorInBlock + numSectors) / 8] & mask) == 0 != readFromParent)
+                            {
+                                break;
+                            }
+
+                            ++numSectors;
+                        }
+
+                        toRead = numSectors * Sizes.Sector;
+
+                        if (readFromParent)
+                        {
+                            _parentStream.Position = _position;
+                            StreamUtilities.ReadExact(_parentStream, buffer.Slice(numRead, toRead));
+                        }
+                        else
+                        {
+                            _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
+                                                   Sizes.Sector + _blockBitmapSize;
+                            StreamUtilities.ReadExact(_fileStream, buffer.Slice(numRead, toRead));
+                        }
+
+                        numRead += toRead;
+                        _position += toRead;
+                    }
+                }
+                else
+                {
+                    int toRead = Math.Min(maxToRead - numRead, (int)(_dynamicHeader.BlockSize - offsetInBlock));
+                    _parentStream.Position = _position;
+                    StreamUtilities.ReadExact(_parentStream, buffer.Slice(numRead, toRead));
+                    numRead += toRead;
+                    _position += toRead;
+                }
+            }
+
+            return numRead;
+        }
+#endif
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             CheckDisposed();
@@ -488,6 +797,325 @@ namespace DiscUtils.Vhd
 
             _atEof = false;
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (!CanWrite)
+            {
+                throw new IOException("Attempt to write to read-only stream");
+            }
+
+            if (_position + count > _length)
+            {
+                throw new IOException("Attempt to write beyond end of the stream");
+            }
+
+            int numWritten = 0;
+
+            while (numWritten < count)
+            {
+                long block = _position / _dynamicHeader.BlockSize;
+                uint offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
+
+                if (!PopulateBlockBitmap(block))
+                {
+                    AllocateBlock(block);
+                }
+
+                int sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
+                int offsetInSector = (int)(offsetInBlock % Sizes.Sector);
+                int toWrite = (int)Math.Min(count - numWritten, _dynamicHeader.BlockSize - offsetInBlock);
+
+                bool blockBitmapDirty = false;
+
+                // Need to read - we're not handling a full sector
+                if (offsetInSector != 0 || toWrite < Sizes.Sector)
+                {
+                    // Reduce the write to just the end of the current sector
+                    toWrite = Math.Min(count - numWritten, Sizes.Sector - offsetInSector);
+
+                    byte sectorMask = (byte)(1 << (7 - sectorInBlock % 8));
+
+                    long sectorStart = (_blockAllocationTable[block] + sectorInBlock) * Sizes.Sector +
+                                       _blockBitmapSize;
+
+                    // Get the existing sector data (if any), or otherwise the parent's content
+                    byte[] sectorBuffer;
+                    if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
+                    {
+                        _fileStream.Position = sectorStart;
+                        sectorBuffer = await StreamUtilities.ReadExactAsync(_fileStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
+                        sectorBuffer = await StreamUtilities.ReadExactAsync(_parentStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    // Overlay as much data as we have for this sector
+                    Array.Copy(buffer, offset + numWritten, sectorBuffer, offsetInSector, toWrite);
+
+                    // Write the sector back
+                    _fileStream.Position = sectorStart;
+                    await _fileStream.WriteAsync(sectorBuffer, 0, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+
+                    // Update the in-memory block bitmap
+                    if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
+                    {
+                        _blockBitmaps[block][sectorInBlock / 8] |= sectorMask;
+                        blockBitmapDirty = true;
+                    }
+                }
+                else
+                {
+                    // Processing at least one whole sector, just write (after making sure to trim any partial sectors from the end)...
+                    toWrite = toWrite / Sizes.Sector * Sizes.Sector;
+
+                    _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) * Sizes.Sector +
+                                           _blockBitmapSize;
+                    await _fileStream.WriteAsync(buffer, offset + numWritten, toWrite, cancellationToken).ConfigureAwait(false);
+
+                    // Update all of the bits in the block bitmap
+                    for (int i = offset; i < offset + toWrite; i += Sizes.Sector)
+                    {
+                        byte sectorMask = (byte)(1 << (7 - sectorInBlock % 8));
+                        if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
+                        {
+                            _blockBitmaps[block][sectorInBlock / 8] |= sectorMask;
+                            blockBitmapDirty = true;
+                        }
+
+                        sectorInBlock++;
+                    }
+                }
+
+                if (blockBitmapDirty)
+                {
+                    WriteBlockBitmap(block);
+                }
+
+                numWritten += toWrite;
+                _position += toWrite;
+            }
+
+            _atEof = false;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            CheckDisposed();
+
+            if (!CanWrite)
+            {
+                throw new IOException("Attempt to write to read-only stream");
+            }
+
+            if (_position + buffer.Length > _length)
+            {
+                throw new IOException("Attempt to write beyond end of the stream");
+            }
+
+            int numWritten = 0;
+
+            while (numWritten < buffer.Length)
+            {
+                long block = _position / _dynamicHeader.BlockSize;
+                uint offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
+
+                if (!PopulateBlockBitmap(block))
+                {
+                    AllocateBlock(block);
+                }
+
+                int sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
+                int offsetInSector = (int)(offsetInBlock % Sizes.Sector);
+                int toWrite = (int)Math.Min(buffer.Length - numWritten, _dynamicHeader.BlockSize - offsetInBlock);
+
+                bool blockBitmapDirty = false;
+
+                // Need to read - we're not handling a full sector
+                if (offsetInSector != 0 || toWrite < Sizes.Sector)
+                {
+                    // Reduce the write to just the end of the current sector
+                    toWrite = Math.Min(buffer.Length - numWritten, Sizes.Sector - offsetInSector);
+
+                    byte sectorMask = (byte)(1 << (7 - sectorInBlock % 8));
+
+                    long sectorStart = (_blockAllocationTable[block] + sectorInBlock) * Sizes.Sector +
+                                       _blockBitmapSize;
+
+                    // Get the existing sector data (if any), or otherwise the parent's content
+                    byte[] sectorBuffer;
+                    if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
+                    {
+                        _fileStream.Position = sectorStart;
+                        sectorBuffer = await StreamUtilities.ReadExactAsync(_fileStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
+                        sectorBuffer = await StreamUtilities.ReadExactAsync(_parentStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    // Overlay as much data as we have for this sector
+                    buffer.Slice(numWritten, toWrite).CopyTo(sectorBuffer.AsMemory(offsetInSector));
+
+                    // Write the sector back
+                    _fileStream.Position = sectorStart;
+                    await _fileStream.WriteAsync(sectorBuffer, 0, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+
+                    // Update the in-memory block bitmap
+                    if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
+                    {
+                        _blockBitmaps[block][sectorInBlock / 8] |= sectorMask;
+                        blockBitmapDirty = true;
+                    }
+                }
+                else
+                {
+                    // Processing at least one whole sector, just write (after making sure to trim any partial sectors from the end)...
+                    toWrite = toWrite / Sizes.Sector * Sizes.Sector;
+
+                    _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) * Sizes.Sector +
+                                           _blockBitmapSize;
+                    await _fileStream.WriteAsync(buffer.Slice(numWritten, toWrite), cancellationToken).ConfigureAwait(false);
+
+                    // Update all of the bits in the block bitmap
+                    for (int i = 0; i < toWrite; i += Sizes.Sector)
+                    {
+                        byte sectorMask = (byte)(1 << (7 - sectorInBlock % 8));
+                        if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
+                        {
+                            _blockBitmaps[block][sectorInBlock / 8] |= sectorMask;
+                            blockBitmapDirty = true;
+                        }
+
+                        sectorInBlock++;
+                    }
+                }
+
+                if (blockBitmapDirty)
+                {
+                    WriteBlockBitmap(block);
+                }
+
+                numWritten += toWrite;
+                _position += toWrite;
+            }
+
+            _atEof = false;
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            CheckDisposed();
+
+            if (!CanWrite)
+            {
+                throw new IOException("Attempt to write to read-only stream");
+            }
+
+            if (_position + buffer.Length > _length)
+            {
+                throw new IOException("Attempt to write beyond end of the stream");
+            }
+
+            int numWritten = 0;
+
+            while (numWritten < buffer.Length)
+            {
+                long block = _position / _dynamicHeader.BlockSize;
+                uint offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
+
+                if (!PopulateBlockBitmap(block))
+                {
+                    AllocateBlock(block);
+                }
+
+                int sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
+                int offsetInSector = (int)(offsetInBlock % Sizes.Sector);
+                int toWrite = (int)Math.Min(buffer.Length - numWritten, _dynamicHeader.BlockSize - offsetInBlock);
+
+                bool blockBitmapDirty = false;
+
+                // Need to read - we're not handling a full sector
+                if (offsetInSector != 0 || toWrite < Sizes.Sector)
+                {
+                    // Reduce the write to just the end of the current sector
+                    toWrite = Math.Min(buffer.Length - numWritten, Sizes.Sector - offsetInSector);
+
+                    byte sectorMask = (byte)(1 << (7 - sectorInBlock % 8));
+
+                    long sectorStart = (_blockAllocationTable[block] + sectorInBlock) * Sizes.Sector +
+                                       _blockBitmapSize;
+
+                    // Get the existing sector data (if any), or otherwise the parent's content
+                    byte[] sectorBuffer;
+                    if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
+                    {
+                        _fileStream.Position = sectorStart;
+                        sectorBuffer = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+                    }
+                    else
+                    {
+                        _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
+                        sectorBuffer = StreamUtilities.ReadExact(_parentStream, Sizes.Sector);
+                    }
+
+                    // Overlay as much data as we have for this sector
+                    buffer.Slice(numWritten, toWrite).CopyTo(sectorBuffer.AsSpan(offsetInSector));
+
+                    // Write the sector back
+                    _fileStream.Position = sectorStart;
+                    _fileStream.Write(sectorBuffer, 0, Sizes.Sector);
+
+                    // Update the in-memory block bitmap
+                    if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
+                    {
+                        _blockBitmaps[block][sectorInBlock / 8] |= sectorMask;
+                        blockBitmapDirty = true;
+                    }
+                }
+                else
+                {
+                    // Processing at least one whole sector, just write (after making sure to trim any partial sectors from the end)...
+                    toWrite = toWrite / Sizes.Sector * Sizes.Sector;
+
+                    _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) * Sizes.Sector +
+                                           _blockBitmapSize;
+                    _fileStream.Write(buffer.Slice(numWritten, toWrite));
+
+                    // Update all of the bits in the block bitmap
+                    for (int i = 0; i < toWrite; i += Sizes.Sector)
+                    {
+                        byte sectorMask = (byte)(1 << (7 - sectorInBlock % 8));
+                        if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
+                        {
+                            _blockBitmaps[block][sectorInBlock / 8] |= sectorMask;
+                            blockBitmapDirty = true;
+                        }
+
+                        sectorInBlock++;
+                    }
+                }
+
+                if (blockBitmapDirty)
+                {
+                    WriteBlockBitmap(block);
+                }
+
+                numWritten += toWrite;
+                _position += toWrite;
+            }
+
+            _atEof = false;
+        }
+#endif
 
         public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
         {

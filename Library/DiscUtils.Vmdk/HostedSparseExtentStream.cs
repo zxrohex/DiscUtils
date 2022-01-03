@@ -23,6 +23,8 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Vmdk
@@ -167,6 +169,136 @@ namespace DiscUtils.Vmdk
             }
             return base.ReadGrain(buffer, bufferOffset, grainStart, grainOffset, numToRead);
         }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        protected override async Task<int> ReadGrainAsync(byte[] buffer, int bufferOffset, long grainStart, int grainOffset, int numToRead, CancellationToken cancellationToken)
+        {
+            if ((_hostedHeader.Flags & HostedSparseExtentFlags.CompressedGrains) != 0)
+            {
+                _fileStream.Position = grainStart;
+
+                byte[] readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, CompressedGrainHeader.Size, cancellationToken).ConfigureAwait(false);
+                CompressedGrainHeader hdr = new CompressedGrainHeader();
+                hdr.Read(readBuffer, 0);
+
+                readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, hdr.DataSize, cancellationToken).ConfigureAwait(false);
+
+                // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
+                // check against expected header values...
+                ushort header = EndianUtilities.ToUInt16BigEndian(readBuffer, 0);
+
+                if (header % 31 != 0)
+                {
+                    throw new IOException("Invalid ZLib header found");
+                }
+
+                if ((header & 0x0F00) != 8 << 8)
+                {
+                    throw new NotSupportedException("ZLib compression not using DEFLATE algorithm");
+                }
+
+                if ((header & 0x0020) != 0)
+                {
+                    throw new NotSupportedException("ZLib compression using preset dictionary");
+                }
+
+                Stream readStream = new MemoryStream(readBuffer, 2, hdr.DataSize - 2, false);
+                DeflateStream deflateStream = new DeflateStream(readStream, CompressionMode.Decompress);
+
+                // Need to skip some bytes, but DefaultStream doesn't support seeking...
+                await StreamUtilities.ReadExactAsync(deflateStream, grainOffset, cancellationToken).ConfigureAwait(false);
+
+                return await deflateStream.ReadAsync(buffer, bufferOffset, numToRead, cancellationToken).ConfigureAwait(false);
+            }
+            return await base.ReadGrainAsync(buffer, bufferOffset, grainStart, grainOffset, numToRead, cancellationToken).ConfigureAwait(false);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        protected override async ValueTask<int> ReadGrainAsync(Memory<byte> buffer, long grainStart, int grainOffset, CancellationToken cancellationToken)
+        {
+            if ((_hostedHeader.Flags & HostedSparseExtentFlags.CompressedGrains) != 0)
+            {
+                _fileStream.Position = grainStart;
+
+                byte[] readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, CompressedGrainHeader.Size, cancellationToken).ConfigureAwait(false);
+                CompressedGrainHeader hdr = new CompressedGrainHeader();
+                hdr.Read(readBuffer, 0);
+
+                readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, hdr.DataSize, cancellationToken).ConfigureAwait(false);
+
+                // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
+                // check against expected header values...
+                ushort header = EndianUtilities.ToUInt16BigEndian(readBuffer, 0);
+
+                if (header % 31 != 0)
+                {
+                    throw new IOException("Invalid ZLib header found");
+                }
+
+                if ((header & 0x0F00) != 8 << 8)
+                {
+                    throw new NotSupportedException("ZLib compression not using DEFLATE algorithm");
+                }
+
+                if ((header & 0x0020) != 0)
+                {
+                    throw new NotSupportedException("ZLib compression using preset dictionary");
+                }
+
+                Stream readStream = new MemoryStream(readBuffer, 2, hdr.DataSize - 2, false);
+                DeflateStream deflateStream = new DeflateStream(readStream, CompressionMode.Decompress);
+
+                // Need to skip some bytes, but DefaultStream doesn't support seeking...
+                await StreamUtilities.ReadExactAsync(deflateStream, grainOffset, cancellationToken).ConfigureAwait(false);
+
+                return await deflateStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            }
+            return await base.ReadGrainAsync(buffer, grainStart, grainOffset, cancellationToken).ConfigureAwait(false);
+        }
+
+        protected override int ReadGrain(Span<byte> buffer, long grainStart, int grainOffset)
+        {
+            if ((_hostedHeader.Flags & HostedSparseExtentFlags.CompressedGrains) != 0)
+            {
+                _fileStream.Position = grainStart;
+
+                byte[] readBuffer = StreamUtilities.ReadExact(_fileStream, CompressedGrainHeader.Size);
+                CompressedGrainHeader hdr = new CompressedGrainHeader();
+                hdr.Read(readBuffer, 0);
+
+                readBuffer = StreamUtilities.ReadExact(_fileStream, hdr.DataSize);
+
+                // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
+                // check against expected header values...
+                ushort header = EndianUtilities.ToUInt16BigEndian(readBuffer, 0);
+
+                if (header % 31 != 0)
+                {
+                    throw new IOException("Invalid ZLib header found");
+                }
+
+                if ((header & 0x0F00) != 8 << 8)
+                {
+                    throw new NotSupportedException("ZLib compression not using DEFLATE algorithm");
+                }
+
+                if ((header & 0x0020) != 0)
+                {
+                    throw new NotSupportedException("ZLib compression using preset dictionary");
+                }
+
+                Stream readStream = new MemoryStream(readBuffer, 2, hdr.DataSize - 2, false);
+                DeflateStream deflateStream = new DeflateStream(readStream, CompressionMode.Decompress);
+
+                // Need to skip some bytes, but DefaultStream doesn't support seeking...
+                StreamUtilities.ReadExact(deflateStream, grainOffset);
+
+                return deflateStream.Read(buffer);
+            }
+            return base.ReadGrain(buffer, grainStart, grainOffset);
+        }
+#endif
 
         protected override StreamExtent MapGrain(long grainStart, int grainOffset, int numToRead)
         {

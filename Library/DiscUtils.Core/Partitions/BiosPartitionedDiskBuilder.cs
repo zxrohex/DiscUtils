@@ -129,7 +129,7 @@ namespace DiscUtils.Partitions
         /// <param name="stream">The stream with the contents of the partition.</param>
         public void SetPartitionContent(int index, SparseStream stream)
         {
-            _partitionContents[index] = new BuilderSparseStreamExtent(PartitionTable[index].FirstSector * Sizes.Sector,
+            _partitionContents[index] = new BuilderSparseStreamExtent(PartitionTable[index].FirstSector * PartitionTable.DiskGeometry.BytesPerSector,
                 stream);
         }
 
