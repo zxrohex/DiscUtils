@@ -54,7 +54,7 @@ namespace VHDDump
         {
             if (!_dontCheck.IsPresent)
             {
-                using (Stream s = new FileStream(_vhdFile.Value, FileMode.Open, FileAccess.Read))
+                using (Stream s = new FileStream(_vhdFile.Value, FileMode.Open, FileAccess.Read, FileShare.Delete, bufferSize: 2 << 20))
                 {
                     FileChecker vhdChecker = new FileChecker(s);
                     if (!vhdChecker.Check(Console.Out, ReportLevels.All))

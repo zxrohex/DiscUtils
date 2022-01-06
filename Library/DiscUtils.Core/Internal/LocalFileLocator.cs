@@ -41,7 +41,7 @@ namespace DiscUtils.Internal
 
         protected override Stream OpenFile(string fileName, FileMode mode, FileAccess access, FileShare share)
         {
-            return new FileStream(Path.Combine(_dir, fileName), mode, access, share);
+            return new FileStream(Path.Combine(_dir, fileName), mode, access, share, bufferSize: 2 << 20, useAsync: true);
         }
 
         public override FileLocator GetRelativeLocator(string path)

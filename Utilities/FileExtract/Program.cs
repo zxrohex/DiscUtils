@@ -89,7 +89,7 @@ namespace FileExtract
             {
                 using (Stream source = fs.OpenFile(_inFilePath.Value, FileMode.Open, FileAccess.Read))
                 {
-                    using (FileStream outFile = new FileStream(_outFilePath.Value, FileMode.Create, FileAccess.ReadWrite))
+                    using (FileStream outFile = new FileStream(_outFilePath.Value, FileMode.Create, FileAccess.ReadWrite, FileShare.Delete, bufferSize: 2 << 20))
                     {
                         PumpStreams(source, outFile);
                     }

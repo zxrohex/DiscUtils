@@ -290,7 +290,7 @@ namespace DiscUtils.SquashFs
         public override Stream Build()
         {
             Stream stream = new FileStream(Path.GetTempFileName(), FileMode.CreateNew, FileAccess.ReadWrite,
-                FileShare.None, 1024 * 1024, FileOptions.DeleteOnClose);
+                FileShare.None, bufferSize: 2 * 1024 * 1024, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
             try
             {
                 Build(stream);

@@ -104,11 +104,9 @@ namespace DmgExtract
 
             foreach (var childFile in source.GetFiles())
             {
-                using (Stream sourceStream = childFile.OpenRead())
-                using (Stream targetStream = File.OpenWrite(Path.Combine(target.FullName, childFile.Name)))
-                {
-                    sourceStream.CopyTo(targetStream);
-                }
+                using var sourceStream = childFile.OpenRead();
+                using var targetStream = File.OpenWrite(Path.Combine(target.FullName, childFile.Name));
+                sourceStream.CopyTo(targetStream);
             }
         }
     }

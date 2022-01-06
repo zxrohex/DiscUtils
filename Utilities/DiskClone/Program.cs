@@ -246,7 +246,7 @@ namespace DiskClone
                 }
 
                 using (SparseStream vhdStream = fileSpecs[i].OpenStream() as SparseStream)
-                using (FileStream fs = new FileStream(outputPath, FileMode.Create, FileAccess.ReadWrite))
+                using (FileStream fs = new FileStream(outputPath, FileMode.Create, FileAccess.ReadWrite, FileShare.Delete, bufferSize: 2 << 20))
                 {
                     StreamPump pump = new StreamPump()
                     {

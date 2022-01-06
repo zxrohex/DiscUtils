@@ -113,7 +113,7 @@ namespace FileRecover
                         Environment.Exit(1);
                     }
 
-                    using (FileStream outFileStream = new FileStream(outFile, FileMode.CreateNew, FileAccess.Write))
+                    using (FileStream outFileStream = new FileStream(outFile, FileMode.CreateNew, FileAccess.Write, FileShare.Delete, bufferSize: 2 << 20))
                     {
                         Pump(content, outFileStream);
                     }

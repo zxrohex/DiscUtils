@@ -96,7 +96,7 @@ namespace MSBuildTask
                 Stream bootImageStream = null;
                 if (BootImage != null)
                 {
-                    bootImageStream = new FileStream(BootImage.GetMetadata("FullPath"), FileMode.Open, FileAccess.Read);
+                    bootImageStream = new FileStream(BootImage.GetMetadata("FullPath"), FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, bufferSize: 2 << 20, FileOptions.Asynchronous);
                     builder.SetBootImage(bootImageStream, BootDeviceEmulation.NoEmulation, 0);
                     builder.UpdateIsolinuxBootTable = UpdateIsolinuxBootTable;
                 }

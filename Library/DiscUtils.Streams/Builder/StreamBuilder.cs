@@ -65,7 +65,7 @@ namespace DiscUtils.Streams
         /// <param name="outputFile">The file to write to.</param>
         public void Build(string outputFile)
         {
-            using (FileStream destStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
+            using (FileStream destStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.Delete, bufferSize: 2 << 20, useAsync: true))
             {
                 Build(destStream);
             }

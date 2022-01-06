@@ -93,7 +93,7 @@ namespace VHDCreate
                     return;
                 }
 
-                using (FileStream fs = new FileStream(_destFile.Value, FileMode.Create, FileAccess.ReadWrite, FileShare.None))
+                using (FileStream fs = new FileStream(_destFile.Value, FileMode.Create, FileAccess.ReadWrite, FileShare.Delete, bufferSize: 2 << 20))
                 {
                     Disk.InitializeDynamic(fs, Ownership.None, DiskSize, blockSize);
                 }
@@ -120,7 +120,7 @@ namespace VHDCreate
                 }
 
                 // Create Fixed disk
-                using (FileStream fs = new FileStream(_destFile.Value, FileMode.Create, FileAccess.ReadWrite, FileShare.None))
+                using (FileStream fs = new FileStream(_destFile.Value, FileMode.Create, FileAccess.ReadWrite, FileShare.Delete, bufferSize: 2 << 20))
                 {
                     Disk.InitializeFixed(fs, Ownership.None, DiskSize);
                 }
