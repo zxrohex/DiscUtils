@@ -16,7 +16,9 @@ namespace DiscUtils.Core.WindowsSecurity
         public SecurityIdentifier(string sddlForm)
         {
             if (sddlForm == null)
+            {
                 throw new ArgumentNullException(nameof(sddlForm));
+            }
 
             buffer = ParseSddlForm(sddlForm);
         }
@@ -24,32 +26,117 @@ namespace DiscUtils.Core.WindowsSecurity
         public SecurityIdentifier(byte[] binaryForm, int offset)
         {
             if (binaryForm == null)
+            {
                 throw new ArgumentNullException(nameof(binaryForm));
-            if ((offset < 0) || (offset > binaryForm.Length - 2))
-                throw new ArgumentException("offset");
+            }
 
-            CreateFromBinaryForm(binaryForm, offset);
+            if ((offset < 0) || (offset > binaryForm.Length - 2))
+            {
+                throw new ArgumentException("offset");
+            }
+
+            if (!TryCreateFromBinaryForm(binaryForm, offset))
+            {
+                throw new ArgumentException("Invalid security identifier");
+            }
         }
 
-        void CreateFromBinaryForm(byte[] binaryForm, int offset)
+        private SecurityIdentifier() { }
+
+        public static bool TryParse(byte[] binaryForm, int offset, out SecurityIdentifier securityIdentifier)
+        {
+            securityIdentifier = null;
+
+            if (binaryForm == null || (offset < 0) || (offset > binaryForm.Length - 2))
+            {
+                return false;
+            }
+
+            var sid = new SecurityIdentifier();
+            if (!sid.TryCreateFromBinaryForm(binaryForm, offset))
+            {
+                return false;
+            }
+
+            securityIdentifier = sid;
+            return true;
+        }
+
+        bool TryCreateFromBinaryForm(byte[] binaryForm, int offset)
         {
             int revision = binaryForm[offset];
             int numSubAuthorities = binaryForm[offset + 1];
             if (revision != 1 || numSubAuthorities > 15 || (binaryForm.Length - offset) < (8 + (numSubAuthorities * 4)))
             {
-                throw new ArgumentException("Invalid security identifier");
+                return false;
             }
 
             buffer = new byte[8 + (numSubAuthorities * 4)];
             Buffer.BlockCopy(binaryForm, offset, buffer, 0, buffer.Length);
+            return true;
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public SecurityIdentifier(ReadOnlySpan<byte> binaryForm)
+        {
+            if (binaryForm == null)
+            {
+                throw new ArgumentNullException(nameof(binaryForm));
+            }
+
+            if (2 > binaryForm.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(binaryForm), binaryForm.Length, "Invalid binary length");
+            }
+
+            if (!TryCreateFromBinaryForm(binaryForm))
+            {
+                throw new ArgumentException("Invalid security identifier");
+            }
+        }
+
+        public static bool TryParse(ReadOnlySpan<byte> binaryForm, out SecurityIdentifier securityIdentifier)
+        {
+            securityIdentifier = null;
+
+            if (binaryForm == null || (2 > binaryForm.Length))
+            {
+                return false;
+            }
+
+            var sid = new SecurityIdentifier();
+            if (!sid.TryCreateFromBinaryForm(binaryForm))
+            {
+                return false;
+            }
+
+            securityIdentifier = sid;
+            return true;
+        }
+
+        bool TryCreateFromBinaryForm(ReadOnlySpan<byte> binaryForm)
+        {
+            int revision = binaryForm[0];
+            int numSubAuthorities = binaryForm[1];
+            if (revision != 1 || numSubAuthorities > 15 || binaryForm.Length < (8 + (numSubAuthorities * 4)))
+            {
+                return false;
+            }
+
+            buffer = binaryForm[..(8 + numSubAuthorities * 4)].ToArray();
+            return true;
+        }
+
+#endif
 
         public SecurityIdentifier(WellKnownSidType sidType,
                                   SecurityIdentifier domainSid)
         {
-            WellKnownAccount acct = WellKnownAccount.LookupByType(sidType);
+            var acct = WellKnownAccount.LookupByType(sidType);
             if (acct == null)
+            {
                 throw new ArgumentException($"Unable to convert SID type: {sidType}");
+            }
 
             if (acct.IsAbsolute)
             {
@@ -58,7 +145,9 @@ namespace DiscUtils.Core.WindowsSecurity
             else
             {
                 if (domainSid == null)
+                {
                     throw new ArgumentNullException(nameof(domainSid));
+                }
 
                 buffer = ParseSddlForm($"{domainSid.Value}-{acct.Rid}");
             }
@@ -68,14 +157,16 @@ namespace DiscUtils.Core.WindowsSecurity
         {
             get
             {
-                string strForm = Value;
+                var strForm = Value;
 
                 // Check prefix, and ensure at least 4 sub authorities
                 if (!strForm.StartsWith("S-1-5-21") || buffer[1] < 4)
+                {
                     return null;
+                }
 
                 // Domain is first four sub-authorities
-                byte[] temp = new byte[8 + (4 * 4)];
+                var temp = new byte[8 + (4 * 4)];
                 Array.Copy(buffer, 0, temp, 0, temp.Length);
                 temp[1] = 4;
                 return new SecurityIdentifier(temp, 0);
@@ -88,15 +179,17 @@ namespace DiscUtils.Core.WindowsSecurity
         {
             get
             {
-                StringBuilder s = new StringBuilder();
+                var s = new StringBuilder();
 
-                ulong authority = GetSidAuthority();
+                var authority = GetSidAuthority();
                 s.AppendFormat(CultureInfo.InvariantCulture, "S-1-{0}", authority);
 
                 for (byte i = 0; i < GetSidSubAuthorityCount(); ++i)
+                {
                     s.AppendFormat(
                         CultureInfo.InvariantCulture,
                         "-{0}", GetSidSubAuthority(i));
+                }
 
                 return s.ToString();
             }
@@ -109,15 +202,12 @@ namespace DiscUtils.Core.WindowsSecurity
                                               | (((ulong)buffer[6]) << 8) | (((ulong)buffer[7]) << 0);
         }
 
-        byte GetSidSubAuthorityCount()
-        {
-            return buffer[1];
-        }
+        byte GetSidSubAuthorityCount() => buffer[1];
 
         uint GetSidSubAuthority(byte index)
         {
             // Note sub authorities little-endian, authority (above) is big-endian!
-            int offset = 8 + (index * 4);
+            var offset = 8 + (index * 4);
 
             return (((uint)buffer[offset + 0]) << 0)
                    | (((uint)buffer[offset + 1]) << 8)
@@ -132,54 +222,70 @@ namespace DiscUtils.Core.WindowsSecurity
         public int CompareTo(SecurityIdentifier sid)
         {
             if (sid == null)
+            {
                 throw new ArgumentNullException(nameof(sid));
+            }
 
             int result;
-            if (0 != (result = GetSidAuthority().CompareTo(sid.GetSidAuthority()))) return result;
-            if (0 != (result = GetSidSubAuthorityCount().CompareTo(sid.GetSidSubAuthorityCount()))) return result;
+            if (0 != (result = GetSidAuthority().CompareTo(sid.GetSidAuthority())))
+            {
+                return result;
+            }
+
+            if (0 != (result = GetSidSubAuthorityCount().CompareTo(sid.GetSidSubAuthorityCount())))
+            {
+                return result;
+            }
+
             for (byte i = 0; i < GetSidSubAuthorityCount(); ++i)
+            {
                 if (0 != (result = GetSidSubAuthority(i).CompareTo(sid.GetSidSubAuthority(i))))
+                {
                     return result;
+                }
+            }
+
             return 0;
         }
 
-        public override bool Equals(object o)
-        {
-            return Equals(o as SecurityIdentifier);
-        }
+        public override bool Equals(object o) => Equals(o as SecurityIdentifier);
 
         public bool Equals(SecurityIdentifier sid)
         {
             if (sid == null)
+            {
                 return false;
+            }
+
             return (sid.Value == Value);
         }
 
         public void GetBinaryForm(byte[] binaryForm, int offset)
         {
             if (binaryForm == null)
+            {
                 throw new ArgumentNullException(nameof(binaryForm));
+            }
+
             if ((offset < 0) || (offset > binaryForm.Length - buffer.Length))
+            {
                 throw new ArgumentException("offset");
+            }
 
             Array.Copy(buffer, 0, binaryForm, offset, buffer.Length);
         }
 
-        public override int GetHashCode()
-        {
-            return Value.GetHashCode();
-        }
+        public override int GetHashCode() => Value.GetHashCode();
 
-        public bool IsAccountSid()
-        {
-            return AccountDomainSid != null;
-        }
+        public bool IsAccountSid() => AccountDomainSid != null;
 
         public bool IsEqualDomainSid(SecurityIdentifier sid)
         {
-            SecurityIdentifier domSid = AccountDomainSid;
+            var domSid = AccountDomainSid;
             if (domSid == null)
+            {
                 return false;
+            }
 
             return domSid.Equals(sid.AccountDomainSid);
         }
@@ -187,42 +293,53 @@ namespace DiscUtils.Core.WindowsSecurity
         public override bool IsValidTargetType(Type targetType)
         {
             if (targetType == typeof(SecurityIdentifier))
+            {
                 return true;
+            }
+
             if (targetType == typeof(NTAccount))
+            {
                 return true;
+            }
+
             return false;
         }
 
         public bool IsWellKnown(WellKnownSidType type)
         {
-            WellKnownAccount acct = WellKnownAccount.LookupByType(type);
+            var acct = WellKnownAccount.LookupByType(type);
             if (acct == null)
+            {
                 return false;
+            }
 
-            string sid = Value;
+            var sid = Value;
 
             if (acct.IsAbsolute)
+            {
                 return sid == acct.Sid;
+            }
 
             return sid.StartsWith("S-1-5-21", StringComparison.OrdinalIgnoreCase)
                    && sid.EndsWith("-" + acct.Rid, StringComparison.OrdinalIgnoreCase);
         }
 
-        public override string ToString()
-        {
-            return Value;
-        }
+        public override string ToString() => Value;
 
         public override IdentityReference Translate(Type targetType)
         {
             if (targetType == typeof(SecurityIdentifier))
+            {
                 return this;
+            }
 
             if (targetType == typeof(NTAccount))
             {
-                WellKnownAccount acct = WellKnownAccount.LookupBySid(Value);
+                var acct = WellKnownAccount.LookupBySid(Value);
                 if (acct?.Name == null)
+                {
                     throw new Exception("Unable to map SID: " + Value);
+                }
 
                 return new NTAccount(acct.Name);
             }
@@ -233,28 +350,42 @@ namespace DiscUtils.Core.WindowsSecurity
         public static bool operator ==(SecurityIdentifier left, SecurityIdentifier right)
         {
             if (((object)left) == null)
+            {
                 return (((object)right) == null);
+            }
+
             if (((object)right) == null)
+            {
                 return false;
+            }
+
             return (left.Value == right.Value);
         }
 
         public static bool operator !=(SecurityIdentifier left, SecurityIdentifier right)
         {
             if (((object)left) == null)
+            {
                 return (((object)right) != null);
+            }
+
             if (((object)right) == null)
+            {
                 return true;
+            }
+
             return (left.Value != right.Value);
         }
 
         internal string GetSddlForm()
         {
-            string sidString = Value;
+            var sidString = Value;
 
-            WellKnownAccount acct = WellKnownAccount.LookupBySid(sidString);
+            var acct = WellKnownAccount.LookupBySid(sidString);
             if (acct?.SddlForm == null)
+            {
                 return sidString;
+            }
 
             return acct.SddlForm;
         }
@@ -262,20 +393,22 @@ namespace DiscUtils.Core.WindowsSecurity
         internal static SecurityIdentifier ParseSddlForm(string sddlForm, ref int pos)
         {
             if (sddlForm.Length - pos < 2)
+            {
                 throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
+            }
 
             string sid;
             int len;
 
-            string prefix = sddlForm.Substring(pos, 2).ToUpperInvariant();
+            var prefix = sddlForm.Substring(pos, 2).ToUpperInvariant();
             if (prefix == "S-")
             {
                 // Looks like a SID, try to parse it.
-                int endPos = pos;
+                var endPos = pos;
 
-                char ch = char.ToUpperInvariant(sddlForm[endPos]);
-                while (ch == 'S' || ch == '-' || ch == 'X'
-                       || (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F'))
+                var ch = char.ToUpperInvariant(sddlForm[endPos]);
+                while (ch is 'S' or '-' or 'X'
+                       or >= '0' and <= '9' or >= 'A' and <= 'F')
                 {
                     ++endPos;
                     ch = char.ToUpperInvariant(sddlForm[endPos]);
@@ -295,47 +428,59 @@ namespace DiscUtils.Core.WindowsSecurity
                 len = 2;
             }
 
-            SecurityIdentifier ret = new SecurityIdentifier(sid);
+            var ret = new SecurityIdentifier(sid);
             pos += len;
             return ret;
         }
 
         private static byte[] ParseSddlForm(string sddlForm)
         {
-            string sid = sddlForm;
+            var sid = sddlForm;
 
             // If only 2 characters long, can't be a full SID string - so assume
             // it's an attempted alias.  Do that conversion first.
             if (sddlForm.Length == 2)
             {
-                WellKnownAccount acct = WellKnownAccount.LookupBySddlForm(sddlForm);
+                var acct = WellKnownAccount.LookupBySddlForm(sddlForm);
                 if (acct == null)
+                {
                     throw new ArgumentException(
                         "Invalid SDDL string - unrecognized account: " + sddlForm,
                         nameof(sddlForm));
+                }
+
                 if (!acct.IsAbsolute)
+                {
                     throw new NotImplementedException(
                         "Mono unable to convert account to SID: "
                         + (acct.Name ?? sddlForm));
+                }
 
                 sid = acct.Sid;
             }
 
-            string[] elements = sid.ToUpperInvariant().Split('-');
-            int numSubAuthorities = elements.Length - 3;
+            var elements = sid.ToUpperInvariant().Split('-');
+            var numSubAuthorities = elements.Length - 3;
 
             if (elements.Length < 3 || elements[0] != "S" || numSubAuthorities > 15)
+            {
                 throw new ArgumentException("Value was invalid.");
+            }
 
             if (elements[1] != "1")
+            {
                 throw new ArgumentException("Only SIDs with revision 1 are supported");
+            }
 
-            byte[] buffer = new byte[8 + (numSubAuthorities * 4)];
+            var buffer = new byte[8 + (numSubAuthorities * 4)];
             buffer[0] = 1;
             buffer[1] = (byte)numSubAuthorities;
 
-            if (!TryParseAuthority(elements[2], out ulong authority))
+            if (!TryParseAuthority(elements[2], out var authority))
+            {
                 throw new ArgumentException("Value was invalid.");
+            }
+
             buffer[2] = (byte)((authority >> 40) & 0xFF);
             buffer[3] = (byte)((authority >> 32) & 0xFF);
             buffer[4] = (byte)((authority >> 24) & 0xFF);
@@ -343,14 +488,16 @@ namespace DiscUtils.Core.WindowsSecurity
             buffer[6] = (byte)((authority >> 8) & 0xFF);
             buffer[7] = (byte)((authority >> 0) & 0xFF);
 
-            for (int i = 0; i < numSubAuthorities; ++i)
+            for (var i = 0; i < numSubAuthorities; ++i)
             {
                 if (!TryParseSubAuthority(elements[i + 3],
-                    out uint subAuthority))
+                    out var subAuthority))
+                {
                     throw new ArgumentException("Value was invalid.");
+                }
 
                 // Note sub authorities little-endian!
-                int offset = 8 + (i * 4);
+                var offset = 8 + (i * 4);
                 buffer[offset + 0] = (byte)(subAuthority >> 0);
                 buffer[offset + 1] = (byte)(subAuthority >> 8);
                 buffer[offset + 2] = (byte)(subAuthority >> 16);

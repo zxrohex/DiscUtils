@@ -40,22 +40,37 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
             : base(binaryForm, offset)
         {
             int len = ReadUShort(binaryForm, offset + 2);
-            int lenMinimum = 12 + SecurityIdentifier.MinBinaryLength;
+            var lenMinimum = 12 + SecurityIdentifier.MinBinaryLength;
 
             if (offset > binaryForm.Length - len)
+            {
                 throw new ArgumentException("Invalid ACE - truncated", nameof(binaryForm));
+            }
+
             if (len < lenMinimum)
+            {
                 throw new ArgumentException("Invalid ACE", nameof(binaryForm));
+            }
 
             AccessMask = ReadInt(binaryForm, offset + 4);
             ObjectAceFlags = (ObjectAceFlags)ReadInt(binaryForm, offset + 8);
 
-            if (ObjectAceTypePresent) lenMinimum += 16;
-            if (InheritedObjectAceTypePresent) lenMinimum += 16;
-            if (len < lenMinimum)
-                throw new ArgumentException("Invalid ACE", nameof(binaryForm));
+            if (ObjectAceTypePresent)
+            {
+                lenMinimum += 16;
+            }
 
-            int pos = 12;
+            if (InheritedObjectAceTypePresent)
+            {
+                lenMinimum += 16;
+            }
+
+            if (len < lenMinimum)
+            {
+                throw new ArgumentException("Invalid ACE", nameof(binaryForm));
+            }
+
+            var pos = 12;
             if (ObjectAceTypePresent)
             {
                 ObjectAceType = ReadGuid(binaryForm, offset + pos);
@@ -70,22 +85,89 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
             SecurityIdentifier = new SecurityIdentifier(binaryForm, offset + pos);
             pos += SecurityIdentifier.BinaryLength;
 
-            int opaqueLen = len - pos;
+            var opaqueLen = len - pos;
             if (opaqueLen > 0)
             {
-                byte[] opaque = new byte[opaqueLen];
+                var opaque = new byte[opaqueLen];
                 Array.Copy(binaryForm, offset + pos, opaque, 0, opaqueLen);
                 SetOpaque(opaque);
             }
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        internal ObjectAce(ReadOnlySpan<byte> binaryForm)
+            : base(binaryForm)
+        {
+            int len = ReadUShort(binaryForm[2..]);
+            var lenMinimum = 12 + SecurityIdentifier.MinBinaryLength;
+
+            if (len > binaryForm.Length)
+            {
+                throw new ArgumentException("Invalid ACE - truncated", nameof(binaryForm));
+            }
+
+            if (len < lenMinimum)
+            {
+                throw new ArgumentException("Invalid ACE", nameof(binaryForm));
+            }
+
+            AccessMask = ReadInt(binaryForm[4..]);
+            ObjectAceFlags = (ObjectAceFlags)ReadInt(binaryForm[8..]);
+
+            if (ObjectAceTypePresent)
+            {
+                lenMinimum += 16;
+            }
+
+            if (InheritedObjectAceTypePresent)
+            {
+                lenMinimum += 16;
+            }
+
+            if (len < lenMinimum)
+            {
+                throw new ArgumentException("Invalid ACE", nameof(binaryForm));
+            }
+
+            var pos = 12;
+            if (ObjectAceTypePresent)
+            {
+                ObjectAceType = ReadGuid(binaryForm[pos..]);
+                pos += 16;
+            }
+            if (InheritedObjectAceTypePresent)
+            {
+                InheritedObjectAceType = ReadGuid(binaryForm[pos..]);
+                pos += 16;
+            }
+
+            SecurityIdentifier = new SecurityIdentifier(binaryForm[pos..]);
+            pos += SecurityIdentifier.BinaryLength;
+
+            var opaqueLen = len - pos;
+            if (opaqueLen > 0)
+            {
+                var opaque = binaryForm.Slice(pos, opaqueLen);
+                SetOpaque(opaque);
+            }
+        }
+#endif
+
         public override int BinaryLength
         {
             get
             {
-                int length = 12 + SecurityIdentifier.BinaryLength + OpaqueLength;
-                if (ObjectAceTypePresent) length += 16;
-                if (InheritedObjectAceTypePresent) length += 16;
+                var length = 12 + SecurityIdentifier.BinaryLength + OpaqueLength;
+                if (ObjectAceTypePresent)
+                {
+                    length += 16;
+                }
+
+                if (InheritedObjectAceTypePresent)
+                {
+                    length += 16;
+                }
+
                 return length;
             }
         }
@@ -109,7 +191,7 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
 
         public override void GetBinaryForm(byte[] binaryForm, int offset)
         {
-            int len = BinaryLength;
+            var len = BinaryLength;
             binaryForm[offset++] = (byte)AceType;
             binaryForm[offset++] = (byte)AceFlags;
             WriteUShort((ushort)len, binaryForm, offset);
@@ -133,7 +215,7 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
             SecurityIdentifier.GetBinaryForm(binaryForm, offset);
             offset += SecurityIdentifier.BinaryLength;
 
-            byte[] opaque = GetOpaque();
+            var opaque = GetOpaque();
             if (opaque != null)
             {
                 Array.Copy(opaque, 0, binaryForm, offset, opaque.Length);
@@ -141,25 +223,29 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
             }
         }
 
-        public static int MaxOpaqueLength(bool isCallback)
-        {
+        public static int MaxOpaqueLength(bool isCallback) =>
             // Varies by platform?
-            return 65423;
-        }
+            65423;
 
         internal override string GetSddlForm()
         {
             if (OpaqueLength != 0)
+            {
                 throw new NotImplementedException(
                     "Unable to convert conditional ACEs to SDDL");
+            }
 
-            string objType = "";
+            var objType = "";
             if ((ObjectAceFlags & ObjectAceFlags.ObjectAceTypePresent) != 0)
+            {
                 objType = _objectAceType.ToString("D");
+            }
 
-            string inhObjType = "";
+            var inhObjType = "";
             if ((ObjectAceFlags & ObjectAceFlags.InheritedObjectAceTypePresent) != 0)
+            {
                 inhObjType = _inheritedObjectType.ToString("D");
+            }
 
             return string.Format(CultureInfo.InvariantCulture,
                 "({0};{1};{2};{3};{4};{5})",
@@ -177,27 +263,43 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
             {
                 case AceQualifier.AccessAllowed:
                     if (isCallback)
+                    {
                         return AceType.AccessAllowedCallbackObject;
+                    }
                     else
+                    {
                         return AceType.AccessAllowedObject;
+                    }
 
                 case AceQualifier.AccessDenied:
                     if (isCallback)
+                    {
                         return AceType.AccessDeniedCallbackObject;
+                    }
                     else
+                    {
                         return AceType.AccessDeniedObject;
+                    }
 
                 case AceQualifier.SystemAlarm:
                     if (isCallback)
+                    {
                         return AceType.SystemAlarmCallbackObject;
+                    }
                     else
+                    {
                         return AceType.SystemAlarmObject;
+                    }
 
                 case AceQualifier.SystemAudit:
                     if (isCallback)
+                    {
                         return AceType.SystemAuditCallbackObject;
+                    }
                     else
+                    {
                         return AceType.SystemAuditObject;
+                    }
 
                 default:
                     throw new ArgumentException("Unrecognized ACE qualifier: " + qualifier, nameof(qualifier));
@@ -207,15 +309,19 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
         private void WriteGuid(Guid val, byte[] buffer,
                                int offset)
         {
-            byte[] guidData = val.ToByteArray();
+            var guidData = val.ToByteArray();
             Array.Copy(guidData, 0, buffer, offset, 16);
         }
 
         private Guid ReadGuid(byte[] buffer, int offset)
         {
-            byte[] temp = new byte[16];
+            var temp = new byte[16];
             Array.Copy(buffer, offset, temp, 0, 16);
             return new Guid(temp);
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        private Guid ReadGuid(ReadOnlySpan<byte> buffer) => new(buffer);
+#endif
     }
 }

@@ -12,77 +12,47 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
             SetOpaque(opaque);
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        internal QualifiedAce(AceType type, AceFlags flags, ReadOnlySpan<byte> opaque)
+            : base(type, flags)
+        {
+            SetOpaque(opaque);
+        }
+
+        internal QualifiedAce(ReadOnlySpan<byte> binaryForm)
+            : base(binaryForm) { }
+#endif
+
         internal QualifiedAce(byte[] binaryForm, int offset)
             : base(binaryForm, offset) { }
 
-        public AceQualifier AceQualifier
+        public AceQualifier AceQualifier => AceType switch
         {
-            get
-            {
-                switch (AceType)
-                {
-                    case AceType.AccessAllowed:
-                    case AceType.AccessAllowedCallback:
-                    case AceType.AccessAllowedCallbackObject:
-                    case AceType.AccessAllowedCompound:
-                    case AceType.AccessAllowedObject:
-                        return AceQualifier.AccessAllowed;
-
-                    case AceType.AccessDenied:
-                    case AceType.AccessDeniedCallback:
-                    case AceType.AccessDeniedCallbackObject:
-                    case AceType.AccessDeniedObject:
-                        return AceQualifier.AccessDenied;
-
-                    case AceType.SystemAlarm:
-                    case AceType.SystemAlarmCallback:
-                    case AceType.SystemAlarmCallbackObject:
-                    case AceType.SystemAlarmObject:
-                        return AceQualifier.SystemAlarm;
-
-                    case AceType.SystemAudit:
-                    case AceType.SystemAuditCallback:
-                    case AceType.SystemAuditCallbackObject:
-                    case AceType.SystemAuditObject:
-                        return AceQualifier.SystemAudit;
-
-                    default:
-                        throw new ArgumentException("Unrecognized ACE type: " + AceType);
-                }
-            }
-        }
+            AceType.AccessAllowed or AceType.AccessAllowedCallback or AceType.AccessAllowedCallbackObject or AceType.AccessAllowedCompound or AceType.AccessAllowedObject => AceQualifier.AccessAllowed,
+            AceType.AccessDenied or AceType.AccessDeniedCallback or AceType.AccessDeniedCallbackObject or AceType.AccessDeniedObject => AceQualifier.AccessDenied,
+            AceType.SystemAlarm or AceType.SystemAlarmCallback or AceType.SystemAlarmCallbackObject or AceType.SystemAlarmObject => AceQualifier.SystemAlarm,
+            AceType.SystemAudit or AceType.SystemAuditCallback or AceType.SystemAuditCallbackObject or AceType.SystemAuditObject => AceQualifier.SystemAudit,
+            _ => throw new ArgumentException("Unrecognized ACE type: " + AceType),
+        };
 
         public bool IsCallback =>
-            AceType == AceType.AccessAllowedCallback
-            || AceType == AceType.AccessAllowedCallbackObject
-            || AceType == AceType.AccessDeniedCallback
-            || AceType == AceType.AccessDeniedCallbackObject
-            || AceType == AceType.SystemAlarmCallback
-            || AceType == AceType.SystemAlarmCallbackObject
-            || AceType == AceType.SystemAuditCallback
-            || AceType == AceType.SystemAuditCallbackObject;
+            AceType is AceType.AccessAllowedCallback
+            or AceType.AccessAllowedCallbackObject
+            or AceType.AccessDeniedCallback
+            or AceType.AccessDeniedCallbackObject
+            or AceType.SystemAlarmCallback
+            or AceType.SystemAlarmCallbackObject
+            or AceType.SystemAuditCallback
+            or AceType.SystemAuditCallbackObject;
 
-        public int OpaqueLength
-        {
-            get
-            {
-                if (_opaque == null)
-                    return 0;
-                return _opaque.Length;
-            }
-        }
+        public int OpaqueLength => _opaque == null ? 0 : _opaque.Length;
 
-        public byte[] GetOpaque()
-        {
-            return (byte[])_opaque?.Clone();
-        }
+        public byte[] GetOpaque() => (byte[])_opaque?.Clone();
 
-        public void SetOpaque(byte[] opaque)
-        {
-            if (opaque == null)
-                _opaque = null;
-            else
-                _opaque = (byte[])opaque.Clone();
-        }
+        public void SetOpaque(byte[] opaque) => _opaque = opaque == null ? null : (byte[])opaque.Clone();
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public void SetOpaque(ReadOnlySpan<byte> opaque) => _opaque = opaque.IsEmpty ? null : opaque.ToArray();
+#endif
     }
 }

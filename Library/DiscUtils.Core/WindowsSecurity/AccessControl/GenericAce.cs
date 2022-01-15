@@ -6,13 +6,7 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
 {
     public abstract class GenericAce
     {
-        private AceFlags _aceFlags;
-        
-        public AceFlags AceFlags
-        {
-            get => _aceFlags;
-            set => _aceFlags = value;
-        }
+        public AceFlags AceFlags { get; set; }
 
         public AceType AceType { get; }
 
@@ -20,11 +14,17 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
         {
             get
             {
-                AuditFlags ret = AuditFlags.None;
-                if ((_aceFlags & AceFlags.SuccessfulAccess) != 0)
+                var ret = AuditFlags.None;
+                if ((AceFlags & AceFlags.SuccessfulAccess) != 0)
+                {
                     ret |= AuditFlags.Success;
-                if ((_aceFlags & AceFlags.FailedAccess) != 0)
+                }
+
+                if ((AceFlags & AceFlags.FailedAccess) != 0)
+                {
                     ret |= AuditFlags.Failure;
+                }
+
                 return ret;
             }
         }
@@ -35,26 +35,38 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
         {
             get
             {
-                InheritanceFlags ret = InheritanceFlags.None;
-                if ((_aceFlags & AceFlags.ObjectInherit) != 0)
+                var ret = InheritanceFlags.None;
+                if ((AceFlags & AceFlags.ObjectInherit) != 0)
+                {
                     ret |= InheritanceFlags.ObjectInherit;
-                if ((_aceFlags & AceFlags.ContainerInherit) != 0)
+                }
+
+                if ((AceFlags & AceFlags.ContainerInherit) != 0)
+                {
                     ret |= InheritanceFlags.ContainerInherit;
+                }
+
                 return ret;
             }
         }
 
-        public bool IsInherited => (_aceFlags & AceFlags.Inherited) != AceFlags.None;
+        public bool IsInherited => (AceFlags & AceFlags.Inherited) != AceFlags.None;
 
         public PropagationFlags PropagationFlags
         {
             get
             {
-                PropagationFlags ret = PropagationFlags.None;
-                if ((_aceFlags & AceFlags.InheritOnly) != 0)
+                var ret = PropagationFlags.None;
+                if ((AceFlags & AceFlags.InheritOnly) != 0)
+                {
                     ret |= PropagationFlags.InheritOnly;
-                if ((_aceFlags & AceFlags.NoPropagateInherit) != 0)
+                }
+
+                if ((AceFlags & AceFlags.NoPropagateInherit) != 0)
+                {
                     ret |= PropagationFlags.NoPropagateInherit;
+                }
+
                 return ret;
             }
         }
@@ -67,24 +79,46 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
             }
 
             AceType = type;
-            _aceFlags = flags;
+            AceFlags = flags;
         }
 
         internal GenericAce(byte[] binaryForm, int offset)
         {
             if (binaryForm == null)
+            {
                 throw new ArgumentNullException(nameof(binaryForm));
+            }
 
             if (offset < 0 || offset > binaryForm.Length - 2)
+            {
                 throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset out of range");
+            }
 
             AceType = (AceType)binaryForm[offset];
-            _aceFlags = (AceFlags)binaryForm[offset + 1];
+            AceFlags = (AceFlags)binaryForm[offset + 1];
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        internal GenericAce(ReadOnlySpan<byte> binaryForm)
+        {
+            if (binaryForm.IsEmpty)
+            {
+                throw new ArgumentNullException(nameof(binaryForm));
+            }
+
+            if (2 > binaryForm.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(binaryForm), binaryForm.Length, "Binary length out of range");
+            }
+
+            AceType = (AceType)binaryForm[0];
+            AceFlags = (AceFlags)binaryForm[1];
+        }
+#endif
 
         public GenericAce Copy()
         {
-            byte[] buffer = new byte[BinaryLength];
+            var buffer = new byte[BinaryLength];
             GetBinaryForm(buffer, 0);
             return CreateFromBinaryForm(buffer, 0);
         }
@@ -92,32 +126,121 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
         public static GenericAce CreateFromBinaryForm(byte[] binaryForm, int offset)
         {
             if (binaryForm == null)
+            {
                 throw new ArgumentNullException(nameof(binaryForm));
+            }
 
             if (offset < 0 || offset > binaryForm.Length - 1)
+            {
                 throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset out of range");
+            }
 
-            AceType type = (AceType)binaryForm[offset];
+            var type = (AceType)binaryForm[offset];
             if (IsObjectType(type))
+            {
                 return new ObjectAce(binaryForm, offset);
+            }
             else
+            {
                 return new CommonAce(binaryForm, offset);
+            }
         }
 
-        public sealed override bool Equals(object o)
+        public static bool TryCreateFromBinaryForm(byte[] binaryForm, int offset, out GenericAce genericAce)
         {
-            return this == (o as GenericAce);
+            genericAce = null;
+
+            if (binaryForm == null || offset < 0 || offset > binaryForm.Length - 1)
+            {
+                return false;
+            }
+
+            try
+            {
+                var type = (AceType)binaryForm[offset];
+                if (IsObjectType(type))
+                {
+                    genericAce = new ObjectAce(binaryForm, offset);
+                }
+                else
+                {
+                    genericAce = new CommonAce(binaryForm, offset);
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public static GenericAce CreateFromBinaryForm(ReadOnlySpan<byte> binaryForm)
+        {
+            if (binaryForm == null)
+            {
+                throw new ArgumentNullException(nameof(binaryForm));
+            }
+
+            if (1 > binaryForm.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(binaryForm), binaryForm.Length, "Binary length out of range");
+            }
+
+            var type = (AceType)binaryForm[0];
+            if (IsObjectType(type))
+            {
+                return new ObjectAce(binaryForm);
+            }
+            else
+            {
+                return new CommonAce(binaryForm);
+            }
+        }
+
+        public static bool TryCreateFromBinaryForm(ReadOnlySpan<byte> binaryForm, out GenericAce genericAce)
+        {
+            genericAce = null;
+
+            if (binaryForm == null || 1 > binaryForm.Length)
+            {
+                return false;
+            }
+
+            try
+            {
+                var type = (AceType)binaryForm[0];
+                if (IsObjectType(type))
+                {
+                    genericAce = new ObjectAce(binaryForm);
+                }
+                else
+                {
+                    genericAce = new CommonAce(binaryForm);
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+#endif
+
+        public sealed override bool Equals(object o) => this == (o as GenericAce);
 
         public abstract void GetBinaryForm(byte[] binaryForm, int offset);
 
         public sealed override int GetHashCode()
         {
-            byte[] buffer = new byte[BinaryLength];
+            var buffer = new byte[BinaryLength];
             GetBinaryForm(buffer, 0);
 
-            int code = 0;
-            for (int i = 0; i < buffer.Length; ++i)
+            var code = 0;
+            for (var i = 0; i < buffer.Length; ++i)
             {
                 code = (code << 3) | ((code >> 29) & 0x7);
                 code ^= ((int)buffer[i]) & 0xff;
@@ -129,25 +252,33 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
         public static bool operator ==(GenericAce left, GenericAce right)
         {
             if (((object)left) == null)
+            {
                 return ((object)right) == null;
+            }
 
             if (((object)right) == null)
+            {
                 return false;
+            }
 
-            int leftLen = left.BinaryLength;
-            int rightLen = right.BinaryLength;
+            var leftLen = left.BinaryLength;
+            var rightLen = right.BinaryLength;
             if (leftLen != rightLen)
+            {
                 return false;
+            }
 
-            byte[] leftBuffer = new byte[leftLen];
-            byte[] rightBuffer = new byte[rightLen];
+            var leftBuffer = new byte[leftLen];
+            var rightBuffer = new byte[rightLen];
             left.GetBinaryForm(leftBuffer, 0);
             right.GetBinaryForm(rightBuffer, 0);
 
-            for (int i = 0; i < leftLen; ++i)
+            for (var i = 0; i < leftLen; ++i)
             {
                 if (leftBuffer[i] != rightBuffer[i])
+                {
                     return false;
+                }
             }
 
             return true;
@@ -156,25 +287,33 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
         public static bool operator !=(GenericAce left, GenericAce right)
         {
             if (((object)left) == null)
+            {
                 return ((object)right) != null;
+            }
 
             if (((object)right) == null)
+            {
                 return true;
+            }
 
-            int leftLen = left.BinaryLength;
-            int rightLen = right.BinaryLength;
+            var leftLen = left.BinaryLength;
+            var rightLen = right.BinaryLength;
             if (leftLen != rightLen)
+            {
                 return true;
+            }
 
-            byte[] leftBuffer = new byte[leftLen];
-            byte[] rightBuffer = new byte[rightLen];
+            var leftBuffer = new byte[leftLen];
+            var rightBuffer = new byte[rightLen];
             left.GetBinaryForm(leftBuffer, 0);
             right.GetBinaryForm(rightBuffer, 0);
 
-            for (int i = 0; i < leftLen; ++i)
+            for (var i = 0; i < leftLen; ++i)
             {
                 if (leftBuffer[i] != rightBuffer[i])
+                {
                     return true;
+                }
             }
 
             return false;
@@ -185,191 +324,189 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
         internal static GenericAce CreateFromSddlForm(string sddlForm, ref int pos)
         {
             if (sddlForm[pos] != '(')
+            {
                 throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
+            }
 
-            int endPos = sddlForm.IndexOf(')', pos);
+            var endPos = sddlForm.IndexOf(')', pos);
             if (endPos < 0)
+            {
                 throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
+            }
 
-            int count = endPos - (pos + 1);
-            string elementsStr = sddlForm.Substring(pos + 1,
+            var count = endPos - (pos + 1);
+            var elementsStr = sddlForm.Substring(pos + 1,
                 count);
             elementsStr = elementsStr.ToUpperInvariant();
-            string[] elements = elementsStr.Split(';');
+            var elements = elementsStr.Split(';');
             if (elements.Length != 6)
+            {
                 throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
+            }
 
-            ObjectAceFlags objFlags = ObjectAceFlags.None;
+            var objFlags = ObjectAceFlags.None;
 
-            AceType type = ParseSddlAceType(elements[0]);
+            var type = ParseSddlAceType(elements[0]);
 
-            AceFlags flags = ParseSddlAceFlags(elements[1]);
+            var flags = ParseSddlAceFlags(elements[1]);
 
-            int accessMask = ParseSddlAccessRights(elements[2]);
+            var accessMask = ParseSddlAccessRights(elements[2]);
 
-            Guid objectType = Guid.Empty;
+            var objectType = Guid.Empty;
             if (!string.IsNullOrEmpty(elements[3]))
             {
                 objectType = new Guid(elements[3]);
                 objFlags |= ObjectAceFlags.ObjectAceTypePresent;
             }
 
-            Guid inhObjectType = Guid.Empty;
+            var inhObjectType = Guid.Empty;
             if (!string.IsNullOrEmpty(elements[4]))
             {
                 inhObjectType = new Guid(elements[4]);
                 objFlags |= ObjectAceFlags.InheritedObjectAceTypePresent;
             }
 
-            SecurityIdentifier sid
+            var sid
                 = new SecurityIdentifier(elements[5]);
 
-            if (type == AceType.AccessAllowedCallback
-                || type == AceType.AccessDeniedCallback)
+            if (type is AceType.AccessAllowedCallback
+                or AceType.AccessDeniedCallback)
+            {
                 throw new NotImplementedException("Conditional ACEs not supported");
+            }
 
             pos = endPos + 1;
 
             if (IsObjectType(type))
+            {
                 return new ObjectAce(type, flags, accessMask, sid, objFlags, objectType, inhObjectType, null);
+            }
             else
             {
                 if (objFlags != ObjectAceFlags.None)
+                {
                     throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
+                }
+
                 return new CommonAce(type, flags, accessMask, sid, null);
             }
         }
 
         private static bool IsObjectType(AceType type)
         {
-            return type == AceType.AccessAllowedCallbackObject
-                   || type == AceType.AccessAllowedObject
-                   || type == AceType.AccessDeniedCallbackObject
-                   || type == AceType.AccessDeniedObject
-                   || type == AceType.SystemAlarmCallbackObject
-                   || type == AceType.SystemAlarmObject
-                   || type == AceType.SystemAuditCallbackObject
-                   || type == AceType.SystemAuditObject;
+            return type is AceType.AccessAllowedCallbackObject
+                   or AceType.AccessAllowedObject
+                   or AceType.AccessDeniedCallbackObject
+                   or AceType.AccessDeniedObject
+                   or AceType.SystemAlarmCallbackObject
+                   or AceType.SystemAlarmObject
+                   or AceType.SystemAuditCallbackObject
+                   or AceType.SystemAuditObject;
         }
 
         internal static string GetSddlAceType(AceType type)
         {
-            switch (type)
+            return type switch
             {
-                case AceType.AccessAllowed:
-                    return "A";
-                case AceType.AccessDenied:
-                    return "D";
-                case AceType.AccessAllowedObject:
-                    return "OA";
-                case AceType.AccessDeniedObject:
-                    return "OD";
-                case AceType.SystemAudit:
-                    return "AU";
-                case AceType.SystemAlarm:
-                    return "AL";
-                case AceType.SystemAuditObject:
-                    return "OU";
-                case AceType.SystemAlarmObject:
-                    return "OL";
-                case AceType.AccessAllowedCallback:
-                    return "XA";
-                case AceType.AccessDeniedCallback:
-                    return "XD";
-                default:
-                    throw new ArgumentException("Unable to convert to SDDL ACE type: " + type, nameof(type));
-            }
+                AceType.AccessAllowed => "A",
+                AceType.AccessDenied => "D",
+                AceType.AccessAllowedObject => "OA",
+                AceType.AccessDeniedObject => "OD",
+                AceType.SystemAudit => "AU",
+                AceType.SystemAlarm => "AL",
+                AceType.SystemAuditObject => "OU",
+                AceType.SystemAlarmObject => "OL",
+                AceType.AccessAllowedCallback => "XA",
+                AceType.AccessDeniedCallback => "XD",
+                _ => throw new ArgumentException($"Unable to convert to SDDL ACE type: {type}", nameof(type)),
+            };
         }
 
         private static AceType ParseSddlAceType(string type)
         {
-            switch (type)
+            return type switch
             {
-                case "A":
-                    return AceType.AccessAllowed;
-                case "D":
-                    return AceType.AccessDenied;
-                case "OA":
-                    return AceType.AccessAllowedObject;
-                case "OD":
-                    return AceType.AccessDeniedObject;
-                case "AU":
-                    return AceType.SystemAudit;
-                case "AL":
-                    return AceType.SystemAlarm;
-                case "OU":
-                    return AceType.SystemAuditObject;
-                case "OL":
-                    return AceType.SystemAlarmObject;
-                case "XA":
-                    return AceType.AccessAllowedCallback;
-                case "XD":
-                    return AceType.AccessDeniedCallback;
-                default:
-                    throw new ArgumentException("Unable to convert SDDL to ACE type: " + type, nameof(type));
-            }
+                "A" => AceType.AccessAllowed,
+                "D" => AceType.AccessDenied,
+                "OA" => AceType.AccessAllowedObject,
+                "OD" => AceType.AccessDeniedObject,
+                "AU" => AceType.SystemAudit,
+                "AL" => AceType.SystemAlarm,
+                "OU" => AceType.SystemAuditObject,
+                "OL" => AceType.SystemAlarmObject,
+                "XA" => AceType.AccessAllowedCallback,
+                "XD" => AceType.AccessDeniedCallback,
+                _ => throw new ArgumentException($"Unable to convert SDDL to ACE type: {type}", nameof(type)),
+            };
         }
 
         internal static string GetSddlAceFlags(AceFlags flags)
         {
-            StringBuilder result = new StringBuilder();
+            var result = new StringBuilder();
             if ((flags & AceFlags.ObjectInherit) != 0)
+            {
                 result.Append("OI");
+            }
+
             if ((flags & AceFlags.ContainerInherit) != 0)
+            {
                 result.Append("CI");
+            }
+
             if ((flags & AceFlags.NoPropagateInherit) != 0)
+            {
                 result.Append("NP");
+            }
+
             if ((flags & AceFlags.InheritOnly) != 0)
+            {
                 result.Append("IO");
+            }
+
             if ((flags & AceFlags.Inherited) != 0)
+            {
                 result.Append("ID");
+            }
+
             if ((flags & AceFlags.SuccessfulAccess) != 0)
+            {
                 result.Append("SA");
+            }
+
             if ((flags & AceFlags.FailedAccess) != 0)
+            {
                 result.Append("FA");
+            }
+
             return result.ToString();
         }
 
         private static AceFlags ParseSddlAceFlags(string flags)
         {
-            AceFlags ret = AceFlags.None;
+            var ret = AceFlags.None;
 
-            int pos = 0;
+            var pos = 0;
             while (pos < flags.Length - 1)
             {
-                string flag = flags.Substring(pos, 2);
-                switch (flag)
+                var flag = flags.Substring(pos, 2);
+                ret |= flag switch
                 {
-                    case "CI":
-                        ret |= AceFlags.ContainerInherit;
-                        break;
-                    case "OI":
-                        ret |= AceFlags.ObjectInherit;
-                        break;
-                    case "NP":
-                        ret |= AceFlags.NoPropagateInherit;
-                        break;
-                    case "IO":
-                        ret |= AceFlags.InheritOnly;
-                        break;
-                    case "ID":
-                        ret |= AceFlags.Inherited;
-                        break;
-                    case "SA":
-                        ret |= AceFlags.SuccessfulAccess;
-                        break;
-                    case "FA":
-                        ret |= AceFlags.FailedAccess;
-                        break;
-                    default:
-                        throw new ArgumentException("Invalid SDDL string.", nameof(flags));
-                }
-
+                    "CI" => AceFlags.ContainerInherit,
+                    "OI" => AceFlags.ObjectInherit,
+                    "NP" => AceFlags.NoPropagateInherit,
+                    "IO" => AceFlags.InheritOnly,
+                    "ID" => AceFlags.Inherited,
+                    "SA" => AceFlags.SuccessfulAccess,
+                    "FA" => AceFlags.FailedAccess,
+                    _ => throw new ArgumentException("Invalid SDDL string.", nameof(flags)),
+                };
                 pos += 2;
             }
 
             if (pos != flags.Length)
+            {
                 throw new ArgumentException("Invalid SDDL string.", nameof(flags));
+            }
 
             return ret;
         }
@@ -382,7 +519,7 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
                     NumberStyles.HexNumber,
                     CultureInfo.InvariantCulture);
             }
-            else if (Char.IsDigit(accessMask, 0))
+            else if (char.IsDigit(accessMask, 0))
             {
                 return int.Parse(accessMask,
                     NumberStyles.Integer,
@@ -396,22 +533,26 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
 
         private static int ParseSddlAliasRights(string accessMask)
         {
-            int ret = 0;
+            var ret = 0;
 
-            int pos = 0;
+            var pos = 0;
             while (pos < accessMask.Length - 1)
             {
-                string flag = accessMask.Substring(pos, 2);
-                SddlAccessRight right = SddlAccessRight.LookupByName(flag);
+                var flag = accessMask.Substring(pos, 2);
+                var right = SddlAccessRight.LookupByName(flag);
                 if (right == null)
+                {
                     throw new ArgumentException("Invalid SDDL string.", nameof(accessMask));
+                }
 
                 ret |= right.Value;
                 pos += 2;
             }
 
             if (pos != accessMask.Length)
+            {
                 throw new ArgumentException("Invalid SDDL string.", nameof(accessMask));
+            }
 
             return ret;
         }
@@ -429,6 +570,22 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
                    | (((int)buffer[offset + 2]) << 16)
                    | (((int)buffer[offset + 3]) << 24);
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        internal static ushort ReadUShort(ReadOnlySpan<byte> buffer)
+        {
+            return (ushort)((((int)buffer[0]) << 0)
+                            | (((int)buffer[1]) << 8));
+        }
+
+        internal static int ReadInt(ReadOnlySpan<byte> buffer)
+        {
+            return (((int)buffer[0]) << 0)
+                   | (((int)buffer[1]) << 8)
+                   | (((int)buffer[2]) << 16)
+                   | (((int)buffer[3]) << 24);
+        }
+#endif
 
         internal static void WriteInt(int val, byte[] buffer, int offset)
         {
