@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -44,37 +45,166 @@ namespace DiscUtils.Registry
         /// <summary>
         /// Initializes a new instance of the RegistryHive class.
         /// </summary>
-        /// <param name="hive">The stream containing the registry hive.</param>
+        /// <param name="filePath">Path to registry hive file. This method will also open
+        /// LOG1 and LOG2 files at the same location if there are pending changes to apply
+        /// to the registry hive.</param>
+        /// <param name="access">Specifies read-only or read/write access</param>
         /// <remarks>
         /// The created object does not assume ownership of the stream.
         /// </remarks>
-        public RegistryHive(Stream hive)
-            : this(hive, Ownership.None) {}
+        public RegistryHive(string filePath, FileAccess access)
+            : this(File.Open(filePath, FileMode.Open, access), Ownership.Dispose, OpenLogFiles(filePath).ToArray()) { }
+
+        private static IEnumerable<Stream> OpenLogFiles(string hivePath)
+        {
+            var log1 = hivePath + ".LOG1";
+            if (File.Exists(log1))
+            {
+                yield return File.OpenRead(log1);
+            }
+
+            var log2 = hivePath + ".LOG2";
+            if (File.Exists(log2))
+            {
+                yield return File.OpenRead(log2);
+            }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the RegistryHive class.
+        /// </summary>
+        /// <param name="file">Path to registry hive file. This method will also open
+        /// LOG1 and LOG2 files at the same location if there are pending changes to apply
+        /// to the registry hive.</param>
+        /// <param name="access">Specifies read-only or read/write access</param>
+        /// <remarks>
+        /// The created object does not assume ownership of the stream.
+        /// </remarks>
+        public RegistryHive(DiscFileInfo file, FileAccess access)
+            : this(file.Open(FileMode.Open, access), Ownership.Dispose, OpenLogFiles(file).ToArray()) { }
+
+        private static IEnumerable<Stream> OpenLogFiles(DiscFileInfo hivePath)
+        {
+            var log1 = hivePath.FileSystem.GetFileInfo(hivePath.FullName + ".LOG1");
+            if (log1.Exists)
+            {
+                yield return log1.OpenRead();
+            }
+
+            var log2 = hivePath.FileSystem.GetFileInfo(hivePath.FullName + ".LOG2");
+            if (log2.Exists)
+            {
+                yield return log2.OpenRead();
+            }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the RegistryHive class.
+        /// </summary>
+        /// <param name="hive">The stream containing the registry hive.</param>
+        /// <param name="logs">LOG1 and LOG2 streams to replay pending changes from</param>
+        /// <remarks>
+        /// The created object does not assume ownership of the streams.
+        /// </remarks>
+        public RegistryHive(Stream hive, params Stream[] logs)
+            : this(hive, Ownership.None) { }
 
         /// <summary>
         /// Initializes a new instance of the RegistryHive class.
         /// </summary>
         /// <param name="hive">The stream containing the registry hive.</param>
         /// <param name="ownership">Whether the new object assumes object of the stream.</param>
-        public RegistryHive(Stream hive, Ownership ownership)
+        /// <param name="logs">LOG1 and LOG2 streams to replay pending changes from</param>
+        public RegistryHive(Stream hive, Ownership ownership, params Stream[] logs)
         {
             _fileStream = hive;
             _fileStream.Position = 0;
             _ownsStream = ownership;
 
-            byte[] buffer = StreamUtilities.ReadExact(_fileStream, HiveHeader.HeaderSize);
+            var buffer = StreamUtilities.ReadExact(_fileStream, HiveHeader.HeaderSize);
 
-            _header = new HiveHeader();
+            _header = new();
             _header.ReadFrom(buffer, 0);
 
+            if (_header.Sequence1 != _header.Sequence2)
+            {
+                if (logs is not null && logs.Length > 0)
+                {
+                    if (!_fileStream.CanWrite)
+                    {
+                        var mem = new MemoryStream((int)_fileStream.Length);
+                        _fileStream.Position = 0;
+                        _fileStream.CopyTo(mem);
+                        mem.Position = 0;
+                        if (ownership == Ownership.Dispose)
+                        {
+                            _fileStream.Dispose();
+                        }
+                        _fileStream = mem;
+                    }
+
+                    StreamUtilities.ReadExact(logs[0], buffer, 0, HiveHeader.HeaderSize);
+                    var logheaders = new HiveHeader[Math.Max(2, logs.Length)];
+                    logheaders[0] = new();
+                    logheaders[0].ReadFrom(buffer, 0);
+
+                    if (logs.Length > 1)
+                    {
+                        StreamUtilities.ReadExact(logs[1], buffer, 0, HiveHeader.HeaderSize);
+                        logheaders[1] = new();
+                        logheaders[1].ReadFrom(buffer, 0);
+                    }
+
+                    if (logheaders.Length > 1 && logheaders[0].Sequence1 >= logheaders[1].Sequence1)
+                    {
+                        logheaders = new[] { logheaders[1], logheaders[0] };
+                        logs = new[] { logs[1], logs[0] };
+                    }
+
+                    var lastSequenceNumber = 0;
+
+                    if (logheaders[0].Sequence1 >= _header.Sequence2)
+                    {
+                        lastSequenceNumber = new LogFile(logs[0]).UpdateHive(_fileStream);
+                    }
+
+                    if (logheaders[1].Sequence1 == lastSequenceNumber + 1 &&
+                        logheaders[1].Sequence1 > _header.Sequence2)
+                    {
+                        lastSequenceNumber = new LogFile(logs[1]).UpdateHive(_fileStream);
+                    }
+
+                    _header.Sequence1 = _header.Sequence2 = lastSequenceNumber;
+                    _header.WriteTo(buffer, 0);
+                    _fileStream.Position = 0;
+                    _fileStream.Write(buffer, 0, buffer.Length);
+                    _fileStream.Position = 0;
+                }
+                else if (_fileStream.CanWrite)
+                {
+                    throw new NotImplementedException("Hive needs log files to replay pending changes");
+                }
+            }
+
+            if (ownership == Ownership.Dispose)
+            {
+                if (logs is not null && logs.Length > 0)
+                {
+                    foreach (var log in logs)
+                    {
+                        log.Dispose();
+                    }
+                }
+            }
+
             _bins = new List<BinHeader>();
-            int pos = 0;
+            var pos = 0;
             while (pos < _header.Length)
             {
                 _fileStream.Position = BinStart + pos;
-                byte[] headerBuffer = StreamUtilities.ReadExact(_fileStream, BinHeader.HeaderSize);
-                BinHeader header = new BinHeader();
-                header.ReadFrom(headerBuffer, 0);
+                StreamUtilities.ReadExact(_fileStream, buffer, 0, BinHeader.HeaderSize);
+                var header = new BinHeader();
+                header.ReadFrom(buffer, 0);
                 _bins.Add(header);
 
                 pos += header.BinSize;

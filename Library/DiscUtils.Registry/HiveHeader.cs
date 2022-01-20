@@ -91,11 +91,6 @@ namespace DiscUtils.Registry
 
             Checksum = EndianUtilities.ToUInt32LittleEndian(buffer, 0x01FC);
 
-            if (Sequence1 != Sequence2)
-            {
-                throw new NotImplementedException("Support for replaying registry log file");
-            }
-
             if (Checksum != CalcChecksum(buffer, offset))
             {
                 throw new IOException("Invalid checksum on registry file");
