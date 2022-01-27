@@ -143,16 +143,16 @@ namespace DiscUtils.Registry
                         _fileStream = mem;
                     }
 
-                    StreamUtilities.ReadExact(logs[0], buffer, 0, HiveHeader.HeaderSize);
+                    var log_header_buffer = StreamUtilities.ReadExact(logs[0], HiveHeader.HeaderSize);
                     var logheaders = new HiveHeader[Math.Max(2, logs.Length)];
                     logheaders[0] = new();
-                    logheaders[0].ReadFrom(buffer, 0);
+                    logheaders[0].ReadFrom(log_header_buffer, 0);
 
                     if (logs.Length > 1)
                     {
-                        StreamUtilities.ReadExact(logs[1], buffer, 0, HiveHeader.HeaderSize);
+                        StreamUtilities.ReadExact(logs[1], log_header_buffer, 0, HiveHeader.HeaderSize);
                         logheaders[1] = new();
-                        logheaders[1].ReadFrom(buffer, 0);
+                        logheaders[1].ReadFrom(log_header_buffer, 0);
                     }
 
                     if (logheaders.Length > 1 && logheaders[0].Sequence1 >= logheaders[1].Sequence1)
@@ -161,20 +161,30 @@ namespace DiscUtils.Registry
                         logs = new[] { logs[1], logs[0] };
                     }
 
-                    var lastSequenceNumber = 0;
+                    int lastSequenceNumber;
 
                     if (logheaders[0].Sequence1 >= _header.Sequence2)
                     {
                         lastSequenceNumber = new LogFile(logs[0]).UpdateHive(_fileStream);
-                    }
 
-                    if (logheaders[1].Sequence1 == lastSequenceNumber + 1 &&
-                        logheaders[1].Sequence1 > _header.Sequence2)
+                        if (logheaders.Length > 1 &&
+                            logheaders[1].Sequence1 == lastSequenceNumber + 1 &&
+                            logheaders[1].Sequence1 > _header.Sequence2)
+                        {
+                            lastSequenceNumber = new LogFile(logs[1]).UpdateHive(_fileStream);
+                        }
+                    }
+                    else if (logheaders.Length > 1 &&
+                        logheaders[1].Sequence1 >= _header.Sequence2)
                     {
                         lastSequenceNumber = new LogFile(logs[1]).UpdateHive(_fileStream);
                     }
+                    else
+                    {
+                        throw new IOException("Hive has corrupt log files");
+                    }
 
-                    _header.Sequence1 = _header.Sequence2 = lastSequenceNumber;
+                    _header.Sequence1 = _header.Sequence2 = lastSequenceNumber + 1;
                     _header.WriteTo(buffer, 0);
                     _fileStream.Position = 0;
                     _fileStream.Write(buffer, 0, buffer.Length);
@@ -182,7 +192,7 @@ namespace DiscUtils.Registry
                 }
                 else if (_fileStream.CanWrite)
                 {
-                    throw new NotImplementedException("Hive needs log files to replay pending changes");
+                    throw new IOException("Hive needs log files to replay pending changes");
                 }
             }
 

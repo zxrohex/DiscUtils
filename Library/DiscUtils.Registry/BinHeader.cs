@@ -30,7 +30,10 @@ namespace DiscUtils.Registry
         public const int HeaderSize = 0x20;
 
         private const uint Signature = 0x6E696268;
+
         public int BinSize;
+
+        public int NextOffset;
 
         public int FileOffset;
 
@@ -49,9 +52,7 @@ namespace DiscUtils.Registry
 
             FileOffset = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
             BinSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x08);
-            long unknown = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x0C);
-            long unknown1 = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x14);
-            int unknown2 = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x1C);
+            NextOffset = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x1C);
             return HeaderSize;
         }
 
@@ -60,6 +61,7 @@ namespace DiscUtils.Registry
             EndianUtilities.WriteBytesLittleEndian(Signature, buffer, offset + 0x00);
             EndianUtilities.WriteBytesLittleEndian(FileOffset, buffer, offset + 0x04);
             EndianUtilities.WriteBytesLittleEndian(BinSize, buffer, offset + 0x08);
+            EndianUtilities.WriteBytesLittleEndian(NextOffset, buffer, offset + 0x1C);
         }
     }
 }

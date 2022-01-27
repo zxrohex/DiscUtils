@@ -78,7 +78,7 @@ namespace DiscUtils.Ntfs
         {
             get
             {
-                Range<long, long> lastVcnRange = null;
+                Range<long, long> lastVcnRange = default;
                 List<Range<long, long>> ranges = new List<Range<long, long>>();
 
                 int runCount = _cookedRuns.Count;
@@ -88,7 +88,7 @@ namespace DiscUtils.Ntfs
                     if (!cookedRun.IsSparse)
                     {
                         long startPos = cookedRun.StartVcn;
-                        if (lastVcnRange != null && lastVcnRange.Offset + lastVcnRange.Count == startPos)
+                        if (lastVcnRange.Offset + lastVcnRange.Count == startPos)
                         {
                             lastVcnRange = new Range<long, long>(lastVcnRange.Offset,
                                 lastVcnRange.Count + cookedRun.Length);

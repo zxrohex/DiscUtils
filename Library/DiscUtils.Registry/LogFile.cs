@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Diagnostics;
 
 namespace DiscUtils.Registry;
 
@@ -20,7 +21,7 @@ internal class LogFile
 
     public IEnumerable<LogEntry> EnumerateEntries()
     {
-        for (var offset = 0x200; ;)
+        for (var offset = 0x200; offset < buffer.Length - HiveHeader.HeaderSize;)
         {
             var signature = EndianUtilities.ToInt32LittleEndian(buffer, offset);
             if (signature != LOG_ENTRY)
@@ -52,6 +53,9 @@ internal class LogFile
 
         foreach (var entry in EnumerateEntries())
         {
+#if DEBUG
+            Trace.WriteLine($"Replaying log entry {entry}");
+#endif
             hive.Position = 0x1000 + entry.PageOffset;
             hive.Write(buffer, entry.BufferOffset, entry.PageSize);
             sequenceNumber = entry.SequenceNumber;

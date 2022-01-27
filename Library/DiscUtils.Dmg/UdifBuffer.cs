@@ -258,7 +258,7 @@ namespace DiscUtils.Dmg
 
         public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
         {
-            StreamExtent lastRun = null;
+            StreamExtent lastRun = default;
 
             foreach (CompressedBlock block in Blocks)
             {
@@ -288,13 +288,13 @@ namespace DiscUtils.Dmg
 
                         if (thisRunLength > 0)
                         {
-                            if (lastRun != null && lastRun.Start + lastRun.Length == thisRunStart)
+                            if (lastRun.Start + lastRun.Length == thisRunStart)
                             {
                                 lastRun = new StreamExtent(lastRun.Start, lastRun.Length + thisRunLength);
                             }
                             else
                             {
-                                if (lastRun != null)
+                                if (lastRun != default)
                                 {
                                     yield return lastRun;
                                 }

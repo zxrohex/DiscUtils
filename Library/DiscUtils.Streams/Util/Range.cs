@@ -30,7 +30,7 @@ namespace DiscUtils.Streams
     /// </summary>
     /// <typeparam name="TOffset">The type of the offset element.</typeparam>
     /// <typeparam name="TCount">The type of the size element.</typeparam>
-    public class Range<TOffset, TCount> : IEquatable<Range<TOffset, TCount>>
+    public struct Range<TOffset, TCount> : IEquatable<Range<TOffset, TCount>>
         where TOffset : IEquatable<TOffset>
         where TCount : IEquatable<TCount>
     {
@@ -62,15 +62,15 @@ namespace DiscUtils.Streams
         /// </summary>
         /// <param name="other">The range to compare.</param>
         /// <returns><c>true</c> if the ranges are equivalent, else <c>false</c>.</returns>
-        public bool Equals(Range<TOffset, TCount> other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
+        public bool Equals(Range<TOffset, TCount> other) => Offset.Equals(other.Offset) && Count.Equals(other.Count);
 
-            return Offset.Equals(other.Offset) && Count.Equals(other.Count);
-        }
+        public override bool Equals(object obj) => obj is Range<TOffset, TCount> other && Equals(other);
+
+        public override int GetHashCode() => Offset.GetHashCode() ^ Count.GetHashCode();
+
+        public static bool operator ==(Range<TOffset, TCount> a, Range<TOffset, TCount> b) => a.Equals(b);
+
+        public static bool operator !=(Range<TOffset, TCount> a, Range<TOffset, TCount> b) => !a.Equals(b);
 
         #endregion
 
@@ -123,9 +123,6 @@ namespace DiscUtils.Streams
         /// Returns a string representation of the extent as [start:+length].
         /// </summary>
         /// <returns>The string representation.</returns>
-        public override string ToString()
-        {
-            return "[" + Offset + ":+" + Count + "]";
-        }
+        public override string ToString() => $"[{Offset}:+{Count}]";
     }
 }

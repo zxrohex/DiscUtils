@@ -32,7 +32,7 @@ namespace DiscUtils.Streams
     /// are actually stored in the underlying storage medium (rather than implied
     /// zero bytes).  Extents are stored as a zero-based byte offset (from the
     /// beginning of the stream), and a byte length.</remarks>
-    public sealed class StreamExtent : IEquatable<StreamExtent>, IComparable<StreamExtent>
+    public struct StreamExtent : IEquatable<StreamExtent>, IComparable<StreamExtent>
     {
         /// <summary>
         /// Initializes a new instance of the StreamExtent class.
@@ -82,10 +82,6 @@ namespace DiscUtils.Streams
         /// <returns><c>true</c> if the extents are equal, else <c>false</c>.</returns>
         public bool Equals(StreamExtent other)
         {
-            if (other == null)
-            {
-                return false;
-            }
             return Start == other.Start && Length == other.Length;
         }
 
@@ -422,10 +418,6 @@ namespace DiscUtils.Streams
         /// <returns>Whether the two extents are equal.</returns>
         public static bool operator ==(StreamExtent a, StreamExtent b)
         {
-            if (ReferenceEquals(a, null))
-            {
-                return ReferenceEquals(b, null);
-            }
             return a.Equals(b);
         }
 
@@ -466,28 +458,19 @@ namespace DiscUtils.Streams
         /// Returns a string representation of the extent as [start:+length].
         /// </summary>
         /// <returns>The string representation.</returns>
-        public override string ToString()
-        {
-            return "[" + Start + ":+" + Length + "]";
-        }
+        public override string ToString() => $"[{Start}:+{Length}]";
 
         /// <summary>
         /// Indicates if this stream extent is equal to another object.
         /// </summary>
         /// <param name="obj">The object to test.</param>
         /// <returns><c>true</c> if <c>obj</c> is equivalent, else <c>false</c>.</returns>
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as StreamExtent);
-        }
+        public override bool Equals(object obj) => obj is StreamExtent extent && Equals(extent);
 
         /// <summary>
         /// Gets a hash code for this extent.
         /// </summary>
         /// <returns>The extent's hash code.</returns>
-        public override int GetHashCode()
-        {
-            return Start.GetHashCode() ^ Length.GetHashCode();
-        }
+        public override int GetHashCode() => Start.GetHashCode() ^ Length.GetHashCode();
     }
 }
