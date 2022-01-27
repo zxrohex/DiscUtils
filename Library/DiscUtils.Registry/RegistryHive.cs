@@ -102,11 +102,11 @@ namespace DiscUtils.Registry
         /// Initializes a new instance of the RegistryHive class.
         /// </summary>
         /// <param name="hive">The stream containing the registry hive.</param>
-        /// <param name="logs">LOG1 and LOG2 streams to replay pending changes from</param>
+        /// <param name="logfiles">LOG1 and LOG2 streams to replay pending changes from</param>
         /// <remarks>
         /// The created object does not assume ownership of the streams.
         /// </remarks>
-        public RegistryHive(Stream hive, params Stream[] logs)
+        public RegistryHive(Stream hive, params Stream[] logfiles)
             : this(hive, Ownership.None) { }
 
         /// <summary>
@@ -114,8 +114,8 @@ namespace DiscUtils.Registry
         /// </summary>
         /// <param name="hive">The stream containing the registry hive.</param>
         /// <param name="ownership">Whether the new object assumes object of the stream.</param>
-        /// <param name="logs">LOG1 and LOG2 streams to replay pending changes from</param>
-        public RegistryHive(Stream hive, Ownership ownership, params Stream[] logs)
+        /// <param name="logfiles">LOG1 and LOG2 streams to replay pending changes from</param>
+        public RegistryHive(Stream hive, Ownership ownership, params Stream[] logfiles)
         {
             _fileStream = hive;
             _fileStream.Position = 0;
@@ -128,6 +128,8 @@ namespace DiscUtils.Registry
 
             if (_header.Sequence1 != _header.Sequence2)
             {
+                var logs = logfiles?.Where(log => log.Length > 0x1000).ToArray();
+
                 if (logs is not null && logs.Length > 0)
                 {
                     if (!_fileStream.CanWrite)
@@ -144,7 +146,7 @@ namespace DiscUtils.Registry
                     }
 
                     var log_header_buffer = StreamUtilities.ReadExact(logs[0], HiveHeader.HeaderSize);
-                    var logheaders = new HiveHeader[Math.Max(2, logs.Length)];
+                    var logheaders = new HiveHeader[Math.Min(2, logs.Length)];
                     logheaders[0] = new();
                     logheaders[0].ReadFrom(log_header_buffer, 0);
 
@@ -155,7 +157,8 @@ namespace DiscUtils.Registry
                         logheaders[1].ReadFrom(log_header_buffer, 0);
                     }
 
-                    if (logheaders.Length > 1 && logheaders[0].Sequence1 >= logheaders[1].Sequence1)
+                    if (logheaders.Length > 1 &&
+                        logheaders[0].Sequence1 >= logheaders[1].Sequence1)
                     {
                         logheaders = new[] { logheaders[1], logheaders[0] };
                         logs = new[] { logs[1], logs[0] };
@@ -198,9 +201,9 @@ namespace DiscUtils.Registry
 
             if (ownership == Ownership.Dispose)
             {
-                if (logs is not null && logs.Length > 0)
+                if (logfiles is not null && logfiles.Length > 0)
                 {
-                    foreach (var log in logs)
+                    foreach (var log in logfiles)
                     {
                         log.Dispose();
                     }
