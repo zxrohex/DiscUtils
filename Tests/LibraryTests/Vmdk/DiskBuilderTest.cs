@@ -21,6 +21,7 @@
 //
 
 using System.IO;
+using System.Linq;
 using DiscUtils;
 using DiscUtils.Streams;
 using DiscUtils.Vmdk;
@@ -56,7 +57,7 @@ namespace LibraryTests.Vmdk
             builder.Content = diskContent;
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo");
+            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
             Assert.Equal(2, fileSpecs.Length);
             Assert.Equal("foo.vmdk", fileSpecs[0].Name);
 
@@ -83,7 +84,7 @@ namespace LibraryTests.Vmdk
             builder.Content = diskContent;
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo");
+            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
             Assert.Equal(2, fileSpecs.Length);
             Assert.Equal("foo.vmdk", fileSpecs[0].Name);
 

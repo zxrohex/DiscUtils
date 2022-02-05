@@ -38,7 +38,7 @@ namespace DiscUtils.Streams
         private readonly Ownership _ownsWrapped;
         private List<SparseStream> _wrapped;
 
-        public MirrorStream(Ownership ownsWrapped, params SparseStream[] wrapped)
+        public MirrorStream(Ownership ownsWrapped, IEnumerable<SparseStream> wrapped)
         {
             _wrapped = new List<SparseStream>(wrapped);
             _ownsWrapped = ownsWrapped;

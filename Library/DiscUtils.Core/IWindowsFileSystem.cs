@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Core.WindowsSecurity.AccessControl;
+using System.Collections.Generic;
 
 namespace DiscUtils
 {
@@ -71,7 +72,7 @@ namespace DiscUtils
         /// The list of alternate data streams (or empty, if none).  To access the contents
         /// of the alternate streams, use OpenFile(path + ":" + name, ...).
         /// </returns>
-        string[] GetAlternateDataStreams(string path);
+        IEnumerable<string> GetAlternateDataStreams(string path);
 
         /// <summary>
         /// Indicates whether the file is known by other names.

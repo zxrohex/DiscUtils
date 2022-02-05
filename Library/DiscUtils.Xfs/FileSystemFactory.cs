@@ -23,20 +23,19 @@
 
 namespace DiscUtils.Xfs
 {
+    using System.Collections.Generic;
     using System.IO;
     using DiscUtils.Vfs;
 
     [VfsFileSystemFactory]
     internal class FileSystemFactory : VfsFileSystemFactory
     {
-        public override DiscUtils.FileSystemInfo[] Detect(Stream stream, VolumeInfo volume)
+        public override IEnumerable<DiscUtils.FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
         {
             if (XfsFileSystem.Detect(stream))
             {
-                return new DiscUtils.FileSystemInfo[] { new VfsFileSystemInfo("xfs", "Linux xfs family filesystem", Open) };
+                yield return new VfsFileSystemInfo("xfs", "Linux xfs family filesystem", Open);
             }
-
-            return new DiscUtils.FileSystemInfo[0];
         }
 
         private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

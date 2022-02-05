@@ -374,16 +374,15 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        public Range<long, long>[] GetClusters()
+        public IEnumerable<Range<long, long>> GetClusters()
         {
-            List<Range<long, long>> result = new List<Range<long, long>>();
-
             foreach (KeyValuePair<AttributeReference, AttributeRecord> extent in _extents)
             {
-                result.AddRange(extent.Value.GetClusters());
+                foreach (var cluster in extent.Value.GetClusters())
+                {
+                    yield return cluster;
+                }
             }
-
-            return result.ToArray();
         }
 
         internal SparseStream Open(FileAccess access)

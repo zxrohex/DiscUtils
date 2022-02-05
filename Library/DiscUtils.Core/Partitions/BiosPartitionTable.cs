@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -645,7 +646,7 @@ namespace DiscUtils.Partitions
             return ReadPrimaryRecords(bootSector);
         }
 
-        private BiosPartitionRecord[] GetExtendedRecords(BiosPartitionRecord r)
+        private List<BiosPartitionRecord> GetExtendedRecords(BiosPartitionRecord r)
         {
             return new BiosExtendedPartitionTable(_diskData, r.LBAStart, _diskGeometry).GetPartitions();
         }
@@ -661,8 +662,7 @@ namespace DiscUtils.Partitions
 
         private int FindCylinderGap(int numCylinders)
         {
-            List<BiosPartitionRecord> list = Utilities.Filter<List<BiosPartitionRecord>, BiosPartitionRecord>(GetPrimaryRecords(),
-                r => r.IsValid);
+            List<BiosPartitionRecord> list = GetPrimaryRecords().Where(r => r.IsValid).ToList();
             list.Sort();
 
             int startCylinder = 0;
@@ -697,8 +697,7 @@ namespace DiscUtils.Partitions
 
         private long FindGap(long numSectors, long alignmentSectors)
         {
-            List<BiosPartitionRecord> list = Utilities.Filter<List<BiosPartitionRecord>, BiosPartitionRecord>(GetPrimaryRecords(),
-                r => r.IsValid);
+            List<BiosPartitionRecord> list = GetPrimaryRecords().Where(r => r.IsValid).ToList();
             list.Sort();
 
             long startSector = MathUtilities.RoundUp(_diskGeometry.ToLogicalBlockAddress(0, 1, 1), alignmentSectors);

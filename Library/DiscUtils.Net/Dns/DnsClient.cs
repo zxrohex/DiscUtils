@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 
 namespace DiscUtils.Net.Dns
 {
@@ -40,7 +41,7 @@ namespace DiscUtils.Net.Dns
         /// <param name="name">The name to lookup.</param>
         /// <param name="type">The type of record requested.</param>
         /// <returns>The records returned by the DNS server, if any.</returns>
-        public abstract ResourceRecord[] Lookup(string name, RecordType type);
+        public abstract List<ResourceRecord> Lookup(string name, RecordType type);
 
         internal static string NormalizeDomainName(string name)
         {

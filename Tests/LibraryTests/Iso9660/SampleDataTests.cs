@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using DiscUtils;
 using DiscUtils.Iso9660;
 using LibraryTests.Utilities;
@@ -21,9 +22,9 @@ namespace LibraryTests.Iso9660
 
             var file = dir.GetFiles("apple-test.txt");
             Assert.Single(file);
-            Assert.Equal(21, file[0].Length);
-            Assert.Equal("apple-test.txt", file[0].Name);
-            Assert.Equal(dir, file[0].Directory);
+            Assert.Equal(21, file.First().Length);
+            Assert.Equal("apple-test.txt", file.First().Name);
+            Assert.Equal(dir, file.First().Directory);
         }
     }
 }

@@ -46,7 +46,7 @@ namespace DiscUtils.Vhd
         /// <param name="baseName">The base name for the VHD, for example 'foo' to create 'foo.vhd'.</param>
         /// <returns>A set of one or more logical files that constitute the VHD.  The first file is
         /// the 'primary' file that is normally attached to VMs.</returns>
-        public override DiskImageFileSpecification[] Build(string baseName)
+        public override IEnumerable<DiskImageFileSpecification> Build(string baseName)
         {
             if (string.IsNullOrEmpty(baseName))
             {
@@ -57,8 +57,6 @@ namespace DiscUtils.Vhd
             {
                 throw new InvalidOperationException("No content stream specified");
             }
-
-            List<DiskImageFileSpecification> fileSpecs = new List<DiskImageFileSpecification>();
 
             Geometry geometry = Geometry ?? Geometry.FromCapacity(Content.Length);
 
@@ -73,21 +71,19 @@ namespace DiscUtils.Vhd
 
                 SparseStream footerStream = SparseStream.FromStream(new MemoryStream(footerSector, false),
                     Ownership.None);
-                Stream imageStream = new ConcatStream(Ownership.None, Content, footerStream);
-                fileSpecs.Add(new DiskImageFileSpecification(baseName + ".vhd",
-                    new PassthroughStreamBuilder(imageStream)));
+                Stream imageStream = new ConcatStream(Ownership.None, new[] { Content, footerStream });
+                yield return new DiskImageFileSpecification(baseName + ".vhd",
+                    new PassthroughStreamBuilder(imageStream));
             }
             else if (DiskType == FileType.Dynamic)
             {
-                fileSpecs.Add(new DiskImageFileSpecification(baseName + ".vhd",
-                    new DynamicDiskBuilder(Content, footer, (uint)Sizes.OneMiB * 2)));
+                yield return new DiskImageFileSpecification(baseName + ".vhd",
+                    new DynamicDiskBuilder(Content, footer, (uint)Sizes.OneMiB * 2));
             }
             else
             {
                 throw new InvalidOperationException("Only Fixed and Dynamic disk types supported");
             }
-
-            return fileSpecs.ToArray();
         }
     }
 }

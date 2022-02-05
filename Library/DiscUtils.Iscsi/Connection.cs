@@ -215,7 +215,7 @@ namespace DiscUtils.Iscsi
             return result;
         }
 
-        public TargetInfo[] EnumerateTargets()
+        public List<TargetInfo> EnumerateTargets()
         {
             TextBuffer parameters = new TextBuffer();
             parameters.Add(SendTargetsParameter, "All");
@@ -271,7 +271,7 @@ namespace DiscUtils.Iscsi
                 targets.Add(new TargetInfo(currentTarget, currentAddresses.ToArray()));
             }
 
-            return targets.ToArray();
+            return targets;
         }
 
         internal void SeenStatusSequenceNumber(uint number)

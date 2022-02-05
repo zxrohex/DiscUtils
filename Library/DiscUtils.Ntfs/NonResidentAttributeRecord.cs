@@ -211,22 +211,19 @@ namespace DiscUtils.Ntfs
             DataRuns.Insert(index, newRun);
         }
 
-        public override Range<long, long>[] GetClusters()
+        public override IEnumerable<Range<long, long>> GetClusters()
         {
             List<DataRun> cookedRuns = DataRuns;
 
             long start = 0;
-            List<Range<long, long>> result = new List<Range<long, long>>(DataRuns.Count);
             foreach (DataRun run in cookedRuns)
             {
                 if (!run.IsSparse)
                 {
                     start += run.RunOffset;
-                    result.Add(new Range<long, long>(start, run.RunLength));
+                    yield return new Range<long, long>(start, run.RunLength);
                 }
             }
-
-            return result.ToArray();
         }
 
         public override IBuffer GetReadOnlyDataBuffer(INtfsContext context)

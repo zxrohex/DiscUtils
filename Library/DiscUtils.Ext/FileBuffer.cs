@@ -402,11 +402,11 @@ namespace DiscUtils.Ext
             throw new NotImplementedException();
         }
 
-        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+        public override IEnumerable<Streams.StreamExtent> GetExtentsInRange(long start, long count)
         {
-            return StreamExtent.Intersect(
-                new[] { new StreamExtent(0, Capacity) },
-                new StreamExtent(start, count));
+            return Streams.StreamExtent.Intersect(
+                new[] { new Streams.StreamExtent(0, Capacity) },
+                new Streams.StreamExtent(start, count));
         }
     }
 }

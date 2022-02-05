@@ -39,7 +39,7 @@ namespace DiscUtils.Xfs
 
         public BlockDirectoryDataFree[] BestFree { get; private set; }
 
-        public BlockDirectoryData[] Entries { get; private set; }
+        public List<BlockDirectoryData> Entries { get; private set; }
 
         public virtual int Size
         {
@@ -98,7 +98,7 @@ namespace DiscUtils.Xfs
                 offset += entry.ReadFrom(buffer, offset);
                 entries.Add(entry);
             }
-            Entries = entries.ToArray();
+            Entries = entries;
             return buffer.Length - offset;
         }
 

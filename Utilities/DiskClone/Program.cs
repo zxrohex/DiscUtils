@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using DiscUtils;
@@ -232,7 +233,7 @@ namespace DiskClone
             string file = Path.GetFileNameWithoutExtension(_destDisk.Value);
             
             builder.Content = contentStream;
-            DiskImageFileSpecification[] fileSpecs = builder.Build(file);
+            DiskImageFileSpecification[] fileSpecs = builder.Build(file).ToArray();
 
             for (int i = 0; i < fileSpecs.Length; ++i)
             {

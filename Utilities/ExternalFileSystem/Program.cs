@@ -307,17 +307,15 @@ namespace ExternalFileSystem
     [VfsFileSystemFactory]
     class MyFileSystemFactory : VfsFileSystemFactory
     {
-        public override DiscUtils.FileSystemInfo[] Detect(Stream stream, VolumeInfo volumeInfo)
+        public override IEnumerable<DiscUtils.FileSystemInfo> Detect(Stream stream, VolumeInfo volumeInfo)
         {
             byte[] header = new byte[4];
             stream.Read(header, 0, 4);
 
             if (Encoding.ASCII.GetString(header, 0, 4) == "MYFS")
             {
-                return new DiscUtils.FileSystemInfo[] { new VfsFileSystemInfo("MyFs", "My File System", Open) };
+                yield return new VfsFileSystemInfo("MyFs", "My File System", Open);
             }
-
-            return new DiscUtils.FileSystemInfo[0];
         }
 
         private DiscFileSystem Open(Stream stream, VolumeInfo volInfo, FileSystemParameters parameters)

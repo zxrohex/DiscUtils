@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Vfs;
 
@@ -29,14 +30,12 @@ namespace DiscUtils.VirtualFileSystem
     [VfsFileSystemFactory]
     internal class ZipFileSystemFactory : VfsFileSystemFactory
     {
-        public override FileSystemInfo[] Detect(Stream stream, VolumeInfo volume)
+        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
         {
             if (ZipFileSystem.Detect(stream))
             {
-                return new FileSystemInfo[] { new VfsFileSystemInfo("ZIP", "ZIP", Open) };
+                yield return new VfsFileSystemInfo("ZIP", "ZIP", Open);
             }
-
-            return new FileSystemInfo[0];
         }
 
         private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

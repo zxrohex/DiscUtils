@@ -21,7 +21,9 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using DiscUtils.Streams;
 
@@ -113,9 +115,9 @@ namespace DiscUtils.Ntfs
 
         public override CookedDataRuns GetCookedDataRuns() => new CookedDataRuns();
 
-        public override Range<long, long>[] GetClusters()
+        public override IEnumerable<Range<long, long>> GetClusters()
         {
-            return new Range<long, long>[0];
+            return Enumerable.Empty<Range<long, long>>();
         }
 
         public override int Write(byte[] buffer, int offset)

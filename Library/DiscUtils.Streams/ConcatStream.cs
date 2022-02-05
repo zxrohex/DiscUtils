@@ -38,12 +38,12 @@ namespace DiscUtils.Streams
         private readonly Ownership _ownsStreams;
 
         private long _position;
-        private SparseStream[] _streams;
+        private List<SparseStream> _streams;
 
-        public ConcatStream(Ownership ownsStreams, params SparseStream[] streams)
+        public ConcatStream(Ownership ownsStreams, IEnumerable<SparseStream> streams)
         {
             _ownsStreams = ownsStreams;
-            _streams = streams;
+            _streams = new(streams);
 
             // Only allow writes if all streams can be written
             _canWrite = true;
@@ -91,7 +91,7 @@ namespace DiscUtils.Streams
                 List<StreamExtent> extents = new List<StreamExtent>();
 
                 long pos = 0;
-                for (int i = 0; i < _streams.Length; ++i)
+                for (int i = 0; i < _streams.Count; ++i)
                 {
                     foreach (StreamExtent extent in _streams[i].Extents)
                     {
@@ -111,7 +111,7 @@ namespace DiscUtils.Streams
             {
                 CheckDisposed();
                 long length = 0;
-                for (int i = 0; i < _streams.Length; ++i)
+                for (int i = 0; i < _streams.Count; ++i)
                 {
                     length += _streams[i].Length;
                 }
@@ -138,7 +138,7 @@ namespace DiscUtils.Streams
         public override void Flush()
         {
             CheckDisposed();
-            for (int i = 0; i < _streams.Length; ++i)
+            for (int i = 0; i < _streams.Count; ++i)
             {
                 _streams[i].Flush();
             }
@@ -295,7 +295,7 @@ namespace DiscUtils.Streams
                 // Write (limited to the stream's length), except for final stream - that may be
                 // extendable
                 int numToWrite;
-                if (streamIdx == _streams.Length - 1)
+                if (streamIdx == _streams.Count - 1)
                 {
                     numToWrite = count - totalWritten;
                 }
@@ -330,7 +330,7 @@ namespace DiscUtils.Streams
                 // Write (limited to the stream's length), except for final stream - that may be
                 // extendable
                 int numToWrite;
-                if (streamIdx == _streams.Length - 1)
+                if (streamIdx == _streams.Count - 1)
                 {
                     numToWrite = count - totalWritten;
                 }
@@ -366,7 +366,7 @@ namespace DiscUtils.Streams
                 // Write (limited to the stream's length), except for final stream - that may be
                 // extendable
                 int numToWrite;
-                if (streamIdx == _streams.Length - 1)
+                if (streamIdx == _streams.Count - 1)
                 {
                     numToWrite = buffer.Length - totalWritten;
                 }
@@ -400,7 +400,7 @@ namespace DiscUtils.Streams
                 // Write (limited to the stream's length), except for final stream - that may be
                 // extendable
                 int numToWrite;
-                if (streamIdx == _streams.Length - 1)
+                if (streamIdx == _streams.Count - 1)
                 {
                     numToWrite = buffer.Length - totalWritten;
                 }
@@ -447,7 +447,7 @@ namespace DiscUtils.Streams
             // Find the stream that _position is within
             streamStartPos = 0;
             int focusStream = 0;
-            while (focusStream < _streams.Length - 1 && streamStartPos + _streams[focusStream].Length <= targetPos)
+            while (focusStream < _streams.Count - 1 && streamStartPos + _streams[focusStream].Length <= targetPos)
             {
                 streamStartPos += _streams[focusStream].Length;
                 focusStream++;

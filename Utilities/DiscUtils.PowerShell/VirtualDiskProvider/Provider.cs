@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Provider;
 using System.Net;
@@ -197,9 +198,9 @@ namespace DiscUtils.PowerShell.VirtualDiskProvider
             {
                 return false;
             }
-            else if (obj is DiscDirectoryInfo)
+            else if (obj is DiscDirectoryInfo info)
             {
-                return ((DiscDirectoryInfo)obj).GetFileSystemInfos().Length > 0;
+                return info.GetFileSystemInfos().Any();
             }
             else
             {

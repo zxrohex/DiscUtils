@@ -54,7 +54,7 @@ internal class LogFile
         foreach (var entry in EnumerateEntries())
         {
 #if DEBUG
-            Trace.WriteLine($"Replaying log entry {entry}");
+            Trace.WriteLine($"Replaying {entry}");
 #endif
             hive.Position = 0x1000 + entry.PageOffset;
             hive.Write(buffer, entry.BufferOffset, entry.PageSize);

@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using DiscUtils.Streams;
@@ -127,7 +128,7 @@ namespace DiscUtils.Ntfs
             return 1;
         }
 
-        public abstract Range<long, long>[] GetClusters();
+        public abstract IEnumerable<Range<long, long>> GetClusters();
 
         public abstract CookedDataRuns GetCookedDataRuns();
 

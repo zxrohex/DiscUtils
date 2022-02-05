@@ -22,6 +22,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using DiscUtils;
@@ -62,7 +63,7 @@ namespace LibraryTests.Fat
                 string name = lowerDE;
                 fs.CreateDirectory(name);
 
-                string[] dirs = fs.GetDirectories("");
+                string[] dirs = fs.GetDirectories("").ToArray();
                 Assert.Single(dirs);
                 Assert.Equal(upperDE, fs.GetShortName(dirs[0])); // Uppercase
 
@@ -70,7 +71,7 @@ namespace LibraryTests.Fat
                 Assert.True(fs.DirectoryExists(upperDE));
 
                 fs.CreateDirectory(lowerDE + lowerDE + lowerDE);
-                Assert.Equal(2, fs.GetDirectories("").Length);
+                Assert.Equal(2, fs.GetDirectories("").Count());
 
                 fs.DeleteDirectory(lowerDE + lowerDE + lowerDE);
                 Assert.Single(fs.GetDirectories(""));
@@ -99,7 +100,7 @@ namespace LibraryTests.Fat
             string name = graphicChar;
             fs.CreateDirectory(name);
 
-            string[] dirs = fs.GetDirectories("");
+            string[] dirs = fs.GetDirectories("").ToArray();
             Assert.Single(dirs);
             Assert.Equal(graphicChar, dirs[0]); // Uppercase
 
@@ -126,15 +127,15 @@ namespace LibraryTests.Fat
             FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
 
             fs.CreateDirectory(@"UnItTeSt");
-            var entry = fs.Root.GetDirectories("UNITTEST")[0];
+            var entry = fs.Root.GetDirectories("UNITTEST").First();
             Assert.Equal("UnItTeSt", entry.Name);
             Assert.Equal("UNITTEST", fs.GetShortName(entry.FullName));
 
             fs.CreateDirectory(@"folder\subflder");
-            Assert.Equal("FOLDER", fs.GetShortName(fs.Root.GetDirectories("FOLDER")[0].FullName));
+            Assert.Equal("FOLDER", fs.GetShortName(fs.Root.GetDirectories("FOLDER").First().FullName));
 
             fs.CreateDirectory(@"folder\subflder");
-            Assert.Equal("SUBFLDER", fs.GetShortName(fs.Root.GetDirectories("FOLDER")[0].GetDirectories("SUBFLDER")[0].FullName));
+            Assert.Equal("SUBFLDER", fs.GetShortName(fs.Root.GetDirectories("FOLDER").First().GetDirectories("SUBFLDER").First().FullName));
 
         }
 
@@ -202,7 +203,7 @@ namespace LibraryTests.Fat
                 w.Flush();
             }
 
-            Assert.Throws<DirectoryNotFoundException>(() => fs.GetFiles("FOO.TXT"));
+            Assert.Throws<DirectoryNotFoundException>(() => fs.GetFiles("FOO.TXT").Any());
         }
 
         [Fact]

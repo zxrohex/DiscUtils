@@ -39,7 +39,7 @@ namespace DiscUtils.Partitions
             _diskGeometry = diskGeometry;
         }
 
-        public BiosPartitionRecord[] GetPartitions()
+        public List<BiosPartitionRecord> GetPartitions()
         {
             List<BiosPartitionRecord> result = new List<BiosPartitionRecord>();
 
@@ -75,7 +75,7 @@ namespace DiscUtils.Partitions
                 partPos = nextPartPos;
             }
 
-            return result.ToArray();
+            return result;
         }
 
         /// <summary>

@@ -56,12 +56,12 @@ namespace DiscUtils.Diagnostics
             if (disposing && !_disposed && !_fileSystem.InLockdown)
             {
                 long pos = _shadowPosition;
-                Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+                Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
                 {
                     GetNativeStream(fs, context, pos).Dispose();
                     _disposed = true;
                     ForgetNativeStream(context);
-                    return 0;
+                    return null;
                 };
 
                 _fileSystem.PerformActivity(fn);
@@ -78,12 +78,12 @@ namespace DiscUtils.Diagnostics
             {
                 long pos = _shadowPosition;
 
-                Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+                Activity<Tfs, bool> fn = delegate(Tfs fs, Dictionary<string, object> context)
                 {
                     return GetNativeStream(fs, context, pos).CanRead;
                 };
 
-                return (bool)_fileSystem.PerformActivity(fn);
+                return _fileSystem.PerformActivity(fn);
             }
         }
 
@@ -93,12 +93,12 @@ namespace DiscUtils.Diagnostics
             {
                 long pos = _shadowPosition;
 
-                Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+                Activity<Tfs, bool> fn = delegate(Tfs fs, Dictionary<string, object> context)
                 {
                     return GetNativeStream(fs, context, pos).CanSeek;
                 };
 
-                return (bool)_fileSystem.PerformActivity(fn);
+                return _fileSystem.PerformActivity(fn);
             }
         }
 
@@ -108,12 +108,12 @@ namespace DiscUtils.Diagnostics
             {
                 long pos = _shadowPosition;
 
-                Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+                Activity<Tfs, bool> fn = delegate(Tfs fs, Dictionary<string, object> context)
                 {
                     return GetNativeStream(fs, context, pos).CanWrite;
                 };
 
-                return (bool)_fileSystem.PerformActivity(fn);
+                return _fileSystem.PerformActivity(fn);
             }
         }
 
@@ -121,10 +121,10 @@ namespace DiscUtils.Diagnostics
         {
             long pos = _shadowPosition;
 
-            Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+            Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
             {
                 GetNativeStream(fs, context, pos).Flush();
-                return 0;
+                return null;
             };
 
             _fileSystem.PerformActivity(fn);
@@ -136,12 +136,12 @@ namespace DiscUtils.Diagnostics
             {
                 long pos = _shadowPosition;
 
-                Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+                Activity<Tfs, long> fn = delegate(Tfs fs, Dictionary<string, object> context)
                 {
                     return GetNativeStream(fs, context, pos).Length;
                 };
 
-                return (long)_fileSystem.PerformActivity(fn);
+                return _fileSystem.PerformActivity(fn);
             }
         }
 
@@ -151,21 +151,21 @@ namespace DiscUtils.Diagnostics
             {
                 long pos = _shadowPosition;
 
-                Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+                Activity<Tfs, long> fn = delegate(Tfs fs, Dictionary<string, object> context)
                 {
                     return GetNativeStream(fs, context, pos).Position;
                 };
 
-                return (long)_fileSystem.PerformActivity(fn);
+                return _fileSystem.PerformActivity(fn);
             }
             set
             {
                 long pos = _shadowPosition;
 
-                Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+                Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
                 {
                     GetNativeStream(fs, context, pos).Position = value;
-                    return 0;
+                    return null;
                 };
 
                 _fileSystem.PerformActivity(fn);
@@ -180,12 +180,12 @@ namespace DiscUtils.Diagnostics
             {
                 long pos = _shadowPosition;
 
-                Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+                Activity<Tfs, IEnumerable<StreamExtent>> fn = delegate(Tfs fs, Dictionary<string, object> context)
                 {
                     return GetNativeStream(fs, context, pos).Extents;
                 };
 
-                return (IEnumerable<StreamExtent>)_fileSystem.PerformActivity(fn);
+                return _fileSystem.PerformActivity(fn);
             }
         }
 
@@ -196,12 +196,12 @@ namespace DiscUtils.Diagnostics
             // Avoid stomping on buffers we know nothing about by ditching the writes into gash buffer.
             byte[] tempBuffer = new byte[buffer.Length];
 
-            Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+            Activity<Tfs, int> fn = delegate(Tfs fs, Dictionary<string, object> context)
             {
                 return GetNativeStream(fs, context, pos).Read(tempBuffer, offset, count);
             };
 
-            int numRead = (int)_fileSystem.PerformActivity(fn);
+            int numRead = _fileSystem.PerformActivity(fn);
 
             Array.Copy(tempBuffer, buffer, numRead);
 
@@ -214,12 +214,12 @@ namespace DiscUtils.Diagnostics
         {
             long pos = _shadowPosition;
 
-            Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+            Activity<Tfs, long> fn = delegate(Tfs fs, Dictionary<string, object> context)
             {
                 return GetNativeStream(fs, context, pos).Seek(offset, origin);
             };
 
-            _shadowPosition = (long)_fileSystem.PerformActivity(fn);
+            _shadowPosition = _fileSystem.PerformActivity(fn);
 
             return _shadowPosition;
         }
@@ -228,10 +228,10 @@ namespace DiscUtils.Diagnostics
         {
             long pos = _shadowPosition;
 
-            Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+            Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
             {
                 GetNativeStream(fs, context, pos).SetLength(value);
-                return 0;
+                return null;
             };
 
             _fileSystem.PerformActivity(fn);
@@ -245,10 +245,10 @@ namespace DiscUtils.Diagnostics
             byte[] tempBuffer = new byte[buffer.Length];
             Array.Copy(buffer, tempBuffer, buffer.Length);
 
-            Activity<Tfs> fn = delegate(Tfs fs, Dictionary<string, object> context)
+            Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
             {
                 GetNativeStream(fs, context, pos).Write(tempBuffer, offset, count);
-                return 0;
+                return null;
             };
 
             _fileSystem.PerformActivity(fn);
@@ -259,7 +259,7 @@ namespace DiscUtils.Diagnostics
 
         internal void SetNativeStream(Dictionary<string, object> context, Stream s)
         {
-            string streamKey = "WrapStream#" + _replayHandle + "_Stream";
+            var streamKey = $"WrapStream#{_replayHandle}_Stream";
 
             context[streamKey] = s;
         }

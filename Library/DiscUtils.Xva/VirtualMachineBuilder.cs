@@ -129,9 +129,9 @@ namespace DiscUtils.Xva
                             if (diskBytesLeft < Sizes.OneMiB)
                             {
                                 chunkStream = new ConcatStream(
-                                    Ownership.Dispose,
+                                    Ownership.Dispose, new SparseStream[] {
                                     new SubStream(diskStream, i * Sizes.OneMiB, diskBytesLeft),
-                                    new ZeroStream(Sizes.OneMiB - diskBytesLeft));
+                                    new ZeroStream(Sizes.OneMiB - diskBytesLeft) });
                             }
                             else
                             {

@@ -88,7 +88,7 @@ namespace DiscUtils.Ntfs
                     if (!cookedRun.IsSparse)
                     {
                         long startPos = cookedRun.StartVcn;
-                        if (lastVcnRange.Offset + lastVcnRange.Count == startPos)
+                        if (lastVcnRange != default && lastVcnRange.Offset + lastVcnRange.Count == startPos)
                         {
                             lastVcnRange = new Range<long, long>(lastVcnRange.Offset,
                                 lastVcnRange.Count + cookedRun.Length);
@@ -215,16 +215,16 @@ namespace DiscUtils.Ntfs
                         }
                     }
 
-                    Tuple<long, long>[] alloced = _context.ClusterBitmap.AllocateClusters(numClusters, nextCluster, _isMft,
+                    var alloced = _context.ClusterBitmap.AllocateClusters(numClusters, nextCluster, _isMft,
                                                               AllocatedClusterCount);
 
                     List<DataRun> runs = new List<DataRun>();
 
                     long lcn = runIdx == 0 ? 0 : _cookedRuns[runIdx - 1].StartLcn;
-                    foreach (Tuple<long, long> allocation in alloced)
+                    foreach (var allocation in alloced)
                     {
-                        runs.Add(new DataRun(allocation.Item1 - lcn, allocation.Item2, false));
-                        lcn = allocation.Item1;
+                        runs.Add(new DataRun(allocation.Offset - lcn, allocation.Count, false));
+                        lcn = allocation.Offset;
                     }
 
                     _cookedRuns.MakeNonSparse(runIdx, runs);

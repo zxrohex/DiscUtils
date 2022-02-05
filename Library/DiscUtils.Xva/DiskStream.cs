@@ -42,7 +42,7 @@ namespace DiscUtils.Xva
         private int _currentChunkIndex;
 
         private long _position;
-        private int[] _skipChunks;
+        private List<int> _skipChunks;
 
         public DiskStream(TarFile archive, long length, string dir)
         {
@@ -346,13 +346,13 @@ namespace DiscUtils.Xva
             }
 
             skipChunks.Sort();
-            _skipChunks = skipChunks.ToArray();
+            _skipChunks = skipChunks;
         }
 
         private int CorrectChunkIndex(int rawIndex)
         {
             int index = rawIndex;
-            for (int i = 0; i < _skipChunks.Length; ++i)
+            for (int i = 0; i < _skipChunks.Count; ++i)
             {
                 if (index >= _skipChunks[i])
                 {

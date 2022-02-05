@@ -107,7 +107,7 @@ namespace DiscUtils.Registry
         /// The created object does not assume ownership of the streams.
         /// </remarks>
         public RegistryHive(Stream hive, params Stream[] logfiles)
-            : this(hive, Ownership.None) { }
+            : this(hive, Ownership.None, logfiles) { }
 
         /// <summary>
         /// Initializes a new instance of the RegistryHive class.

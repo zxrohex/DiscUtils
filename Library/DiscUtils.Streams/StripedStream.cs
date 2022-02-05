@@ -40,7 +40,7 @@ namespace DiscUtils.Streams
         private readonly long _stripeSize;
         private List<SparseStream> _wrapped;
 
-        public StripedStream(long stripeSize, Ownership ownsWrapped, params SparseStream[] wrapped)
+        public StripedStream(long stripeSize, Ownership ownsWrapped, IEnumerable<SparseStream> wrapped)
         {
             _wrapped = new List<SparseStream>(wrapped);
             _stripeSize = stripeSize;
@@ -64,7 +64,7 @@ namespace DiscUtils.Streams
                 }
             }
 
-            _length = subStreamLength * wrapped.Length;
+            _length = subStreamLength * _wrapped.Count;
         }
 
         public override bool CanRead

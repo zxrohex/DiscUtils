@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Fat
@@ -74,7 +75,7 @@ namespace DiscUtils.Fat
 
         public DirectoryEntry[] Entries
         {
-            get { return new List<DirectoryEntry>(_entries.Values).ToArray(); }
+            get { return _entries.Values.ToArray(); }
         }
 
         public FatFileSystem FileSystem { get; }
@@ -90,32 +91,26 @@ namespace DiscUtils.Fat
             GC.SuppressFinalize(this);
         }
 
-        public DirectoryEntry[] GetDirectories()
+        public IEnumerable<DirectoryEntry> GetDirectories()
         {
-            List<DirectoryEntry> dirs = new List<DirectoryEntry>(_entries.Count);
             foreach (DirectoryEntry dirEntry in _entries.Values)
             {
                 if ((dirEntry.Attributes & FatAttributes.Directory) != 0)
                 {
-                    dirs.Add(dirEntry);
+                    yield return dirEntry;
                 }
             }
-
-            return dirs.ToArray();
         }
 
-        public DirectoryEntry[] GetFiles()
+        public IEnumerable<DirectoryEntry> GetFiles()
         {
-            List<DirectoryEntry> files = new List<DirectoryEntry>(_entries.Count);
             foreach (DirectoryEntry dirEntry in _entries.Values)
             {
                 if ((dirEntry.Attributes & (FatAttributes.Directory | FatAttributes.VolumeId)) == 0)
                 {
-                    files.Add(dirEntry);
+                    yield return dirEntry;
                 }
             }
-
-            return files.ToArray();
         }
 
         public DirectoryEntry GetEntry(long id)

@@ -33,7 +33,7 @@ namespace DiscUtils.Lvm
         public string Description;
         public string Contents;
         public int Version;
-        public MetadataVolumeGroupSection[] VolumeGroupSections;
+        public List<MetadataVolumeGroupSection> VolumeGroupSections;
         private static readonly double _maxSeconds = DateTime.MaxValue.Subtract(DateTimeOffsetExtensions.UnixEpoch).TotalSeconds;
 
         public static Metadata Parse(string metadata)
@@ -84,7 +84,7 @@ namespace DiscUtils.Lvm
                     vgSection.Add(vg);
                 }
             }
-            VolumeGroupSections = vgSection.ToArray();
+            VolumeGroupSections = vgSection;
         }
 
 

@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
@@ -188,7 +189,7 @@ namespace DiscUtils.Vfs
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of directories.</returns>
-        public override string[] GetDirectories(string path)
+        public override IEnumerable<string> GetDirectories(string path)
         {
             return _wrapped.GetDirectories(path);
         }
@@ -200,7 +201,7 @@ namespace DiscUtils.Vfs
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public override string[] GetDirectories(string path, string searchPattern)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern)
         {
             return _wrapped.GetDirectories(path, searchPattern);
         }
@@ -213,7 +214,7 @@ namespace DiscUtils.Vfs
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public override string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
         {
             return _wrapped.GetDirectories(path, searchPattern, searchOption);
         }
@@ -223,7 +224,7 @@ namespace DiscUtils.Vfs
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files.</returns>
-        public override string[] GetFiles(string path)
+        public override IEnumerable<string> GetFiles(string path)
         {
             return _wrapped.GetFiles(path);
         }
@@ -234,7 +235,7 @@ namespace DiscUtils.Vfs
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public override string[] GetFiles(string path, string searchPattern)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern)
         {
             return _wrapped.GetFiles(path, searchPattern);
         }
@@ -247,7 +248,7 @@ namespace DiscUtils.Vfs
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public override string[] GetFiles(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
         {
             return _wrapped.GetFiles(path, searchPattern, searchOption);
         }
@@ -257,7 +258,7 @@ namespace DiscUtils.Vfs
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path)
+        public override IEnumerable<string> GetFileSystemEntries(string path)
         {
             return _wrapped.GetFileSystemEntries(path);
         }
@@ -269,7 +270,7 @@ namespace DiscUtils.Vfs
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path, string searchPattern)
+        public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
         {
             return _wrapped.GetFileSystemEntries(path, searchPattern);
         }

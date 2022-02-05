@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 
 namespace DiscUtils.Vmdk
 {
@@ -52,7 +53,7 @@ namespace DiscUtils.Vmdk
 
         public static ExtentDescriptor Parse(string descriptor)
         {
-            string[] elems = SplitQuotedString(descriptor);
+            string[] elems = SplitQuotedString(descriptor).ToArray();
             if (elems.Length < 4)
             {
                 throw new IOException(string.Format(CultureInfo.InvariantCulture, "Invalid extent descriptor: {0}",
@@ -185,10 +186,8 @@ namespace DiscUtils.Vmdk
             return basic;
         }
 
-        private static string[] SplitQuotedString(string source)
+        private static IEnumerable<string> SplitQuotedString(string source)
         {
-            List<string> result = new List<string>();
-
             int idx = 0;
             while (idx < source.Length)
             {
@@ -208,7 +207,7 @@ namespace DiscUtils.Vmdk
                         idx++;
                     }
 
-                    result.Add(source.Substring(start, idx - start + 1));
+                    yield return source.Substring(start, idx - start + 1);
                 }
                 else
                 {
@@ -220,13 +219,11 @@ namespace DiscUtils.Vmdk
                         idx++;
                     }
 
-                    result.Add(source.Substring(start, idx - start));
+                    yield return source.Substring(start, idx - start);
                 }
 
                 idx++;
             }
-
-            return result.ToArray();
         }
     }
 }

@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.IO;
 
 namespace DiscUtils.Vfs
@@ -34,7 +35,7 @@ namespace DiscUtils.Vfs
         /// </summary>
         /// <param name="stream">The stream to inspect.</param>
         /// <returns>A list of file systems (may be empty).</returns>
-        public FileSystemInfo[] Detect(Stream stream)
+        public IEnumerable<FileSystemInfo> Detect(Stream stream)
         {
             return Detect(stream, null);
         }
@@ -44,7 +45,7 @@ namespace DiscUtils.Vfs
         /// </summary>
         /// <param name="volume">The volume to inspect.</param>
         /// <returns>A list of file systems (may be empty).</returns>
-        public FileSystemInfo[] Detect(VolumeInfo volume)
+        public IEnumerable<FileSystemInfo> Detect(VolumeInfo volume)
         {
             using (Stream stream = volume.Open())
             {
@@ -58,6 +59,6 @@ namespace DiscUtils.Vfs
         /// <param name="stream">The stream to inspect.</param>
         /// <param name="volumeInfo">Optionally, information about the volume.</param>
         /// <returns>A list of file systems detected (may be empty).</returns>
-        public abstract FileSystemInfo[] Detect(Stream stream, VolumeInfo volumeInfo);
+        public abstract IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volumeInfo);
     }
 }

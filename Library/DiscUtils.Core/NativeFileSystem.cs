@@ -24,7 +24,9 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -261,7 +263,7 @@ namespace DiscUtils
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of directories.</returns>
-        public override string[] GetDirectories(string path)
+        public override IEnumerable<string> GetDirectories(string path)
         {
             return GetDirectories(path, "*.*", SearchOption.TopDirectoryOnly);
         }
@@ -273,7 +275,7 @@ namespace DiscUtils
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public override string[] GetDirectories(string path, string searchPattern)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern)
         {
             return GetDirectories(path, searchPattern, SearchOption.TopDirectoryOnly);
         }
@@ -286,7 +288,7 @@ namespace DiscUtils
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public override string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
         {
             if (path.StartsWithDirectorySeparator())
             {
@@ -295,15 +297,15 @@ namespace DiscUtils
 
             try
             {
-                return CleanItems(Directory.GetDirectories(Path.Combine(BasePath, path), searchPattern, searchOption));
+                return Directory.EnumerateDirectories(Path.Combine(BasePath, path), searchPattern, searchOption).Select(CleanItems);
             }
             catch (IOException)
             {
-                return new string[0];
+                return Enumerable.Empty<string>();
             }
             catch (UnauthorizedAccessException)
             {
-                return new string[0];
+                return Enumerable.Empty<string>();
             }
         }
 
@@ -312,7 +314,7 @@ namespace DiscUtils
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files.</returns>
-        public override string[] GetFiles(string path)
+        public override IEnumerable<string> GetFiles(string path)
         {
             return GetFiles(path, "*.*", SearchOption.TopDirectoryOnly);
         }
@@ -323,7 +325,7 @@ namespace DiscUtils
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public override string[] GetFiles(string path, string searchPattern)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern)
         {
             return GetFiles(path, searchPattern, SearchOption.TopDirectoryOnly);
         }
@@ -336,7 +338,7 @@ namespace DiscUtils
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public override string[] GetFiles(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
         {
             if (path.StartsWithDirectorySeparator())
             {
@@ -345,15 +347,15 @@ namespace DiscUtils
 
             try
             {
-                return CleanItems(Directory.GetFiles(Path.Combine(BasePath, path), searchPattern, searchOption));
+                return Directory.EnumerateFiles(Path.Combine(BasePath, path), searchPattern, searchOption).Select(CleanItems);
             }
             catch (IOException)
             {
-                return new string[0];
+                return Enumerable.Empty<string>();
             }
             catch (UnauthorizedAccessException)
             {
-                return new string[0];
+                return Enumerable.Empty<string>();
             }
         }
 
@@ -362,7 +364,7 @@ namespace DiscUtils
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path)
+        public override IEnumerable<string> GetFileSystemEntries(string path)
         {
             return GetFileSystemEntries(path, "*.*");
         }
@@ -374,7 +376,7 @@ namespace DiscUtils
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path, string searchPattern)
+        public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
         {
             if (path.StartsWithDirectorySeparator())
             {
@@ -383,15 +385,15 @@ namespace DiscUtils
 
             try
             {
-                return CleanItems(Directory.GetFileSystemEntries(Path.Combine(BasePath, path), searchPattern));
+                return Directory.GetFileSystemEntries(Path.Combine(BasePath, path), searchPattern).Select(CleanItems);
             }
             catch (IOException)
             {
-                return new string[0];
+                return Enumerable.Empty<string>();
             }
             catch (UnauthorizedAccessException)
             {
-                return new string[0];
+                return Enumerable.Empty<string>();
             }
         }
 
@@ -790,15 +792,9 @@ namespace DiscUtils
             }
         }
 
-        private string[] CleanItems(string[] dirtyItems)
+        private string CleanItems(string dirtyItems)
         {
-            string[] cleanList = new string[dirtyItems.Length];
-            for (int x = 0; x < dirtyItems.Length; x++)
-            {
-                cleanList[x] = dirtyItems[x].Substring(BasePath.Length - 1);
-            }
-
-            return cleanList;
+            return dirtyItems.Substring(BasePath.Length - 1);
         }
     }
 }

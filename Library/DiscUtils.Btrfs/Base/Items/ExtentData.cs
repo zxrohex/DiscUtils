@@ -176,7 +176,7 @@ namespace DiscUtils.Btrfs.Base.Items
                         parts.Add(SparseStream.FromStream(uncompressed, Ownership.Dispose));
                         processed +=  partLength;
                     }
-                    stream = new ConcatStream(Ownership.Dispose, parts.ToArray());
+                    stream = new ConcatStream(Ownership.Dispose, parts);
                     break;
                 }
                 default:

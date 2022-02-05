@@ -21,7 +21,9 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Internal;
 
 namespace DiscUtils
@@ -96,10 +98,10 @@ namespace DiscUtils
         /// Gets all child directories.
         /// </summary>
         /// <returns>An array of child directories.</returns>
-        public DiscDirectoryInfo[] GetDirectories()
+        public IEnumerable<DiscDirectoryInfo> GetDirectories()
         {
-            return Array.ConvertAll(FileSystem.GetDirectories(Path),
-                p => new DiscDirectoryInfo(FileSystem, p));
+            return FileSystem.GetDirectories(Path)
+                .Select(p => new DiscDirectoryInfo(FileSystem, p));
         }
 
         /// <summary>
@@ -109,7 +111,7 @@ namespace DiscUtils
         /// <returns>An array of child directories, or empty if none match.</returns>
         /// <remarks>The search pattern can include the wildcards * (matching 0 or more characters)
         /// and ? (matching 1 character).</remarks>
-        public DiscDirectoryInfo[] GetDirectories(string pattern)
+        public IEnumerable<DiscDirectoryInfo> GetDirectories(string pattern)
         {
             return GetDirectories(pattern, SearchOption.TopDirectoryOnly);
         }
@@ -123,19 +125,19 @@ namespace DiscUtils
         /// <remarks>The search pattern can include the wildcards * (matching 0 or more characters)
         /// and ? (matching 1 character).  The option parameter determines whether only immediate
         /// children, or all children are returned.</remarks>
-        public DiscDirectoryInfo[] GetDirectories(string pattern, SearchOption searchOption)
+        public IEnumerable<DiscDirectoryInfo> GetDirectories(string pattern, SearchOption searchOption)
         {
-            return Array.ConvertAll(FileSystem.GetDirectories(Path, pattern, searchOption),
-                p => new DiscDirectoryInfo(FileSystem, p));
+            return FileSystem.GetDirectories(Path, pattern, searchOption)
+                .Select(p => new DiscDirectoryInfo(FileSystem, p));
         }
 
         /// <summary>
         /// Gets all files.
         /// </summary>
         /// <returns>An array of files.</returns>
-        public DiscFileInfo[] GetFiles()
+        public IEnumerable<DiscFileInfo> GetFiles()
         {
-            return Array.ConvertAll(FileSystem.GetFiles(Path), p => new DiscFileInfo(FileSystem, p));
+            return FileSystem.GetFiles(Path).Select(p => new DiscFileInfo(FileSystem, p));
         }
 
         /// <summary>
@@ -145,7 +147,7 @@ namespace DiscUtils
         /// <returns>An array of files, or empty if none match.</returns>
         /// <remarks>The search pattern can include the wildcards * (matching 0 or more characters)
         /// and ? (matching 1 character).</remarks>
-        public DiscFileInfo[] GetFiles(string pattern)
+        public IEnumerable<DiscFileInfo> GetFiles(string pattern)
         {
             return GetFiles(pattern, SearchOption.TopDirectoryOnly);
         }
@@ -159,20 +161,20 @@ namespace DiscUtils
         /// <remarks>The search pattern can include the wildcards * (matching 0 or more characters)
         /// and ? (matching 1 character).  The option parameter determines whether only immediate
         /// children, or all children are returned.</remarks>
-        public DiscFileInfo[] GetFiles(string pattern, SearchOption searchOption)
+        public IEnumerable<DiscFileInfo> GetFiles(string pattern, SearchOption searchOption)
         {
-            return Array.ConvertAll(FileSystem.GetFiles(Path, pattern, searchOption),
-                p => new DiscFileInfo(FileSystem, p));
+            return FileSystem.GetFiles(Path, pattern, searchOption)
+                .Select(p => new DiscFileInfo(FileSystem, p));
         }
 
         /// <summary>
         /// Gets all files and directories in this directory.
         /// </summary>
         /// <returns>An array of files and directories.</returns>
-        public DiscFileSystemInfo[] GetFileSystemInfos()
+        public IEnumerable<DiscFileSystemInfo> GetFileSystemInfos()
         {
-            return Array.ConvertAll(FileSystem.GetFileSystemEntries(Path),
-                p => new DiscFileSystemInfo(FileSystem, p));
+            return FileSystem.GetFileSystemEntries(Path)
+                .Select(p => new DiscFileSystemInfo(FileSystem, p));
         }
 
         /// <summary>
@@ -182,10 +184,10 @@ namespace DiscUtils
         /// <returns>An array of files and directories.</returns>
         /// <remarks>The search pattern can include the wildcards * (matching 0 or more characters)
         /// and ? (matching 1 character).</remarks>
-        public DiscFileSystemInfo[] GetFileSystemInfos(string pattern)
+        public IEnumerable<DiscFileSystemInfo> GetFileSystemInfos(string pattern)
         {
-            return Array.ConvertAll(FileSystem.GetFileSystemEntries(Path, pattern),
-                p => new DiscFileSystemInfo(FileSystem, p));
+            return FileSystem.GetFileSystemEntries(Path, pattern)
+                .Select(p => new DiscFileSystemInfo(FileSystem, p));
         }
     }
 }

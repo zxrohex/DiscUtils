@@ -27,6 +27,7 @@ using DiscUtils;
 using DiscUtils.Ntfs;
 using DiscUtils.Streams;
 using Xunit;
+using System.Linq;
 
 namespace LibraryTests.Ntfs
 {
@@ -327,7 +328,7 @@ namespace LibraryTests.Ntfs
 
             ntfs.OpenFile("AFILE.TXT:ALTSTREAM", FileMode.Create).Dispose();
             Assert.Single(ntfs.GetAlternateDataStreams("AFILE.TXT"));
-            Assert.Equal("ALTSTREAM", ntfs.GetAlternateDataStreams("AFILE.TXT")[0]);
+            Assert.Equal("ALTSTREAM", ntfs.GetAlternateDataStreams("AFILE.TXT").First());
         }
 
         [Fact]

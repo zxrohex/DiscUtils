@@ -7,6 +7,7 @@ namespace DiscUtils.VirtualFileSystem
 {
     using Internal;
     using Streams;
+    using System.Collections.Generic;
     using System.Text.RegularExpressions;
 
     public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFileSystemBuilder
@@ -154,7 +155,7 @@ namespace DiscUtils.VirtualFileSystem
 
         public override bool Exists(string path) => _root.ResolvePathToEntry(path) != null;
 
-        public override string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
         {
             var directory = _root.ResolvePathToEntry(path) as VirtualFileSystemDirectory ??
                 throw new DirectoryNotFoundException();
@@ -166,16 +167,14 @@ namespace DiscUtils.VirtualFileSystem
                 return directory.EnumerateDirectories()
                     .Select(entry => entry.Key)
                     .Where(filter)
-                    .Select(name => Path.Combine(path, name))
-                    .ToArray();
+                    .Select(name => Path.Combine(path, name));
             }
 
             return directory.EnumerateTree()
                 .Where(entry => entry.Value is VirtualFileSystemDirectory)
                 .Select(entry => entry.Key)
                 .Where(name => filter(Path.GetFileName(name)))
-                .Select(name => Path.Combine(path, name))
-                .ToArray();
+                .Select(name => Path.Combine(path, name));
         }
 
         public static Func<string, bool> GetFilter(string pattern)
@@ -193,7 +192,7 @@ namespace DiscUtils.VirtualFileSystem
             }
         }
 
-        public override string[] GetFiles(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
         {
             var directory = _root.ResolvePathToEntry(path) as VirtualFileSystemDirectory ??
                 throw new DirectoryNotFoundException();
@@ -205,37 +204,33 @@ namespace DiscUtils.VirtualFileSystem
                 return directory.EnumerateFiles()
                     .Select(entry => entry.Key)
                     .Where(filter)
-                    .Select(name => Path.Combine(path, name))
-                    .ToArray();
+                    .Select(name => Path.Combine(path, name));
             }
 
             return directory.EnumerateTree()
                 .Where(entry => entry.Value is VirtualFileSystemFile)
                 .Select(entry => entry.Key)
                 .Where(name => filter(Path.GetFileName(name)))
-                .Select(name => Path.Combine(path, name))
-                .ToArray();
+                .Select(name => Path.Combine(path, name));
         }
 
-        public override string[] GetFileSystemEntries(string path)
+        public override IEnumerable<string> GetFileSystemEntries(string path)
         {
             var directory = _root.ResolvePathToEntry(path) as VirtualFileSystemDirectory ??
                 throw new DirectoryNotFoundException();
 
             return directory.GetNames()
-                .Select(name => Path.Combine(path, name))
-                .ToArray();
+                .Select(name => Path.Combine(path, name));
         }
 
-        public override string[] GetFileSystemEntries(string path, string searchPattern)
+        public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
         {
             var directory = _root.ResolvePathToEntry(path) as VirtualFileSystemDirectory ??
                 throw new DirectoryNotFoundException();
 
             return directory.GetNames()
                 .Where(GetFilter(searchPattern))
-                .Select(name => Path.Combine(path, name))
-                .ToArray();
+                .Select(name => Path.Combine(path, name));
         }
 
         public override void MoveDirectory(string sourceDirectoryName, string destinationDirectoryName)
@@ -599,7 +594,7 @@ namespace DiscUtils.VirtualFileSystem
             file.SetStandardInformation(info);
         }
 
-        public virtual string[] GetAlternateDataStreams(string path) => new string[0];
+        public virtual IEnumerable<string> GetAlternateDataStreams(string path) => Enumerable.Empty<string>();
 
         public virtual bool HasHardLinks(string path) => false;
 

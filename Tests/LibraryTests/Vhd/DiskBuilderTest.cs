@@ -21,6 +21,7 @@
 //
 
 using System.IO;
+using System.Linq;
 using DiscUtils;
 using DiscUtils.Streams;
 using DiscUtils.Vhd;
@@ -56,7 +57,7 @@ namespace LibraryTests.Vhd
             builder.Content = diskContent;
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo");
+            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhd", fileSpecs[0].Name);
 
@@ -81,7 +82,7 @@ namespace LibraryTests.Vhd
             builder.Content = diskContent;
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo");
+            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhd", fileSpecs[0].Name);
 

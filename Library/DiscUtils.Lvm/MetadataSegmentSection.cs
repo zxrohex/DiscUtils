@@ -26,6 +26,7 @@ namespace DiscUtils.Lvm
     using System;
     using System.IO;
     using System.Collections.Generic;
+    using System.Linq;
 
     internal class MetadataSegmentSection
     {
@@ -126,7 +127,7 @@ namespace DiscUtils.Lvm
                         case "stripes":
                             if (parameter.Value.Trim() == "[")
                             {
-                                Stripes = ParseStripesSection(data);
+                                Stripes = ParseStripesSection(data).ToArray();
                             }
                             break;
                         default:
@@ -144,23 +145,20 @@ namespace DiscUtils.Lvm
             }
         }
 
-        private MetadataStripe[] ParseStripesSection(TextReader data)
+        private IEnumerable<MetadataStripe> ParseStripesSection(TextReader data)
         {
-            var result = new List<MetadataStripe>();
-
             string line;
             while ((line = Metadata.ReadLine(data)) != null)
             {
                 if (line == String.Empty) continue;
                 if (line.EndsWith("]"))
                 {
-                    return result.ToArray();
+                    yield break;
                 }
                 var pv = new MetadataStripe();
                 pv.Parse(line);
-                result.Add(pv);
+                yield return pv;
             }
-            return result.ToArray();
         }
     }
 

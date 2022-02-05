@@ -470,7 +470,7 @@ namespace DiscUtils.Ntfs
                     if (stream.AttributeType == AttributeType.Data && string.IsNullOrEmpty(stream.Name))
                     {
                         fileId = f.IndexInMft;
-                        fileToPaths[fileId] = new List<string>(f.Names).AsReadOnly();
+                        fileToPaths[fileId] = f.Names.ToArray();
                     }
                     else
                     {
@@ -512,14 +512,14 @@ namespace DiscUtils.Ntfs
             return new ClusterMap(clusterToRole, clusterToFile, fileToPaths);
         }
 
-        public Tuple<uint, ushort>[] GetClusterList()
+        public (uint IndexInMft, ushort AttributeId)[] GetClusterList()
         {
             int totalClusters =
                 (int)
                 MathUtilities.Ceil(_self.Context.BiosParameterBlock.TotalSectors64,
                     _self.Context.BiosParameterBlock.SectorsPerCluster);
 
-            var clusters = new Tuple<uint, ushort>[totalClusters];
+            var clusters = new (uint IndexInMft, ushort AttributeId)[totalClusters];
 
             foreach (FileRecord fr in Records)
             {
@@ -536,7 +536,7 @@ namespace DiscUtils.Ntfs
                     {
                         for (long cluster = range.Offset; cluster < range.Offset + range.Count; ++cluster)
                         {
-                            clusters[cluster] = new Tuple<uint, ushort>(f.IndexInMft, stream.Attribute.Id);
+                            clusters[cluster] = (f.IndexInMft, stream.Attribute.Id);
                         }
                     }
                 }
@@ -625,9 +625,12 @@ namespace DiscUtils.Ntfs
                 {
                     foreach (Range<long, long> range in stream.GetClusters())
                     {
-                        for (long cluster = range.Offset; cluster < range.Offset + range.Count; ++cluster)
+                        if (range.Offset >= 0 && range.Offset < clusterbytes.Length)
                         {
-                            clusterbytes[cluster >> 3] |= (byte)(1 << (int)(cluster & 0x7));
+                            for (long cluster = range.Offset; cluster < range.Offset + range.Count; ++cluster)
+                            {
+                                clusterbytes[cluster >> 3] |= (byte)(1 << (int)(cluster & 0x7));
+                            }
                         }
                     }
                 }

@@ -23,6 +23,7 @@
 using DiscUtils;
 using DiscUtils.Streams;
 using DiscUtils.Vhdx;
+using System.Linq;
 using Xunit;
 using Xunit.Sdk;
 
@@ -56,7 +57,7 @@ namespace LibraryTests.Vhdx
             builder.Content = diskContent;
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo");
+            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhdx", fileSpecs[0].Name);
 
@@ -81,7 +82,7 @@ namespace LibraryTests.Vhdx
             builder.Content = new SparseMemoryStream();
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo");
+            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhdx", fileSpecs[0].Name);
 
@@ -98,7 +99,7 @@ namespace LibraryTests.Vhdx
             builder.DiskType = DiskType.Dynamic;
             builder.Content = diskContent;
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo");
+            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhdx", fileSpecs[0].Name);
 

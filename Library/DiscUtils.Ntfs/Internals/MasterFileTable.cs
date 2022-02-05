@@ -155,7 +155,7 @@ namespace DiscUtils.Ntfs.Internals
 
         public ClusterMap GetClusterMap() => _mft.GetClusterMap();
 
-        public Tuple<uint, ushort>[] GetClusterList() => _mft.GetClusterList();
+        public (uint IndexInMft, ushort AttributeId)[] GetClusterList() => _mft.GetClusterList();
 
         public BlockBitmap GetAllocationBitMap() => _mft.GetAllocationBitMap();
     }

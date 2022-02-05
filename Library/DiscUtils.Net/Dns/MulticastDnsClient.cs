@@ -86,7 +86,7 @@ namespace DiscUtils.Net.Dns
         /// <param name="name">The name to lookup.</param>
         /// <param name="type">The type of record requested.</param>
         /// <returns>The records returned by the DNS server, if any.</returns>
-        public override ResourceRecord[] Lookup(string name, RecordType type)
+        public override List<ResourceRecord> Lookup(string name, RecordType type)
         {
             string normName = NormalizeDomainName(name);
 
@@ -100,7 +100,7 @@ namespace DiscUtils.Net.Dns
                     List<ResourceRecord> records;
                     if (typeRecords.TryGetValue(type, out records))
                     {
-                        return records.ToArray();
+                        return records;
                     }
                 }
             }
@@ -127,7 +127,7 @@ namespace DiscUtils.Net.Dns
             records.Add(record);
         }
 
-        private ResourceRecord[] QueryNetwork(string name, RecordType type)
+        private List<ResourceRecord> QueryNetwork(string name, RecordType type)
         {
             ushort transactionId = _nextTransId++;
             string normName = NormalizeDomainName(name);
@@ -166,7 +166,7 @@ namespace DiscUtils.Net.Dns
                 }
             }
 
-            return transaction.Answers.ToArray();
+            return transaction.Answers;
         }
 
         private void ExpireRecords()

@@ -21,7 +21,9 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Streams;
 
 namespace DiscUtils
@@ -142,12 +144,12 @@ namespace DiscUtils
         {
             if (recursive)
             {
-                foreach (string dir in GetDirectories(path))
+                foreach (string dir in GetDirectories(path).ToArray())
                 {
                     DeleteDirectory(dir, true);
                 }
 
-                foreach (string file in GetFiles(path))
+                foreach (string file in GetFiles(path).ToArray())
                 {
                     DeleteFile(file);
                 }
@@ -191,7 +193,7 @@ namespace DiscUtils
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of directories.</returns>
-        public virtual string[] GetDirectories(string path)
+        public virtual IEnumerable<string> GetDirectories(string path)
         {
             return GetDirectories(path, "*.*", SearchOption.TopDirectoryOnly);
         }
@@ -203,7 +205,7 @@ namespace DiscUtils
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public virtual string[] GetDirectories(string path, string searchPattern)
+        public virtual IEnumerable<string> GetDirectories(string path, string searchPattern)
         {
             return GetDirectories(path, searchPattern, SearchOption.TopDirectoryOnly);
         }
@@ -216,14 +218,14 @@ namespace DiscUtils
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public abstract string[] GetDirectories(string path, string searchPattern, SearchOption searchOption);
+        public abstract IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption);
 
         /// <summary>
         /// Gets the names of files in a specified directory.
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files.</returns>
-        public virtual string[] GetFiles(string path)
+        public virtual IEnumerable<string> GetFiles(string path)
         {
             return GetFiles(path, "*.*", SearchOption.TopDirectoryOnly);
         }
@@ -234,7 +236,7 @@ namespace DiscUtils
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public virtual string[] GetFiles(string path, string searchPattern)
+        public virtual IEnumerable<string> GetFiles(string path, string searchPattern)
         {
             return GetFiles(path, searchPattern, SearchOption.TopDirectoryOnly);
         }
@@ -247,14 +249,14 @@ namespace DiscUtils
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public abstract string[] GetFiles(string path, string searchPattern, SearchOption searchOption);
+        public abstract IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption);
 
         /// <summary>
         /// Gets the names of all files and subdirectories in a specified directory.
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public abstract string[] GetFileSystemEntries(string path);
+        public abstract IEnumerable<string> GetFileSystemEntries(string path);
 
         /// <summary>
         /// Gets the names of files and subdirectories in a specified directory matching a specified
@@ -263,7 +265,7 @@ namespace DiscUtils
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public abstract string[] GetFileSystemEntries(string path, string searchPattern);
+        public abstract IEnumerable<string> GetFileSystemEntries(string path, string searchPattern);
 
         /// <summary>
         /// Moves a directory.

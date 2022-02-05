@@ -276,7 +276,7 @@ namespace DiscUtils.LogicalDiskManager
                     streams.Add(OpenExtent(extent));
                 }
 
-                return new ConcatStream(Ownership.Dispose, streams.ToArray());
+                return new ConcatStream(Ownership.Dispose, streams);
             }
             if (component.MergeType == ExtentMergeType.Interleaved)
             {
@@ -289,7 +289,7 @@ namespace DiscUtils.LogicalDiskManager
                     streams.Add(OpenExtent(extent));
                 }
 
-                return new StripedStream(component.StripeSizeSectors * Sizes.Sector, Ownership.Dispose, streams.ToArray());
+                return new StripedStream(component.StripeSizeSectors * Sizes.Sector, Ownership.Dispose, streams);
             }
             throw new NotImplementedException("Unknown component mode: " + component.MergeType);
         }
@@ -313,7 +313,7 @@ namespace DiscUtils.LogicalDiskManager
             {
                 return cmpntStreams[0];
             }
-            return new MirrorStream(Ownership.Dispose, cmpntStreams.ToArray());
+            return new MirrorStream(Ownership.Dispose, cmpntStreams);
         }
     }
 }

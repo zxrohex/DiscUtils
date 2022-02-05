@@ -89,30 +89,26 @@ namespace DiscUtils.Ntfs
             return Attribute.Open(access);
         }
 
-        public Range<long, long>[] GetClusters()
+        public IEnumerable<Range<long, long>> GetClusters()
         {
             return Attribute.GetClusters();
         }
 
-        internal StreamExtent[] GetAbsoluteExtents()
+        internal IEnumerable<StreamExtent> GetAbsoluteExtents()
         {
-            List<StreamExtent> result = new List<StreamExtent>();
-
             long clusterSize = _file.Context.BiosParameterBlock.BytesPerCluster;
             if (Attribute.IsNonResident)
             {
-                Range<long, long>[] clusters = Attribute.GetClusters();
+                var clusters = Attribute.GetClusters();
                 foreach (Range<long, long> clusterRange in clusters)
                 {
-                    result.Add(new StreamExtent(clusterRange.Offset * clusterSize, clusterRange.Count * clusterSize));
+                    yield return new StreamExtent(clusterRange.Offset * clusterSize, clusterRange.Count * clusterSize);
                 }
             }
             else
             {
-                result.Add(new StreamExtent(Attribute.OffsetToAbsolutePos(0), Attribute.Length));
+                yield return new StreamExtent(Attribute.OffsetToAbsolutePos(0), Attribute.Length);
             }
-
-            return result.ToArray();
         }
     }
 }

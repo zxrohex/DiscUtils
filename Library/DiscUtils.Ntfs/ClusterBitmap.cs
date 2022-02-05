@@ -63,9 +63,9 @@ namespace DiscUtils.Ntfs
         /// <param name="isMft"><c>true</c> if this attribute is the $MFT\$DATA attribute.</param>
         /// <param name="total">The total number of clusters in the file, including this allocation.</param>
         /// <returns>The list of cluster allocations.</returns>
-        public Tuple<long, long>[] AllocateClusters(long count, long proposedStart, bool isMft, long total)
+        public List<Range<long, long>> AllocateClusters(long count, long proposedStart, bool isMft, long total)
         {
-            List<Tuple<long, long>> result = new List<Tuple<long, long>>();
+            var result = new List<Range<long, long>>();
 
             long numFound = 0;
 
@@ -129,7 +129,7 @@ namespace DiscUtils.Ntfs
 
             if (numFound < count)
             {
-                FreeClusters(result.ToArray());
+                FreeClusters(result);
                 throw new IOException("Out of disk space");
             }
 
@@ -141,7 +141,7 @@ namespace DiscUtils.Ntfs
                 _fragmentedDiskMode = numFound / result.Count < 4;
             }
 
-            return result.ToArray();
+            return result;
         }
 
         internal void MarkAllocated(long first, long count)
@@ -149,20 +149,17 @@ namespace DiscUtils.Ntfs
             _bitmap.MarkPresentRange(first, count);
         }
 
-        internal void FreeClusters(params Tuple<long, long>[] runs)
-        {
-            foreach (Tuple<long, long> run in runs)
-            {
-                _bitmap.MarkAbsentRange(run.Item1, run.Item2);
-            }
-        }
-
-        internal void FreeClusters(params Range<long, long>[] runs)
+        internal void FreeClusters(IEnumerable<Range<long, long>> runs)
         {
             foreach (Range<long, long> run in runs)
             {
                 _bitmap.MarkAbsentRange(run.Offset, run.Count);
             }
+        }
+
+        internal void FreeClusters(Range<long, long> run)
+        {
+            _bitmap.MarkAbsentRange(run.Offset, run.Count);
         }
 
         /// <summary>
@@ -181,7 +178,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        private long ExtendRun(long count, List<Tuple<long, long>> result, long start, long end)
+        private long ExtendRun(long count, List<Range<long, long>> result, long start, long end)
         {
             long focusCluster = start;
             while (!_bitmap.IsPresent(focusCluster) && focusCluster < end && focusCluster - start < count)
@@ -194,7 +191,7 @@ namespace DiscUtils.Ntfs
             if (numFound > 0)
             {
                 _bitmap.MarkPresentRange(start, numFound);
-                result.Add(new Tuple<long, long>(start, numFound));
+                result.Add(new Range<long, long>(start, numFound));
             }
 
             return numFound;
@@ -211,7 +208,7 @@ namespace DiscUtils.Ntfs
         /// <param name="contiguous">Indicates if contiguous clusters are required.</param>
         /// <param name="headroom">Indicates how many clusters to skip before next allocation, to prevent fragmentation.</param>
         /// <returns>The number of clusters found in the range.</returns>
-        private long FindClusters(long count, List<Tuple<long, long>> result, long start, long end, bool isMft,
+        private long FindClusters(long count, List<Range<long, long>> result, long start, long end, bool isMft,
                                   bool contiguous, long headroom)
         {
             long numFound = 0;
@@ -250,7 +247,7 @@ namespace DiscUtils.Ntfs
                     {
                         _bitmap.MarkPresentRange(runStart, focusCluster - runStart);
 
-                        result.Add(new Tuple<long, long>(runStart, focusCluster - runStart));
+                        result.Add(new Range<long, long>(runStart, focusCluster - runStart));
                         numFound += focusCluster - runStart;
                     }
                 }

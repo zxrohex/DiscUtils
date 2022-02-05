@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -155,13 +156,12 @@ namespace DiscUtils.Vfs
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public override string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
         {
             Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
-            List<string> dirs = new List<string>();
-            DoSearch(dirs, path, re, searchOption == SearchOption.AllDirectories, true, false);
-            return dirs.ToArray();
+            var dirs = DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false);
+            return dirs;
         }
 
         /// <summary>
@@ -172,13 +172,12 @@ namespace DiscUtils.Vfs
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public override string[] GetFiles(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
         {
             Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
-            List<string> results = new List<string>();
-            DoSearch(results, path, re, searchOption == SearchOption.AllDirectories, false, true);
-            return results.ToArray();
+            var results = DoSearch(path, re, searchOption == SearchOption.AllDirectories, false, true);
+            return results;
         }
 
         /// <summary>
@@ -186,7 +185,7 @@ namespace DiscUtils.Vfs
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path)
+        public override IEnumerable<string> GetFileSystemEntries(string path)
         {
             string fullPath = path;
             if (fullPath.Length == 0 || (fullPath[0] != '\\' && fullPath[0] != '/'))
@@ -195,8 +194,8 @@ namespace DiscUtils.Vfs
             }
 
             TDirectory parentDir = GetDirectory(fullPath);
-            return Utilities.Map(parentDir.AllEntries,
-                m => Utilities.CombinePaths(fullPath, FormatFileName(m.FileName)));
+            return parentDir.AllEntries
+                .Select(m => Utilities.CombinePaths(fullPath, FormatFileName(m.FileName)));
         }
 
         /// <summary>
@@ -206,22 +205,17 @@ namespace DiscUtils.Vfs
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path, string searchPattern)
+        public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
         {
             Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
             TDirectory parentDir = GetDirectory(path);
 
-            List<string> result = new List<string>();
-            foreach (TDirEntry dirEntry in parentDir.AllEntries)
-            {
-                if (re.IsMatch(dirEntry.SearchName))
-                {
-                    result.Add(Utilities.CombinePaths(path, dirEntry.FileName));
-                }
-            }
+            var result = parentDir.AllEntries
+                .Where(dirEntry => re is null || re.IsMatch(dirEntry.SearchName))
+                .Select(dirEntry => Utilities.CombinePaths(path, dirEntry.FileName));
 
-            return result.ToArray();
+            return result;
         }
 
         /// <summary>
@@ -668,7 +662,7 @@ namespace DiscUtils.Vfs
             return null;
         }
 
-        private void DoSearch(List<string> results, string path, Regex regex, bool subFolders, bool dirs, bool files)
+        private IEnumerable<string> DoSearch(string path, Regex regex, bool subFolders, bool dirs, bool files)
         {
             TDirectory parentDir = GetDirectory(path);
             if (parentDir == null)
@@ -705,16 +699,19 @@ namespace DiscUtils.Vfs
 
                 if ((isDir && dirs) || (!isDir && files))
                 {
-                    if (regex.IsMatch(de.SearchName))
+                    if (regex is null || regex.IsMatch(de.SearchName))
                     {
-                        results.Add(Utilities.CombinePaths(resultPrefixPath, FormatFileName(entry.FileName)));
+                        yield return Utilities.CombinePaths(resultPrefixPath, FormatFileName(entry.FileName));
                     }
                 }
 
                 if (subFolders && isDir)
                 {
-                    DoSearch(results, Utilities.CombinePaths(resultPrefixPath, FormatFileName(entry.FileName)), regex,
-                        subFolders, dirs, files);
+                    foreach (var subdirentry in DoSearch(Utilities.CombinePaths(resultPrefixPath, FormatFileName(entry.FileName)), regex,
+                        subFolders, dirs, files))
+                    {
+                        yield return subdirentry;
+                    }
                 }
             }
         }

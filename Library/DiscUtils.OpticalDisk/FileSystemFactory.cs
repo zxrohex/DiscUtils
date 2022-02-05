@@ -31,21 +31,17 @@ namespace DiscUtils.OpticalDisk
     [VfsFileSystemFactory]
     internal class FileSystemFactory : VfsFileSystemFactory
     {
-        public override FileSystemInfo[] Detect(Stream stream, VolumeInfo volume)
+        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
         {
-            List<FileSystemInfo> detected = new List<FileSystemInfo>();
-
             if (UdfReader.Detect(stream))
             {
-                detected.Add(new VfsFileSystemInfo("UDF", "OSTA Universal Disk Format (UDF)", OpenUdf));
+                yield return new VfsFileSystemInfo("UDF", "OSTA Universal Disk Format (UDF)", OpenUdf);
             }
 
             if (CDReader.Detect(stream))
             {
-                detected.Add(new VfsFileSystemInfo("ISO9660", "ISO 9660 (CD-ROM)", OpenIso));
+                yield return new VfsFileSystemInfo("ISO9660", "ISO 9660 (CD-ROM)", OpenIso);
             }
-
-            return detected.ToArray();
         }
 
         private DiscFileSystem OpenUdf(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
@@ -113,7 +114,7 @@ namespace DiscUtils
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of directories.</returns>
-        string[] GetDirectories(string path);
+        IEnumerable<string> GetDirectories(string path);
 
         /// <summary>
         /// Gets the names of subdirectories in a specified directory matching a specified
@@ -122,7 +123,7 @@ namespace DiscUtils
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        string[] GetDirectories(string path, string searchPattern);
+        IEnumerable<string> GetDirectories(string path, string searchPattern);
 
         /// <summary>
         /// Gets the names of subdirectories in a specified directory matching a specified
@@ -132,14 +133,14 @@ namespace DiscUtils
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        string[] GetDirectories(string path, string searchPattern, SearchOption searchOption);
+        IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption);
 
         /// <summary>
         /// Gets the names of files in a specified directory.
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files.</returns>
-        string[] GetFiles(string path);
+        IEnumerable<string> GetFiles(string path);
 
         /// <summary>
         /// Gets the names of files in a specified directory.
@@ -147,7 +148,7 @@ namespace DiscUtils
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        string[] GetFiles(string path, string searchPattern);
+        IEnumerable<string> GetFiles(string path, string searchPattern);
 
         /// <summary>
         /// Gets the names of files in a specified directory matching a specified
@@ -157,14 +158,14 @@ namespace DiscUtils
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        string[] GetFiles(string path, string searchPattern, SearchOption searchOption);
+        IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption);
 
         /// <summary>
         /// Gets the names of all files and subdirectories in a specified directory.
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        string[] GetFileSystemEntries(string path);
+        IEnumerable<string> GetFileSystemEntries(string path);
 
         /// <summary>
         /// Gets the names of files and subdirectories in a specified directory matching a specified
@@ -173,7 +174,7 @@ namespace DiscUtils
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        string[] GetFileSystemEntries(string path, string searchPattern);
+        IEnumerable<string> GetFileSystemEntries(string path, string searchPattern);
 
         /// <summary>
         /// Moves a directory.

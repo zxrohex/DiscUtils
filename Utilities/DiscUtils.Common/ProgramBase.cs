@@ -26,6 +26,7 @@ using System.Text;
 using System.Diagnostics;
 using System.Reflection;
 using DiscUtils.Streams;
+using System.Linq;
 
 namespace DiscUtils.Common
 {
@@ -360,14 +361,13 @@ namespace DiscUtils.Common
                 }
             }
 
-            string[] ots = outputTypes.ToArray();
-            Array.Sort(ots);
+            outputTypes.Sort();
 
             return new CommandLineSwitch(
                 "of",
                 "outputFormat",
                 "format",
-                "Mandatory - the type of disk to output, one of " + string.Join(", ", ots, 0, ots.Length - 1) + " or " + ots[ots.Length - 1] + ".");
+                "Mandatory - the type of disk to output, one of " + string.Join(", ", outputTypes.Take(outputTypes.Count - 1)) + " or " + outputTypes[outputTypes.Count - 1] + ".");
         }
 
         private string ExeName

@@ -106,7 +106,7 @@ namespace DiscUtils
         /// extension.  The set of file specifications will indicate the actual name corresponding
         /// to each logical file that comprises the disk image.  For example, given a base name
         /// 'foo', the files 'foo.vmdk' and 'foo-flat.vmdk' could be returned.</remarks>
-        public abstract DiskImageFileSpecification[] Build(string baseName);
+        public abstract IEnumerable<DiskImageFileSpecification> Build(string baseName);
 
         private static void InitializeMaps()
         {

@@ -112,7 +112,7 @@ namespace DiscUtils.Iscsi
         /// <returns>The list of Targets.</returns>
         /// <remarks>In practice, for an established session, this just returns details of
         /// the connected Target.</remarks>
-        public TargetInfo[] EnumerateTargets()
+        public List<TargetInfo> EnumerateTargets()
         {
             return ActiveConnection.EnumerateTargets();
         }

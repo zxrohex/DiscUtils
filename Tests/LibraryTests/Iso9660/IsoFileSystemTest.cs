@@ -21,6 +21,7 @@
 //
 
 using System.IO;
+using System.Linq;
 using DiscUtils;
 using DiscUtils.Iso9660;
 using DiscUtils.Streams;
@@ -89,7 +90,7 @@ namespace LibraryTests.Iso9660
 
             CDReader reader = new CDReader(builder.Build(), true);
 
-            Assert.Equal(3000, reader.Root.GetFiles().Length);
+            Assert.Equal(3000, reader.Root.GetFiles().Count());
         }
 
         [Fact]
@@ -105,12 +106,12 @@ namespace LibraryTests.Iso9660
             var sep = Path.DirectorySeparatorChar;
 
             CDReader reader = new CDReader(ms, true, false);
-            Assert.Equal($"{sep}FILE.TXT;1", reader.GetFiles("")[0]);
-            Assert.Equal($"{sep}FILE.TXT;1", reader.GetFileSystemEntries("")[0]);
+            Assert.Equal($"{sep}FILE.TXT;1", reader.GetFiles("").First());
+            Assert.Equal($"{sep}FILE.TXT;1", reader.GetFileSystemEntries("").First());
 
             reader = new CDReader(ms, true, true);
-            Assert.Equal($"{sep}FILE.TXT", reader.GetFiles("")[0]);
-            Assert.Equal($"{sep}FILE.TXT", reader.GetFileSystemEntries("")[0]);
+            Assert.Equal($"{sep}FILE.TXT", reader.GetFiles("").First());
+            Assert.Equal($"{sep}FILE.TXT", reader.GetFileSystemEntries("").First());
         }
     }
 }

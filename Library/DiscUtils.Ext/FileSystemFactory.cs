@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Vfs;
 
@@ -28,15 +29,12 @@ namespace DiscUtils.Ext
     [VfsFileSystemFactory]
     internal class FileSystemFactory : VfsFileSystemFactory
     {
-        public override FileSystemInfo[] Detect(Stream stream, VolumeInfo volume)
+        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
         {
             if (ExtFileSystem.Detect(stream))
             {
-                return new FileSystemInfo[]
-                    { new VfsFileSystemInfo("ext", "Linux ext family filesystem", Open) };
+                yield return new VfsFileSystemInfo("ext", "Linux ext family filesystem", Open);
             }
-
-            return new FileSystemInfo[0];
         }
 
         private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

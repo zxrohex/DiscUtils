@@ -91,7 +91,7 @@ namespace DiscUtils.Iscsi
         /// <param name="address">The address of the Portal.</param>
         /// <returns>The list of Targets available.</returns>
         /// <remarks>If you just have an IP address, use this method to discover the available Targets.</remarks>
-        public TargetInfo[] GetTargets(string address)
+        public IEnumerable<TargetInfo> GetTargets(string address)
         {
             return GetTargets(TargetAddress.Parse(address));
         }
@@ -102,13 +102,13 @@ namespace DiscUtils.Iscsi
         /// <param name="address">The address of the Portal.</param>
         /// <returns>The list of Targets available.</returns>
         /// <remarks>If you just have an IP address, use this method to discover the available Targets.</remarks>
-        public TargetInfo[] GetTargets(TargetAddress address)
+        public IEnumerable<TargetInfo> GetTargets(TargetAddress address)
         {
-            using (
-                Session session = new Session(SessionType.Discovery, null, _userName, _password,
-                    new[] { address }))
+            using var session = new Session(SessionType.Discovery, null, _userName, _password, new[] { address });
+
+            foreach (var target in session.EnumerateTargets())
             {
-                return session.EnumerateTargets();
+                yield return target;
             }
         }
     }

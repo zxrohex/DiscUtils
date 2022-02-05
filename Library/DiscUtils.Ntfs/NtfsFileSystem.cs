@@ -475,15 +475,16 @@ namespace DiscUtils.Ntfs
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public override string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
         {
             using (new NtfsTransaction())
             {
                 Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
-                List<string> dirs = new List<string>();
-                DoSearch(dirs, path, re, searchOption == SearchOption.AllDirectories, true, false);
-                return dirs.ToArray();
+                foreach (var dir in DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false))
+                {
+                    yield return dir;
+                }
             }
         }
 
@@ -495,15 +496,16 @@ namespace DiscUtils.Ntfs
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public override string[] GetFiles(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
         {
             using (new NtfsTransaction())
             {
                 Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
-                List<string> results = new List<string>();
-                DoSearch(results, path, re, searchOption == SearchOption.AllDirectories, false, true);
-                return results.ToArray();
+                foreach (var result in DoSearch(path, re, searchOption == SearchOption.AllDirectories, false, true))
+                {
+                    yield return result;
+                }
             }
         }
 
@@ -512,7 +514,7 @@ namespace DiscUtils.Ntfs
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files and subdirectories.</returns>
-        public override string[] GetFileSystemEntries(string path)
+        public override IEnumerable<string> GetFileSystemEntries(string path)
         {
             using (new NtfsTransaction())
             {
@@ -525,10 +527,12 @@ namespace DiscUtils.Ntfs
 
                 var parentDir = GetDirectory(parentDirEntry.Reference);
 
-                return parentDir
+                foreach (var entry in parentDir
                     .GetAllEntries(filter: true)
-                    .Select(m => Utilities.CombinePaths(path, m.Details.FileName))
-                    .ToArray();
+                    .Select(m => Utilities.CombinePaths(path, m.Details.FileName)))
+                {
+                    yield return entry;
+                }
             }
         }
 
@@ -539,7 +543,7 @@ namespace DiscUtils.Ntfs
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path, string searchPattern)
+        public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
         {
             using (new NtfsTransaction())
             {
@@ -556,16 +560,14 @@ namespace DiscUtils.Ntfs
 
                 Directory parentDir = GetDirectory(parentDirEntry.Reference);
 
-                List<string> result = new List<string>();
-                foreach (DirectoryEntry dirEntry in parentDir.GetAllEntries(true))
-                {
-                    if (re.IsMatch(dirEntry.Details.FileName))
-                    {
-                        result.Add(Utilities.CombinePaths(path, dirEntry.Details.FileName));
-                    }
-                }
+                var results = parentDir.GetAllEntries(true)
+                    .Where(dirEntry => re is null || re.IsMatch(dirEntry.Details.FileName))
+                    .Select(dirEntry => Utilities.CombinePaths(path, dirEntry.Details.FileName));
 
-                return result.ToArray();
+                foreach (var result in results)
+                {
+                    yield return result;
+                }
             }
         }
 
@@ -978,7 +980,7 @@ namespace DiscUtils.Ntfs
                         attributeName), path);
             }
 
-            return stream.Value.GetClusters();
+            return stream.Value.GetClusters().ToArray();
         }
 
         /// <summary>
@@ -1013,7 +1015,7 @@ namespace DiscUtils.Ntfs
                         attributeName), path);
             }
 
-            return stream.Value.GetAbsoluteExtents();
+            return stream.Value.GetAbsoluteExtents().ToArray();
         }
 
         /// <summary>
@@ -1511,7 +1513,7 @@ namespace DiscUtils.Ntfs
         /// The list of alternate data streams (or empty, if none).  To access the contents
         /// of the alternate streams, use OpenFile(path + ":" + name, ...).
         /// </returns>
-        public string[] GetAlternateDataStreams(string path)
+        public IEnumerable<string> GetAlternateDataStreams(string path)
         {
             DirectoryEntry dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -1526,16 +1528,13 @@ namespace DiscUtils.Ntfs
                 throw new FileNotFoundException("File not found", path);
             }
 
-            List<string> names = new List<string>();
             foreach (NtfsStream attr in file.AllStreams)
             {
                 if (attr.AttributeType == AttributeType.Data && !string.IsNullOrEmpty(attr.Name))
                 {
-                    names.Add(attr.Name);
+                    yield return attr.Name;
                 }
             }
-
-            return names.ToArray();
         }
 
         /// <summary>
@@ -2009,8 +2008,17 @@ namespace DiscUtils.Ntfs
         
         private static void RemoveFileFromDirectory(Directory dir, File file, string name)
         {
-            List<string> aliases = new List<string>();
+            var aliases = GetAliases(dir, file, name).ToArray();
 
+            foreach (string alias in aliases)
+            {
+                DirectoryEntry de = dir.GetEntryByName(alias);
+                dir.RemoveEntry(de);
+            }
+        }
+
+        private static IEnumerable<string> GetAliases(Directory dir, File file, string name)
+        {
             DirectoryEntry dirEntry = dir.GetEntryByName(name);
             if (dirEntry.Details.FileNameNamespace == FileNameNamespace.Dos
                 || dirEntry.Details.FileNameNamespace == FileNameNamespace.Win32)
@@ -2022,20 +2030,15 @@ namespace DiscUtils.Ntfs
                          fnr.FileNameNamespace == FileNameNamespace.Dos)
                         && fnr.ParentDirectory.Value == dir.MftReference.Value)
                     {
-                        aliases.Add(fnr.FileName);
+                        yield return fnr.FileName;
                     }
                 }
             }
             else
             {
-                aliases.Add(name);
+                yield return name;
             }
 
-            foreach (string alias in aliases)
-            {
-                DirectoryEntry de = dir.GetEntryByName(alias);
-                dir.RemoveEntry(de);
-            }
         }
 
         private static void SplitPath(string path, out string plainPath, out string attributeName)
@@ -2125,7 +2128,7 @@ namespace DiscUtils.Ntfs
             return GetDirectoryEntry(dir, pathElements, 0);
         }
 
-        private void DoSearch(List<string> results, string path, Regex regex, bool subFolders, bool dirs, bool files)
+        private IEnumerable<string> DoSearch(string path, Regex regex, bool subFolders, bool dirs, bool files)
         {
             DirectoryEntry parentDirEntry = GetDirectoryEntry(path);
             if (parentDirEntry == null)
@@ -2147,15 +2150,18 @@ namespace DiscUtils.Ntfs
 
                 if ((isDir && dirs) || (!isDir && files))
                 {
-                    if (regex.IsMatch(de.SearchName))
+                    if (regex is null || regex.IsMatch(de.SearchName))
                     {
-                        results.Add(Utilities.CombinePaths(path, de.Details.FileName));
+                        yield return Utilities.CombinePaths(path, de.Details.FileName);
                     }
                 }
 
                 if (subFolders && isDir)
                 {
-                    DoSearch(results, Utilities.CombinePaths(path, de.Details.FileName), regex, subFolders, dirs, files);
+                    foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.Details.FileName), regex, subFolders, dirs, files))
+                    {
+                        yield return subdirentry;
+                    }
                 }
             }
         }

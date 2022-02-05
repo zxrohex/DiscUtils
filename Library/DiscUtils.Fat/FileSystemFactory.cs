@@ -23,20 +23,19 @@
 using System.IO;
 using DiscUtils.Vfs;
 using DiscUtils.Streams;
+using System.Collections.Generic;
 
 namespace DiscUtils.Fat
 {
     [VfsFileSystemFactory]
     internal class FileSystemFactory : VfsFileSystemFactory
     {
-        public override FileSystemInfo[] Detect(Stream stream, VolumeInfo volume)
+        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
         {
             if (FatFileSystem.Detect(stream))
             {
-                return new FileSystemInfo[] { new VfsFileSystemInfo("FAT", "Microsoft FAT", Open) };
+                yield return new VfsFileSystemInfo("FAT", "Microsoft FAT", Open);
             }
-
-            return new FileSystemInfo[0];
         }
 
         private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

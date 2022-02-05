@@ -23,6 +23,7 @@
 namespace DiscUtils.Lvm
 {
     using System.IO;
+    using System.Linq;
     using DiscUtils.Partitions;
     using DiscUtils.Streams;
 
@@ -43,7 +44,7 @@ namespace DiscUtils.Lvm
             content.Position = (long) (physicalVolumeLabel.Sector * SECTOR_SIZE);
             var buffer = StreamUtilities.ReadExact(content, SECTOR_SIZE);
             PvHeader.ReadFrom(buffer, (int) physicalVolumeLabel.Offset);
-            if (PvHeader.MetadataDiskAreas.Length > 0)
+            if (PvHeader.MetadataDiskAreas.Any())
             {
                 var area = PvHeader.MetadataDiskAreas[0];
                 var metadata = new VolumeGroupMetadata();

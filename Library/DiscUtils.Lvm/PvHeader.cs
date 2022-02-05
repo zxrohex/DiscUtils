@@ -31,8 +31,8 @@ namespace DiscUtils.Lvm
     {
         public string Uuid;
         public ulong DeviceSize;
-        public DiskArea[] DiskAreas;
-        public DiskArea[] MetadataDiskAreas;
+        public List<DiskArea> DiskAreas;
+        public List<DiskArea> MetadataDiskAreas;
         /// <inheritdoc />
         public int Size { get { return PhysicalVolume.SECTOR_SIZE; } }
 
@@ -50,7 +50,7 @@ namespace DiscUtils.Lvm
                 if (area.Offset == 0 && area.Length == 0) break;
                 areas.Add(area);
             }
-            DiskAreas = areas.ToArray();
+            DiskAreas = areas;
             areas = new List<DiskArea>();
             while (true)
             {
@@ -59,7 +59,7 @@ namespace DiscUtils.Lvm
                 if (area.Offset == 0 && area.Length == 0) break;
                 areas.Add(area);
             }
-            MetadataDiskAreas = areas.ToArray();
+            MetadataDiskAreas = areas;
             return Size;
         }
 

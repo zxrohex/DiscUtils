@@ -25,6 +25,7 @@ namespace DiscUtils.Lvm
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
 
     internal class MetadataVolumeGroupSection
     {
@@ -109,10 +110,10 @@ namespace DiscUtils.Lvm
                     switch (sectionName)
                     {
                         case "physical_volumes":
-                            PhysicalVolumes = ParsePhysicalVolumeSection(data);
+                            PhysicalVolumes = ParsePhysicalVolumeSection(data).ToArray();
                             break;
                         case "logical_volumes":
-                            LogicalVolumes = ParseLogicalVolumeSection(data);
+                            LogicalVolumes = ParseLogicalVolumeSection(data).ToArray();
 
                             break;
                         default:
@@ -126,10 +127,8 @@ namespace DiscUtils.Lvm
             }
         }
 
-        private MetadataLogicalVolumeSection[] ParseLogicalVolumeSection(TextReader data)
+        private IEnumerable<MetadataLogicalVolumeSection> ParseLogicalVolumeSection(TextReader data)
         {
-            var result = new List<MetadataLogicalVolumeSection>();
-
             string line;
             while ((line = Metadata.ReadLine(data)) != null)
             {
@@ -138,20 +137,17 @@ namespace DiscUtils.Lvm
                 {
                     var pv = new MetadataLogicalVolumeSection();
                     pv.Parse(line, data);
-                    result.Add(pv);
+                    yield return pv;
                 }
                 else if (line.EndsWith("}"))
                 {
                     break;
                 }
             }
-            return result.ToArray();
         }
 
-        private MetadataPhysicalVolumeSection[] ParsePhysicalVolumeSection(TextReader data)
+        private IEnumerable<MetadataPhysicalVolumeSection> ParsePhysicalVolumeSection(TextReader data)
         {
-            var result = new List<MetadataPhysicalVolumeSection>();
-
             string line;
             while ((line = Metadata.ReadLine(data)) != null)
             {
@@ -160,14 +156,13 @@ namespace DiscUtils.Lvm
                 {
                     var pv = new MetadataPhysicalVolumeSection();
                     pv.Parse(line, data);
-                    result.Add(pv);
+                    yield return pv;
                 }
                 else if (line.EndsWith("}"))
                 {
                     break;
                 }
             }
-            return result.ToArray();
         }
     }
 

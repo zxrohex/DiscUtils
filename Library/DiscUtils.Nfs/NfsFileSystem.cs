@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -310,15 +311,14 @@ namespace DiscUtils.Nfs
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public override string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
         {
             try
             {
                 Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
-                List<string> dirs = new List<string>();
-                DoSearch(dirs, path, re, searchOption == SearchOption.AllDirectories, true, false);
-                return dirs.ToArray();
+                var dirs = DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false);
+                return dirs;
             }
             catch (Nfs3Exception ne)
             {
@@ -334,15 +334,14 @@ namespace DiscUtils.Nfs
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public override string[] GetFiles(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
         {
             try
             {
                 Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
-                List<string> results = new List<string>();
-                DoSearch(results, path, re, searchOption == SearchOption.AllDirectories, false, true);
-                return results.ToArray();
+                var results = DoSearch(path, re, searchOption == SearchOption.AllDirectories, false, true);
+                return results;
             }
             catch (Nfs3Exception ne)
             {
@@ -355,15 +354,12 @@ namespace DiscUtils.Nfs
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path)
+        public override IEnumerable<string> GetFileSystemEntries(string path)
         {
             try
             {
-                Regex re = Utilities.ConvertWildcardsToRegEx("*.*");
-
-                List<string> results = new List<string>();
-                DoSearch(results, path, re, false, true, true);
-                return results.ToArray();
+                var results = DoSearch(path, null, false, true, true);
+                return results;
             }
             catch (Nfs3Exception ne)
             {
@@ -378,15 +374,14 @@ namespace DiscUtils.Nfs
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path, string searchPattern)
+        public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
         {
             try
             {
                 Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
-                List<string> results = new List<string>();
-                DoSearch(results, path, re, false, true, true);
-                return results.ToArray();
+                var results = DoSearch(path, re, false, true, true);
+                return results;
             }
             catch (Nfs3Exception ne)
             {
@@ -781,7 +776,7 @@ namespace DiscUtils.Nfs
             throw new IOException("NFS Status: " + ne.Message, ne);
         }
 
-        private void DoSearch(List<string> results, string path, Regex regex, bool subFolders, bool dirs, bool files)
+        private IEnumerable<string> DoSearch(string path, Regex regex, bool subFolders, bool dirs, bool files)
         {
             Nfs3FileHandle dir = GetDirectory(path);
 
@@ -798,15 +793,18 @@ namespace DiscUtils.Nfs
                 {
                     string searchName = de.Name.IndexOf('.') == -1 ? de.Name + "." : de.Name;
 
-                    if (regex.IsMatch(searchName))
+                    if (regex is null || regex.IsMatch(searchName))
                     {
-                        results.Add(Utilities.CombinePaths(path, de.Name));
+                        yield return Utilities.CombinePaths(path, de.Name);
                     }
                 }
 
                 if (subFolders && isDir)
                 {
-                    DoSearch(results, Utilities.CombinePaths(path, de.Name), regex, subFolders, dirs, files);
+                    foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.Name), regex, subFolders, dirs, files))
+                    {
+                        yield return subdirentry;
+                    }
                 }
             }
         }

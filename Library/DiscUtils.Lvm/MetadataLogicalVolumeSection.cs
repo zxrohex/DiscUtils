@@ -37,7 +37,7 @@ namespace DiscUtils.Lvm
         public string CreationHost;
         public DateTime CreationTime;
         public ulong SegmentCount;
-        public MetadataSegmentSection[] Segments;
+        public List<MetadataSegmentSection> Segments;
         private Dictionary<string, PhysicalVolume> _pvs;
         private ulong _extentSize;
         internal void Parse(string head, TextReader data)
@@ -113,7 +113,7 @@ namespace DiscUtils.Lvm
                     throw new ArgumentOutOfRangeException(line, "unexpected input");
                 }
             }
-            Segments = segments.ToArray();
+            Segments = segments;
         }
 
         internal long ExtentCount
@@ -167,7 +167,7 @@ namespace DiscUtils.Lvm
             {
                 streams.Add(OpenSegment(segment));
             }
-            return new ConcatStream(Ownership.Dispose, streams.ToArray());
+            return new ConcatStream(Ownership.Dispose, streams);
         }
 
         private SparseStream OpenSegment(MetadataSegmentSection segment)
@@ -182,7 +182,7 @@ namespace DiscUtils.Lvm
             {
                 throw new IOException("missing pv");
             }
-            if (pv.PvHeader.DiskAreas.Length != 1)
+            if (pv.PvHeader.DiskAreas.Count != 1)
             {
                 throw new IOException("invalid number od pv data areas");
             }

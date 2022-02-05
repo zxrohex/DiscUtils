@@ -113,7 +113,7 @@ namespace DiscUtils.Xfs
             }
         }
 
-        private void AddDirEntries(BlockDirectoryData[] entries, Dictionary<string, DirEntry> target)
+        private void AddDirEntries(IEnumerable<BlockDirectoryData> entries, Dictionary<string, DirEntry> target)
         {
             foreach (var entry in entries)
             {

@@ -57,7 +57,7 @@ namespace DiscUtils.OpticalDiscSharing
         /// Looks up the ODS services advertised.
         /// </summary>
         /// <returns>A list of discovered ODS services.</returns>
-        public OpticalDiscService[] LookupServices()
+        public IEnumerable<OpticalDiscService> LookupServices()
         {
             return LookupServices("local.");
         }
@@ -67,16 +67,12 @@ namespace DiscUtils.OpticalDiscSharing
         /// </summary>
         /// <param name="domain">The domain to look in.</param>
         /// <returns>A list of discovered ODS services.</returns>
-        public OpticalDiscService[] LookupServices(string domain)
+        public IEnumerable<OpticalDiscService> LookupServices(string domain)
         {
-            List<OpticalDiscService> services = new List<OpticalDiscService>();
-
             foreach (ServiceInstance instance in _sdClient.LookupInstances("_odisk._tcp", domain, ServiceInstanceFields.All))
             {
-                services.Add(new OpticalDiscService(instance, _sdClient));
+                yield return new OpticalDiscService(instance, _sdClient);
             }
-
-            return services.ToArray();
         }
     }
 }

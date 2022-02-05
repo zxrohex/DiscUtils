@@ -92,9 +92,8 @@ namespace DiscUtils.Lvm
         /// Gets the logical volumes held across the set of managed disks.
         /// </summary>
         /// <returns>An array of logical volumes.</returns>
-        public LogicalVolumeInfo[] GetLogicalVolumes()
+        public IEnumerable<LogicalVolumeInfo> GetLogicalVolumes()
         {
-            List<LogicalVolumeInfo> result = new List<LogicalVolumeInfo>();
             foreach (var vg in _volumeGroups)
             {
                 foreach (var lv in vg.LogicalVolumes)
@@ -138,11 +137,10 @@ namespace DiscUtils.Lvm
                             lv.ExtentCount * (long) vg.ExtentSize * PhysicalVolume.SECTOR_SIZE,
                             0,
                             DiscUtils.LogicalVolumeStatus.Healthy);
-                        result.Add(lvi);
+                        yield return lvi;
                     }
                 }
             }
-            return result.ToArray();
         }
 
         private PhysicalVolume GetPhysicalVolume(string id)

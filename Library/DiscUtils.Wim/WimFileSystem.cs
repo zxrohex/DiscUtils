@@ -213,23 +213,20 @@ namespace DiscUtils.Wim
         /// The list of alternate data streams (or empty, if none).  To access the contents
         /// of the alternate streams, use OpenFile(path + ":" + name, ...).
         /// </returns>
-        public string[] GetAlternateDataStreams(string path)
+        public IEnumerable<string> GetAlternateDataStreams(string path)
         {
             DirectoryEntry dirEntry = GetEntry(path);
 
-            List<string> names = new List<string>();
             if (dirEntry.AlternateStreams != null)
             {
                 foreach (KeyValuePair<string, AlternateStreamEntry> altStream in dirEntry.AlternateStreams)
                 {
                     if (!string.IsNullOrEmpty(altStream.Key))
                     {
-                        names.Add(altStream.Key);
+                        yield return altStream.Key;
                     }
                 }
             }
-
-            return names.ToArray();
         }
 
         /// <summary>
@@ -296,13 +293,12 @@ namespace DiscUtils.Wim
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of directories matching the search pattern.</returns>
-        public override string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
         {
             Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
-            List<string> dirs = new List<string>();
-            DoSearch(dirs, path, re, searchOption == SearchOption.AllDirectories, true, false);
-            return dirs.ToArray();
+            var dirs = DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false);
+            return dirs;
         }
 
         /// <summary>
@@ -313,13 +309,12 @@ namespace DiscUtils.Wim
         /// <param name="searchPattern">The search string to match against.</param>
         /// <param name="searchOption">Indicates whether to search subdirectories.</param>
         /// <returns>Array of files matching the search pattern.</returns>
-        public override string[] GetFiles(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
         {
             Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
-            List<string> results = new List<string>();
-            DoSearch(results, path, re, searchOption == SearchOption.AllDirectories, false, true);
-            return results.ToArray();
+            var results = DoSearch(path, re, searchOption == SearchOption.AllDirectories, false, true);
+            return results;
         }
 
         /// <summary>
@@ -327,7 +322,7 @@ namespace DiscUtils.Wim
         /// </summary>
         /// <param name="path">The path to search.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path)
+        public override IEnumerable<string> GetFileSystemEntries(string path)
         {
             var parentDirEntry = GetEntry(path);
             if (parentDirEntry == null)
@@ -338,7 +333,7 @@ namespace DiscUtils.Wim
 
             var parentDir = GetDirectory(parentDirEntry.SubdirOffset);
 
-            return parentDir.Select(m => Utilities.CombinePaths(path, m.FileName)).ToArray();
+            return parentDir.Select(m => Utilities.CombinePaths(path, m.FileName));
         }
 
         /// <summary>
@@ -348,7 +343,7 @@ namespace DiscUtils.Wim
         /// <param name="path">The path to search.</param>
         /// <param name="searchPattern">The search string to match against.</param>
         /// <returns>Array of files and subdirectories matching the search pattern.</returns>
-        public override string[] GetFileSystemEntries(string path, string searchPattern)
+        public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
         {
             Regex re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
@@ -361,16 +356,11 @@ namespace DiscUtils.Wim
 
             List<DirectoryEntry> parentDir = GetDirectory(parentDirEntry.SubdirOffset);
 
-            List<string> result = new List<string>();
-            foreach (DirectoryEntry dirEntry in parentDir)
-            {
-                if (re.IsMatch(dirEntry.FileName))
-                {
-                    result.Add(Utilities.CombinePaths(path, dirEntry.FileName));
-                }
-            }
+            var result = parentDir
+                .Where(dirEntry => re is null || re.IsMatch(dirEntry.FileName))
+                .Select(dirEntry => Utilities.CombinePaths(path, dirEntry.FileName));
 
-            return result.ToArray();
+            return result;
         }
 
         /// <summary>
@@ -678,13 +668,13 @@ namespace DiscUtils.Wim
             return nextEntry;
         }
 
-        private void DoSearch(List<string> results, string path, Regex regex, bool subFolders, bool dirs, bool files)
+        private IEnumerable<string> DoSearch(string path, Regex regex, bool subFolders, bool dirs, bool files)
         {
             DirectoryEntry parentDirEntry = GetEntry(path);
 
             if (parentDirEntry.SubdirOffset == 0)
             {
-                return;
+                yield break;
             }
 
             List<DirectoryEntry> parentDir = GetDirectory(parentDirEntry.SubdirOffset);
@@ -695,15 +685,18 @@ namespace DiscUtils.Wim
 
                 if ((isDir && dirs) || (!isDir && files))
                 {
-                    if (regex.IsMatch(de.SearchName))
+                    if (regex is null || regex.IsMatch(de.SearchName))
                     {
-                        results.Add(Utilities.CombinePaths(path, de.FileName));
+                        yield return Utilities.CombinePaths(path, de.FileName);
                     }
                 }
 
                 if (subFolders && isDir)
                 {
-                    DoSearch(results, Utilities.CombinePaths(path, de.FileName), regex, subFolders, dirs, files);
+                    foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.FileName), regex, subFolders, dirs, files))
+                    {
+                        yield return subdirentry;
+                    }
                 }
             }
         }

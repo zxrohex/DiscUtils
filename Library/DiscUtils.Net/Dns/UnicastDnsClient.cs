@@ -87,7 +87,7 @@ namespace DiscUtils.Net.Dns
         /// <param name="name">The name to lookup.</param>
         /// <param name="type">The type of record requested.</param>
         /// <returns>The records returned by the DNS server, if any.</returns>
-        public override ResourceRecord[] Lookup(string name, RecordType type)
+        public override List<ResourceRecord> Lookup(string name, RecordType type)
         {
             ushort transactionId = _nextTransId++;
             string normName = NormalizeDomainName(name);
@@ -126,7 +126,7 @@ namespace DiscUtils.Net.Dns
 
                             if (response.TransactionId == transactionId)
                             {
-                                return response.Answers.ToArray();
+                                return response.Answers;
                             }
                         }
                         catch

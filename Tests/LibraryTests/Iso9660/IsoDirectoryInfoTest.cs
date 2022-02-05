@@ -22,6 +22,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using DiscUtils;
 using DiscUtils.Iso9660;
 using Xunit;
@@ -68,7 +69,7 @@ namespace LibraryTests.Iso9660
             CDReader fs = new CDReader(builder.Build(), false);
 
             DiscDirectoryInfo di = fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR");
-            DiscFileInfo[] fis = di.GetFiles("*.*", SearchOption.AllDirectories);
+            DiscFileInfo[] fis = di.GetFiles("*.*", SearchOption.AllDirectories).ToArray();
         }
 
         [Fact]
@@ -90,26 +91,26 @@ namespace LibraryTests.Iso9660
             CDReader fs = new CDReader(builder.Build(), false);
 
 
-            Assert.Equal(2, fs.Root.GetDirectories().Length);
+            Assert.Equal(2, fs.Root.GetDirectories().Count());
 
-            DiscDirectoryInfo someDir = fs.Root.GetDirectories(@"SoMeDir")[0];
+            DiscDirectoryInfo someDir = fs.Root.GetDirectories(@"SoMeDir").First();
             Assert.Single(fs.Root.GetDirectories("SOMEDIR"));
             Assert.Equal("SOMEDIR", someDir.Name);
 
             Assert.Single(someDir.GetDirectories("*.*"));
-            Assert.Equal("CHILD", someDir.GetDirectories("*.*")[0].Name);
-            Assert.Equal(2, someDir.GetDirectories("*.*", SearchOption.AllDirectories).Length);
+            Assert.Equal("CHILD", someDir.GetDirectories("*.*").First().Name);
+            Assert.Equal(2, someDir.GetDirectories("*.*", SearchOption.AllDirectories).Count());
 
-            Assert.Equal(4, fs.Root.GetDirectories("*.*", SearchOption.AllDirectories).Length);
-            Assert.Equal(2, fs.Root.GetDirectories("*.*", SearchOption.TopDirectoryOnly).Length);
+            Assert.Equal(4, fs.Root.GetDirectories("*.*", SearchOption.AllDirectories).Count());
+            Assert.Equal(2, fs.Root.GetDirectories("*.*", SearchOption.TopDirectoryOnly).Count());
 
             var sep = Path.DirectorySeparatorChar;
 
             Assert.Single(fs.Root.GetDirectories("*.DIR", SearchOption.AllDirectories));
-            Assert.Equal($"A.DIR{sep}", fs.Root.GetDirectories("*.DIR", SearchOption.AllDirectories)[0].FullName);
+            Assert.Equal($"A.DIR{sep}", fs.Root.GetDirectories("*.DIR", SearchOption.AllDirectories).First().FullName);
 
             Assert.Single(fs.Root.GetDirectories("GCHILD", SearchOption.AllDirectories));
-            Assert.Equal($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}", fs.Root.GetDirectories("GCHILD", SearchOption.AllDirectories)[0].FullName);
+            Assert.Equal($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}", fs.Root.GetDirectories("GCHILD", SearchOption.AllDirectories).First().FullName);
         }
 
         [Fact]
@@ -127,10 +128,10 @@ namespace LibraryTests.Iso9660
             CDReader fs = new CDReader(builder.Build(), false);
 
             Assert.Single(fs.Root.GetFiles());
-            Assert.Equal("FOO.TXT", fs.Root.GetFiles()[0].FullName);
+            Assert.Equal("FOO.TXT", fs.Root.GetFiles().First().FullName);
 
-            Assert.Equal(2, fs.Root.GetDirectories("SOMEDIR")[0].GetFiles("*.TXT").Length);
-            Assert.Equal(4, fs.Root.GetFiles("*.TXT", SearchOption.AllDirectories).Length);
+            Assert.Equal(2, fs.Root.GetDirectories("SOMEDIR").First().GetFiles("*.TXT").Count());
+            Assert.Equal(4, fs.Root.GetFiles("*.TXT", SearchOption.AllDirectories).Count());
 
             Assert.Empty(fs.Root.GetFiles("*.DIR", SearchOption.AllDirectories));
         }
@@ -149,10 +150,10 @@ namespace LibraryTests.Iso9660
             builder.AddFile($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}BAR.TXT", new byte[10]);
             CDReader fs = new CDReader(builder.Build(), false);
 
-            Assert.Equal(3, fs.Root.GetFileSystemInfos().Length);
+            Assert.Equal(3, fs.Root.GetFileSystemInfos().Count());
 
             Assert.Single(fs.Root.GetFileSystemInfos("*.EXT"));
-            Assert.Equal(2, fs.Root.GetFileSystemInfos("*.?XT").Length);
+            Assert.Equal(2, fs.Root.GetFileSystemInfos("*.?XT").Count());
         }
 
         [Fact]
@@ -162,7 +163,7 @@ namespace LibraryTests.Iso9660
             builder.AddDirectory(@"SOMEDIR");
             CDReader fs = new CDReader(builder.Build(), false);
 
-            Assert.Equal(fs.Root, fs.Root.GetDirectories("SOMEDIR")[0].Parent);
+            Assert.Equal(fs.Root, fs.Root.GetDirectories("SOMEDIR").First().Parent);
         }
 
         [Fact]

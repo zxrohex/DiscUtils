@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -30,89 +31,6 @@ namespace DiscUtils.Internal
 {
     public static class Utilities
     {
-        /// <summary>
-        /// Converts between two arrays.
-        /// </summary>
-        /// <typeparam name="T">The type of the elements of the source array.</typeparam>
-        /// <typeparam name="U">The type of the elements of the destination array.</typeparam>
-        /// <param name="source">The source array.</param>
-        /// <param name="func">The function to map from source type to destination type.</param>
-        /// <returns>The resultant array.</returns>
-        public static U[] Map<T, U>(ICollection<T> source, Func<T, U> func)
-        {
-            U[] result = new U[source.Count];
-            int i = 0;
-
-            foreach (T sVal in source)
-            {
-                result[i++] = func(sVal);
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Converts between two arrays.
-        /// </summary>
-        /// <typeparam name="T">The type of the elements of the source array.</typeparam>
-        /// <typeparam name="U">The type of the elements of the destination array.</typeparam>
-        /// <param name="source">The source array.</param>
-        /// <param name="func">The function to map from source type to destination type.</param>
-        /// <returns>The resultant array.</returns>
-        public static U[] Map<T, U>(IEnumerable<T> source, Converter<T, U> func)
-        {
-            if (source is T[] array)
-            {
-                return Array.ConvertAll(array, func);
-            }
-            else if (source is ICollection<T> collection)
-            {
-                var result = new U[collection.Count];
-
-                var i = 0;
-
-                foreach (T sVal in source)
-                {
-                    result[i++] = func(sVal);
-                }
-
-                return result;
-            }
-            else
-            {
-                List<U> result = new List<U>();
-
-                foreach (T sVal in source)
-                {
-                    result.Add(func(sVal));
-                }
-
-                return result.ToArray();
-            }
-        }
-
-        /// <summary>
-        /// Filters a collection into a new collection.
-        /// </summary>
-        /// <typeparam name="C">The type of the new collection.</typeparam>
-        /// <typeparam name="T">The type of the collection entries.</typeparam>
-        /// <param name="source">The collection to filter.</param>
-        /// <param name="predicate">The predicate to select which entries are carried over.</param>
-        /// <returns>The new collection, containing all entries where the predicate returns <c>true</c>.</returns>
-        public static C Filter<C, T>(ICollection<T> source, Func<T, bool> predicate) where C : ICollection<T>, new()
-        {
-            C result = new C();
-            foreach (T val in source)
-            {
-                if (predicate(val))
-                {
-                    result.Add(val);
-                }
-            }
-
-            return result;
-        }
-
         /// <summary>
         /// Indicates if two ranges overlap.
         /// </summary>
@@ -465,6 +383,12 @@ namespace DiscUtils.Internal
         /// </remarks>
         public static Regex ConvertWildcardsToRegEx(string pattern)
         {
+            if (pattern.Equals("*", StringComparison.Ordinal) ||
+                pattern.Equals("*.*", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
             if (!pattern.Contains("."))
             {
                 pattern += ".";

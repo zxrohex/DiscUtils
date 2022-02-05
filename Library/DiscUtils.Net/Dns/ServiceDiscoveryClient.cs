@@ -69,7 +69,7 @@ namespace DiscUtils.Net.Dns
         /// Queries for all the different types of service available on the local network.
         /// </summary>
         /// <returns>An array of service types, for example "_http._tcp".</returns>
-        public string[] LookupServiceTypes()
+        public IEnumerable<string> LookupServiceTypes()
         {
             return LookupServiceTypes("local.");
         }
@@ -79,18 +79,14 @@ namespace DiscUtils.Net.Dns
         /// </summary>
         /// <param name="domain">The domain to query.</param>
         /// <returns>An array of service types, for example "_http._tcp".</returns>
-        public string[] LookupServiceTypes(string domain)
+        public IEnumerable<string> LookupServiceTypes(string domain)
         {
-            List<ResourceRecord> records = DoLookup("_services._dns-sd._udp" + "." + domain, RecordType.Pointer);
-
-            List<string> result = new List<string>();
+            var records = DoLookup("_services._dns-sd._udp" + "." + domain, RecordType.Pointer);
 
             foreach (PointerRecord record in records)
             {
-                result.Add(record.TargetName.Substring(0, record.TargetName.Length - (domain.Length + 1)));
+                yield return record.TargetName.Substring(0, record.TargetName.Length - (domain.Length + 1));
             }
-
-            return result.ToArray();
         }
 
         /// <summary>
@@ -98,7 +94,7 @@ namespace DiscUtils.Net.Dns
         /// </summary>
         /// <param name="service">The service to query, for example "_http._tcp".</param>
         /// <returns>An array of service instances.</returns>
-        public ServiceInstance[] LookupInstances(string service)
+        public IEnumerable<ServiceInstance> LookupInstances(string service)
         {
             return LookupInstances(service, "local.", ServiceInstanceFields.All);
         }
@@ -110,7 +106,7 @@ namespace DiscUtils.Net.Dns
         /// <param name="fields">The details to query.</param>
         /// <returns>An array of service instances.</returns>
         /// <remarks>Excluding some fields (for example the IP address) may reduce the time taken.</remarks>
-        public ServiceInstance[] LookupInstances(string service, ServiceInstanceFields fields)
+        public IEnumerable<ServiceInstance> LookupInstances(string service, ServiceInstanceFields fields)
         {
             return LookupInstances(service, "local.", fields);
         }
@@ -123,17 +119,14 @@ namespace DiscUtils.Net.Dns
         /// <param name="fields">The details to query.</param>
         /// <returns>An array of service instances.</returns>
         /// <remarks>Excluding some fields (for example the IP address) may reduce the time taken.</remarks>
-        public ServiceInstance[] LookupInstances(string service, string domain, ServiceInstanceFields fields)
+        public IEnumerable<ServiceInstance> LookupInstances(string service, string domain, ServiceInstanceFields fields)
         {
-            List<ResourceRecord> records = DoLookup(service + "." + domain, RecordType.Pointer);
+            var records = DoLookup(service + "." + domain, RecordType.Pointer);
 
-            List<ServiceInstance> instances = new List<ServiceInstance>();
             foreach (PointerRecord record in records)
             {
-                instances.Add(LookupInstance(EncodeName(record.TargetName, record.Name), fields));
+                yield return LookupInstance(EncodeName(record.TargetName, record.Name), fields);
             }
-
-            return instances.ToArray();
         }
 
         /// <summary>
@@ -210,7 +203,7 @@ namespace DiscUtils.Net.Dns
 
         private List<ServiceInstanceEndPoint> LookupInstanceEndpoints(string name, ServiceInstanceFields fields)
         {
-            List<ResourceRecord> records = DoLookup(name, RecordType.Service);
+            var records = DoLookup(name, RecordType.Service);
 
             List<ServiceInstanceEndPoint> endpoints = new List<ServiceInstanceEndPoint>();
 
@@ -221,14 +214,14 @@ namespace DiscUtils.Net.Dns
                 {
                     ipEndPoints = new List<IPEndPoint>();
 
-                    List<ResourceRecord> ipRecords = DoLookup(record.Target, RecordType.Address);
+                    var ipRecords = DoLookup(record.Target, RecordType.Address);
 
                     foreach (IP4AddressRecord ipRecord in ipRecords)
                     {
                         ipEndPoints.Add(new IPEndPoint(ipRecord.Address, record.Port));
                     }
 
-                    List<ResourceRecord> ip6Records = DoLookup(record.Target, RecordType.IP6Address);
+                    // var ip6Records = DoLookup(record.Target, RecordType.IP6Address);
 
                     // foreach (Ip6AddressRecord ipRecord in ipRecords)
                     // {
@@ -244,7 +237,7 @@ namespace DiscUtils.Net.Dns
 
         private Dictionary<string, byte[]> LookupInstanceDetails(string name)
         {
-            List<ResourceRecord> records = DoLookup(name, RecordType.Text);
+            var records = DoLookup(name, RecordType.Text);
 
             Dictionary<string, byte[]> details = new Dictionary<string, byte[]>();
 
@@ -259,7 +252,7 @@ namespace DiscUtils.Net.Dns
             return details;
         }
 
-        private List<ResourceRecord> DoLookup(string name, RecordType recordType)
+        private IEnumerable<ResourceRecord> DoLookup(string name, RecordType recordType)
         {
             string fullName = DnsClient.NormalizeDomainName(name);
 
@@ -274,18 +267,15 @@ namespace DiscUtils.Net.Dns
                 dnsClient = _dnsClient;
             }
 
-            ResourceRecord[] records = dnsClient.Lookup(fullName, recordType);
+            var records = dnsClient.Lookup(fullName, recordType);
 
-            List<ResourceRecord> cleanList = new List<ResourceRecord>();
             foreach (ResourceRecord record in records)
             {
                 if (record.RecordType == recordType && string.Compare(fullName, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
                 {
-                    cleanList.Add(record);
+                    yield return record;
                 }
             }
-
-            return cleanList;
         }
     }
 }
