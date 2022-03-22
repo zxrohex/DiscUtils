@@ -28,6 +28,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using Buffer = DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.Ntfs
 {
@@ -533,6 +534,13 @@ namespace DiscUtils.Ntfs
             {
                 yield return record.GetCookedDataRuns();
             }
+        }
+
+        public Buffer GetRawBuffer(ushort attributeid, AttributeType type)
+        {
+            var attr = GetAttribute(attributeid, type);
+
+            return attr.RawBuffer;
         }
 
         public void RemoveStream(NtfsStream stream)

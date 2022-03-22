@@ -29,7 +29,7 @@ namespace DiscUtils.Ntfs
 {
     internal class NtfsAttribute : IDiagnosticTraceable
     {
-        private IBuffer _cachedRawBuffer;
+        private Buffer _cachedRawBuffer;
         protected FileRecordReference _containingFile;
         protected Dictionary<AttributeReference, AttributeRecord> _extents;
         protected File _file;
@@ -220,7 +220,7 @@ namespace DiscUtils.Ntfs
             get { return _primaryRecord; }
         }
 
-        public IBuffer RawBuffer
+        public Buffer RawBuffer
         {
             get
             {
@@ -262,12 +262,12 @@ namespace DiscUtils.Ntfs
 
         public virtual void Dump(TextWriter writer, string indent)
         {
-            writer.WriteLine(indent + AttributeTypeName + " ATTRIBUTE (" + (Name == null ? "No Name" : Name) + ")");
+            writer.WriteLine($"{indent}{AttributeTypeName} ATTRIBUTE ({(Name == null ? "No Name" : Name)})");
 
-            writer.WriteLine(indent + "  Length: " + _primaryRecord.DataLength + " bytes");
+            writer.WriteLine($"{indent}  Length: {_primaryRecord.DataLength} bytes");
             if (_primaryRecord.DataLength == 0)
             {
-                writer.WriteLine(indent + "    Data: <none>");
+                writer.WriteLine($"{indent}    Data: <none>");
             }
             else
             {
@@ -283,16 +283,16 @@ namespace DiscUtils.Ntfs
                             hex = hex + string.Format(CultureInfo.InvariantCulture, " {0:X2}", buffer[i]);
                         }
 
-                        writer.WriteLine(indent + "    Data: " + hex + (numBytes < s.Length ? "..." : string.Empty));
+                        writer.WriteLine($"{indent}    Data: {hex}{(numBytes < s.Length ? "..." : string.Empty)}");
                     }
                 }
                 catch
                 {
-                    writer.WriteLine(indent + "    Data: <can't read>");
+                    writer.WriteLine($"{indent}    Data: <can't read>");
                 }
             }
 
-            _primaryRecord.Dump(writer, indent + "  ");
+            _primaryRecord.Dump(writer, $"{indent}  ");
         }
 
         public static NtfsAttribute FromRecord(File file, FileRecordReference recordFile, AttributeRecord record)

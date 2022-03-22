@@ -26,6 +26,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using DiscUtils.Streams;
+using Buffer = DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.Ntfs
 {
@@ -53,7 +54,7 @@ namespace DiscUtils.Ntfs
             set { throw new NotSupportedException(); }
         }
 
-        public IBuffer DataBuffer
+        public Buffer DataBuffer
         {
             get { return _memoryBuffer; }
         }

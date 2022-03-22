@@ -170,9 +170,12 @@ namespace DiscUtils.Ntfs.Internals
         public IEnumerable<CookedDataRuns> GetCookedDataRuns(IAttributeLocator attr) =>
             File.GetCookedDataRuns(attr.Identifier, attr.AttributeType);
 
+        public IBuffer GetRawBuffer(IAttributeLocator attr) =>
+            File.GetRawBuffer(attr.Identifier, attr.AttributeType);
+
         private File _file;
 
-        internal File File => _file ?? (_file = new File(_context, _fileRecord));
+        internal File File => _file ??= new File(_context, _fileRecord);
 
         public AttributeFlags GetAttributeFlags(IAttributeLocator attr)
         {
