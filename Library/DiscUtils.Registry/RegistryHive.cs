@@ -89,18 +89,20 @@ namespace DiscUtils.Registry
         /// The created object does not assume ownership of the stream.
         /// </remarks>
         public RegistryHive(DiscFileInfo file, FileAccess access)
-            : this(file.Open(FileMode.Open, access), Ownership.Dispose, OpenLogFiles(file, access).ToArray()) { }
+            : this(file.Open(FileMode.Open, access), Ownership.Dispose, OpenLogFiles(file, access).ToArray())
+        {
+        }
 
         private static IEnumerable<Stream> OpenLogFiles(DiscFileInfo hivePath, FileAccess access)
         {
             var log = hivePath.FileSystem.GetFileInfo(hivePath.FullName + ".LOG");
 
-            var log1 = hivePath.FileSystem.GetFileInfo(hivePath.FullName + ".LOG1");
+            var log1 = log.FileSystem.GetFileInfo(log.FullName + "1");
             if (log1.Exists)
             {
                 yield return log1.Open(FileMode.Open, access);
 
-                var log2 = hivePath.FileSystem.GetFileInfo(hivePath.FullName + ".LOG2");
+                var log2 = log.FileSystem.GetFileInfo(log.FullName + "2");
                 if (log2.Exists)
                 {
                     yield return log2.Open(FileMode.Open, access);
