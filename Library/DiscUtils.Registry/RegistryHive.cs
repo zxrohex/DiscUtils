@@ -140,14 +140,17 @@ namespace DiscUtils.Registry
             var buffer = StreamUtilities.ReadExact(_fileStream, HiveHeader.HeaderSize);
 
             _header = new();
-            _header.ReadFrom(buffer, 0);
+            var headerSize = _header.ReadFrom(buffer, 0, throwOnInvalidData: false);
 
-            if (_header.Sequence1 != _header.Sequence2)
+            // If header validation failed or dirty state, look for transaction logs
+            if (headerSize == 0 || _header.Sequence1 != _header.Sequence2)
             {
                 var logs = logstreams?.Where(log => log.Length > 0x1000).ToArray();
 
                 if (logs is not null && logs.Length > 0)
                 {
+                    // If we are opening a hive read-only, copy to an in-memory buffer
+                    // to be able to replay logs
                     if (!_fileStream.CanWrite)
                     {
                         var mem = new MemoryStream((int)_fileStream.Length);
@@ -161,7 +164,9 @@ namespace DiscUtils.Registry
                         _fileStream = mem;
                     }
 
+                    // Open log files
                     var logfiles = new LogFile[Math.Min(2, logs.Length)];
+                    
                     logfiles[0] = new(logs[0]);
 
                     if (logs.Length > 1)
@@ -169,6 +174,7 @@ namespace DiscUtils.Registry
                         logfiles[1] = new(logs[1]);
                     }
 
+                    // Sort log files in order of sequence
                     if (logfiles.Length > 1 &&
                         logfiles[0].HiveHeader.Sequence1 >= logfiles[1].HiveHeader.Sequence1)
                     {
@@ -176,22 +182,39 @@ namespace DiscUtils.Registry
                         logs = new[] { logs[1], logs[0] };
                     }
 
+                    // If hive header failed validation, recover from latest log
+                    if (headerSize == 0)
+                    {
+                        var lastvalid = logfiles.LastOrDefault(logfile => logfile.HeaderValid);
+                        if (lastvalid is null)
+                        {
+                            throw new IOException("Hive has corrupt log files");
+                        }
+                        _header = lastvalid.HiveHeader;
+                    }
+
                     int lastSequenceNumber;
 
-                    if (logfiles[0].HiveHeader.Sequence1 >= _header.Sequence2)
+                    // First log
+                    if (logfiles.Length > 0 &&
+                        logfiles[0].HiveHeader.Sequence1 >= _header.Sequence2)
                     {
                         lastSequenceNumber = logfiles[0].UpdateHive(_fileStream);
 
+                        // Also a secondary log
                         if (logfiles.Length > 1 &&
                             logfiles[1].HiveHeader.Sequence1 > _header.Sequence2)
                         {
+                            // If secondary log continues right after last record in first log
                             if (logfiles[1].HiveHeader.Sequence1 == lastSequenceNumber + 1)
                             {
                                 lastSequenceNumber = logfiles[1].UpdateHive(_fileStream);
                             }
                             else
                             {
-                                lastSequenceNumber = Math.Max(logfiles[1].HiveHeader.Sequence2 + 1, lastSequenceNumber);
+                                // Otherwise secondary log is invalid, just get the latest sequence number
+                                // without actually replay the records and zero out the log file
+                                lastSequenceNumber = Math.Max(logfiles[1].HiveHeader.Sequence2, lastSequenceNumber);
 
                                 if (logs[1].CanWrite)
                                 {
@@ -200,17 +223,20 @@ namespace DiscUtils.Registry
                             }
                         }
                     }
+                    // If only secondary log file is after hive in sequence
                     else if (logfiles.Length > 1 &&
                         logfiles[1].HiveHeader.Sequence1 >= _header.Sequence2)
                     {
-                        lastSequenceNumber = new LogFile(logs[1]).UpdateHive(_fileStream);
+                        lastSequenceNumber = logfiles[1].UpdateHive(_fileStream);
                     }
                     else
                     {
                         throw new IOException("Hive has corrupt log files");
                     }
 
-                    _header.Sequence1 = _header.Sequence2 = lastSequenceNumber;
+                    // Store latest recovered sequence number in the hive header
+                    // and write this modified header to the hive file
+                    _header.Sequence1 = _header.Sequence2 = lastSequenceNumber + 1;
                     _header.WriteTo(buffer, 0);
                     _fileStream.Position = 0;
                     _fileStream.Write(buffer, 0, buffer.Length);
@@ -230,6 +256,7 @@ namespace DiscUtils.Registry
                 }
             }
 
+            // Enumerate hbins
             _bins = new List<BinHeader>();
             var pos = 0;
             while (pos < _header.Length)
