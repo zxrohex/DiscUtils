@@ -63,12 +63,21 @@ namespace DiscUtils.Registry
             get { return HeaderSize; }
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
+        public int ReadFrom(byte[] buffer, int offset) => ReadFrom(buffer, offset, throwOnInvalidData: true);
+
+        public int ReadFrom(byte[] buffer, int offset, bool throwOnInvalidData)
         {
             uint sig = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
             if (sig != Signature)
             {
-                throw new IOException("Invalid signature for registry hive");
+                if (throwOnInvalidData)
+                {
+                    throw new IOException("Invalid signature for registry hive");
+                }
+                else
+                {
+                    return 0;
+                }
             }
 
             Sequence1 = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x0004);
@@ -93,7 +102,14 @@ namespace DiscUtils.Registry
 
             if (Checksum != CalcChecksum(buffer, offset))
             {
-                throw new IOException("Invalid checksum on registry file");
+                if (throwOnInvalidData)
+                {
+                    throw new IOException("Invalid checksum on registry file");
+                }
+                else
+                {
+                    return 0;
+                }
             }
 
             return HeaderSize;
@@ -128,7 +144,7 @@ namespace DiscUtils.Registry
 
             for (int i = 0; i < 0x01FC; i += 4)
             {
-                sum = sum ^ EndianUtilities.ToUInt32LittleEndian(buffer, offset + i);
+                sum ^= EndianUtilities.ToUInt32LittleEndian(buffer, offset + i);
             }
 
             return sum;

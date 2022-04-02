@@ -53,20 +53,28 @@ namespace DiscUtils.Registry
         /// The created object does not assume ownership of the stream.
         /// </remarks>
         public RegistryHive(string filePath, FileAccess access)
-            : this(File.Open(filePath, FileMode.Open, access), Ownership.Dispose, OpenLogFiles(filePath).ToArray()) { }
-
-        private static IEnumerable<Stream> OpenLogFiles(string hivePath)
+            : this(File.Open(filePath, FileMode.Open, access), Ownership.Dispose, OpenLogFiles(filePath, access).ToArray())
         {
-            var log1 = hivePath + ".LOG1";
+        }
+
+        private static IEnumerable<Stream> OpenLogFiles(string hivePath, FileAccess access)
+        {
+            var log = hivePath + ".LOG";
+
+            var log1 = log + "1";
             if (File.Exists(log1))
             {
-                yield return File.OpenRead(log1);
-            }
+                yield return File.Open(log1, FileMode.Open, access);
 
-            var log2 = hivePath + ".LOG2";
-            if (File.Exists(log2))
+                var log2 = log + "2";
+                if (File.Exists(log2))
+                {
+                    yield return File.Open(log2, FileMode.Open, access);
+                }
+            }
+            else if (File.Exists(log))
             {
-                yield return File.OpenRead(log2);
+                yield return File.Open(log, FileMode.Open, access);
             }
         }
 
@@ -114,8 +122,8 @@ namespace DiscUtils.Registry
         /// </summary>
         /// <param name="hive">The stream containing the registry hive.</param>
         /// <param name="ownership">Whether the new object assumes object of the stream.</param>
-        /// <param name="logfiles">LOG1 and LOG2 streams to replay pending changes from</param>
-        public RegistryHive(Stream hive, Ownership ownership, params Stream[] logfiles)
+        /// <param name="logstreams">LOG1 and LOG2 streams to replay pending changes from</param>
+        public RegistryHive(Stream hive, Ownership ownership, params Stream[] logstreams)
         {
             _fileStream = hive;
             _fileStream.Position = 0;
@@ -128,7 +136,7 @@ namespace DiscUtils.Registry
 
             if (_header.Sequence1 != _header.Sequence2)
             {
-                var logs = logfiles?.Where(log => log.Length > 0x1000).ToArray();
+                var logs = logstreams?.Where(log => log.Length > 0x1000).ToArray();
 
                 if (logs is not null && logs.Length > 0)
                 {
@@ -145,40 +153,47 @@ namespace DiscUtils.Registry
                         _fileStream = mem;
                     }
 
-                    var log_header_buffer = StreamUtilities.ReadExact(logs[0], HiveHeader.HeaderSize);
-                    var logheaders = new HiveHeader[Math.Min(2, logs.Length)];
-                    logheaders[0] = new();
-                    logheaders[0].ReadFrom(log_header_buffer, 0);
+                    var logfiles = new LogFile[Math.Min(2, logs.Length)];
+                    logfiles[0] = new(logs[0]);
 
                     if (logs.Length > 1)
                     {
-                        StreamUtilities.ReadExact(logs[1], log_header_buffer, 0, HiveHeader.HeaderSize);
-                        logheaders[1] = new();
-                        logheaders[1].ReadFrom(log_header_buffer, 0);
+                        logfiles[1] = new(logs[1]);
                     }
 
-                    if (logheaders.Length > 1 &&
-                        logheaders[0].Sequence1 >= logheaders[1].Sequence1)
+                    if (logfiles.Length > 1 &&
+                        logfiles[0].HiveHeader.Sequence1 >= logfiles[1].HiveHeader.Sequence1)
                     {
-                        logheaders = new[] { logheaders[1], logheaders[0] };
+                        logfiles = new[] { logfiles[1], logfiles[0] };
                         logs = new[] { logs[1], logs[0] };
                     }
 
                     int lastSequenceNumber;
 
-                    if (logheaders[0].Sequence1 >= _header.Sequence2)
+                    if (logfiles[0].HiveHeader.Sequence1 >= _header.Sequence2)
                     {
-                        lastSequenceNumber = new LogFile(logs[0]).UpdateHive(_fileStream);
+                        lastSequenceNumber = logfiles[0].UpdateHive(_fileStream);
 
-                        if (logheaders.Length > 1 &&
-                            logheaders[1].Sequence1 == lastSequenceNumber + 1 &&
-                            logheaders[1].Sequence1 > _header.Sequence2)
+                        if (logfiles.Length > 1 &&
+                            logfiles[1].HiveHeader.Sequence1 > _header.Sequence2)
                         {
-                            lastSequenceNumber = new LogFile(logs[1]).UpdateHive(_fileStream);
+                            if (logfiles[1].HiveHeader.Sequence1 == lastSequenceNumber + 1)
+                            {
+                                lastSequenceNumber = logfiles[1].UpdateHive(_fileStream);
+                            }
+                            else
+                            {
+                                lastSequenceNumber = Math.Max(logfiles[1].HiveHeader.Sequence2 + 1, lastSequenceNumber);
+
+                                if (logs[1].CanWrite)
+                                {
+                                    logs[1].SetLength(0);
+                                }
+                            }
                         }
                     }
-                    else if (logheaders.Length > 1 &&
-                        logheaders[1].Sequence1 >= _header.Sequence2)
+                    else if (logfiles.Length > 1 &&
+                        logfiles[1].HiveHeader.Sequence1 >= _header.Sequence2)
                     {
                         lastSequenceNumber = new LogFile(logs[1]).UpdateHive(_fileStream);
                     }
@@ -187,7 +202,7 @@ namespace DiscUtils.Registry
                         throw new IOException("Hive has corrupt log files");
                     }
 
-                    _header.Sequence1 = _header.Sequence2 = lastSequenceNumber + 1;
+                    _header.Sequence1 = _header.Sequence2 = lastSequenceNumber;
                     _header.WriteTo(buffer, 0);
                     _fileStream.Position = 0;
                     _fileStream.Write(buffer, 0, buffer.Length);
@@ -199,14 +214,11 @@ namespace DiscUtils.Registry
                 }
             }
 
-            if (ownership == Ownership.Dispose)
+            if (ownership == Ownership.Dispose && logstreams is not null)
             {
-                if (logfiles is not null && logfiles.Length > 0)
+                foreach (var log in logstreams)
                 {
-                    foreach (var log in logfiles)
-                    {
-                        log.Dispose();
-                    }
+                    log.Dispose();
                 }
             }
 
