@@ -188,7 +188,7 @@ namespace DiscUtils.Registry
                         var lastvalid = logfiles.LastOrDefault(logfile => logfile.HeaderValid);
                         if (lastvalid is null)
                         {
-                            throw new IOException("Hive has corrupt log files");
+                            throw new IOException("Registry transaction logs are corrupt");
                         }
                         _header = lastvalid.HiveHeader;
                     }
@@ -231,7 +231,7 @@ namespace DiscUtils.Registry
                     }
                     else
                     {
-                        throw new IOException("Hive has corrupt log files");
+                        throw new IOException("Registry transaction logs are corrupt");
                     }
 
                     // Store latest recovered sequence number in the hive header
@@ -244,7 +244,7 @@ namespace DiscUtils.Registry
                 }
                 else if (_fileStream.CanWrite)
                 {
-                    throw new IOException("Hive needs log files to replay pending changes");
+                    throw new IOException("Registry hive needs transaction logs to recover pending changes");
                 }
             }
 

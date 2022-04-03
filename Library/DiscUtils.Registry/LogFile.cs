@@ -1,10 +1,9 @@
 ﻿using DiscUtils.Streams;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Diagnostics;
 using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 
 namespace DiscUtils.Registry;
 
