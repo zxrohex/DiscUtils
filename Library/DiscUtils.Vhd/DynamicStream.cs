@@ -690,7 +690,10 @@ namespace DiscUtils.Vhd
         {
             CheckDisposed();
 
-            throw new NotSupportedException();
+            if (Length != value)
+            {
+                throw new NotImplementedException("Cannot modify virtual length of vhd image");
+            }
         }
 
         public override void Write(byte[] buffer, int offset, int count)

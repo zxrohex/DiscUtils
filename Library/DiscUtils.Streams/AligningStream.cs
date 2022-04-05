@@ -218,6 +218,183 @@ namespace DiscUtils.Streams
                 count);
         }
 
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            int startOffset = (int)(_position % _blockSize);
+            if (startOffset == 0 && (count % _blockSize == 0 || _position + count == Length))
+            {
+                WrappedStream.Position = _position;
+                await WrappedStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+                _position += count;
+                return;
+            }
+
+            long unalignedEnd = _position + count;
+            long alignedPos = MathUtilities.RoundDown(_position, _blockSize);
+
+            if (startOffset != 0)
+            {
+                WrappedStream.Position = alignedPos;
+                await WrappedStream.ReadAsync(_alignmentBuffer, 0, _blockSize, cancellationToken).ConfigureAwait(false);
+
+                Array.Copy(buffer, offset, _alignmentBuffer, startOffset, Math.Min(count, _blockSize - startOffset));
+
+                WrappedStream.Position = alignedPos;
+                await WrappedStream.WriteAsync(_alignmentBuffer, 0, _blockSize, cancellationToken).ConfigureAwait(false);
+            }
+
+            alignedPos = MathUtilities.RoundUp(_position, _blockSize);
+            if (alignedPos >= unalignedEnd)
+            {
+                _position = unalignedEnd;
+                return;
+            }
+
+            int passthroughLength = (int)MathUtilities.RoundDown(_position + count - alignedPos, _blockSize);
+            if (passthroughLength > 0)
+            {
+                WrappedStream.Position = alignedPos;
+                await WrappedStream.WriteAsync(buffer, offset + (int)(alignedPos - _position), passthroughLength, cancellationToken).ConfigureAwait(false);
+            }
+
+            alignedPos += passthroughLength;
+            if (alignedPos >= unalignedEnd)
+            {
+                _position = unalignedEnd;
+                return;
+            }
+
+            WrappedStream.Position = alignedPos;
+            await WrappedStream.ReadAsync(_alignmentBuffer, 0, _blockSize, cancellationToken).ConfigureAwait(false);
+
+            Array.Copy(buffer, offset + (int)(alignedPos - _position), _alignmentBuffer, 0, (int)Math.Min(count - (alignedPos - _position), unalignedEnd - alignedPos));
+
+            WrappedStream.Position = alignedPos;
+            await WrappedStream.WriteAsync(_alignmentBuffer, 0, _blockSize, cancellationToken).ConfigureAwait(false);
+
+            _position = unalignedEnd;
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            var count = buffer.Length;
+            int startOffset = (int)(_position % _blockSize);
+            if (startOffset == 0 && (count % _blockSize == 0 || _position + count == Length))
+            {
+                WrappedStream.Position = _position;
+                await WrappedStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+                _position += count;
+                return;
+            }
+
+            long unalignedEnd = _position + count;
+            long alignedPos = MathUtilities.RoundDown(_position, _blockSize);
+
+            if (startOffset != 0)
+            {
+                WrappedStream.Position = alignedPos;
+                await WrappedStream.ReadAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
+
+                buffer[..Math.Min(count, _blockSize - startOffset)].CopyTo(_alignmentBuffer.AsMemory(startOffset));
+
+                WrappedStream.Position = alignedPos;
+                await WrappedStream.WriteAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
+            }
+
+            alignedPos = MathUtilities.RoundUp(_position, _blockSize);
+            if (alignedPos >= unalignedEnd)
+            {
+                _position = unalignedEnd;
+                return;
+            }
+
+            int passthroughLength = (int)MathUtilities.RoundDown(_position + count - alignedPos, _blockSize);
+            if (passthroughLength > 0)
+            {
+                WrappedStream.Position = alignedPos;
+                await WrappedStream.WriteAsync(buffer.Slice((int)(alignedPos - _position), passthroughLength), cancellationToken).ConfigureAwait(false);
+            }
+
+            alignedPos += passthroughLength;
+            if (alignedPos >= unalignedEnd)
+            {
+                _position = unalignedEnd;
+                return;
+            }
+
+            WrappedStream.Position = alignedPos;
+            await WrappedStream.ReadAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
+
+            buffer.Slice((int)(alignedPos - _position), (int)Math.Min(count - (alignedPos - _position), unalignedEnd - alignedPos)).CopyTo(_alignmentBuffer);
+
+            WrappedStream.Position = alignedPos;
+            await WrappedStream.WriteAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
+
+            _position = unalignedEnd;
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            var count = buffer.Length;
+            int startOffset = (int)(_position % _blockSize);
+            if (startOffset == 0 && (count % _blockSize == 0 || _position + count == Length))
+            {
+                WrappedStream.Position = _position;
+                WrappedStream.Write(buffer);
+                _position += count;
+                return;
+            }
+
+            long unalignedEnd = _position + count;
+            long alignedPos = MathUtilities.RoundDown(_position, _blockSize);
+
+            if (startOffset != 0)
+            {
+                WrappedStream.Position = alignedPos;
+                WrappedStream.Read(_alignmentBuffer.AsSpan(0, _blockSize));
+
+                buffer[..Math.Min(count, _blockSize - startOffset)].CopyTo(_alignmentBuffer.AsSpan(startOffset));
+
+                WrappedStream.Position = alignedPos;
+                WrappedStream.Write(_alignmentBuffer.AsSpan(0, _blockSize));
+            }
+
+            alignedPos = MathUtilities.RoundUp(_position, _blockSize);
+            if (alignedPos >= unalignedEnd)
+            {
+                _position = unalignedEnd;
+                return;
+            }
+
+            int passthroughLength = (int)MathUtilities.RoundDown(_position + count - alignedPos, _blockSize);
+            if (passthroughLength > 0)
+            {
+                WrappedStream.Position = alignedPos;
+                WrappedStream.Write(buffer.Slice((int)(alignedPos - _position), passthroughLength));
+            }
+
+            alignedPos += passthroughLength;
+            if (alignedPos >= unalignedEnd)
+            {
+                _position = unalignedEnd;
+                return;
+            }
+
+            WrappedStream.Position = alignedPos;
+            WrappedStream.Read(_alignmentBuffer.AsSpan(0, _blockSize));
+
+            buffer.Slice((int)(alignedPos - _position), (int)Math.Min(count - (alignedPos - _position), unalignedEnd - alignedPos)).CopyTo(_alignmentBuffer);
+
+            WrappedStream.Position = alignedPos;
+            WrappedStream.Write(_alignmentBuffer.AsSpan(0, _blockSize));
+
+            _position = unalignedEnd;
+        }
+#endif
+
         private void DoOperation(ModifyStream modifyStream, ModifyBuffer modifyBuffer, int count)
         {
             int startOffset = (int)(_position % _blockSize);

@@ -385,7 +385,10 @@ namespace DiscUtils.Vdi
         public override void SetLength(long value)
         {
             CheckDisposed();
-            throw new NotSupportedException();
+            if (Length != value)
+            {
+                throw new NotImplementedException("Cannot modify virtual length of vdi image");
+            }
         }
 
         public override void Write(byte[] buffer, int offset, int count)

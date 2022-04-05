@@ -513,7 +513,10 @@ namespace DiscUtils.Vhdx
         {
             CheckDisposed();
 
-            throw new NotSupportedException();
+            if (Length != value)
+            {
+                throw new NotImplementedException("Cannot modify virtual length of vhdx image");
+            }
         }
 
         public override void Write(byte[] buffer, int offset, int count)

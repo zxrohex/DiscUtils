@@ -432,7 +432,10 @@ namespace DiscUtils.Vmdk
         {
             CheckDisposed();
 
-            throw new NotSupportedException();
+            if (Length != value)
+            {
+                throw new NotImplementedException("Cannot modify size of vmdk extent");
+            }
         }
 
         public override long Seek(long offset, SeekOrigin origin)
