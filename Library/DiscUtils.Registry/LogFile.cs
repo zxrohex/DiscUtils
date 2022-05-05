@@ -86,9 +86,6 @@ internal class LogFile : IEnumerable<LogEntry>
 
         foreach (var entry in this)
         {
-#if DEBUG
-            Trace.WriteLine($"Replaying {entry}");
-#endif
             hive.Position = 0x1000 + entry.PageOffset;
             hive.Write(buffer, entry.BufferOffset, entry.PageSize);
             sequenceNumber = entry.SequenceNumber;
