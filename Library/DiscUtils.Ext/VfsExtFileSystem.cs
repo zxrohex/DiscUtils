@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
@@ -137,6 +138,13 @@ namespace DiscUtils.Ext
                 LinkCount = inode.LinksCount,
                 DeviceId = deviceId
             };
+        }
+
+        public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+        {
+            var file = GetFile(path);
+
+            return file.EnumerateAllocationExtents();
         }
 
         protected override File ConvertDirEntryToFile(DirEntry dirEntry)

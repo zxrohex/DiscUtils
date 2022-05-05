@@ -21,7 +21,9 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
@@ -89,6 +91,21 @@ namespace DiscUtils.Ext
 
                 return _content;
             }
+        }
+
+        public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+        {
+            if (_content == null)
+            {
+                _content = Inode.GetContentBuffer(Context);
+            }
+
+            if (_content is not IFileBuffer fileBuffer)
+            {
+                return Enumerable.Empty<StreamExtent>();
+            }
+
+            return fileBuffer.EnumerateAllocationExtents();
         }
 
         private static FileAttributes FromMode(uint mode)

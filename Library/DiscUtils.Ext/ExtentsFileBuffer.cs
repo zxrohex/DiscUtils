@@ -30,7 +30,7 @@ using Buffer=DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.Ext
 {
-    internal class ExtentsFileBuffer : Buffer
+    internal class ExtentsFileBuffer : Buffer, IFileBuffer
     {
         private readonly Context _context;
         private readonly Inode _inode;
@@ -107,6 +107,59 @@ namespace DiscUtils.Ext
             }
 
             return totalRead;
+        }
+
+        public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+        {
+            var pos = 0;
+
+            if (pos > _inode.FileSize)
+            {
+                yield break;
+            }
+
+            long blockSize = _context.SuperBlock.BlockSize;
+
+            var count = _inode.FileSize;
+            int totalRead = 0;
+            int totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
+
+            ExtentBlock extents = _inode.Extents;
+
+            while (totalBytesRemaining > 0)
+            {
+                uint logicalBlock = (uint)((pos + totalRead) / blockSize);
+                int blockOffset = (int)(pos + totalRead - logicalBlock * blockSize);
+
+                int numRead = 0;
+
+                Extent extent = FindExtent(extents, logicalBlock);
+                if (extent == null)
+                {
+                    throw new IOException("Unable to find extent for block " + logicalBlock);
+                }
+                if (extent.FirstLogicalBlock > logicalBlock)
+                {
+                    numRead =
+                        (int)
+                        Math.Min(totalBytesRemaining,
+                            (extent.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+                }
+                else
+                {
+                    long physicalBlock = logicalBlock - extent.FirstLogicalBlock + (long)extent.FirstPhysicalBlock;
+                    int toRead =
+                        (int)
+                        Math.Min(totalBytesRemaining,
+                            (extent.NumBlocks - (logicalBlock - extent.FirstLogicalBlock)) * blockSize - blockOffset);
+
+                    yield return new(physicalBlock * blockSize + blockOffset, toRead);
+                    numRead = toRead;
+                }
+
+                totalBytesRemaining -= numRead;
+                totalRead += numRead;
+            }
         }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP

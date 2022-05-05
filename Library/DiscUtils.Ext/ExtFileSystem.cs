@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
@@ -52,10 +53,11 @@ namespace DiscUtils.Ext
         /// <param name="path">Path to the file or directory.</param>
         /// <returns>Information about the owner, group, permissions and type of the
         /// file or directory.</returns>
-        public UnixFileSystemInfo GetUnixFileInfo(string path)
-        {
-            return GetRealFileSystem<VfsExtFileSystem>().GetUnixFileInfo(path);
-        }
+        public UnixFileSystemInfo GetUnixFileInfo(string path) =>
+            GetRealFileSystem<VfsExtFileSystem>().GetUnixFileInfo(path);
+
+        public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path) =>
+            GetRealFileSystem<VfsExtFileSystem>().EnumerateAllocationExtents(path);
 
         internal static bool Detect(Stream stream)
         {
