@@ -2,6 +2,7 @@
   
   
   <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1;net45;net48</TargetFrameworks>
     <Description>DiscUtils, complete meta-package</Description>
     <Authors>Kenneth Bell;LordMike</Authors>
     <PackageTags>DiscUtils</PackageTags>

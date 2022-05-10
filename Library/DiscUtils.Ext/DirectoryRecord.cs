@@ -26,7 +26,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ext
 {
-    internal class DirectoryRecord : IByteArraySerializable
+    internal struct DirectoryRecord : IByteArraySerializable
     {
         public const byte FileTypeUnknown = 0;
         public const byte FileTypeRegularFile = 1;
@@ -43,7 +43,7 @@ namespace DiscUtils.Ext
         public uint Inode;
         public string Name;
 
-        public DirectoryRecord(Encoding nameEncoding)
+        public DirectoryRecord(Encoding nameEncoding) : this()
         {
             _nameEncoding = nameEncoding;
         }

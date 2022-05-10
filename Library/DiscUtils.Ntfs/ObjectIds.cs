@@ -97,7 +97,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        internal sealed class IndexKey : IByteArraySerializable
+        internal struct IndexKey : IByteArraySerializable
         {
             public Guid Id;
 

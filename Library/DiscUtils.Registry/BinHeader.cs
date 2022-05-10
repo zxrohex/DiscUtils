@@ -25,7 +25,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Registry
 {
-    internal sealed class BinHeader : IByteArraySerializable
+    internal struct BinHeader : IByteArraySerializable
     {
         public const int HeaderSize = 0x20;
 

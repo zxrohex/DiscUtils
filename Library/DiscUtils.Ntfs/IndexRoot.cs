@@ -27,7 +27,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs
 {
-    internal sealed class IndexRoot : IByteArraySerializable, IDiagnosticTraceable
+    internal struct IndexRoot : IByteArraySerializable, IDiagnosticTraceable
     {
         public const int HeaderOffset = 0x10;
 
@@ -88,7 +88,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        private sealed class SecurityHashComparer : IComparer<byte[]>
+        private struct SecurityHashComparer : IComparer<byte[]>
         {
             public int Compare(byte[] x, byte[] y)
             {
@@ -131,7 +131,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        private sealed class UnsignedLongComparer : IComparer<byte[]>
+        private struct UnsignedLongComparer : IComparer<byte[]>
         {
             public int Compare(byte[] x, byte[] y)
             {
@@ -164,7 +164,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        private sealed class MultipleUnsignedLongComparer : IComparer<byte[]>
+        private struct MultipleUnsignedLongComparer : IComparer<byte[]>
         {
             public int Compare(byte[] x, byte[] y)
             {
@@ -202,7 +202,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        private sealed class FileNameComparer : IComparer<byte[]>
+        private struct FileNameComparer : IComparer<byte[]>
         {
             private readonly UpperCase _stringComparer;
 
@@ -233,7 +233,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        private sealed class SidComparer : IComparer<byte[]>
+        private struct SidComparer : IComparer<byte[]>
         {
             public int Compare(byte[] x, byte[] y)
             {

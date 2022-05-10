@@ -482,9 +482,9 @@ namespace DiscUtils.Registry
             return newBin.AllocateCell(minSize);
         }
 
-        private BinHeader FindBin(int index)
+        private BinHeader? FindBin(int index)
         {
-            int binsIdx = _bins.BinarySearch(null, new BinFinder(index));
+            int binsIdx = _bins.BinarySearch(default, new BinFinder(index));
             if (binsIdx >= 0)
             {
                 return _bins[binsIdx];
@@ -495,11 +495,11 @@ namespace DiscUtils.Registry
 
         private Bin GetBin(int cellIndex)
         {
-            BinHeader binHeader = FindBin(cellIndex);
+            var binHeader = FindBin(cellIndex);
 
             if (binHeader is not null)
             {
-                return LoadBin(binHeader);
+                return LoadBin(binHeader.Value);
             }
 
             return null;
@@ -547,7 +547,7 @@ namespace DiscUtils.Registry
             return newBinHeader;
         }
 
-        private class BinFinder : IComparer<BinHeader>
+        private struct BinFinder : IComparer<BinHeader>
         {
             private readonly int _index;
 

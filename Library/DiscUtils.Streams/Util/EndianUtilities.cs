@@ -189,12 +189,17 @@ namespace DiscUtils.Streams
             return (long)ToUInt64BigEndian(buffer, offset);
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         public static Guid ToGuidLittleEndian(byte[] buffer, int offset)
         {
-            byte[] temp = new byte[16];
-            Array.Copy(buffer, offset, temp, 0, 16);
-            return new Guid(temp);
+            return new Guid(buffer.AsSpan(offset));
         }
+#else
+        public static Guid ToGuidLittleEndian(byte[] buffer, int offset)
+        {
+            return new Guid(buffer.AsSpan(offset).ToArray());
+        }
+#endif
 
         public static Guid ToGuidBigEndian(byte[] buffer, int offset)
         {
@@ -300,6 +305,6 @@ namespace DiscUtils.Streams
             return Encoding.GetEncoding(28591).GetString(data, offset, count);
         }
 
-        #endregion
+#endregion
     }
 }

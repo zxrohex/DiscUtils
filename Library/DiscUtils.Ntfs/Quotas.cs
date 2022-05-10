@@ -87,11 +87,9 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        internal sealed class OwnerKey : IByteArraySerializable
+        internal struct OwnerKey : IByteArraySerializable
         {
             public SecurityIdentifier Sid;
-
-            public OwnerKey() {}
 
             public OwnerKey(SecurityIdentifier sid)
             {
@@ -120,11 +118,9 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        internal sealed class OwnerRecord : IByteArraySerializable
+        internal struct OwnerRecord : IByteArraySerializable
         {
             public int OwnerId;
-
-            public OwnerRecord() {}
 
             public OwnerRecord(int ownerId)
             {
@@ -153,7 +149,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        internal sealed class QuotaRecord : IByteArraySerializable
+        internal struct QuotaRecord : IByteArraySerializable
         {
             public long BytesUsed;
             public DateTime ChangeTime;
@@ -164,13 +160,13 @@ namespace DiscUtils.Ntfs
             public int Version;
             public long WarningLimit;
 
-            public QuotaRecord() {}
-
             public QuotaRecord(SecurityIdentifier sid)
             {
+                BytesUsed = 0;
                 Version = 2;
                 Flags = 1;
                 ChangeTime = DateTime.UtcNow;
+                ExceededTime = 0;
                 WarningLimit = -1;
                 HardLimit = -1;
                 Sid = sid;

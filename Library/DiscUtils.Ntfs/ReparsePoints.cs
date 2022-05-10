@@ -73,7 +73,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        internal sealed class Key : IByteArraySerializable
+        internal struct Key : IByteArraySerializable
         {
             public FileRecordReference File;
             public uint Tag;
@@ -103,7 +103,7 @@ namespace DiscUtils.Ntfs
             }
         }
 
-        internal sealed class Data : IByteArraySerializable
+        internal struct Data : IByteArraySerializable
         {
             public int Size
             {

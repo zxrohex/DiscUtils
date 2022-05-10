@@ -4,5 +4,8 @@
     <Authors>Kenneth Bell;LordMike;Bianco Veigel</Authors>
     <PackageTags>DiscUtils;Streams</PackageTags>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Memory" Version="4.5.4" />
+  </ItemGroup>
 
 </Project>

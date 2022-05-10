@@ -271,14 +271,7 @@ namespace DiscUtils.Ntfs
                             using (SparseStream s = origStream.Open(FileAccess.Read))
                             using (SparseStream d = newStream.Value.Open(FileAccess.Write))
                             {
-                                byte[] buffer = new byte[64 * Sizes.OneKiB];
-                                int numRead;
-
-                                do
-                                {
-                                    numRead = s.Read(buffer, 0, buffer.Length);
-                                    d.Write(buffer, 0, numRead);
-                                } while (numRead != 0);
+                                s.CopyTo(d);
                             }
 
                             break;

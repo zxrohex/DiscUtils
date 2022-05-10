@@ -26,7 +26,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs
 {
-    internal sealed class ObjectIdRecord : IByteArraySerializable
+    internal struct ObjectIdRecord : IByteArraySerializable
     {
         public Guid BirthDomainId;
         public Guid BirthObjectId;
