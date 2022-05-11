@@ -192,12 +192,12 @@ namespace DiscUtils.Streams
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         public static Guid ToGuidLittleEndian(byte[] buffer, int offset)
         {
-            return new Guid(buffer.AsSpan(offset));
+            return new Guid(buffer.AsSpan(offset, 16));
         }
 #else
         public static Guid ToGuidLittleEndian(byte[] buffer, int offset)
         {
-            return new Guid(buffer.AsSpan(offset).ToArray());
+            return new Guid(buffer.AsSpan(offset, 16).ToArray());
         }
 #endif
 
