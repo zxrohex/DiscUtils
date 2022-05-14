@@ -662,12 +662,18 @@ namespace DiscUtils.Registry
             return null;
         }
 
+#if NETSTANDARD || NETCOREAPP || NET46_OR_GREATER
+        private static readonly byte[] EmptyByteArray = Array.Empty<byte>();
+#else
+        private static readonly byte[] EmptyByteArray = new byte[0];
+#endif
+
         private RegistryValue AddRegistryValue(string name)
         {
             byte[] valueList = _hive.RawCellData(_cell.ValueListIndex, _cell.NumValues * 4);
             if (valueList == null)
             {
-                valueList = new byte[0];
+                valueList = EmptyByteArray;
             }
 
             int insertIdx = 0;

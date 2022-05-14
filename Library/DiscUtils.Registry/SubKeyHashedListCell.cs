@@ -97,7 +97,8 @@ namespace DiscUtils.Registry
             for (int i = 0; i < _numElements; ++i)
             {
                 KeyNodeCell cell = _hive.GetCell<KeyNodeCell>(_subKeyIndexes[i]);
-                if (string.Compare(cell.Name, name, StringComparison.OrdinalIgnoreCase) > 0)
+                if (cell is not null &&
+                    string.Compare(cell.Name, name, StringComparison.OrdinalIgnoreCase) > 0)
                 {
                     _subKeyIndexes.Insert(i, cellIndex);
                     _nameHashes.Insert(i, CalcHash(name));
@@ -136,7 +137,11 @@ namespace DiscUtils.Registry
         {
             for (int i = 0; i < _subKeyIndexes.Count; ++i)
             {
-                names.Add(_hive.GetCell<KeyNodeCell>(_subKeyIndexes[i]).Name);
+                var cell = _hive.GetCell<KeyNodeCell>(_subKeyIndexes[i]);
+                if (cell is not null)
+                {
+                    names.Add(cell.Name);
+                }
             }
         }
 
@@ -283,7 +288,7 @@ namespace DiscUtils.Registry
             }
         }
 
-        private class KeyFinder : IComparer<int>
+        private sealed class KeyFinder : IComparer<int>
         {
             private readonly RegistryHive _hive;
             private readonly string _searchName;

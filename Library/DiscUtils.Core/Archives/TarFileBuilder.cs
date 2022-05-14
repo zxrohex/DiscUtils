@@ -75,6 +75,12 @@ namespace DiscUtils.Archives
 
         public int FileCount => _files.Count;
 
+#if NETSTANDARD || NETCOREAPP || NET46_OR_GREATER
+        private static readonly byte[] EmptyByteArray = Array.Empty<byte>();
+#else
+        private static readonly byte[] EmptyByteArray = new byte[0];
+#endif
+
         /// <summary>
         /// Add a directory to the tar archive.
         /// </summary>
@@ -86,7 +92,7 @@ namespace DiscUtils.Archives
                 name += "/";
             }
 
-            AddFile(name, new byte[0]);
+            AddFile(name, EmptyByteArray);
         }
 
         /// <summary>
@@ -105,7 +111,7 @@ namespace DiscUtils.Archives
                 name += "/";
             }
 
-            AddFile(name, new byte[0], ownerId, groupId, fileMode, modificationTime);
+            AddFile(name, EmptyByteArray, ownerId, groupId, fileMode, modificationTime);
         }
 
         /// <summary>

@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
@@ -70,6 +71,12 @@ namespace DiscUtils
             return null;
         }
 
+#if NETSTANDARD || NETCOREAPP || NET46_OR_GREATER
+        private static readonly string[] EmptyStringArray = Array.Empty<string>();
+#else
+        private static readonly string[] EmptyStringArray = new string[0];
+#endif
+
         /// <summary>
         /// Converts a cluster to a list of file names.
         /// </summary>
@@ -84,7 +91,7 @@ namespace DiscUtils
             {
                 return FileIdToPaths(fileId);
             }
-            return new string[0];
+            return EmptyStringArray;
         }
 
         /// <summary>
@@ -100,7 +107,7 @@ namespace DiscUtils
             {
                 return paths;
             }
-            return new string[0];
+            return EmptyStringArray;
         }
     }
 }

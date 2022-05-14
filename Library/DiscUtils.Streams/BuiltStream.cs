@@ -500,7 +500,7 @@ namespace DiscUtils.Streams
             }
         }
 
-        private class ExtentRangeComparer : IComparer<BuilderExtent>
+        private struct ExtentRangeComparer : IComparer<BuilderExtent>
         {
             public int Compare(BuilderExtent x, BuilderExtent y)
             {
@@ -530,7 +530,7 @@ namespace DiscUtils.Streams
             }
         }
 
-        private class ExtentStartComparer : IComparer<BuilderExtent>
+        private struct ExtentStartComparer : IComparer<BuilderExtent>
         {
             public int Compare(BuilderExtent x, BuilderExtent y)
             {

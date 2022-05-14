@@ -250,7 +250,7 @@ namespace DiscUtils.Registry
             return string.Compare(name, ((KeyNodeCell)cell).Name, StringComparison.OrdinalIgnoreCase);
         }
 
-        private class KeyFinder : IComparer<int>
+        private sealed class KeyFinder : IComparer<int>
         {
             private readonly RegistryHive _hive;
             private readonly string _searchName;

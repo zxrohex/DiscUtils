@@ -31,6 +31,9 @@ using System.Threading.Tasks;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
 
+#pragma warning disable IDE0079 // Remove unnecessary suppression
+#pragma warning disable SYSLIB0014 // Type or member is obsolete
+
 namespace DiscUtils.OpticalDiscSharing
 {
     internal sealed class DiscContentBuffer : Buffer

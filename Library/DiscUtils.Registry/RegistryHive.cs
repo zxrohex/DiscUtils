@@ -484,13 +484,12 @@ namespace DiscUtils.Registry
 
         private BinHeader? FindBin(int index)
         {
-            int binsIdx = _bins.BinarySearch(default, new BinFinder(index));
-            if (binsIdx >= 0)
-            {
-                return _bins[binsIdx];
-            }
+            var bin = _bins
+                .TakeWhile(x => x.FileOffset <= index)
+                .Select(x => new BinHeader?(x))
+                .FirstOrDefault(x => x.Value.FileOffset + x.Value.BinSize > index);
 
-            return null;
+            return bin;
         }
 
         private Bin GetBin(int cellIndex)
@@ -545,33 +544,6 @@ namespace DiscUtils.Registry
 
             _bins.Add(newBinHeader);
             return newBinHeader;
-        }
-
-        private struct BinFinder : IComparer<BinHeader>
-        {
-            private readonly int _index;
-
-            public BinFinder(int index)
-            {
-                _index = index;
-            }
-
-            #region IComparer<BinHeader> Members
-
-            public int Compare(BinHeader x, BinHeader y)
-            {
-                if (x.FileOffset + x.BinSize < _index)
-                {
-                    return -1;
-                }
-                if (x.FileOffset > _index)
-                {
-                    return 1;
-                }
-                return 0;
-            }
-
-            #endregion
         }
     }
 }

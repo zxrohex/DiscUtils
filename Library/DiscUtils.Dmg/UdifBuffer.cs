@@ -306,7 +306,7 @@ namespace DiscUtils.Dmg
                 }
             }
 
-            if (lastRun != null)
+            if (lastRun != default)
             {
                 yield return lastRun;
             }

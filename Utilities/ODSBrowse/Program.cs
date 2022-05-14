@@ -96,7 +96,7 @@ namespace ODSBrowse
                 Console.WriteLine("  Disk: " + disk.VolumeLabel);
                 Console.WriteLine("    Name: " + disk.Name);
                 Console.WriteLine("    Type: " + disk.VolumeType);
-                Console.WriteLine("     Url: " + Uri.EscapeUriString("ods://local/" + service.DisplayName + "/" + disk.VolumeLabel));
+                Console.WriteLine("     Url: " + Uri.EscapeDataString("ods://local/" + service.DisplayName + "/" + disk.VolumeLabel));
             }
 
             if (!foundDisk)

@@ -114,7 +114,7 @@ namespace DiscUtils
         /// </summary>
         /// <returns>Array of strings, empty if no parent.</returns>
         public virtual string[] GetParentLocations() =>
-#if NET461_OR_GREATER || NETSTANDARD || NETCOREAPP
+#if NET46_OR_GREATER || NETSTANDARD || NETCOREAPP
             Array.Empty<string>();
 #else
             new string[0];
