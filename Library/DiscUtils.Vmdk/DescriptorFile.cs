@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using DiscUtils.Streams;
 
@@ -320,6 +321,35 @@ namespace DiscUtils.Vmdk
             }
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        private static Guid ParseUuid(string value)
+        {
+            Guid guid = default;
+            var data = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref guid, 1));
+            
+            var source = value.AsSpan();
+            var i = 0;
+            for (; i < 16 && !source.IsEmpty; i++)
+            {
+                var idx = source.IndexOf('-');
+                if (idx < 0)
+                {
+                    idx = source.Length;
+                }
+
+                data[i] = byte.Parse(source[..i], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+
+                source = source[(i + 1)..];
+            }
+
+            if (i != 16 || !source.IsEmpty)
+            {
+                throw new ArgumentException("Invalid UUID", nameof(value));
+            }
+
+            return guid;
+        }
+#else
         private static Guid ParseUuid(string value)
         {
             byte[] data = new byte[16];
@@ -336,6 +366,7 @@ namespace DiscUtils.Vmdk
 
             return new Guid(data);
         }
+#endif
 
         private static string FormatUuid(Guid value)
         {

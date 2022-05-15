@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Runtime.InteropServices;
 
 namespace DiscUtils.Core.WindowsSecurity.AccessControl
 {
@@ -315,13 +316,12 @@ namespace DiscUtils.Core.WindowsSecurity.AccessControl
 
         private Guid ReadGuid(byte[] buffer, int offset)
         {
-            var temp = new byte[16];
-            Array.Copy(buffer, offset, temp, 0, 16);
-            return new Guid(temp);
+            return MemoryMarshal.Read<Guid>(buffer.AsSpan(offset, 16));
         }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        private Guid ReadGuid(ReadOnlySpan<byte> buffer) => new(buffer);
-#endif
+        private Guid ReadGuid(ReadOnlySpan<byte> buffer)
+        {
+            return MemoryMarshal.Read<Guid>(buffer.Slice(0, 16));
+        }
     }
 }

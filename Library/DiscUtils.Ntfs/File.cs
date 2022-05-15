@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Internal;
@@ -780,6 +781,19 @@ namespace DiscUtils.Ntfs
             return recordOffset + frs.GetAttributeOffset(attrRef.AttributeId);
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        private static Guid CreateNewGuid(INtfsContext context)
+        {
+            Random rng = context.Options.RandomNumberGenerator;
+            if (rng != null)
+            {
+                Guid guid = default;
+                rng.NextBytes(MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref guid, 1)));
+                return guid;
+            }
+            return Guid.NewGuid();
+        }
+#else
         private static Guid CreateNewGuid(INtfsContext context)
         {
             Random rng = context.Options.RandomNumberGenerator;
@@ -791,6 +805,7 @@ namespace DiscUtils.Ntfs
             }
             return Guid.NewGuid();
         }
+#endif
 
         private void LoadAttributes()
         {

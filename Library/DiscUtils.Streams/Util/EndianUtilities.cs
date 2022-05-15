@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace DiscUtils.Streams
@@ -189,17 +190,10 @@ namespace DiscUtils.Streams
             return (long)ToUInt64BigEndian(buffer, offset);
         }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         public static Guid ToGuidLittleEndian(byte[] buffer, int offset)
         {
-            return new Guid(buffer.AsSpan(offset, 16));
+            return MemoryMarshal.Read<Guid>(buffer.AsSpan(offset, 16));
         }
-#else
-        public static Guid ToGuidLittleEndian(byte[] buffer, int offset)
-        {
-            return new Guid(buffer.AsSpan(offset, 16).ToArray());
-        }
-#endif
 
         public static Guid ToGuidBigEndian(byte[] buffer, int offset)
         {
