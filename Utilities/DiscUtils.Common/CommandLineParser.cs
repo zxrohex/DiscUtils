@@ -24,194 +24,193 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace DiscUtils.Common
+namespace DiscUtils.Common;
+
+public class CommandLineParser
 {
-    public class CommandLineParser
+    private string _utilityName;
+    private List<CommandLineSwitch> _switches;
+    private List<CommandLineParameter> _params;
+    private CommandLineMultiParameter _multiParam;
+
+    private bool _parseFailed;
+
+    public CommandLineParser(string utilityName)
     {
-        private string _utilityName;
-        private List<CommandLineSwitch> _switches;
-        private List<CommandLineParameter> _params;
-        private CommandLineMultiParameter _multiParam;
+        _utilityName = utilityName;
+        _switches = new List<CommandLineSwitch>();
+        _params = new List<CommandLineParameter>();
+        _parseFailed = false;
+    }
 
-        private bool _parseFailed;
-
-        public CommandLineParser(string utilityName)
+    public void AddMultiParameter(CommandLineMultiParameter multiParameter)
+    {
+        if (_multiParam != null)
         {
-            _utilityName = utilityName;
-            _switches = new List<CommandLineSwitch>();
-            _params = new List<CommandLineParameter>();
-            _parseFailed = false;
+            throw new InvalidOperationException("Multi parameter already set");
+        }
+        _multiParam = multiParameter;
+    }
+
+    public void AddParameter(CommandLineParameter parameter)
+    {
+        _params.Add(parameter);
+    }
+
+    public void AddSwitch(CommandLineSwitch clSwitch)
+    {
+        _switches.Add(clSwitch);
+    }
+
+    public void DisplayHelp(params string[] remarks)
+    {
+        Console.Write("{0}", _utilityName);
+        if (_switches.Count > 0)
+        {
+            Console.Write(" <switches>");
+        }
+        foreach (var el in _params)
+        {
+            Console.Write(" " + el.CommandLineText);
+        }
+        if (_multiParam != null)
+        {
+            Console.WriteLine(" " + _multiParam.CommandLineText);
+        }
+        Console.WriteLine();
+        Console.WriteLine();
+
+
+        Console.WriteLine("Parameters:");
+
+        var maxNameLen = 0;
+        foreach (var p in _params)
+        {
+            maxNameLen = Math.Max(maxNameLen, p.NameDisplayLength);
+        }
+        if (_multiParam != null)
+        {
+            maxNameLen = Math.Max(maxNameLen, _multiParam.NameDisplayLength);
         }
 
-        public void AddMultiParameter(CommandLineMultiParameter multiParameter)
+        foreach (var p in _params)
         {
-            if (_multiParam != null)
-            {
-                throw new InvalidOperationException("Multi parameter already set");
-            }
-            _multiParam = multiParameter;
-        }
-
-        public void AddParameter(CommandLineParameter parameter)
-        {
-            _params.Add(parameter);
-        }
-
-        public void AddSwitch(CommandLineSwitch clSwitch)
-        {
-            _switches.Add(clSwitch);
-        }
-
-        public void DisplayHelp(params string[] remarks)
-        {
-            Console.Write("{0}", _utilityName);
-            if (_switches.Count > 0)
-            {
-                Console.Write(" <switches>");
-            }
-            foreach (CommandLineParameter el in _params)
-            {
-                Console.Write(" " + el.CommandLineText);
-            }
-            if (_multiParam != null)
-            {
-                Console.WriteLine(" " + _multiParam.CommandLineText);
-            }
+            p.WriteDescription(Console.Out, "  {0,-" + maxNameLen + "}  {1}", 74 - maxNameLen);
             Console.WriteLine();
+        }
+        if (_multiParam != null)
+        {
+            _multiParam.WriteDescription(Console.Out, "  {0,-" + maxNameLen + "}  {1}", 74 - maxNameLen);
             Console.WriteLine();
-
-
-            Console.WriteLine("Parameters:");
-
-            int maxNameLen = 0;
-            foreach (CommandLineParameter p in _params)
-            {
-                maxNameLen = Math.Max(maxNameLen, p.NameDisplayLength);
-            }
-            if (_multiParam != null)
-            {
-                maxNameLen = Math.Max(maxNameLen, _multiParam.NameDisplayLength);
-            }
-
-            foreach (CommandLineParameter p in _params)
-            {
-                p.WriteDescription(Console.Out, "  {0,-" + maxNameLen + "}  {1}", 74 - maxNameLen);
-                Console.WriteLine();
-            }
-            if (_multiParam != null)
-            {
-                _multiParam.WriteDescription(Console.Out, "  {0,-" + maxNameLen + "}  {1}", 74 - maxNameLen);
-                Console.WriteLine();
-            }
-
-
-            Console.WriteLine("Switches:");
-
-            int maxSwitchLen = 0;
-            foreach (CommandLineSwitch s in _switches)
-            {
-                maxSwitchLen = Math.Max(maxSwitchLen, s.SwitchDisplayLength);
-            }
-
-            foreach (CommandLineSwitch s in _switches)
-            {
-                s.WriteDescription(Console.Out, "  {0,-" + maxSwitchLen + "}  {1}", 74 - maxSwitchLen);
-                Console.WriteLine();
-            }
-
-            if (remarks.Length > 0)
-            {
-                Console.WriteLine("Remarks:");
-                foreach (var remark in remarks)
-                {
-                    string[] text = Utilities.WordWrap(remark, 74);
-
-                    foreach(string line in text)
-                    {
-                        Console.WriteLine("  " + line);
-                    }
-                    Console.WriteLine();
-                }
-            }
         }
 
-        public bool Parse(string[] args)
+
+        Console.WriteLine("Switches:");
+
+        var maxSwitchLen = 0;
+        foreach (var s in _switches)
         {
-            _parseFailed = true;
-
-            int i = 0;
-            int paramIdx = 0;
-
-            while (i < args.Length)
-            {
-                if (args[i].StartsWith("-") || (Path.DirectorySeparatorChar != '/' && args[i].StartsWith("/")))
-                {
-                    string switchName = args[i].Substring(1);
-                    bool foundMatch = false;
-
-                    foreach (CommandLineSwitch s in _switches)
-                    {
-                        if (s.Matches(switchName))
-                        {
-                            i = s.Process(args, i + 1);
-                            foundMatch = true;
-                            break;
-                        }
-                    }
-
-                    if (!foundMatch)
-                    {
-                        throw new Exception(string.Format("Unrecognized command-line switch '{0}'", args[i]));
-                    }
-
-                }
-                else if (paramIdx < _params.Count && (!_params[paramIdx].IsOptional || _params[paramIdx].Matches(args[i])))
-                {
-                    i = _params[paramIdx].Process(args, i);
-                    ++paramIdx;
-                }
-                else if (paramIdx >= _params.Count && _multiParam != null && _multiParam.Matches(args[i]))
-                {
-                    i = _multiParam.Process(args, i);
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-            // Check mandatory params present & all params valid.
-            for (int j = 0; j < _params.Count; ++j)
-            {
-                if (!_params[j].IsValid)
-                {
-                    return false;
-                }
-
-                if (!_params[j].IsOptional && !_params[j].IsPresent)
-                {
-                    return false;
-                }
-            }
-            if (_multiParam != null)
-            {
-                if (!_multiParam.IsValid)
-                {
-                    return false;
-                }
-                if (!_multiParam.IsOptional && !_multiParam.IsPresent)
-                {
-                    return false;
-                }
-            }
-
-            _parseFailed = false;
-            return true;
+            maxSwitchLen = Math.Max(maxSwitchLen, s.SwitchDisplayLength);
         }
 
-        public bool ParseSucceeded
+        foreach (var s in _switches)
         {
-            get { return !_parseFailed; }
+            s.WriteDescription(Console.Out, "  {0,-" + maxSwitchLen + "}  {1}", 74 - maxSwitchLen);
+            Console.WriteLine();
         }
+
+        if (remarks.Length > 0)
+        {
+            Console.WriteLine("Remarks:");
+            foreach (var remark in remarks)
+            {
+                var text = Utilities.WordWrap(remark, 74);
+
+                foreach(var line in text)
+                {
+                    Console.WriteLine("  " + line);
+                }
+                Console.WriteLine();
+            }
+        }
+    }
+
+    public bool Parse(string[] args)
+    {
+        _parseFailed = true;
+
+        var i = 0;
+        var paramIdx = 0;
+
+        while (i < args.Length)
+        {
+            if (args[i].StartsWith("-") || (Path.DirectorySeparatorChar != '/' && args[i].StartsWith("/")))
+            {
+                var switchName = args[i].Substring(1);
+                var foundMatch = false;
+
+                foreach (var s in _switches)
+                {
+                    if (s.Matches(switchName))
+                    {
+                        i = s.Process(args, i + 1);
+                        foundMatch = true;
+                        break;
+                    }
+                }
+
+                if (!foundMatch)
+                {
+                    throw new Exception($"Unrecognized command-line switch '{args[i]}'");
+                }
+
+            }
+            else if (paramIdx < _params.Count && (!_params[paramIdx].IsOptional || _params[paramIdx].Matches(args[i])))
+            {
+                i = _params[paramIdx].Process(args, i);
+                ++paramIdx;
+            }
+            else if (paramIdx >= _params.Count && _multiParam != null && _multiParam.Matches(args[i]))
+            {
+                i = _multiParam.Process(args, i);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        // Check mandatory params present & all params valid.
+        for (var j = 0; j < _params.Count; ++j)
+        {
+            if (!_params[j].IsValid)
+            {
+                return false;
+            }
+
+            if (!_params[j].IsOptional && !_params[j].IsPresent)
+            {
+                return false;
+            }
+        }
+        if (_multiParam != null)
+        {
+            if (!_multiParam.IsValid)
+            {
+                return false;
+            }
+            if (!_multiParam.IsOptional && !_multiParam.IsPresent)
+            {
+                return false;
+            }
+        }
+
+        _parseFailed = false;
+        return true;
+    }
+
+    public bool ParseSucceeded
+    {
+        get { return !_parseFailed; }
     }
 }

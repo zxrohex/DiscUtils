@@ -28,248 +28,247 @@ using System.Linq;
 using System.Text;
 using DiscUtils.Internal;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+using DirectoryIndexEntry =
+    KeyValuePair<FileNameRecord, FileRecordReference>;
+
+internal class Directory : File
 {
-    using DirectoryIndexEntry =
-        KeyValuePair<FileNameRecord, FileRecordReference>;
+    private IndexView<FileNameRecord, FileRecordReference> _index;
 
-    internal class Directory : File
+    public Directory(INtfsContext context, FileRecord baseRecord)
+        : base(context, baseRecord) {}
+
+    private IndexView<FileNameRecord, FileRecordReference> Index
     {
-        private IndexView<FileNameRecord, FileRecordReference> _index;
-
-        public Directory(INtfsContext context, FileRecord baseRecord)
-            : base(context, baseRecord) {}
-
-        private IndexView<FileNameRecord, FileRecordReference> Index
+        get
         {
-            get
+            if (_index == null && StreamExists(AttributeType.IndexRoot, "$I30"))
             {
-                if (_index == null && StreamExists(AttributeType.IndexRoot, "$I30"))
-                {
-                    _index = new IndexView<FileNameRecord, FileRecordReference>(GetIndex("$I30"));
-                }
+                _index = new IndexView<FileNameRecord, FileRecordReference>(GetIndex("$I30"));
+            }
 
-                return _index;
+            return _index;
+        }
+    }
+
+    public bool IsEmpty
+    {
+        get { return Index.Count == 0; }
+    }
+
+    public IEnumerable<DirectoryEntry> GetAllEntries(bool filter)
+    {
+        var entries = Index.Entries;
+
+        if (filter)
+        {
+            entries = entries.Where(FilterEntry);
+        }
+
+        return entries.Select(entry => new DirectoryEntry(this, entry.Value, entry.Key));
+    }
+
+    public void UpdateEntry(DirectoryEntry entry)
+    {
+        Index[entry.Details] = entry.Reference;
+        UpdateRecordInMft();
+    }
+
+    public override void Dump(TextWriter writer, string indent)
+    {
+        writer.WriteLine(indent + "DIRECTORY (" + base.ToString() + ")");
+        writer.WriteLine(indent + "  File Number: " + IndexInMft);
+
+        if (Index != null)
+        {
+            foreach (var entry in Index.Entries)
+            {
+                writer.WriteLine(indent + "  DIRECTORY ENTRY (" + entry.Key.FileName + ")");
+                writer.WriteLine(indent + "    MFT Ref: " + entry.Value);
+                entry.Key.Dump(writer, indent + "    ");
+            }
+        }
+    }
+
+    public override string ToString()
+    {
+        return base.ToString() + Path.DirectorySeparatorChar;
+    }
+
+    internal new static Directory CreateNew(INtfsContext context, FileAttributeFlags parentDirFlags)
+    {
+        var dir = (Directory)context.AllocateFile(FileRecordFlags.IsDirectory);
+
+        StandardInformation.InitializeNewFile(
+            dir,
+            FileAttributeFlags.Archive | (parentDirFlags & FileAttributeFlags.Compressed));
+
+        // Create the index root attribute by instantiating a new index
+        dir.CreateIndex("$I30", AttributeType.FileName, AttributeCollationRule.Filename);
+
+        dir.UpdateRecordInMft();
+
+        return dir;
+    }
+
+    internal DirectoryEntry GetEntryByName(string name)
+    {
+        var searchName = name;
+
+        var streamSepPos = name.IndexOf(':');
+        if (streamSepPos >= 0)
+        {
+            searchName = name.Substring(0, streamSepPos);
+        }
+
+        var entry = Index.FindFirst(new FileNameQuery(searchName, _context.UpperCase));
+        if (entry.Key != null)
+        {
+            return new DirectoryEntry(this, entry.Value, entry.Key);
+        }
+        return null;
+    }
+
+    internal DirectoryEntry AddEntry(File file, string name, FileNameNamespace nameNamespace)
+    {
+        if (name.Length > 255)
+        {
+            throw new IOException("Invalid file name, more than 255 characters: " + name);
+        }
+        if (name.IndexOfAny(new[] { '\0', '/' }) != -1)
+        {
+            throw new IOException(@"Invalid file name, contains '\0' or '/': " + name);
+        }
+
+        var newNameRecord = file.GetFileNameRecord(null, true);
+        newNameRecord.FileNameNamespace = nameNamespace;
+        newNameRecord.FileName = name;
+        newNameRecord.ParentDirectory = MftReference;
+
+        var nameStream = file.CreateStream(AttributeType.FileName, null);
+        nameStream.SetContent(newNameRecord);
+
+        file.HardLinkCount++;
+        file.UpdateRecordInMft();
+
+        Index[newNameRecord] = file.MftReference;
+
+        Modified();
+        UpdateRecordInMft();
+
+        return new DirectoryEntry(this, file.MftReference, newNameRecord);
+    }
+
+    internal void RemoveEntry(DirectoryEntry dirEntry)
+    {
+        var file = _context.GetFileByRef(dirEntry.Reference);
+
+        var nameRecord = dirEntry.Details;
+
+        Index.Remove(dirEntry.Details);
+
+        foreach (var stream in file.GetStreams(AttributeType.FileName, null))
+        {
+            var streamName = stream.GetContent<FileNameRecord>();
+            if (nameRecord.Equals(streamName))
+            {
+                file.RemoveStream(stream);
+                break;
             }
         }
 
-        public bool IsEmpty
-        {
-            get { return Index.Count == 0; }
-        }
+        file.HardLinkCount--;
+        file.UpdateRecordInMft();
 
-        public IEnumerable<DirectoryEntry> GetAllEntries(bool filter)
-        {
-            var entries = Index.Entries;
+        Modified();
+        UpdateRecordInMft();
+    }
 
-            if (filter)
+    internal string CreateShortName(string name)
+    {
+        var baseName = string.Empty;
+        var ext = string.Empty;
+
+        var lastPeriod = name.LastIndexOf('.');
+
+        var i = 0;
+        while (baseName.Length < 6 && i < name.Length && i != lastPeriod)
+        {
+            var upperChar = char.ToUpperInvariant(name[i]);
+            if (Utilities.Is8Dot3Char(upperChar))
             {
-                entries = entries.Where(FilterEntry);
+                baseName += upperChar;
             }
 
-            return entries.Select(entry => new DirectoryEntry(this, entry.Value, entry.Key));
+            ++i;
         }
 
-        public void UpdateEntry(DirectoryEntry entry)
+        if (lastPeriod >= 0)
         {
-            Index[entry.Details] = entry.Reference;
-            UpdateRecordInMft();
-        }
-
-        public override void Dump(TextWriter writer, string indent)
-        {
-            writer.WriteLine(indent + "DIRECTORY (" + base.ToString() + ")");
-            writer.WriteLine(indent + "  File Number: " + IndexInMft);
-
-            if (Index != null)
+            i = lastPeriod + 1;
+            while (ext.Length < 3 && i < name.Length)
             {
-                foreach (DirectoryIndexEntry entry in Index.Entries)
-                {
-                    writer.WriteLine(indent + "  DIRECTORY ENTRY (" + entry.Key.FileName + ")");
-                    writer.WriteLine(indent + "    MFT Ref: " + entry.Value);
-                    entry.Key.Dump(writer, indent + "    ");
-                }
-            }
-        }
-
-        public override string ToString()
-        {
-            return base.ToString() + Path.DirectorySeparatorChar;
-        }
-
-        internal new static Directory CreateNew(INtfsContext context, FileAttributeFlags parentDirFlags)
-        {
-            Directory dir = (Directory)context.AllocateFile(FileRecordFlags.IsDirectory);
-
-            StandardInformation.InitializeNewFile(
-                dir,
-                FileAttributeFlags.Archive | (parentDirFlags & FileAttributeFlags.Compressed));
-
-            // Create the index root attribute by instantiating a new index
-            dir.CreateIndex("$I30", AttributeType.FileName, AttributeCollationRule.Filename);
-
-            dir.UpdateRecordInMft();
-
-            return dir;
-        }
-
-        internal DirectoryEntry GetEntryByName(string name)
-        {
-            string searchName = name;
-
-            int streamSepPos = name.IndexOf(':');
-            if (streamSepPos >= 0)
-            {
-                searchName = name.Substring(0, streamSepPos);
-            }
-
-            DirectoryIndexEntry entry = Index.FindFirst(new FileNameQuery(searchName, _context.UpperCase));
-            if (entry.Key != null)
-            {
-                return new DirectoryEntry(this, entry.Value, entry.Key);
-            }
-            return null;
-        }
-
-        internal DirectoryEntry AddEntry(File file, string name, FileNameNamespace nameNamespace)
-        {
-            if (name.Length > 255)
-            {
-                throw new IOException("Invalid file name, more than 255 characters: " + name);
-            }
-            if (name.IndexOfAny(new[] { '\0', '/' }) != -1)
-            {
-                throw new IOException(@"Invalid file name, contains '\0' or '/': " + name);
-            }
-
-            FileNameRecord newNameRecord = file.GetFileNameRecord(null, true);
-            newNameRecord.FileNameNamespace = nameNamespace;
-            newNameRecord.FileName = name;
-            newNameRecord.ParentDirectory = MftReference;
-
-            NtfsStream nameStream = file.CreateStream(AttributeType.FileName, null);
-            nameStream.SetContent(newNameRecord);
-
-            file.HardLinkCount++;
-            file.UpdateRecordInMft();
-
-            Index[newNameRecord] = file.MftReference;
-
-            Modified();
-            UpdateRecordInMft();
-
-            return new DirectoryEntry(this, file.MftReference, newNameRecord);
-        }
-
-        internal void RemoveEntry(DirectoryEntry dirEntry)
-        {
-            File file = _context.GetFileByRef(dirEntry.Reference);
-
-            FileNameRecord nameRecord = dirEntry.Details;
-
-            Index.Remove(dirEntry.Details);
-
-            foreach (NtfsStream stream in file.GetStreams(AttributeType.FileName, null))
-            {
-                FileNameRecord streamName = stream.GetContent<FileNameRecord>();
-                if (nameRecord.Equals(streamName))
-                {
-                    file.RemoveStream(stream);
-                    break;
-                }
-            }
-
-            file.HardLinkCount--;
-            file.UpdateRecordInMft();
-
-            Modified();
-            UpdateRecordInMft();
-        }
-
-        internal string CreateShortName(string name)
-        {
-            string baseName = string.Empty;
-            string ext = string.Empty;
-
-            int lastPeriod = name.LastIndexOf('.');
-
-            int i = 0;
-            while (baseName.Length < 6 && i < name.Length && i != lastPeriod)
-            {
-                char upperChar = char.ToUpperInvariant(name[i]);
+                var upperChar = char.ToUpperInvariant(name[i]);
                 if (Utilities.Is8Dot3Char(upperChar))
                 {
-                    baseName += upperChar;
+                    ext += upperChar;
                 }
 
                 ++i;
             }
-
-            if (lastPeriod >= 0)
-            {
-                i = lastPeriod + 1;
-                while (ext.Length < 3 && i < name.Length)
-                {
-                    char upperChar = char.ToUpperInvariant(name[i]);
-                    if (Utilities.Is8Dot3Char(upperChar))
-                    {
-                        ext += upperChar;
-                    }
-
-                    ++i;
-                }
-            }
-
-            i = 1;
-            string candidate;
-            do
-            {
-                string suffix = string.Format(CultureInfo.InvariantCulture, "~{0}", i);
-                candidate = baseName.Substring(0, Math.Min(8 - suffix.Length, baseName.Length)) + suffix +
-                            (ext.Length > 0 ? "." + ext : string.Empty);
-                i++;
-            } while (GetEntryByName(candidate) != null);
-
-            return candidate;
         }
 
-        private bool FilterEntry(DirectoryIndexEntry entry)
+        i = 1;
+        string candidate;
+        do
         {
-            // Weed out short-name entries for files and any hidden / system / metadata files.
-            if ((entry.Key.Flags & FileAttributeFlags.Hidden) != 0
-                && _context.Options.HideHiddenFiles
-                || (entry.Key.Flags & FileAttributeFlags.System) != 0
-                && _context.Options.HideSystemFiles
-                || entry.Value.MftIndex < 24
-                && _context.Options.HideMetafiles
-                || entry.Key.FileNameNamespace == FileNameNamespace.Dos
-                && _context.Options.HideDosFileNames)
-            {
-                return false;
-            }
+            var suffix = $"~{i}";
+            candidate = baseName.Substring(0, Math.Min(8 - suffix.Length, baseName.Length)) + suffix +
+                        (ext.Length > 0 ? "." + ext : string.Empty);
+            i++;
+        } while (GetEntryByName(candidate) != null);
 
-            return true;
+        return candidate;
+    }
+
+    private bool FilterEntry(DirectoryIndexEntry entry)
+    {
+        // Weed out short-name entries for files and any hidden / system / metadata files.
+        if ((entry.Key.Flags & FileAttributeFlags.Hidden) != 0
+            && _context.Options.HideHiddenFiles
+            || (entry.Key.Flags & FileAttributeFlags.System) != 0
+            && _context.Options.HideSystemFiles
+            || entry.Value.MftIndex < 24
+            && _context.Options.HideMetafiles
+            || entry.Key.FileNameNamespace == FileNameNamespace.Dos
+            && _context.Options.HideDosFileNames)
+        {
+            return false;
         }
 
-        private sealed class FileNameQuery : IComparable<byte[]>
+        return true;
+    }
+
+    private sealed class FileNameQuery : IComparable<byte[]>
+    {
+        private readonly byte[] _query;
+        private readonly UpperCase _upperCase;
+
+        public FileNameQuery(string query, UpperCase upperCase)
         {
-            private readonly byte[] _query;
-            private readonly UpperCase _upperCase;
+            _query = Encoding.Unicode.GetBytes(query);
+            _upperCase = upperCase;
+        }
 
-            public FileNameQuery(string query, UpperCase upperCase)
-            {
-                _query = Encoding.Unicode.GetBytes(query);
-                _upperCase = upperCase;
-            }
-
-            public int CompareTo(byte[] buffer)
-            {
-                // Note: this is internal knowledge of FileNameRecord structure - but for performance
-                // reasons, we don't want to decode the entire structure.  In fact can avoid the string
-                // conversion as well.
-                byte fnLen = buffer[0x40];
-                return _upperCase.Compare(_query, 0, _query.Length, buffer, 0x42, fnLen * 2);
-            }
+        public int CompareTo(byte[] buffer)
+        {
+            // Note: this is internal knowledge of FileNameRecord structure - but for performance
+            // reasons, we don't want to decode the entire structure.  In fact can avoid the string
+            // conversion as well.
+            var fnLen = buffer[0x40];
+            return _upperCase.Compare(_query, 0, _query.Length, buffer, 0x42, fnLen * 2);
         }
     }
 }

@@ -24,27 +24,26 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+internal sealed class Transaction : IDisposable
 {
-    internal sealed class Transaction : IDisposable
+    public Transaction()
     {
-        public Transaction()
+        Answers = new List<ResourceRecord>();
+        CompleteEvent = new ManualResetEvent(false);
+    }
+
+    public List<ResourceRecord> Answers { get; }
+
+    public ManualResetEvent CompleteEvent { get; private set; }
+
+    public void Dispose()
+    {
+        if (CompleteEvent != null)
         {
-            Answers = new List<ResourceRecord>();
-            CompleteEvent = new ManualResetEvent(false);
-        }
-
-        public List<ResourceRecord> Answers { get; }
-
-        public ManualResetEvent CompleteEvent { get; private set; }
-
-        public void Dispose()
-        {
-            if (CompleteEvent != null)
-            {
-                ((IDisposable)CompleteEvent).Dispose();
-                CompleteEvent = null;
-            }
+            ((IDisposable)CompleteEvent).Dispose();
+            CompleteEvent = null;
         }
     }
 }

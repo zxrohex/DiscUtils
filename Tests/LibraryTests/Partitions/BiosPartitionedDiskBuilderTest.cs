@@ -34,26 +34,24 @@ namespace LibraryTests.Partitions
         public void Basic()
         {
             long capacity = 10 * 1024 * 1024;
-            Geometry geometry = Geometry.FromCapacity(capacity);
+            var geometry = Geometry.FromCapacity(capacity);
 
 
-            BiosPartitionedDiskBuilder builder = new BiosPartitionedDiskBuilder(capacity, geometry);
+            var builder = new BiosPartitionedDiskBuilder(capacity, geometry);
             builder.PartitionTable.Create(WellKnownPartitionType.WindowsNtfs, true);
-            SparseStream partitionContent = SparseStream.FromStream(new MemoryStream((int)(builder.PartitionTable[0].SectorCount * 512)), Ownership.Dispose);
+            var partitionContent = SparseStream.FromStream(new MemoryStream((int)(builder.PartitionTable[0].SectorCount * 512)), Ownership.Dispose);
             partitionContent.Position = 4053;
             partitionContent.WriteByte(0xAf);
             builder.SetPartitionContent(0, partitionContent);
 
-            SparseStream constructedStream = builder.Build() as SparseStream;
+            var constructedStream = builder.Build() as SparseStream;
 
-            BiosPartitionTable bpt = new BiosPartitionTable(constructedStream, geometry);
+            var bpt = new BiosPartitionTable(constructedStream, geometry);
             Assert.Equal(1, bpt.Count);
 
-            using(Stream builtPartitionStream = bpt.Partitions[0].Open())
-            {
-                builtPartitionStream.Position = 4053;
-                Assert.Equal(0xAf, builtPartitionStream.ReadByte());
-            }
+            using Stream builtPartitionStream = bpt.Partitions[0].Open();
+            builtPartitionStream.Position = 4053;
+            Assert.Equal(0xAf, builtPartitionStream.ReadByte());
 
         }
     }

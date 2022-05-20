@@ -34,9 +34,9 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void Exists()
         {
-            CDBuilder builder = new CDBuilder();
-            builder.AddFile(@"SOMEDIR\CHILDDIR\FILE.TXT", new byte[0]);
-            CDReader fs = new CDReader(builder.Build(), false);
+            var builder = new CDBuilder();
+            builder.AddFile(@"SOMEDIR\CHILDDIR\FILE.TXT", Array.Empty<byte>());
+            var fs = new CDReader(builder.Build(), false);
 
             Assert.True(fs.GetDirectoryInfo(@"\").Exists);
             Assert.True(fs.GetDirectoryInfo(@"SOMEDIR").Exists);
@@ -49,8 +49,8 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void FullName()
         {
-            CDBuilder builder = new CDBuilder();
-            CDReader fs = new CDReader(builder.Build(), false);
+            var builder = new CDBuilder();
+            var fs = new CDReader(builder.Build(), false);
 
             var sep = Path.DirectorySeparatorChar;
 
@@ -64,19 +64,19 @@ namespace LibraryTests.Iso9660
         {
             var sep = Path.DirectorySeparatorChar;
 
-            CDBuilder builder = new CDBuilder();
+            var builder = new CDBuilder();
             builder.AddFile($"SOMEDIR{sep}CHILDDIR{sep}GCHILDIR{sep}FILE.TXT", new byte[0]);
-            CDReader fs = new CDReader(builder.Build(), false);
+            var fs = new CDReader(builder.Build(), false);
 
-            DiscDirectoryInfo di = fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR");
-            DiscFileInfo[] fis = di.GetFiles("*.*", SearchOption.AllDirectories).ToArray();
+            var di = fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR");
+            var fis = di.GetFiles("*.*", SearchOption.AllDirectories).ToArray();
         }
 
         [Fact]
         public void Extension()
         {
-            CDBuilder builder = new CDBuilder();
-            CDReader fs = new CDReader(builder.Build(), false);
+            var builder = new CDBuilder();
+            var fs = new CDReader(builder.Build(), false);
 
             Assert.Equal("dir", fs.GetDirectoryInfo("fred.dir").Extension);
             Assert.Equal("", fs.GetDirectoryInfo("fred").Extension);
@@ -85,15 +85,15 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void GetDirectories()
         {
-            CDBuilder builder = new CDBuilder();
+            var builder = new CDBuilder();
             builder.AddDirectory(@"SOMEDIR\CHILD\GCHILD");
             builder.AddDirectory(@"A.DIR");
-            CDReader fs = new CDReader(builder.Build(), false);
+            var fs = new CDReader(builder.Build(), false);
 
 
             Assert.Equal(2, fs.Root.GetDirectories().Count());
 
-            DiscDirectoryInfo someDir = fs.Root.GetDirectories(@"SoMeDir").First();
+            var someDir = fs.Root.GetDirectories(@"SoMeDir").First();
             Assert.Single(fs.Root.GetDirectories("SOMEDIR"));
             Assert.Equal("SOMEDIR", someDir.Name);
 
@@ -118,14 +118,14 @@ namespace LibraryTests.Iso9660
         {
             var sep = Path.DirectorySeparatorChar;
 
-            CDBuilder builder = new CDBuilder();
+            var builder = new CDBuilder();
             builder.AddDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
             builder.AddDirectory($"AAA.DIR");
             builder.AddFile($"FOO.TXT", new byte[10]);
             builder.AddFile($"SOMEDIR{sep}CHILD.TXT", new byte[10]);
             builder.AddFile($"SOMEDIR{sep}FOO.TXT", new byte[10]);
             builder.AddFile($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}BAR.TXT", new byte[10]);
-            CDReader fs = new CDReader(builder.Build(), false);
+            var fs = new CDReader(builder.Build(), false);
 
             Assert.Single(fs.Root.GetFiles());
             Assert.Equal("FOO.TXT", fs.Root.GetFiles().First().FullName);
@@ -141,14 +141,14 @@ namespace LibraryTests.Iso9660
         {
             var sep = Path.DirectorySeparatorChar;
 
-            CDBuilder builder = new CDBuilder();
+            var builder = new CDBuilder();
             builder.AddDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
             builder.AddDirectory($"AAA.EXT");
             builder.AddFile($"FOO.TXT", new byte[10]);
             builder.AddFile($"SOMEDIR{sep}CHILD.TXT", new byte[10]);
             builder.AddFile($"SOMEDIR{sep}FOO.TXT", new byte[10]);
             builder.AddFile($"SOMEDIR{sep}CHILD{sep}GCHILD{sep}BAR.TXT", new byte[10]);
-            CDReader fs = new CDReader(builder.Build(), false);
+            var fs = new CDReader(builder.Build(), false);
 
             Assert.Equal(3, fs.Root.GetFileSystemInfos().Count());
 
@@ -159,9 +159,9 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void Parent()
         {
-            CDBuilder builder = new CDBuilder();
+            var builder = new CDBuilder();
             builder.AddDirectory(@"SOMEDIR");
-            CDReader fs = new CDReader(builder.Build(), false);
+            var fs = new CDReader(builder.Build(), false);
 
             Assert.Equal(fs.Root, fs.Root.GetDirectories("SOMEDIR").First().Parent);
         }
@@ -169,8 +169,8 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void Parent_Root()
         {
-            CDBuilder builder = new CDBuilder();
-            CDReader fs = new CDReader(builder.Build(), false);
+            var builder = new CDBuilder();
+            var fs = new CDReader(builder.Build(), false);
 
             Assert.Null(fs.Root.Parent);
         }
@@ -179,12 +179,12 @@ namespace LibraryTests.Iso9660
         public void RootBehaviour()
         {
             // Start time rounded down to whole seconds
-            DateTime start = DateTime.UtcNow;
+            var start = DateTime.UtcNow;
             start = new DateTime(start.Year, start.Month, start.Day, start.Hour, start.Minute, start.Second);
 
-            CDBuilder builder = new CDBuilder();
-            CDReader fs = new CDReader(builder.Build(), false);
-            DateTime end = DateTime.UtcNow;
+            var builder = new CDBuilder();
+            var fs = new CDReader(builder.Build(), false);
+            var end = DateTime.UtcNow;
 
             Assert.Equal(FileAttributes.Directory | FileAttributes.ReadOnly, fs.Root.Attributes);
             Assert.True(fs.Root.CreationTimeUtc >= start);
@@ -199,15 +199,15 @@ namespace LibraryTests.Iso9660
         public void Attributes()
         {
             // Start time rounded down to whole seconds
-            DateTime start = DateTime.UtcNow;
+            var start = DateTime.UtcNow;
             start = new DateTime(start.Year, start.Month, start.Day, start.Hour, start.Minute, start.Second);
 
-            CDBuilder builder = new CDBuilder();
+            var builder = new CDBuilder();
             builder.AddDirectory("Foo");
-            CDReader fs = new CDReader(builder.Build(), false);
-            DateTime end = DateTime.UtcNow;
+            var fs = new CDReader(builder.Build(), false);
+            var end = DateTime.UtcNow;
 
-            DiscDirectoryInfo di = fs.GetDirectoryInfo("Foo");
+            var di = fs.GetDirectoryInfo("Foo");
 
             Assert.Equal(FileAttributes.Directory | FileAttributes.ReadOnly, di.Attributes);
             Assert.True(di.CreationTimeUtc >= start);

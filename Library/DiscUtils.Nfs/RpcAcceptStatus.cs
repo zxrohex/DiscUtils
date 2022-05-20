@@ -20,14 +20,13 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum RpcAcceptStatus
 {
-    public enum RpcAcceptStatus
-    {
-        Success = 0,
-        ProgramUnavailable = 1,
-        ProgramVersionMismatch = 2,
-        ProcedureUnavailable = 3,
-        GarbageArguments = 4
-    }
+    Success = 0,
+    ProgramUnavailable = 1,
+    ProgramVersionMismatch = 2,
+    ProcedureUnavailable = 3,
+    GarbageArguments = 4
 }

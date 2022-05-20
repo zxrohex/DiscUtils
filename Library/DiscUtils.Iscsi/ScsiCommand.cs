@@ -22,35 +22,34 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal abstract class ScsiCommand : IByteArraySerializable
 {
-    internal abstract class ScsiCommand : IByteArraySerializable
+    public ScsiCommand(ulong targetLun)
     {
-        public ScsiCommand(ulong targetLun)
-        {
-            TargetLun = targetLun;
-        }
-
-        public virtual bool ImmediateDelivery
-        {
-            get { return false; }
-        }
-
-        public ulong TargetLun { get; }
-
-        public virtual TaskAttributes TaskAttributes
-        {
-            get { return TaskAttributes.Untagged; }
-        }
-
-        #region IByteArraySerializable Members
-
-        public abstract int Size { get; }
-
-        public abstract int ReadFrom(byte[] buffer, int offset);
-
-        public abstract void WriteTo(byte[] buffer, int offset);
-
-        #endregion
+        TargetLun = targetLun;
     }
+
+    public virtual bool ImmediateDelivery
+    {
+        get { return false; }
+    }
+
+    public ulong TargetLun { get; }
+
+    public virtual TaskAttributes TaskAttributes
+    {
+        get { return TaskAttributes.Untagged; }
+    }
+
+    #region IByteArraySerializable Members
+
+    public abstract int Size { get; }
+
+    public abstract int ReadFrom(byte[] buffer, int offset);
+
+    public abstract void WriteTo(byte[] buffer, int offset);
+
+    #endregion
 }

@@ -25,93 +25,96 @@ using System.IO;
 using DiscUtils;
 using DiscUtils.Common;
 
-namespace FileExtract
+namespace FileExtract;
+
+class Program : ProgramBase
 {
-    class Program : ProgramBase
+    private CommandLineMultiParameter _diskFiles;
+    private CommandLineParameter _inFilePath;
+    private CommandLineParameter _outFilePath;
+    private CommandLineSwitch _diskType;
+    private CommandLineSwitch _hexDump;
+
+    static void Main(string[] args)
     {
-        private CommandLineMultiParameter _diskFiles;
-        private CommandLineParameter _inFilePath;
-        private CommandLineParameter _outFilePath;
-        private CommandLineSwitch _diskType;
-        private CommandLineSwitch _hexDump;
+        DiscUtils.Containers.SetupHelper.SetupContainers();
+        DiscUtils.FileSystems.SetupHelper.SetupFileSystems();
 
-        static void Main(string[] args)
+        var program = new Program();
+        program.Run(args);
+    }
+
+    protected override ProgramBase.StandardSwitches DefineCommandLine(CommandLineParser parser)
+    {
+        _diskFiles = FileOrUriMultiParameter("disk", "The disks to inspect.", false);
+        _inFilePath = new CommandLineParameter("file_path", "The path of the file to extract.", false);
+        _outFilePath = new CommandLineParameter("out_file", "The output file to be written.", false);
+        _diskType = new CommandLineSwitch("dt", "disktype", "type", "Force the type of disk - use a file extension (one of " + string.Join(", ", VirtualDiskManager.SupportedDiskTypes) + ")");
+        _hexDump = new CommandLineSwitch("hd", "hexdump", null, "Output a HexDump of the NTFS stream to the console, in addition to writing it to the output file.");
+
+        parser.AddMultiParameter(_diskFiles);
+        parser.AddParameter(_inFilePath);
+        parser.AddParameter(_outFilePath);
+        parser.AddSwitch(_diskType);
+        parser.AddSwitch(_hexDump);
+
+        return StandardSwitches.UserAndPassword | StandardSwitches.PartitionOrVolume;
+    }
+
+    protected override void DoRun()
+    {
+        var volMgr = new VolumeManager();
+        foreach (var path in _diskFiles.Values)
         {
-            DiscUtils.Containers.SetupHelper.SetupContainers();
-            DiscUtils.FileSystems.SetupHelper.SetupFileSystems();
+            var disk = VirtualDisk.OpenDisk(path, _diskType.IsPresent ? _diskType.Value : null, FileAccess.Read, UserName, Password);
 
-            Program program = new Program();
-            program.Run(args);
+            if (disk is null)
+            {
+                Console.Error.WriteLine($"Failed to open '{path}' as virtual disk.");
+                continue;
+            }
+
+            volMgr.AddDisk(disk);
         }
 
-        protected override ProgramBase.StandardSwitches DefineCommandLine(CommandLineParser parser)
+        VolumeInfo volInfo;
+        if (!string.IsNullOrEmpty(VolumeId))
         {
-            _diskFiles = FileOrUriMultiParameter("disk", "The disks to inspect.", false);
-            _inFilePath = new CommandLineParameter("file_path", "The path of the file to extract.", false);
-            _outFilePath = new CommandLineParameter("out_file", "The output file to be written.", false);
-            _diskType = new CommandLineSwitch("dt", "disktype", "type", "Force the type of disk - use a file extension (one of " + string.Join(", ", VirtualDiskManager.SupportedDiskTypes) + ")");
-            _hexDump = new CommandLineSwitch("hd", "hexdump", null, "Output a HexDump of the NTFS stream to the console, in addition to writing it to the output file.");
-
-            parser.AddMultiParameter(_diskFiles);
-            parser.AddParameter(_inFilePath);
-            parser.AddParameter(_outFilePath);
-            parser.AddSwitch(_diskType);
-            parser.AddSwitch(_hexDump);
-
-            return StandardSwitches.UserAndPassword | StandardSwitches.PartitionOrVolume;
+            volInfo = volMgr.GetVolume(VolumeId);
+        }
+        else if (Partition >= 0)
+        {
+            volInfo = volMgr.GetPhysicalVolumes()[Partition];
+        }
+        else
+        {
+            volInfo = volMgr.GetLogicalVolumes()[0];
         }
 
-        protected override void DoRun()
+        var fsInfo = FileSystemManager.DetectFileSystems(volInfo)[0];
+
+        using var fs = fsInfo.Open(volInfo, FileSystemParameters);
+        using Stream source = fs.OpenFile(_inFilePath.Value, FileMode.Open, FileAccess.Read);
+        using (var outFile = new FileStream(_outFilePath.Value, FileMode.Create, FileAccess.ReadWrite, FileShare.Delete, bufferSize: 2 << 20))
         {
-            VolumeManager volMgr = new VolumeManager();
-            foreach (string disk in _diskFiles.Values)
-            {
-                volMgr.AddDisk(VirtualDisk.OpenDisk(disk, _diskType.IsPresent ? _diskType.Value : null, FileAccess.Read, UserName, Password));
-            }
-
-            VolumeInfo volInfo = null;
-            if (!string.IsNullOrEmpty(VolumeId))
-            {
-                volInfo = volMgr.GetVolume(VolumeId);
-            }
-            else if (Partition >= 0)
-            {
-                volInfo = volMgr.GetPhysicalVolumes()[Partition];
-            }
-            else
-            {
-                volInfo = volMgr.GetLogicalVolumes()[0];
-            }
-
-            DiscUtils.FileSystemInfo fsInfo = FileSystemManager.DetectFileSystems(volInfo)[0];
-
-            using (DiscFileSystem fs = fsInfo.Open(volInfo, FileSystemParameters))
-            {
-                using (Stream source = fs.OpenFile(_inFilePath.Value, FileMode.Open, FileAccess.Read))
-                {
-                    using (FileStream outFile = new FileStream(_outFilePath.Value, FileMode.Create, FileAccess.ReadWrite, FileShare.Delete, bufferSize: 2 << 20))
-                    {
-                        PumpStreams(source, outFile);
-                    }
-
-                    if (_hexDump.IsPresent)
-                    {
-                        source.Position = 0;
-                        HexDump.Generate(source, Console.Out);
-                    }
-                }
-            }
+            PumpStreams(source, outFile);
         }
 
-        private static void PumpStreams(Stream inStream, Stream outStream)
+        if (_hexDump.IsPresent)
         {
-            byte[] buffer = new byte[4096];
-            int bytesRead = inStream.Read(buffer, 0, 4096);
-            while (bytesRead != 0)
-            {
-                outStream.Write(buffer, 0, bytesRead);
-                bytesRead = inStream.Read(buffer, 0, 4096);
-            }
+            source.Position = 0;
+            HexDump.Generate(source, Console.Out);
+        }
+    }
+
+    private static void PumpStreams(Stream inStream, Stream outStream)
+    {
+        var buffer = new byte[4096];
+        var bytesRead = inStream.Read(buffer, 0, 4096);
+        while (bytesRead != 0)
+        {
+            outStream.Write(buffer, 0, bytesRead);
+            bytesRead = inStream.Read(buffer, 0, 4096);
         }
     }
 }

@@ -25,150 +25,119 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+/// <summary>
+/// Exception thrown when some invalid file system data is found, indicating probably corruption.
+/// </summary>
+[Serializable]
+public sealed class Nfs3Exception : IOException
 {
     /// <summary>
-    /// Exception thrown when some invalid file system data is found, indicating probably corruption.
+    /// Initializes a new instance of the Nfs3Exception class.
     /// </summary>
-    [Serializable]
-    public sealed class Nfs3Exception : IOException
+    public Nfs3Exception() {}
+
+    /// <summary>
+    /// Initializes a new instance of the Nfs3Exception class.
+    /// </summary>
+    /// <param name="message">The exception message.</param>
+    public Nfs3Exception(string message)
+        : base(message) {}
+
+    /// <summary>
+    /// Initializes a new instance of the Nfs3Exception class.
+    /// </summary>
+    /// <param name="message">The exception message.</param>
+    /// <param name="status">The status result of an NFS procedure.</param>
+    public Nfs3Exception(string message, Nfs3Status status)
+        : base(message)
     {
-        /// <summary>
-        /// Initializes a new instance of the Nfs3Exception class.
-        /// </summary>
-        public Nfs3Exception() {}
+        NfsStatus = status;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the Nfs3Exception class.
-        /// </summary>
-        /// <param name="message">The exception message.</param>
-        public Nfs3Exception(string message)
-            : base(message) {}
+    /// <summary>
+    /// Initializes a new instance of the Nfs3Exception class.
+    /// </summary>
+    /// <param name="message">The exception message.</param>
+    /// <param name="innerException">The inner exception.</param>
+    public Nfs3Exception(string message, Exception innerException)
+        : base(message, innerException) {}
 
-        /// <summary>
-        /// Initializes a new instance of the Nfs3Exception class.
-        /// </summary>
-        /// <param name="message">The exception message.</param>
-        /// <param name="status">The status result of an NFS procedure.</param>
-        public Nfs3Exception(string message, Nfs3Status status)
-            : base(message)
-        {
-            NfsStatus = status;
-        }
+    /// <summary>
+    /// Initializes a new instance of the Nfs3Exception class.
+    /// </summary>
+    /// <param name="status">The status result of an NFS procedure.</param>
+    internal Nfs3Exception(Nfs3Status status)
+        : base(GenerateMessage(status))
+    {
+        NfsStatus = status;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the Nfs3Exception class.
-        /// </summary>
-        /// <param name="message">The exception message.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public Nfs3Exception(string message, Exception innerException)
-            : base(message, innerException) {}
+    /// <summary>
+    /// Initializes a new instance of the Nfs3Exception class.
+    /// </summary>
+    /// <param name="info">The serialization info.</param>
+    /// <param name="context">The streaming context.</param>
+    private Nfs3Exception(SerializationInfo info, StreamingContext context)
+        : base(info, context)
+    {
+        NfsStatus = (Nfs3Status)info.GetInt32("Status");
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the Nfs3Exception class.
-        /// </summary>
-        /// <param name="status">The status result of an NFS procedure.</param>
-        internal Nfs3Exception(Nfs3Status status)
-            : base(GenerateMessage(status))
-        {
-            NfsStatus = status;
-        }
+    /// <summary>
+    /// Gets the NFS status code that lead to the exception.
+    /// </summary>
+    public Nfs3Status NfsStatus { get; } = Nfs3Status.Unknown;
 
-        /// <summary>
-        /// Initializes a new instance of the Nfs3Exception class.
-        /// </summary>
-        /// <param name="info">The serialization info.</param>
-        /// <param name="context">The streaming context.</param>
-        private Nfs3Exception(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-            NfsStatus = (Nfs3Status)info.GetInt32("Status");
-        }
-
-        /// <summary>
-        /// Gets the NFS status code that lead to the exception.
-        /// </summary>
-        public Nfs3Status NfsStatus { get; } = Nfs3Status.Unknown;
-
-        /// <summary>
-        /// Serializes this exception.
-        /// </summary>
-        /// <param name="info">The object to populate with serialized data.</param>
-        /// <param name="context">The context for this serialization.</param>
+    /// <summary>
+    /// Serializes this exception.
+    /// </summary>
+    /// <param name="info">The object to populate with serialized data.</param>
+    /// <param name="context">The context for this serialization.</param>
 #if !NETCOREAPP2_0_OR_GREATER
-        [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.SerializationFormatter)]
+    [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.SerializationFormatter)]
 #endif
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("Status", (int)NfsStatus);
-            base.GetObjectData(info, context);
-        }
+    public override void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        info.AddValue("Status", (int)NfsStatus);
+        base.GetObjectData(info, context);
+    }
 
-        private static string GenerateMessage(Nfs3Status status)
+    private static string GenerateMessage(Nfs3Status status)
+    {
+        return status switch
         {
-            switch (status)
-            {
-                case Nfs3Status.Ok:
-                    return "OK";
-                case Nfs3Status.NotOwner:
-                    return "Not owner";
-                case Nfs3Status.NoSuchEntity:
-                    return "No such file or directory";
-                case Nfs3Status.IOError:
-                    return "Hardware I/O error";
-                case Nfs3Status.NoSuchDeviceOrAddress:
-                    return "I/O error - no such device or address";
-                case Nfs3Status.AccessDenied:
-                    return "Permission denied";
-                case Nfs3Status.FileExists:
-                    return "File exists";
-                case Nfs3Status.AttemptedCrossDeviceHardLink:
-                    return "Attempted cross-device hard link";
-                case Nfs3Status.NoSuchDevice:
-                    return "No such device";
-                case Nfs3Status.NotDirectory:
-                    return "Not a directory";
-                case Nfs3Status.IsADirectory:
-                    return "Is a directory";
-                case Nfs3Status.InvalidArgument:
-                    return "Invalid or unsupported argument";
-                case Nfs3Status.FileTooLarge:
-                    return "File too large";
-                case Nfs3Status.NoSpaceAvailable:
-                    return "No space left on device";
-                case Nfs3Status.ReadOnlyFileSystem:
-                    return "Read-only file system";
-                case Nfs3Status.TooManyHardLinks:
-                    return "Too many hard links";
-                case Nfs3Status.NameTooLong:
-                    return "Name too long";
-                case Nfs3Status.DirectoryNotEmpty:
-                    return "Directory not empty";
-                case Nfs3Status.QuotaHardLimitExceeded:
-                    return "Quota hard limit exceeded";
-                case Nfs3Status.StaleFileHandle:
-                    return "Invalid (stale) file handle";
-                case Nfs3Status.TooManyRemoteAccessLevels:
-                    return "Too many levels of remote access";
-                case Nfs3Status.BadFileHandle:
-                    return "Illegal NFS file handle";
-                case Nfs3Status.UpdateSynchronizationError:
-                    return "Update synchronization error";
-                case Nfs3Status.StaleCookie:
-                    return "Read directory cookie stale";
-                case Nfs3Status.NotSupported:
-                    return "Operation is not supported";
-                case Nfs3Status.TooSmall:
-                    return "Buffer or request is too small";
-                case Nfs3Status.ServerFault:
-                    return "Server fault";
-                case Nfs3Status.BadType:
-                    return "Server doesn't support object type";
-                case Nfs3Status.SlowJukebox:
-                    return "Unable to complete in timely fashion";
-                default:
-                    return "Unknown error: " + status;
-            }
-        }
+            Nfs3Status.Ok => "OK",
+            Nfs3Status.NotOwner => "Not owner",
+            Nfs3Status.NoSuchEntity => "No such file or directory",
+            Nfs3Status.IOError => "Hardware I/O error",
+            Nfs3Status.NoSuchDeviceOrAddress => "I/O error - no such device or address",
+            Nfs3Status.AccessDenied => "Permission denied",
+            Nfs3Status.FileExists => "File exists",
+            Nfs3Status.AttemptedCrossDeviceHardLink => "Attempted cross-device hard link",
+            Nfs3Status.NoSuchDevice => "No such device",
+            Nfs3Status.NotDirectory => "Not a directory",
+            Nfs3Status.IsADirectory => "Is a directory",
+            Nfs3Status.InvalidArgument => "Invalid or unsupported argument",
+            Nfs3Status.FileTooLarge => "File too large",
+            Nfs3Status.NoSpaceAvailable => "No space left on device",
+            Nfs3Status.ReadOnlyFileSystem => "Read-only file system",
+            Nfs3Status.TooManyHardLinks => "Too many hard links",
+            Nfs3Status.NameTooLong => "Name too long",
+            Nfs3Status.DirectoryNotEmpty => "Directory not empty",
+            Nfs3Status.QuotaHardLimitExceeded => "Quota hard limit exceeded",
+            Nfs3Status.StaleFileHandle => "Invalid (stale) file handle",
+            Nfs3Status.TooManyRemoteAccessLevels => "Too many levels of remote access",
+            Nfs3Status.BadFileHandle => "Illegal NFS file handle",
+            Nfs3Status.UpdateSynchronizationError => "Update synchronization error",
+            Nfs3Status.StaleCookie => "Read directory cookie stale",
+            Nfs3Status.NotSupported => "Operation is not supported",
+            Nfs3Status.TooSmall => "Buffer or request is too small",
+            Nfs3Status.ServerFault => "Server fault",
+            Nfs3Status.BadType => "Server doesn't support object type",
+            Nfs3Status.SlowJukebox => "Unable to complete in timely fashion",
+            _ => "Unknown error: " + status,
+        };
     }
 }

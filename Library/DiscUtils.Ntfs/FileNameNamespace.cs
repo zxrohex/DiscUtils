@@ -1,10 +1,9 @@
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal enum FileNameNamespace : byte
 {
-    internal enum FileNameNamespace : byte
-    {
-        Posix = 0,
-        Win32 = 1,
-        Dos = 2,
-        Win32AndDos = 3
-    }
+    Posix = 0,
+    Win32 = 1,
+    Dos = 2,
+    Win32AndDos = 3
 }

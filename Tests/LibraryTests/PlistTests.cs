@@ -31,15 +31,13 @@ namespace LibraryTests
         [Fact]
         public void Parse()
         {
-            using (Stream stream = File.OpenRead("plist.xml"))
-            {
-                var plist = Plist.Parse(stream);
+            using Stream stream = File.OpenRead("plist.xml");
+            var plist = Plist.Parse(stream);
 
-                Assert.NotNull(plist);
-                Assert.Equal(4, plist.Keys.Count);
-                Assert.Equal("valueA", plist["keyA"]);
-                Assert.Equal("value&B", plist["key&B"]);
-            }
+            Assert.NotNull(plist);
+            Assert.Equal(4, plist.Keys.Count);
+            Assert.Equal("valueA", plist["keyA"]);
+            Assert.Equal("value&B", plist["key&B"]);
         }
     }
 }

@@ -20,13 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class ApplicationEntityIdentifier : EntityIdentifier
 {
-    internal class ApplicationEntityIdentifier : EntityIdentifier
+    public override string ToString()
     {
-        public override string ToString()
-        {
-            return Identifier;
-        }
+        return Identifier;
     }
 }

@@ -23,38 +23,37 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal sealed class ShortAllocationDescriptor : IByteArraySerializable
 {
-    internal sealed class ShortAllocationDescriptor : IByteArraySerializable
+    public uint ExtentLength;
+    public uint ExtentLocation;
+    public ShortAllocationFlags Flags;
+
+    public int Size
     {
-        public uint ExtentLength;
-        public uint ExtentLocation;
-        public ShortAllocationFlags Flags;
+        get { return 8; }
+    }
 
-        public int Size
-        {
-            get { return 8; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        var len = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
+        ExtentLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            uint len = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-            ExtentLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+        ExtentLength = len & 0x3FFFFFFF;
+        Flags = (ShortAllocationFlags)((len >> 30) & 0x3);
 
-            ExtentLength = len & 0x3FFFFFFF;
-            Flags = (ShortAllocationFlags)((len >> 30) & 0x3);
+        return 8;
+    }
 
-            return 8;
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string ToString()
-        {
-            return ExtentLocation + ":+" + ExtentLength + " [" + Flags + "]";
-        }
+    public override string ToString()
+    {
+        return ExtentLocation + ":+" + ExtentLength + " [" + Flags + "]";
     }
 }

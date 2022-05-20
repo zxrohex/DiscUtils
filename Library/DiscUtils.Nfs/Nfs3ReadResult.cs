@@ -23,78 +23,77 @@
 using System;
 using System.Linq;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3ReadResult : Nfs3CallResult
 {
-    public sealed class Nfs3ReadResult : Nfs3CallResult
+    internal Nfs3ReadResult(XdrDataReader reader)
     {
-        internal Nfs3ReadResult(XdrDataReader reader)
+        Status = (Nfs3Status)reader.ReadInt32();
+        if (reader.ReadBool())
         {
-            Status = (Nfs3Status)reader.ReadInt32();
-            if (reader.ReadBool())
-            {
-                FileAttributes = new Nfs3FileAttributes(reader);
-            }
-
-            if (Status == Nfs3Status.Ok)
-            {
-                Count = reader.ReadInt32();
-                Eof = reader.ReadBool();
-                Data = reader.ReadBuffer();
-            }
+            FileAttributes = new Nfs3FileAttributes(reader);
         }
 
-        public Nfs3ReadResult()
+        if (Status == Nfs3Status.Ok)
         {
+            Count = reader.ReadInt32();
+            Eof = reader.ReadBool();
+            Data = reader.ReadBuffer();
+        }
+    }
+
+    public Nfs3ReadResult()
+    {
+    }
+
+    public int Count { get; set; }
+
+    public byte[] Data { get; set; }
+
+    public bool Eof { get; set; }
+
+    public Nfs3FileAttributes FileAttributes { get; set; }
+
+    public override void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)Status);
+
+        writer.Write(FileAttributes != null);
+        if (FileAttributes != null)
+        {
+            FileAttributes.Write(writer);
         }
 
-        public int Count { get; set; }
-
-        public byte[] Data { get; set; }
-
-        public bool Eof { get; set; }
-
-        public Nfs3FileAttributes FileAttributes { get; set; }
-
-        public override void Write(XdrDataWriter writer)
+        if (Status == Nfs3Status.Ok)
         {
-            writer.Write((int)Status);
+            writer.Write(Count);
+            writer.Write(Eof);
+            writer.WriteBuffer(Data);
+        }
+    }
 
-            writer.Write(FileAttributes != null);
-            if (FileAttributes != null)
-            {
-                FileAttributes.Write(writer);
-            }
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3ReadResult);
+    }
 
-            if (Status == Nfs3Status.Ok)
-            {
-                writer.Write(Count);
-                writer.Write(Eof);
-                writer.WriteBuffer(Data);
-            }
+    public bool Equals(Nfs3ReadResult other)
+    {
+        if (other == null)
+        {
+            return false;
         }
 
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Nfs3ReadResult);
-        }
+        return other.Status == Status
+            && object.Equals(other.FileAttributes, FileAttributes)
+            && other.Count == Count
+            && Enumerable.SequenceEqual(other.Data, Data)
+            && other.Eof == Eof;
+    }
 
-        public bool Equals(Nfs3ReadResult other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other.Status == Status
-                && object.Equals(other.FileAttributes, FileAttributes)
-                && other.Count == Count
-                && Enumerable.SequenceEqual(other.Data, Data)
-                && other.Eof == Eof;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Status, FileAttributes, Count, Eof, Data);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Status, FileAttributes, Count, Eof, Data);
     }
 }

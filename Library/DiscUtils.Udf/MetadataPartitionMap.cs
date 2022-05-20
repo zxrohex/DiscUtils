@@ -22,36 +22,35 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal sealed class MetadataPartitionMap : PartitionMap
 {
-    internal sealed class MetadataPartitionMap : PartitionMap
+    public ushort AlignmentUnitSize;
+    public uint AllocationUnitSize;
+    public byte Flags;
+    public uint MetadataBitmapFileLocation;
+    public uint MetadataFileLocation;
+    public uint MetadataMirrorFileLocation;
+    public ushort PartitionNumber;
+    public ushort VolumeSequenceNumber;
+
+    public override int Size
     {
-        public ushort AlignmentUnitSize;
-        public uint AllocationUnitSize;
-        public byte Flags;
-        public uint MetadataBitmapFileLocation;
-        public uint MetadataFileLocation;
-        public uint MetadataMirrorFileLocation;
-        public ushort PartitionNumber;
-        public ushort VolumeSequenceNumber;
+        get { return 64; }
+    }
 
-        public override int Size
-        {
-            get { return 64; }
-        }
+    protected override int Parse(byte[] buffer, int offset)
+    {
+        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
+        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 38);
+        MetadataFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40);
+        MetadataMirrorFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
+        MetadataBitmapFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 48);
+        AllocationUnitSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 52);
+        AlignmentUnitSize = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 56);
+        Flags = buffer[offset + 58];
 
-        protected override int Parse(byte[] buffer, int offset)
-        {
-            VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
-            PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 38);
-            MetadataFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40);
-            MetadataMirrorFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
-            MetadataBitmapFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 48);
-            AllocationUnitSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 52);
-            AlignmentUnitSize = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 56);
-            Flags = buffer[offset + 58];
-
-            return 64;
-        }
+        return 64;
     }
 }

@@ -20,73 +20,72 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+using System.IO;
+
+internal struct Extent : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
-    using System.IO;
+    /// <summary>
+    /// Number of Blocks
+    /// </summary>
+    public uint BlockCount { get; private set; }
 
-    internal class Extent : IByteArraySerializable
+    public ulong StartBlock { get; private set; }
+
+    public ulong StartOffset { get; private set; }
+
+    public ExtentFlag Flag { get; private set; }
+
+    public int Size
     {
-        /// <summary>
-        /// Number of Blocks
-        /// </summary>
-        public uint BlockCount { get; private set; }
+        get { return 16; }
+    }
 
-        public ulong StartBlock { get; private set; }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        var lower = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x8);
+        var middle = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x6);
+        var upper = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0);
+        BlockCount = (uint)(lower & 0x001FFFFF);
+        StartBlock = (middle >> 5) & 0x000FFFFFFFFFFFFF;
+        StartOffset = (upper >> 9) & 0x003FFFFFFFFFFFFF;
+        Flag = (ExtentFlag) ((buffer[offset + 0x0] >> 6) & 0x3);
+        return Size;
+    }
 
-        public ulong StartOffset { get; private set; }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public ExtentFlag Flag { get; private set; }
+    public long GetOffset(Context context)
+    {
+        return GetOffset(context, StartBlock);
+    }
 
-        public int Size
-        {
-            get { return 16; }
-        }
+    public static long GetOffset(Context context, ulong block)
+    {
+        var daddr = (long)((block >> context.SuperBlock.AgBlocksLog2) * context.SuperBlock.AgBlocks + (block & (1u << context.SuperBlock.AgBlocksLog2) - 1u)) << (context.SuperBlock.BlocksizeLog2 - 9);
+        return daddr * 512;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            ulong lower = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x8);
-            ulong middle = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x6);
-            ulong upper = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0);
-            BlockCount = (uint)(lower & 0x001FFFFF);
-            StartBlock = (middle >> 5) & 0x000FFFFFFFFFFFFF;
-            StartOffset = (upper >> 9) & 0x003FFFFFFFFFFFFF;
-            Flag = (ExtentFlag) ((buffer[offset + 0x0] >> 6) & 0x3);
-            return Size;
-        }
+    public byte[] GetData(Context context)
+    {
+        return GetData(context,0 , context.SuperBlock.Blocksize*BlockCount);
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public byte[] GetData(Context context, long offset, uint count)
+    {
+        context.RawStream.Position = GetOffset(context) + offset;
+        return StreamUtilities.ReadExact(context.RawStream, (int) count);
+    }
 
-        public long GetOffset(Context context)
-        {
-            return GetOffset(context, StartBlock);
-        }
-
-        public static long GetOffset(Context context, ulong block)
-        {
-            var daddr = (long)((block >> context.SuperBlock.AgBlocksLog2) * context.SuperBlock.AgBlocks + (block & (1u << context.SuperBlock.AgBlocksLog2) - 1u)) << (context.SuperBlock.BlocksizeLog2 - 9);
-            return daddr * 512;
-        }
-
-        public byte[] GetData(Context context)
-        {
-            return GetData(context,0 , context.SuperBlock.Blocksize*BlockCount);
-        }
-
-        public byte[] GetData(Context context, long offset, uint count)
-        {
-            context.RawStream.Position = GetOffset(context) + offset;
-            return StreamUtilities.ReadExact(context.RawStream, (int) count);
-        }
-
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            return $"[{StartOffset},{StartBlock},{BlockCount},{Flag}]";
-        }
+    /// <inheritdoc />
+    public override string ToString()
+    {
+        return $"[{StartOffset},{StartBlock},{BlockCount},{Flag}]";
     }
 }

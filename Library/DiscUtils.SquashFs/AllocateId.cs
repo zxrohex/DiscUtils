@@ -1,4 +1,3 @@
-﻿namespace DiscUtils.SquashFs
-{
-    internal delegate ushort AllocateId(int id);
-}
+﻿namespace DiscUtils.SquashFs;
+
+internal delegate ushort AllocateId(int id);

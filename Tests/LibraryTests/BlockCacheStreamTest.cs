@@ -32,9 +32,9 @@ namespace LibraryTests
         [Fact]
         public void Bug5203_IncreaseSize()
         {
-            MemoryStream ms = new MemoryStream();
-            BlockCacheSettings settings = new BlockCacheSettings { BlockSize = 64, LargeReadSize = 128, OptimumReadSize = 64, ReadCacheSize = 1024 };
-            BlockCacheStream bcs = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = new MemoryStream();
+            var settings = new BlockCacheSettings { BlockSize = 64, LargeReadSize = 128, OptimumReadSize = 64, ReadCacheSize = 1024 };
+            var bcs = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
             // Pre-load read cache with a 'short' block
             bcs.Write(new byte[11], 0, 11);
@@ -42,7 +42,7 @@ namespace LibraryTests
             bcs.Read(new byte[11], 0, 11);
 
             // Extend stream
-            for(int i = 0; i < 20; ++i)
+            for(var i = 0; i < 20; ++i)
             {
                 bcs.Write(new byte[11], 0, 11);
             }

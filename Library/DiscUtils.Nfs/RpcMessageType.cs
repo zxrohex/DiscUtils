@@ -20,11 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum RpcMessageType
 {
-    public enum RpcMessageType
-    {
-        Call = 0,
-        Reply = 1
-    }
+    Call = 0,
+    Reply = 1
 }

@@ -22,64 +22,64 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+internal class ServerSparseExtentHeader : CommonSparseExtentHeader
 {
-    internal class ServerSparseExtentHeader : CommonSparseExtentHeader
+    public const uint CowdMagicNumber = 0x44574f43;
+
+    public uint Flags;
+    public uint FreeSector;
+    public uint NumGdEntries;
+    public uint SavedGeneration;
+    public uint UncleanShutdown;
+
+    public ServerSparseExtentHeader()
     {
-        public const uint CowdMagicNumber = 0x44574f43;
+        MagicNumber = CowdMagicNumber;
+        Version = 1;
+        GrainSize = 512;
+        NumGTEsPerGT = 4096;
+        Flags = 3;
+    }
 
-        public uint Flags;
-        public uint FreeSector;
-        public uint NumGdEntries;
-        public uint SavedGeneration;
-        public uint UncleanShutdown;
-
-        public ServerSparseExtentHeader()
+    public static ServerSparseExtentHeader Read(byte[] buffer, int offset)
+    {
+        var hdr = new ServerSparseExtentHeader
         {
-            MagicNumber = CowdMagicNumber;
-            Version = 1;
-            GrainSize = 512;
-            NumGTEsPerGT = 4096;
-            Flags = 3;
-        }
+            MagicNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x00),
+            Version = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x04),
+            Flags = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x08),
+            Capacity = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x0C),
+            GrainSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x10),
+            GdOffset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x14),
+            NumGdEntries = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x18),
+            FreeSector = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x1C),
 
-        public static ServerSparseExtentHeader Read(byte[] buffer, int offset)
-        {
-            ServerSparseExtentHeader hdr = new ServerSparseExtentHeader();
+            SavedGeneration = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x660),
+            UncleanShutdown = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x66C),
 
-            hdr.MagicNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x00);
-            hdr.Version = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x04);
-            hdr.Flags = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x08);
-            hdr.Capacity = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x0C);
-            hdr.GrainSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x10);
-            hdr.GdOffset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x14);
-            hdr.NumGdEntries = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x18);
-            hdr.FreeSector = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x1C);
+            NumGTEsPerGT = 4096
+        };
 
-            hdr.SavedGeneration = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x660);
-            hdr.UncleanShutdown = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x66C);
+        return hdr;
+    }
 
-            hdr.NumGTEsPerGT = 4096;
+    public byte[] GetBytes()
+    {
+        var buffer = new byte[Sizes.Sector * 4];
+        EndianUtilities.WriteBytesLittleEndian(MagicNumber, buffer, 0x00);
+        EndianUtilities.WriteBytesLittleEndian(Version, buffer, 0x04);
+        EndianUtilities.WriteBytesLittleEndian(Flags, buffer, 0x08);
+        EndianUtilities.WriteBytesLittleEndian((uint)Capacity, buffer, 0x0C);
+        EndianUtilities.WriteBytesLittleEndian((uint)GrainSize, buffer, 0x10);
+        EndianUtilities.WriteBytesLittleEndian((uint)GdOffset, buffer, 0x14);
+        EndianUtilities.WriteBytesLittleEndian(NumGdEntries, buffer, 0x18);
+        EndianUtilities.WriteBytesLittleEndian(FreeSector, buffer, 0x1C);
 
-            return hdr;
-        }
+        EndianUtilities.WriteBytesLittleEndian(SavedGeneration, buffer, 0x660);
+        EndianUtilities.WriteBytesLittleEndian(UncleanShutdown, buffer, 0x66C);
 
-        public byte[] GetBytes()
-        {
-            byte[] buffer = new byte[Sizes.Sector * 4];
-            EndianUtilities.WriteBytesLittleEndian(MagicNumber, buffer, 0x00);
-            EndianUtilities.WriteBytesLittleEndian(Version, buffer, 0x04);
-            EndianUtilities.WriteBytesLittleEndian(Flags, buffer, 0x08);
-            EndianUtilities.WriteBytesLittleEndian((uint)Capacity, buffer, 0x0C);
-            EndianUtilities.WriteBytesLittleEndian((uint)GrainSize, buffer, 0x10);
-            EndianUtilities.WriteBytesLittleEndian((uint)GdOffset, buffer, 0x14);
-            EndianUtilities.WriteBytesLittleEndian(NumGdEntries, buffer, 0x18);
-            EndianUtilities.WriteBytesLittleEndian(FreeSector, buffer, 0x1C);
-
-            EndianUtilities.WriteBytesLittleEndian(SavedGeneration, buffer, 0x660);
-            EndianUtilities.WriteBytesLittleEndian(UncleanShutdown, buffer, 0x66C);
-
-            return buffer;
-        }
+        return buffer;
     }
 }

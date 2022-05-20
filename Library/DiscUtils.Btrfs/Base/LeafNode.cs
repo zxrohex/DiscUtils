@@ -20,107 +20,81 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Btrfs.Base.Items;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal class LeafNode:NodeHeader
 {
-    internal class LeafNode:NodeHeader
+    /// <summary>
+    /// key pointers
+    /// </summary>
+    public NodeItem[] Items { get; private set; }
+
+    public BaseItem[] NodeData { get; private set; }
+
+    public override int Size
     {
-        /// <summary>
-        /// key pointers
-        /// </summary>
-        public NodeItem[] Items { get; private set; }
+        get { return (int)(base.Size + ItemCount*KeyPointer.Length); }
+    }
 
-        public BaseItem[] NodeData { get; private set; }
-
-        public override int Size
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
+    {
+        var itemOffset = base.ReadFrom(buffer);
+        Items = new NodeItem[ItemCount];
+        NodeData = new BaseItem[ItemCount];
+        for (var i = 0; i < ItemCount; i++)
         {
-            get { return (int)(base.Size + ItemCount*KeyPointer.Length); }
-        }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            var itemOffset = base.ReadFrom(buffer, offset);
-            Items = new NodeItem[ItemCount];
-            NodeData = new BaseItem[ItemCount];
-            for (int i = 0; i < ItemCount; i++)
+            Items[i] = new NodeItem();
+            itemOffset += Items[i].ReadFrom(buffer.Slice(itemOffset));
+            switch (Items[i].Key.ObjectId)
             {
-                Items[i] = new NodeItem();
-                itemOffset += Items[i].ReadFrom(buffer, itemOffset);
-                switch (Items[i].Key.ObjectId)
-                {
-                    case (ulong)ReservedObjectId.CsumItem:
-                    case (ulong)ReservedObjectId.TreeReloc:
-                        continue;
-                    default:
-                        NodeData[i] = CreateItem(Items[i], buffer, Length + offset);
-                        break;
-                }
-            }
-            return Size;
-        }
-
-        private BaseItem CreateItem(NodeItem item, byte[] buffer, int offset)
-        {
-            var data = EndianUtilities.ToByteArray(buffer, (int)(offset + item.DataOffset), (int)item.DataSize);
-            BaseItem result;
-            switch (item.Key.ItemType)
-            {
-                case ItemType.ChunkItem:
-                    result = new ChunkItem(item.Key);
-                    break;
-                case ItemType.DevItem:
-                    result = new DevItem(item.Key);
-                    break;
-                case ItemType.RootItem:
-                    result = new RootItem(item.Key);
-                    break;
-                case ItemType.InodeRef:
-                    result = new InodeRef(item.Key);
-                    break;
-                case ItemType.InodeItem:
-                    result = new InodeItem(item.Key);
-                    break;
-                case ItemType.DirItem:
-                    result = new DirItem(item.Key);
-                    break;
-                case ItemType.DirIndex:
-                    result = new DirIndex(item.Key);
-                    break;
-                case ItemType.ExtentData:
-                    result = new ExtentData(item.Key);
-                    break;
-                case ItemType.RootRef:
-                    result = new RootRef(item.Key);
-                    break;
-                case ItemType.RootBackref:
-                    result = new RootBackref(item.Key);
-                    break;
-                case ItemType.XattrItem:
-                    result = new XattrItem(item.Key);
-                    break;
-                case ItemType.OrphanItem:
-                    result = new OrphanItem(item.Key);
-                    break;
+                case (ulong)ReservedObjectId.CsumItem:
+                case (ulong)ReservedObjectId.TreeReloc:
+                    continue;
                 default:
-                    throw new IOException($"Unsupported item type {item.Key.ItemType}");
-            }
-            result.ReadFrom(data, 0);
-            return result;
-        }
-
-        public override IEnumerable<BaseItem> Find(Key key, Context context)
-        {
-            for (int i = 0; i < Items.Length; i++)
-            {
-                if (Items[i].Key.ObjectId > key.ObjectId)
+                    NodeData[i] = CreateItem(Items[i], buffer.Slice(Length));
                     break;
-                if (Items[i].Key.ObjectId == key.ObjectId && Items[i].Key.ItemType == key.ItemType)
-                    yield return NodeData[i];
             }
+        }
+        return Size;
+    }
+
+    private BaseItem CreateItem(NodeItem item, ReadOnlySpan<byte> buffer)
+    {
+        var data = EndianUtilities.ToByteArray(buffer.Slice((int)(item.DataOffset), (int)item.DataSize));
+        BaseItem result = item.Key.ItemType switch
+        {
+            ItemType.ChunkItem => new ChunkItem(item.Key),
+            ItemType.DevItem => new DevItem(item.Key),
+            ItemType.RootItem => new RootItem(item.Key),
+            ItemType.InodeRef => new InodeRef(item.Key),
+            ItemType.InodeItem => new InodeItem(item.Key),
+            ItemType.DirItem => new DirItem(item.Key),
+            ItemType.DirIndex => new DirIndex(item.Key),
+            ItemType.ExtentData => new ExtentData(item.Key),
+            ItemType.RootRef => new RootRef(item.Key),
+            ItemType.RootBackref => new RootBackref(item.Key),
+            ItemType.XattrItem => new XattrItem(item.Key),
+            ItemType.OrphanItem => new OrphanItem(item.Key),
+            _ => throw new IOException($"Unsupported item type {item.Key.ItemType}"),
+        };
+        result.ReadFrom(data, 0);
+        return result;
+    }
+
+    public override IEnumerable<BaseItem> Find(Key key, Context context)
+    {
+        for (var i = 0; i < Items.Length; i++)
+        {
+            if (Items[i].Key.ObjectId > key.ObjectId)
+                break;
+            if (Items[i].Key.ObjectId == key.ObjectId && Items[i].Key.ItemType == key.ItemType)
+                yield return NodeData[i];
         }
     }
 }

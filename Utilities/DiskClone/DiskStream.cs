@@ -22,23 +22,22 @@
 
 using Microsoft.Win32.SafeHandles;
 
-namespace DiskClone
+namespace DiskClone;
+
+internal sealed class DiskStream : UnbufferedNativeStream
 {
-    internal sealed class DiskStream : UnbufferedNativeStream
+    private long _length;
+
+    public DiskStream(SafeFileHandle handle)
+        : base(handle)
     {
-        private long _length;
-
-        public DiskStream(SafeFileHandle handle)
-            : base(handle)
-        {
-            _length = Win32Wrapper.GetDiskCapacity(handle);
-        }
-
-
-        public override long Length
-        {
-            get { return _length; }
-        }
-
+        _length = Win32Wrapper.GetDiskCapacity(handle);
     }
+
+
+    public override long Length
+    {
+        get { return _length; }
+    }
+
 }

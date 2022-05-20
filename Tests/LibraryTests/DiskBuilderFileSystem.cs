@@ -181,10 +181,8 @@ namespace LibraryTests
         {
             if (_files.ContainsKey(path))
             {
-                using (Stream s = _files[path].OpenStream())
-                {
-                    return s.Length;
-                }
+                using var s = _files[path].OpenStream();
+                return s.Length;
             }
             else
             {

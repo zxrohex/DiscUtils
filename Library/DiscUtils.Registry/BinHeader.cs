@@ -20,48 +20,50 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Registry
+namespace DiscUtils.Registry;
+
+internal struct BinHeader : IByteArraySerializable
 {
-    internal struct BinHeader : IByteArraySerializable
+    public const int HeaderSize = 0x20;
+
+    private const uint Signature = 0x6E696268;
+
+    public int BinSize;
+
+    public int NextOffset;
+
+    public int FileOffset;
+
+    public int Size
     {
-        public const int HeaderSize = 0x20;
+        get { return HeaderSize; }
+    }
 
-        private const uint Signature = 0x6E696268;
-
-        public int BinSize;
-
-        public int NextOffset;
-
-        public int FileOffset;
-
-        public int Size
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        var sig = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+        if (sig != Signature)
         {
-            get { return HeaderSize; }
+            throw new IOException("Invalid signature for registry bin");
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            uint sig = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-            if (sig != Signature)
-            {
-                throw new IOException("Invalid signature for registry bin");
-            }
+        FileOffset = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
+        BinSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x08);
+        NextOffset = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x1C);
+        return HeaderSize;
+    }
 
-            FileOffset = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
-            BinSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x08);
-            NextOffset = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x1C);
-            return HeaderSize;
-        }
+    public void WriteTo(byte[] buffer, int offset) => WriteTo(buffer.AsSpan(offset));
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian(Signature, buffer, offset + 0x00);
-            EndianUtilities.WriteBytesLittleEndian(FileOffset, buffer, offset + 0x04);
-            EndianUtilities.WriteBytesLittleEndian(BinSize, buffer, offset + 0x08);
-            EndianUtilities.WriteBytesLittleEndian(NextOffset, buffer, offset + 0x1C);
-        }
+    public void WriteTo(Span<byte> buffer)
+    {
+        EndianUtilities.WriteBytesLittleEndian(Signature, buffer.Slice(0x00));
+        EndianUtilities.WriteBytesLittleEndian(FileOffset, buffer.Slice(0x04));
+        EndianUtilities.WriteBytesLittleEndian(BinSize, buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian(NextOffset, buffer.Slice(0x1C));
     }
 }

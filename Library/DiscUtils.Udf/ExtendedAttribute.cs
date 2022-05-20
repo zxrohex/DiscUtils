@@ -20,29 +20,28 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+/// <summary>
+/// Contains extended attribute information for a file or directory.
+/// </summary>
+public sealed class ExtendedAttribute
 {
-    /// <summary>
-    /// Contains extended attribute information for a file or directory.
-    /// </summary>
-    public sealed class ExtendedAttribute
+    internal ExtendedAttribute(string id, byte[] data)
     {
-        internal ExtendedAttribute(string id, byte[] data)
-        {
-            Identifier = id;
-            Data = data;
-        }
-
-        /// <summary>
-        /// Gets the data contained in the attribute.
-        /// </summary>
-        /// <remarks>The format of the data will depend on the identifier.</remarks>
-        public byte[] Data { get; }
-
-        /// <summary>
-        /// Gets the value of the identifier of this attribute.
-        /// </summary>
-        /// <remarks>A typical identifier is "*UDF DVD CGMS Info".</remarks>
-        public string Identifier { get; }
+        Identifier = id;
+        Data = data;
     }
+
+    /// <summary>
+    /// Gets the data contained in the attribute.
+    /// </summary>
+    /// <remarks>The format of the data will depend on the identifier.</remarks>
+    public byte[] Data { get; }
+
+    /// <summary>
+    /// Gets the value of the identifier of this attribute.
+    /// </summary>
+    /// <remarks>A typical identifier is "*UDF DVD CGMS Info".</remarks>
+    public string Identifier { get; }
 }

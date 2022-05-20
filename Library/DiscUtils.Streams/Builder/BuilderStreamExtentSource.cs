@@ -22,22 +22,21 @@
 
 using System.IO;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public class BuilderStreamExtentSource : BuilderExtentSource
 {
-    public class BuilderStreamExtentSource : BuilderExtentSource
+    private readonly Stream _stream;
+
+    public BuilderStreamExtentSource(Stream stream)
     {
-        private readonly Stream _stream;
+        _stream = stream;
+    }
 
-        public BuilderStreamExtentSource(Stream stream)
-        {
-            _stream = stream;
-        }
+    public override long Length => _stream.Length;
 
-        public override long Length => _stream.Length;
-
-        public override BuilderExtent Fix(long pos)
-        {
-            return new BuilderStreamExtent(pos, _stream);
-        }
+    public override BuilderExtent Fix(long pos)
+    {
+        return new BuilderStreamExtent(pos, _stream);
     }
 }

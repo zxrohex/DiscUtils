@@ -22,94 +22,93 @@
 
 using System.Collections.Generic;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+/// <summary>
+/// Class representing an iSCSI initiator.
+/// </summary>
+/// <remarks>Normally, this is the first class instantiated when talking to an iSCSI Portal (i.e. network entity).
+/// Create an instance and configure it, before communicating with the Target.</remarks>
+public class Initiator
 {
+    private const int DefaultPort = 3260;
+    private string _password;
+
+    private string _userName;
+
     /// <summary>
-    /// Class representing an iSCSI initiator.
+    /// Sets credentials used to authenticate this Initiator to the Target.
     /// </summary>
-    /// <remarks>Normally, this is the first class instantiated when talking to an iSCSI Portal (i.e. network entity).
-    /// Create an instance and configure it, before communicating with the Target.</remarks>
-    public class Initiator
+    /// <param name="userName">The user name.</param>
+    /// <param name="password">The password, should be at least 12 characters.</param>
+    public void SetCredentials(string userName, string password)
     {
-        private const int DefaultPort = 3260;
-        private string _password;
+        _userName = userName;
+        _password = password;
+    }
 
-        private string _userName;
+    /// <summary>
+    /// Connects to a Target.
+    /// </summary>
+    /// <param name="target">The Target to connect to.</param>
+    /// <returns>The session representing the target connection.</returns>
+    public Session ConnectTo(TargetInfo target)
+    {
+        return ConnectTo(target.Name, target.Addresses);
+    }
 
-        /// <summary>
-        /// Sets credentials used to authenticate this Initiator to the Target.
-        /// </summary>
-        /// <param name="userName">The user name.</param>
-        /// <param name="password">The password, should be at least 12 characters.</param>
-        public void SetCredentials(string userName, string password)
+    /// <summary>
+    /// Connects to a Target.
+    /// </summary>
+    /// <param name="target">The Target to connect to.</param>
+    /// <param name="addresses">The list of addresses for the target.</param>
+    /// <returns>The session representing the target connection.</returns>
+    public Session ConnectTo(string target, params string[] addresses)
+    {
+        var addressObjs = new TargetAddress[addresses.Length];
+        for (var i = 0; i < addresses.Length; ++i)
         {
-            _userName = userName;
-            _password = password;
+            addressObjs[i] = TargetAddress.Parse(addresses[i]);
         }
 
-        /// <summary>
-        /// Connects to a Target.
-        /// </summary>
-        /// <param name="target">The Target to connect to.</param>
-        /// <returns>The session representing the target connection.</returns>
-        public Session ConnectTo(TargetInfo target)
+        return ConnectTo(target, addressObjs);
+    }
+
+    /// <summary>
+    /// Connects to a Target.
+    /// </summary>
+    /// <param name="target">The Target to connect to.</param>
+    /// <param name="addresses">The list of addresses for the target.</param>
+    /// <returns>The session representing the target connection.</returns>
+    public Session ConnectTo(string target, IList<TargetAddress> addresses)
+    {
+        return new Session(SessionType.Normal, target, _userName, _password, addresses);
+    }
+
+    /// <summary>
+    /// Gets the Targets available from a Portal (i.e. network entity).
+    /// </summary>
+    /// <param name="address">The address of the Portal.</param>
+    /// <returns>The list of Targets available.</returns>
+    /// <remarks>If you just have an IP address, use this method to discover the available Targets.</remarks>
+    public IEnumerable<TargetInfo> GetTargets(string address)
+    {
+        return GetTargets(TargetAddress.Parse(address));
+    }
+
+    /// <summary>
+    /// Gets the Targets available from a Portal (i.e. network entity).
+    /// </summary>
+    /// <param name="address">The address of the Portal.</param>
+    /// <returns>The list of Targets available.</returns>
+    /// <remarks>If you just have an IP address, use this method to discover the available Targets.</remarks>
+    public IEnumerable<TargetInfo> GetTargets(TargetAddress address)
+    {
+        using var session = new Session(SessionType.Discovery, null, _userName, _password, new[] { address });
+
+        foreach (var target in session.EnumerateTargets())
         {
-            return ConnectTo(target.Name, target.Addresses);
-        }
-
-        /// <summary>
-        /// Connects to a Target.
-        /// </summary>
-        /// <param name="target">The Target to connect to.</param>
-        /// <param name="addresses">The list of addresses for the target.</param>
-        /// <returns>The session representing the target connection.</returns>
-        public Session ConnectTo(string target, params string[] addresses)
-        {
-            TargetAddress[] addressObjs = new TargetAddress[addresses.Length];
-            for (int i = 0; i < addresses.Length; ++i)
-            {
-                addressObjs[i] = TargetAddress.Parse(addresses[i]);
-            }
-
-            return ConnectTo(target, addressObjs);
-        }
-
-        /// <summary>
-        /// Connects to a Target.
-        /// </summary>
-        /// <param name="target">The Target to connect to.</param>
-        /// <param name="addresses">The list of addresses for the target.</param>
-        /// <returns>The session representing the target connection.</returns>
-        public Session ConnectTo(string target, IList<TargetAddress> addresses)
-        {
-            return new Session(SessionType.Normal, target, _userName, _password, addresses);
-        }
-
-        /// <summary>
-        /// Gets the Targets available from a Portal (i.e. network entity).
-        /// </summary>
-        /// <param name="address">The address of the Portal.</param>
-        /// <returns>The list of Targets available.</returns>
-        /// <remarks>If you just have an IP address, use this method to discover the available Targets.</remarks>
-        public IEnumerable<TargetInfo> GetTargets(string address)
-        {
-            return GetTargets(TargetAddress.Parse(address));
-        }
-
-        /// <summary>
-        /// Gets the Targets available from a Portal (i.e. network entity).
-        /// </summary>
-        /// <param name="address">The address of the Portal.</param>
-        /// <returns>The list of Targets available.</returns>
-        /// <remarks>If you just have an IP address, use this method to discover the available Targets.</remarks>
-        public IEnumerable<TargetInfo> GetTargets(TargetAddress address)
-        {
-            using var session = new Session(SessionType.Discovery, null, _userName, _password, new[] { address });
-
-            foreach (var target in session.EnumerateTargets())
-            {
-                yield return target;
-            }
+            yield return target;
         }
     }
 }

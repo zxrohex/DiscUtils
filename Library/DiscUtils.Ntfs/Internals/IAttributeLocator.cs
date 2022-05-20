@@ -1,13 +1,12 @@
-﻿namespace DiscUtils.Ntfs.Internals
+﻿namespace DiscUtils.Ntfs.Internals;
+
+public interface IAttributeLocator
 {
-    public interface IAttributeLocator
-    {
-        ushort Identifier { get; }
+    ushort Identifier { get; }
 
-        AttributeType AttributeType { get; }
+    AttributeType AttributeType { get; }
 
-        string Name { get; }
+    string Name { get; }
 
-        long FirstFileCluster { get; }
-    }
+    long FirstFileCluster { get; }
 }

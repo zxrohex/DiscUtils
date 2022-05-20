@@ -20,61 +20,66 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System.IO;
+using DiscUtils.Vfs;
+using DiscUtils.Streams;
+using System.Collections.Generic;
+
+/// <summary>
+/// Read-only access to ext file system.
+/// </summary>
+public sealed class XfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocationExtentsEnumerable
 {
-    using System.IO;
-    using DiscUtils.Vfs;
-    using DiscUtils.Streams;
+    /// <summary>
+    /// Initializes a new instance of the ExtFileSystem class.
+    /// </summary>
+    /// <param name="stream">The stream containing the ext file system.</param>
+    public XfsFileSystem(Stream stream)
+        : base(new VfsXfsFileSystem(stream, null))
+    {
+    }
 
     /// <summary>
-    /// Read-only access to ext file system.
+    /// Initializes a new instance of the ExtFileSystem class.
     /// </summary>
-    public sealed class XfsFileSystem : VfsFileSystemFacade, IUnixFileSystem
+    /// <param name="stream">The stream containing the ext file system.</param>
+    /// <param name="parameters">The generic file system parameters (only file name encoding is honoured).</param>
+    public XfsFileSystem(Stream stream, FileSystemParameters parameters)
+        : base(new VfsXfsFileSystem(stream, parameters))
     {
-        /// <summary>
-        /// Initializes a new instance of the ExtFileSystem class.
-        /// </summary>
-        /// <param name="stream">The stream containing the ext file system.</param>
-        public XfsFileSystem(Stream stream)
-            : base(new VfsXfsFileSystem(stream, null))
+    }
+
+    /// <summary>
+    /// Retrieves Unix-specific information about a file or directory.
+    /// </summary>
+    /// <param name="path">Path to the file or directory.</param>
+    /// <returns>Information about the owner, group, permissions and type of the
+    /// file or directory.</returns>
+    public UnixFileSystemInfo GetUnixFileInfo(string path)
+    {
+        return GetRealFileSystem<VfsXfsFileSystem>().GetUnixFileInfo(path);
+    }
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    {
+        return GetRealFileSystem<VfsXfsFileSystem>().EnumerateAllocationExtents(path);
+    }
+
+    internal static bool Detect(Stream stream)
+    {
+        if (stream.Length < 264)
         {
+            return false;
         }
 
-        /// <summary>
-        /// Initializes a new instance of the ExtFileSystem class.
-        /// </summary>
-        /// <param name="stream">The stream containing the ext file system.</param>
-        /// <param name="parameters">The generic file system parameters (only file name encoding is honoured).</param>
-        public XfsFileSystem(Stream stream, FileSystemParameters parameters)
-            : base(new VfsXfsFileSystem(stream, parameters))
-        {
-        }
+        stream.Position = 0;
+        var superblockData = StreamUtilities.ReadExact(stream, 264);
 
-        /// <summary>
-        /// Retrieves Unix-specific information about a file or directory.
-        /// </summary>
-        /// <param name="path">Path to the file or directory.</param>
-        /// <returns>Information about the owner, group, permissions and type of the
-        /// file or directory.</returns>
-        public UnixFileSystemInfo GetUnixFileInfo(string path)
-        {
-            return GetRealFileSystem<VfsXfsFileSystem>().GetUnixFileInfo(path);
-        }
+        var superblock = new SuperBlock();
+        superblock.ReadFrom(superblockData, 0);
 
-        internal static bool Detect(Stream stream)
-        {
-            if (stream.Length < 264)
-            {
-                return false;
-            }
-
-            stream.Position = 0;
-            byte[] superblockData = StreamUtilities.ReadExact(stream, 264);
-
-            SuperBlock superblock = new SuperBlock();
-            superblock.ReadFrom(superblockData, 0);
-
-            return superblock.Magic == SuperBlock.XfsMagic;
-        }
+        return superblock.Magic == SuperBlock.XfsMagic;
     }
 }

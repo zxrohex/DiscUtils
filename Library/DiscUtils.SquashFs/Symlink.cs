@@ -23,16 +23,15 @@
 using System;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.SquashFs
-{
-    internal class Symlink : File, IVfsSymlink<DirectoryEntry, File>
-    {
-        public Symlink(Context context, Inode inode, MetadataRef inodeRef)
-            : base(context, inode, inodeRef) {}
+namespace DiscUtils.SquashFs;
 
-        public string TargetPath
-        {
-            get { throw new NotImplementedException(); }
-        }
+internal class Symlink : File, IVfsSymlink<DirectoryEntry, File>
+{
+    public Symlink(Context context, Inode inode, MetadataRef inodeRef)
+        : base(context, inode, inodeRef) {}
+
+    public string TargetPath
+    {
+        get { throw new NotImplementedException(); }
     }
 }

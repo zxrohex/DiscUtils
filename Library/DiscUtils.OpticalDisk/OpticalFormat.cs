@@ -20,29 +20,28 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.OpticalDisk
+namespace DiscUtils.OpticalDisk;
+
+/// <summary>
+/// The format of the optical image file.
+/// </summary>
+public enum OpticalFormat
 {
     /// <summary>
-    /// The format of the optical image file.
+    /// Unspecified mode.
     /// </summary>
-    public enum OpticalFormat
-    {
-        /// <summary>
-        /// Unspecified mode.
-        /// </summary>
-        None,
+    None,
 
-        /// <summary>
-        /// 2048 bytes are stored for each 2048 bytes of data.
-        /// </summary>
-        Mode1,
+    /// <summary>
+    /// 2048 bytes are stored for each 2048 bytes of data.
+    /// </summary>
+    Mode1,
 
-        /// <summary>
-        /// 2352 bytes are stored for each 2048 bytes of data.
-        /// </summary>
-        /// <remarks>
-        /// Commonly seen in .bin files.
-        /// </remarks>
-        Mode2
-    }
+    /// <summary>
+    /// 2352 bytes are stored for each 2048 bytes of data.
+    /// </summary>
+    /// <remarks>
+    /// Commonly seen in .bin files.
+    /// </remarks>
+    Mode2
 }

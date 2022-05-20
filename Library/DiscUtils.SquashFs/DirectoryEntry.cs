@@ -25,76 +25,75 @@ using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal class DirectoryEntry : VfsDirEntry
 {
-    internal class DirectoryEntry : VfsDirEntry
+    private readonly DirectoryHeader _header;
+    private readonly DirectoryRecord _record;
+
+    public DirectoryEntry(DirectoryHeader header, DirectoryRecord record)
     {
-        private readonly DirectoryHeader _header;
-        private readonly DirectoryRecord _record;
+        _header = header;
+        _record = record;
+    }
 
-        public DirectoryEntry(DirectoryHeader header, DirectoryRecord record)
-        {
-            _header = header;
-            _record = record;
-        }
+    public override DateTime CreationTimeUtc
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public override DateTime CreationTimeUtc
+    public override FileAttributes FileAttributes
+    {
+        get
         {
-            get { throw new NotSupportedException(); }
+            var fileType = VfsSquashFileSystemReader.FileTypeFromInodeType(_record.Type);
+            return Utilities.FileAttributesFromUnixFileType(fileType);
         }
+    }
 
-        public override FileAttributes FileAttributes
-        {
-            get
-            {
-                UnixFileType fileType = VfsSquashFileSystemReader.FileTypeFromInodeType(_record.Type);
-                return Utilities.FileAttributesFromUnixFileType(fileType);
-            }
-        }
+    public override string FileName
+    {
+        get { return _record.Name; }
+    }
 
-        public override string FileName
-        {
-            get { return _record.Name; }
-        }
+    public override bool HasVfsFileAttributes
+    {
+        get { return true; }
+    }
 
-        public override bool HasVfsFileAttributes
-        {
-            get { return true; }
-        }
+    public override bool HasVfsTimeInfo
+    {
+        get { return false; }
+    }
 
-        public override bool HasVfsTimeInfo
-        {
-            get { return false; }
-        }
+    public MetadataRef InodeReference
+    {
+        get { return new MetadataRef(_header.StartBlock, _record.Offset); }
+    }
 
-        public MetadataRef InodeReference
-        {
-            get { return new MetadataRef(_header.StartBlock, _record.Offset); }
-        }
+    public override bool IsDirectory
+    {
+        get { return _record.Type == InodeType.Directory || _record.Type == InodeType.ExtendedDirectory; }
+    }
 
-        public override bool IsDirectory
-        {
-            get { return _record.Type == InodeType.Directory || _record.Type == InodeType.ExtendedDirectory; }
-        }
+    public override bool IsSymlink
+    {
+        get { return _record.Type == InodeType.Symlink || _record.Type == InodeType.ExtendedSymlink; }
+    }
 
-        public override bool IsSymlink
-        {
-            get { return _record.Type == InodeType.Symlink || _record.Type == InodeType.ExtendedSymlink; }
-        }
+    public override DateTime LastAccessTimeUtc
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public override DateTime LastAccessTimeUtc
-        {
-            get { throw new NotSupportedException(); }
-        }
+    public override DateTime LastWriteTimeUtc
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public override DateTime LastWriteTimeUtc
-        {
-            get { throw new NotSupportedException(); }
-        }
-
-        public override long UniqueCacheId
-        {
-            get { return _header.InodeNumber + _record.InodeNumber; }
-        }
+    public override long UniqueCacheId
+    {
+        get { return _header.InodeNumber + _record.InodeNumber; }
     }
 }

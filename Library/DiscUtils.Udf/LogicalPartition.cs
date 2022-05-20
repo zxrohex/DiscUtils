@@ -22,42 +22,39 @@
 
 using System;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal abstract class LogicalPartition : Partition
 {
-    internal abstract class LogicalPartition : Partition
+    protected UdfContext _context;
+    protected LogicalVolumeDescriptor _volumeDescriptor;
+
+    protected LogicalPartition(UdfContext context, LogicalVolumeDescriptor volumeDescriptor)
     {
-        protected UdfContext _context;
-        protected LogicalVolumeDescriptor _volumeDescriptor;
+        _context = context;
+        _volumeDescriptor = volumeDescriptor;
+    }
 
-        protected LogicalPartition(UdfContext context, LogicalVolumeDescriptor volumeDescriptor)
+    public long LogicalBlockSize
+    {
+        get { return _volumeDescriptor.LogicalBlockSize; }
+    }
+
+    public static LogicalPartition FromDescriptor(UdfContext context, LogicalVolumeDescriptor volumeDescriptor,
+                                                  int index)
+    {
+        var map = volumeDescriptor.PartitionMaps[index];
+
+        if (map is Type1PartitionMap asType1)
         {
-            _context = context;
-            _volumeDescriptor = volumeDescriptor;
+            return new Type1Partition(context, volumeDescriptor, asType1);
         }
 
-        public long LogicalBlockSize
+        if (map is MetadataPartitionMap asMetadata)
         {
-            get { return _volumeDescriptor.LogicalBlockSize; }
+            return new MetadataPartition(context, volumeDescriptor, asMetadata);
         }
 
-        public static LogicalPartition FromDescriptor(UdfContext context, LogicalVolumeDescriptor volumeDescriptor,
-                                                      int index)
-        {
-            PartitionMap map = volumeDescriptor.PartitionMaps[index];
-
-            Type1PartitionMap asType1 = map as Type1PartitionMap;
-            if (asType1 != null)
-            {
-                return new Type1Partition(context, volumeDescriptor, asType1);
-            }
-
-            MetadataPartitionMap asMetadata = map as MetadataPartitionMap;
-            if (asMetadata != null)
-            {
-                return new MetadataPartition(context, volumeDescriptor, asMetadata);
-            }
-
-            throw new NotImplementedException("Unrecognized partition map type");
-        }
+        throw new NotImplementedException("Unrecognized partition map type");
     }
 }

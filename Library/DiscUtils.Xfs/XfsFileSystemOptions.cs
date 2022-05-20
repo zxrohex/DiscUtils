@@ -20,36 +20,35 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
-{
-    using System;
-    using System.Text;
+namespace DiscUtils.Xfs;
 
-    /// <summary>
-    /// XFS file system options.
-    /// </summary>
-    public sealed class XfsFileSystemOptions : DiscFileSystemOptions
+using System;
+using System.Text;
+
+/// <summary>
+/// XFS file system options.
+/// </summary>
+public sealed class XfsFileSystemOptions : DiscFileSystemOptions
+{
+    internal XfsFileSystemOptions()
     {
-        internal XfsFileSystemOptions()
+        FileNameEncoding = Encoding.UTF8;
+    }
+
+    internal XfsFileSystemOptions(FileSystemParameters parameters)
+    {
+        if (parameters != null && parameters.FileNameEncoding != null)
+        {
+            FileNameEncoding = parameters.FileNameEncoding;
+        }
+        else
         {
             FileNameEncoding = Encoding.UTF8;
         }
-
-        internal XfsFileSystemOptions(FileSystemParameters parameters)
-        {
-            if (parameters != null && parameters.FileNameEncoding != null)
-            {
-                FileNameEncoding = parameters.FileNameEncoding;
-            }
-            else
-            {
-                FileNameEncoding = Encoding.UTF8;
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the character encoding used for file names.
-        /// </summary>
-        public Encoding FileNameEncoding { get; set; }
     }
+
+    /// <summary>
+    /// Gets or sets the character encoding used for file names.
+    /// </summary>
+    public Encoding FileNameEncoding { get; set; }
 }

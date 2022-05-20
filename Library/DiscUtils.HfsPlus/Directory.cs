@@ -22,78 +22,78 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class Directory : File, IVfsDirectory<DirEntry, File>
 {
-    internal sealed class Directory : File, IVfsDirectory<DirEntry, File>
+    public Directory(Context context, CatalogNodeId nodeId, CommonCatalogFileInfo fileInfo)
+        : base(context, nodeId, fileInfo) {}
+
+    public IReadOnlyCollection<DirEntry> AllEntries
     {
-        public Directory(Context context, CatalogNodeId nodeId, CommonCatalogFileInfo fileInfo)
-            : base(context, nodeId, fileInfo) {}
-
-        public ICollection<DirEntry> AllEntries
+        get
         {
-            get
-            {
-                List<DirEntry> results = new List<DirEntry>();
+            var results = new List<DirEntry>();
 
-                Context.Catalog.VisitRange((key, data) =>
+            Context.Catalog.VisitRange((key, data) =>
+                   {
+                       if (key.NodeId == NodeId)
                        {
-                           if (key.NodeId == NodeId)
+                           if (data != null && !string.IsNullOrEmpty(key.Name) && DirEntry.IsFileOrDirectory(data))
                            {
-                               if (data != null && !string.IsNullOrEmpty(key.Name) && DirEntry.IsFileOrDirectory(data))
-                               {
-                                   results.Add(new DirEntry(key.Name, data));
-                               }
-
-                               return 0;
+                               results.Add(new DirEntry(key.Name, data));
                            }
-                           return key.NodeId < NodeId ? -1 : 1;
-                       });
 
-                return results;
-            }
+                           return 0;
+                       }
+                       return key.NodeId < NodeId ? -1 : 1;
+                   });
+
+            return results;
         }
+    }
 
-        public DirEntry Self
+    public DirEntry Self
+    {
+        get
         {
-            get
-            {
-                byte[] dirThreadData = Context.Catalog.Find(new CatalogKey(NodeId, string.Empty));
+            var dirThreadData = Context.Catalog.Find(new CatalogKey(NodeId, string.Empty));
 
-                CatalogThread dirThread = new CatalogThread();
-                dirThread.ReadFrom(dirThreadData, 0);
+            var dirThread = new CatalogThread();
+            dirThread.ReadFrom(dirThreadData, 0);
 
-                byte[] dirEntryData = Context.Catalog.Find(new CatalogKey(dirThread.ParentId, dirThread.Name));
+            var dirEntryData = Context.Catalog.Find(new CatalogKey(dirThread.ParentId, dirThread.Name));
 
-                return new DirEntry(dirThread.Name, dirEntryData);
-            }
+            return new DirEntry(dirThread.Name, dirEntryData);
         }
+    }
 
-        public DirEntry GetEntryByName(string name)
+    public DirEntry GetEntryByName(string name)
+    {
+        if (name == null)
         {
-            if (name == null)
-            {
-                throw new ArgumentNullException(nameof(name));
-            }
-
-            if (string.IsNullOrEmpty(name))
-            {
-                throw new ArgumentException("Attempt to lookup empty file name", nameof(name));
-            }
-
-            byte[] dirEntryData = Context.Catalog.Find(new CatalogKey(NodeId, name));
-            if (dirEntryData == null)
-            {
-                return null;
-            }
-
-            return new DirEntry(name, dirEntryData);
+            throw new ArgumentNullException(nameof(name));
         }
 
-        public DirEntry CreateNewFile(string name)
+        if (string.IsNullOrEmpty(name))
         {
-            throw new NotSupportedException();
+            throw new ArgumentException("Attempt to lookup empty file name", nameof(name));
         }
+
+        var dirEntryData = Context.Catalog.Find(new CatalogKey(NodeId, name));
+        if (dirEntryData == null)
+        {
+            return null;
+        }
+
+        return new DirEntry(name, dirEntryData);
+    }
+
+    public DirEntry CreateNewFile(string name)
+    {
+        throw new NotSupportedException();
     }
 }

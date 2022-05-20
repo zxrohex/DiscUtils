@@ -2,7 +2,6 @@
   
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1;net45;net46;net48</TargetFrameworks>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>

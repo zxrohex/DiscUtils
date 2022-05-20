@@ -20,15 +20,14 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+public enum PayloadBlockStatus : ulong
 {
-    public enum PayloadBlockStatus : ulong
-    {
-        NotPresent = 0,
-        Undefined = 1,
-        Zero = 2,
-        Unmapped = 3,
-        FullyPresent = 6,
-        PartiallyPresent = 7
-    }
+    NotPresent = 0,
+    Undefined = 1,
+    Zero = 2,
+    Unmapped = 3,
+    FullyPresent = 6,
+    PartiallyPresent = 7
 }

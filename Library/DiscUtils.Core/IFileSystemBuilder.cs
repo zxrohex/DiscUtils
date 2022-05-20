@@ -23,42 +23,41 @@
 using System;
 using System.IO;
 
-namespace DiscUtils
+namespace DiscUtils;
+
+public interface IFileSystemBuilder
 {
-    public interface IFileSystemBuilder
-    {
-        int FileCount { get; }
+    int FileCount { get; }
 
-        long TotalSize { get; }
+    long TotalSize { get; }
 
-        string VolumeIdentifier { get; set; }
+    string VolumeIdentifier { get; set; }
 
-        void AddDirectory(string name);
+    void AddDirectory(string name);
 
-        void AddDirectory(string name, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes);
+    void AddDirectory(string name, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes);
 
-        void AddDirectory(string name, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime);
+    void AddDirectory(string name, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime);
 
-        void AddFile(string name, byte[] content);
+    void AddFile(string name, byte[] content);
 
-        void AddFile(string name, Stream source);
+    void AddFile(string name, Stream source);
 
-        void AddFile(string name, string sourcePath);
+    void AddFile(string name, string sourcePath);
 
-        void AddFile(string name, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes);
+    void AddFile(string name, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes);
 
-        void AddFile(string name, Stream source, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes);
+    void AddFile(string name, Stream source, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes);
 
-        void AddFile(string name, string sourcePath, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes);
+    void AddFile(string name, string sourcePath, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes);
 
-        void AddFile(string name, byte[] content, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime);
+    void AddFile(string name, byte[] content, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime);
 
-        void AddFile(string name, Stream source, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime);
+    void AddFile(string name, Stream source, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime);
 
-        void AddFile(string name, string sourcePath, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime);
+    void AddFile(string name, string sourcePath, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime);
 
-        bool Exists(string path);
+    bool Exists(string path);
 
-        IFileSystem GenerateFileSystem();
-    }
+    IFileSystem GenerateFileSystem();
 }

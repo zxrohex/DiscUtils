@@ -20,11 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal class VolumeDescriptorSetTerminator : BaseVolumeDescriptor
 {
-    internal class VolumeDescriptorSetTerminator : BaseVolumeDescriptor
-    {
-        public VolumeDescriptorSetTerminator()
-            : base(VolumeDescriptorType.SetTerminator, 1) {}
-    }
+    public VolumeDescriptorSetTerminator()
+        : base(VolumeDescriptorType.SetTerminator, 1) {}
 }

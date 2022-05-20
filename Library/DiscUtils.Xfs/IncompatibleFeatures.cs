@@ -20,47 +20,46 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+
+/// <summary>
+/// Read-write incompatible feature flags.
+/// </summary>
+[Flags]
+internal enum IncompatibleFeatures : uint
 {
-    using System;
+    None = 0,
 
     /// <summary>
-    /// Read-write incompatible feature flags.
+    /// Directory file type. Each directory entry tracks the
+    /// type of the inode to which the entry points. This is a
+    /// performance optimization to remove the need to
+    /// load every inode into memory to iterate a directory.
     /// </summary>
-    [Flags]
-    internal enum IncompatibleFeatures : uint
-    {
-        None = 0,
+    FType = (1 << 0),
 
-        /// <summary>
-        /// Directory file type. Each directory entry tracks the
-        /// type of the inode to which the entry points. This is a
-        /// performance optimization to remove the need to
-        /// load every inode into memory to iterate a directory.
-        /// </summary>
-        FType = (1 << 0),
+    /// <summary>
+    /// Sparse inodes. This feature relaxes the requirement
+    /// to allocate inodes in chunks of 64. When the free
+    /// space is heavily fragmented, there might exist plenty
+    /// of free space but not enough contiguous free space to
+    /// allocate a new inode chunk. With this feature, the
+    /// user can continue to create files until all free space is
+    /// exhausted.
+    /// Unused space in the inode B+tree records are used to
+    /// track which parts of the inode chunk are not inodes.
+    /// </summary>
+    SparseInodes = (1 << 1),
 
-        /// <summary>
-        /// Sparse inodes. This feature relaxes the requirement
-        /// to allocate inodes in chunks of 64. When the free
-        /// space is heavily fragmented, there might exist plenty
-        /// of free space but not enough contiguous free space to
-        /// allocate a new inode chunk. With this feature, the
-        /// user can continue to create files until all free space is
-        /// exhausted.
-        /// Unused space in the inode B+tree records are used to
-        /// track which parts of the inode chunk are not inodes.
-        /// </summary>
-        SparseInodes = (1 << 1),
-
-        /// <summary>
-        /// Metadata UUID. The UUID stamped into each
-        /// metadata block must match the value in
-        /// sb_meta_uuid. This enables the administrator to
-        /// change sb_uuid at will without having to rewrite
-        /// the entire filesystem.
-        /// </summary>
-        MetaUUID = (1 << 2),
-        Supported = FType
-    }
+    /// <summary>
+    /// Metadata UUID. The UUID stamped into each
+    /// metadata block must match the value in
+    /// sb_meta_uuid. This enables the administrator to
+    /// change sb_uuid at will without having to rewrite
+    /// the entire filesystem.
+    /// </summary>
+    MetaUUID = (1 << 2),
+    Supported = FType
 }

@@ -20,16 +20,15 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal interface IDirectoryInode
 {
-    internal interface IDirectoryInode
-    {
-        long FileSize { get; }
+    long FileSize { get; }
 
-        ushort Offset { get; }
+    ushort Offset { get; }
 
-        uint ParentInode { get; }
+    uint ParentInode { get; }
 
-        uint StartBlock { get; }
-    }
+    uint StartBlock { get; }
 }

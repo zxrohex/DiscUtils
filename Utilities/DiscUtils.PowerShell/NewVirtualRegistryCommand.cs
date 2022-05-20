@@ -24,21 +24,18 @@ using System.IO;
 using System.Management.Automation;
 using DiscUtils.Registry;
 
-namespace DiscUtils.PowerShell
-{
-    [Cmdlet(VerbsCommon.New, "VirtualRegistry")]
-    public class NewVirtualRegistryCommand : PSCmdlet
-    {
-        [Parameter(Mandatory = true, Position = 0)]
-        public string LiteralPath { get; set; }
+namespace DiscUtils.PowerShell;
 
-        protected override void ProcessRecord()
-        {
-            using (Stream hiveStream = Utilities.CreatePsPath(SessionState, LiteralPath))
-            {
-                hiveStream.SetLength(0);
-                using (RegistryHive.Create(hiveStream)) { }
-            }
-        }
+[Cmdlet(VerbsCommon.New, "VirtualRegistry")]
+public class NewVirtualRegistryCommand : PSCmdlet
+{
+    [Parameter(Mandatory = true, Position = 0)]
+    public string LiteralPath { get; set; }
+
+    protected override void ProcessRecord()
+    {
+        using var hiveStream = Utilities.CreatePsPath(SessionState, LiteralPath);
+        hiveStream.SetLength(0);
+        using (RegistryHive.Create(hiveStream)) { }
     }
 }

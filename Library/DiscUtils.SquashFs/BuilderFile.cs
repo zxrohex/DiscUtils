@@ -25,136 +25,135 @@ using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal sealed class BuilderFile : BuilderNode
 {
-    internal sealed class BuilderFile : BuilderNode
+    private RegularInode _inode;
+    private List<uint> _lengths;
+    private Stream _source;
+    private readonly string _sourcePath;
+
+    public BuilderFile(Stream source)
     {
-        private RegularInode _inode;
-        private List<uint> _lengths;
-        private Stream _source;
-        private readonly string _sourcePath;
+        _source = source;
+        NumLinks = 1;
+    }
 
-        public BuilderFile(Stream source)
+    public BuilderFile(byte[] source)
+    {
+        _source = new MemoryStream(source, writable: false);
+        NumLinks = 1;
+    }
+
+    public BuilderFile(string source)
+    {
+        _sourcePath = source;
+        NumLinks = 1;
+    }
+
+    public override Inode Inode
+    {
+        get { return _inode; }
+    }
+
+    public override void Reset()
+    {
+        _inode = new RegularInode();
+        _lengths = null;
+    }
+
+    public override void Write(BuilderContext context)
+    {
+        if (!_written)
         {
-            _source = source;
-            NumLinks = 1;
+            WriteFileData(context);
+
+            WriteInode(context);
+
+            _written = true;
         }
+    }
 
-        public BuilderFile(byte[] source)
-        {
-            _source = new MemoryStream(source, writable: false);
-            NumLinks = 1;
-        }
+    private void WriteFileData(BuilderContext context)
+    {
+        var outStream = context.RawStream;
 
-        public BuilderFile(string source)
+        var disposeSource = false;
+        try
         {
-            _sourcePath = source;
-            NumLinks = 1;
-        }
-
-        public override Inode Inode
-        {
-            get { return _inode; }
-        }
-
-        public override void Reset()
-        {
-            _inode = new RegularInode();
-            _lengths = null;
-        }
-
-        public override void Write(BuilderContext context)
-        {
-            if (!_written)
+            if (_source == null)
             {
-                WriteFileData(context);
-
-                WriteInode(context);
-
-                _written = true;
+                var locator = new LocalFileLocator(string.Empty);
+                _source = locator.Open(_sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                disposeSource = true;
             }
-        }
 
-        private void WriteFileData(BuilderContext context)
-        {
-            Stream outStream = context.RawStream;
-
-            bool disposeSource = false;
-            try
+            if (_source.Position != 0)
             {
-                if (_source == null)
-                {
-                    var locator = new LocalFileLocator(string.Empty);
-                    _source = locator.Open(_sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                    disposeSource = true;
-                }
-
-                if (_source.Position != 0)
-                {
-                    _source.Position = 0;
-                }
-
-                long startPos = outStream.Position;
-                int bufferedBytes = StreamUtilities.ReadMaximum(_source, context.IoBuffer, 0, context.DataBlockSize);
-
-                if (bufferedBytes < context.DataBlockSize)
-                {
-                    // Fragment - less than one complete block of data
-                    _inode.StartBlock = 0xFFFFFFFF;
-
-                    _inode.FragmentKey = context.WriteFragment(bufferedBytes, out _inode.FragmentOffset);
-                    _inode.FileSize = (uint)bufferedBytes;
-                }
-                else
-                {
-                    // At least one full block, no fragments used
-                    _inode.FragmentKey = 0xFFFFFFFF;
-
-                    _lengths = new List<uint>();
-                    _inode.StartBlock = (uint)startPos;
-                    _inode.FileSize = bufferedBytes;
-                    while (bufferedBytes > 0)
-                    {
-                        _lengths.Add(context.WriteDataBlock(context.IoBuffer, 0, bufferedBytes));
-                        bufferedBytes = StreamUtilities.ReadMaximum(_source, context.IoBuffer, 0, context.DataBlockSize);
-                        _inode.FileSize += (uint)bufferedBytes;
-                    }
-                }
+                _source.Position = 0;
             }
-            finally
+
+            var startPos = outStream.Position;
+            var bufferedBytes = StreamUtilities.ReadMaximum(_source, context.IoBuffer, 0, context.DataBlockSize);
+
+            if (bufferedBytes < context.DataBlockSize)
             {
-                if (disposeSource)
+                // Fragment - less than one complete block of data
+                _inode.StartBlock = 0xFFFFFFFF;
+
+                _inode.FragmentKey = context.WriteFragment(bufferedBytes, out _inode.FragmentOffset);
+                _inode.FileSize = (uint)bufferedBytes;
+            }
+            else
+            {
+                // At least one full block, no fragments used
+                _inode.FragmentKey = 0xFFFFFFFF;
+
+                _lengths = new List<uint>();
+                _inode.StartBlock = (uint)startPos;
+                _inode.FileSize = bufferedBytes;
+                while (bufferedBytes > 0)
                 {
-                    _source.Dispose();
+                    _lengths.Add(context.WriteDataBlock(context.IoBuffer, 0, bufferedBytes));
+                    bufferedBytes = StreamUtilities.ReadMaximum(_source, context.IoBuffer, 0, context.DataBlockSize);
+                    _inode.FileSize += (uint)bufferedBytes;
                 }
             }
         }
-
-        private void WriteInode(BuilderContext context)
+        finally
         {
-            if (NumLinks != 1)
+            if (disposeSource)
             {
-                throw new IOException("Extended file records (with multiple hard links) not supported");
+                _source.Dispose();
             }
-
-            FillCommonInodeData(context);
-            _inode.Type = InodeType.File;
-
-            InodeRef = context.InodeWriter.Position;
-
-            int totalSize = _inode.Size;
-            _inode.WriteTo(context.IoBuffer, 0);
-            if (_lengths != null && _lengths.Count > 0)
-            {
-                for (int i = 0; i < _lengths.Count; ++i)
-                {
-                    EndianUtilities.WriteBytesLittleEndian(_lengths[i], context.IoBuffer, _inode.Size + i * 4);
-                }
-
-                totalSize += _lengths.Count * 4;
-            }
-
-            context.InodeWriter.Write(context.IoBuffer, 0, totalSize);
         }
+    }
+
+    private void WriteInode(BuilderContext context)
+    {
+        if (NumLinks != 1)
+        {
+            throw new IOException("Extended file records (with multiple hard links) not supported");
+        }
+
+        FillCommonInodeData(context);
+        _inode.Type = InodeType.File;
+
+        InodeRef = context.InodeWriter.Position;
+
+        var totalSize = _inode.Size;
+        _inode.WriteTo(context.IoBuffer, 0);
+        if (_lengths != null && _lengths.Count > 0)
+        {
+            for (var i = 0; i < _lengths.Count; ++i)
+            {
+                EndianUtilities.WriteBytesLittleEndian(_lengths[i], context.IoBuffer, _inode.Size + i * 4);
+            }
+
+            totalSize += _lengths.Count * 4;
+        }
+
+        context.InodeWriter.Write(context.IoBuffer, 0, totalSize);
     }
 }

@@ -22,71 +22,70 @@
 
 using System;
 
-namespace DiscUtils.Common
+namespace DiscUtils.Common;
+
+public class CommandLineEnumSwitch<T> : CommandLineSwitch
+    where T : struct, IConvertible
 {
-    public class CommandLineEnumSwitch<T> : CommandLineSwitch
-        where T : struct, IConvertible
+    private T _defaultValue;
+    private T _enumValue;
+
+    public CommandLineEnumSwitch(string fullSwitch, string paramName, T defaultValue, string description)
+        : base(fullSwitch, paramName, description)
     {
-        private T _defaultValue;
-        private T _enumValue;
+        _defaultValue = defaultValue;
+        _enumValue = defaultValue;
+    }
 
-        public CommandLineEnumSwitch(string fullSwitch, string paramName, T defaultValue, string description)
-            : base(fullSwitch, paramName, description)
-        {
-            _defaultValue = defaultValue;
-            _enumValue = defaultValue;
-        }
+    public CommandLineEnumSwitch(string shortSwitch, string fullSwitch, string paramName, T defaultValue, string description)
+        : base(shortSwitch, fullSwitch, paramName, description)
+    {
+        _defaultValue = defaultValue;
+        _enumValue = defaultValue;
+    }
 
-        public CommandLineEnumSwitch(string shortSwitch, string fullSwitch, string paramName, T defaultValue, string description)
-            : base(shortSwitch, fullSwitch, paramName, description)
-        {
-            _defaultValue = defaultValue;
-            _enumValue = defaultValue;
-        }
+    public CommandLineEnumSwitch(string[] shortSwitches, string fullSwitch, string paramName, T defaultValue, string description)
+        : base(shortSwitches, fullSwitch, paramName, description)
+    {
+        _defaultValue = defaultValue;
+        _enumValue = defaultValue;
+    }
 
-        public CommandLineEnumSwitch(string[] shortSwitches, string fullSwitch, string paramName, T defaultValue, string description)
-            : base(shortSwitches, fullSwitch, paramName, description)
-        {
-            _defaultValue = defaultValue;
-            _enumValue = defaultValue;
-        }
+    public override string FullDescription
+    {
+        get {
+            var vals = Enum.GetNames(typeof(T));
 
-        public override string FullDescription
-        {
-            get {
-                string[] vals = Enum.GetNames(typeof(T));
-
-                if (vals.Length < 3)
-                {
-                    return string.Format("Either '{0}' or '{1}' (default is {2}).  {3}", vals[0], vals[1], _defaultValue.ToString(), base.FullDescription);
-                }
-                else
-                {
-                    return string.Format("One of '{0}' (default is {1}).  {2}", string.Join(", ", vals), _defaultValue.ToString(), base.FullDescription);
-                }
-            }
-        }
-
-        public T EnumValue
-        {
-            get { return _enumValue; }
-        }
-
-        internal override int Process(string[] args, int pos)
-        {
-            int retVal = base.Process(args, pos);
-
-            _enumValue = _defaultValue;
-            try
+            if (vals.Length < 3)
             {
-                _enumValue = (T)Enum.Parse(typeof(T), Value, true);
+                return $"Either '{vals[0]}' or '{vals[1]}' (default is {_defaultValue}).  {base.FullDescription}";
             }
-            catch
+            else
             {
-                throw new Exception(string.Format("Incorrect value for parameter '{0}', must be one of '{1}'", FullSwitchName, string.Join(", ", Enum.GetNames(typeof(T)))));
+                return $"One of '{string.Join(", ", vals)}' (default is {_defaultValue}).  {base.FullDescription}";
             }
-
-            return retVal;
         }
+    }
+
+    public T EnumValue
+    {
+        get { return _enumValue; }
+    }
+
+    internal override int Process(string[] args, int pos)
+    {
+        var retVal = base.Process(args, pos);
+
+        _enumValue = _defaultValue;
+        try
+        {
+            _enumValue = (T)Enum.Parse(typeof(T), Value, true);
+        }
+        catch
+        {
+            throw new Exception($"Incorrect value for parameter '{FullSwitchName}', must be one of '{string.Join(", ", Enum.GetNames(typeof(T)))}'");
+        }
+
+        return retVal;
     }
 }

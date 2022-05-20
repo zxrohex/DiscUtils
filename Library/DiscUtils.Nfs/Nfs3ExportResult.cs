@@ -23,72 +23,71 @@
 using System;
 using System.Collections.Generic;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3ExportResult : Nfs3CallResult
 {
-    public sealed class Nfs3ExportResult : Nfs3CallResult
+    internal Nfs3ExportResult(XdrDataReader reader)
     {
-        internal Nfs3ExportResult(XdrDataReader reader)
+        Exports = new List<Nfs3Export>();
+        while (reader.ReadBool())
         {
-            Exports = new List<Nfs3Export>();
-            while (reader.ReadBool())
-            {
-                Exports.Add(new Nfs3Export(reader));
-            }
+            Exports.Add(new Nfs3Export(reader));
+        }
+    }
+
+    public Nfs3ExportResult()
+    {
+    }
+
+    public List<Nfs3Export> Exports { get; set; }
+
+    public override void Write(XdrDataWriter writer)
+    {
+        foreach (var export in Exports)
+        {
+            writer.Write(true);
+            export.Write(writer);
         }
 
-        public Nfs3ExportResult()
+        writer.Write(false);
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3ExportResult);
+    }
+
+    public bool Equals(Nfs3ExportResult other)
+    {
+        if (other == null)
         {
+            return false;
         }
 
-        public List<Nfs3Export> Exports { get; set; }
-
-        public override void Write(XdrDataWriter writer)
+        if (other.Exports == null || Exports == null)
         {
-            foreach (var export in Exports)
-            {
-                writer.Write(true);
-                export.Write(writer);
-            }
-
-            writer.Write(false);
+            return false;
         }
 
-        public override bool Equals(object obj)
+        if (other.Exports.Count != Exports.Count)
         {
-            return Equals(obj as Nfs3ExportResult);
+            return false;
         }
 
-        public bool Equals(Nfs3ExportResult other)
+        for (var i = 0; i < Exports.Count; i++)
         {
-            if (other == null)
+            if (!object.Equals(other.Exports[i], Exports[i]))
             {
                 return false;
             }
-
-            if (other.Exports == null || Exports == null)
-            {
-                return false;
-            }
-
-            if (other.Exports.Count != Exports.Count)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < Exports.Count; i++)
-            {
-                if (!object.Equals(other.Exports[i], Exports[i]))
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Exports);
-        }
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Exports);
     }
 }

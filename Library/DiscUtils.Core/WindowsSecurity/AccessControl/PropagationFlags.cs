@@ -1,12 +1,11 @@
 using System;
 
-namespace DiscUtils.Core.WindowsSecurity.AccessControl
+namespace DiscUtils.Core.WindowsSecurity.AccessControl;
+
+[Flags]
+public enum PropagationFlags
 {
-    [Flags]
-    public enum PropagationFlags
-    {
-        None = 0,
-        NoPropagateInherit = 1,
-        InheritOnly = 2,
-    }
+    None = 0,
+    NoPropagateInherit = 1,
+    InheritOnly = 2,
 }

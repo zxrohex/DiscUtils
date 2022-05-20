@@ -24,50 +24,49 @@ using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Dmg
+namespace DiscUtils.Dmg;
+
+internal class CompressedBlock : IByteArraySerializable
 {
-    internal class CompressedBlock : IByteArraySerializable
+    public uint BlocksDescriptor;
+    public UdifChecksum CheckSum;
+    public ulong DataStart;
+    public uint DecompressBufferRequested;
+    public long FirstSector;
+    public uint InfoVersion;
+    public List<CompressedRun> Runs;
+    public long SectorCount;
+    public uint Signature;
+
+    public int Size
     {
-        public uint BlocksDescriptor;
-        public UdifChecksum CheckSum;
-        public ulong DataStart;
-        public uint DecompressBufferRequested;
-        public long FirstSector;
-        public uint InfoVersion;
-        public List<CompressedRun> Runs;
-        public long SectorCount;
-        public uint Signature;
+        get { throw new NotImplementedException(); }
+    }
 
-        public int Size
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Signature = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
+        InfoVersion = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
+        FirstSector = EndianUtilities.ToInt64BigEndian(buffer, offset + 8);
+        SectorCount = EndianUtilities.ToInt64BigEndian(buffer, offset + 16);
+        DataStart = EndianUtilities.ToUInt64BigEndian(buffer, offset + 24);
+        DecompressBufferRequested = EndianUtilities.ToUInt32BigEndian(buffer, offset + 32);
+        BlocksDescriptor = EndianUtilities.ToUInt32BigEndian(buffer, offset + 36);
+
+        CheckSum = EndianUtilities.ToStruct<UdifChecksum>(buffer, offset + 60);
+
+        Runs = new List<CompressedRun>();
+        var numRuns = EndianUtilities.ToInt32BigEndian(buffer, offset + 200);
+        for (var i = 0; i < numRuns; ++i)
         {
-            get { throw new NotImplementedException(); }
+            Runs.Add(EndianUtilities.ToStruct<CompressedRun>(buffer, offset + 204 + i * 40));
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Signature = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-            InfoVersion = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-            FirstSector = EndianUtilities.ToInt64BigEndian(buffer, offset + 8);
-            SectorCount = EndianUtilities.ToInt64BigEndian(buffer, offset + 16);
-            DataStart = EndianUtilities.ToUInt64BigEndian(buffer, offset + 24);
-            DecompressBufferRequested = EndianUtilities.ToUInt32BigEndian(buffer, offset + 32);
-            BlocksDescriptor = EndianUtilities.ToUInt32BigEndian(buffer, offset + 36);
+        return 0;
+    }
 
-            CheckSum = EndianUtilities.ToStruct<UdifChecksum>(buffer, offset + 60);
-
-            Runs = new List<CompressedRun>();
-            int numRuns = EndianUtilities.ToInt32BigEndian(buffer, offset + 200);
-            for (int i = 0; i < numRuns; ++i)
-            {
-                Runs.Add(EndianUtilities.ToStruct<CompressedRun>(buffer, offset + 204 + i * 40));
-            }
-
-            return 0;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

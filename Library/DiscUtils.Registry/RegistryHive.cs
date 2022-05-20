@@ -21,529 +21,545 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DiscUtils.Core.WindowsSecurity.AccessControl;
+using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Registry
+namespace DiscUtils.Registry;
+
+/// <summary>
+/// A registry hive.
+/// </summary>
+public class RegistryHive : IDisposable
 {
+    private const long BinStart = 4 * Sizes.OneKiB;
+    private readonly List<BinHeader> _bins;
+
+    private Stream _fileStream;
+    private readonly HiveHeader _header;
+    private readonly Ownership _ownsStream;
+
     /// <summary>
-    /// A registry hive.
+    /// Initializes a new instance of the RegistryHive class.
     /// </summary>
-    public class RegistryHive : IDisposable
+    /// <param name="filePath">Path to registry hive file. This method will also open
+    /// LOG1 and LOG2 files at the same location if there are pending changes to apply
+    /// to the registry hive.</param>
+    /// <param name="access">Specifies read-only or read/write access</param>
+    /// <remarks>
+    /// The created object does not assume ownership of the stream.
+    /// </remarks>
+    public RegistryHive(string filePath, FileAccess access)
+        : this(File.Open(filePath, FileMode.Open, access), Ownership.Dispose, OpenLogFiles(filePath, access).ToArray())
     {
-        private const long BinStart = 4 * Sizes.OneKiB;
-        private readonly List<BinHeader> _bins;
+    }
 
-        private Stream _fileStream;
-        private readonly HiveHeader _header;
-        private readonly Ownership _ownsStream;
+    private static IEnumerable<Stream> OpenLogFiles(string hivePath, FileAccess access)
+    {
+        var log = hivePath + ".LOG";
 
-        /// <summary>
-        /// Initializes a new instance of the RegistryHive class.
-        /// </summary>
-        /// <param name="filePath">Path to registry hive file. This method will also open
-        /// LOG1 and LOG2 files at the same location if there are pending changes to apply
-        /// to the registry hive.</param>
-        /// <param name="access">Specifies read-only or read/write access</param>
-        /// <remarks>
-        /// The created object does not assume ownership of the stream.
-        /// </remarks>
-        public RegistryHive(string filePath, FileAccess access)
-            : this(File.Open(filePath, FileMode.Open, access), Ownership.Dispose, OpenLogFiles(filePath, access).ToArray())
+        var log1 = log + "1";
+        if (File.Exists(log1))
         {
-        }
+            yield return File.Open(log1, FileMode.Open, access);
 
-        private static IEnumerable<Stream> OpenLogFiles(string hivePath, FileAccess access)
-        {
-            var log = hivePath + ".LOG";
-
-            var log1 = log + "1";
-            if (File.Exists(log1))
+            var log2 = log + "2";
+            if (File.Exists(log2))
             {
-                yield return File.Open(log1, FileMode.Open, access);
+                yield return File.Open(log2, FileMode.Open, access);
+            }
+        }
+        else if (File.Exists(log))
+        {
+            yield return File.Open(log, FileMode.Open, access);
+        }
+    }
 
-                var log2 = log + "2";
-                if (File.Exists(log2))
+    /// <summary>
+    /// Initializes a new instance of the RegistryHive class.
+    /// </summary>
+    /// <param name="file">Path to registry hive file. This method will also open
+    /// LOG1 and LOG2 files at the same location if there are pending changes to apply
+    /// to the registry hive.</param>
+    /// <param name="access">Specifies read-only or read/write access</param>
+    /// <remarks>
+    /// The created object does not assume ownership of the stream.
+    /// </remarks>
+    public RegistryHive(DiscFileInfo file, FileAccess access)
+        : this(file.Open(FileMode.Open, access), Ownership.Dispose, OpenLogFiles(file, access).ToArray())
+    {
+    }
+
+    private static IEnumerable<Stream> OpenLogFiles(DiscFileInfo hivePath, FileAccess access)
+    {
+        var log = hivePath.FileSystem.GetFileInfo(hivePath.FullName + ".LOG");
+
+        var log1 = log.FileSystem.GetFileInfo(log.FullName + "1");
+        if (log1.Exists)
+        {
+            yield return log1.Open(FileMode.Open, access);
+
+            var log2 = log.FileSystem.GetFileInfo(log.FullName + "2");
+            if (log2.Exists)
+            {
+                yield return log2.Open(FileMode.Open, access);
+            }
+        }
+        else if (log.Exists)
+        {
+            yield return log.Open(FileMode.Open, access);
+        }
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the RegistryHive class.
+    /// </summary>
+    /// <param name="hive">The stream containing the registry hive.</param>
+    /// <param name="logfiles">LOG1 and LOG2 streams to replay pending changes from</param>
+    /// <remarks>
+    /// The created object does not assume ownership of the streams.
+    /// </remarks>
+    public RegistryHive(Stream hive, params Stream[] logfiles)
+        : this(hive, Ownership.None, logfiles) { }
+
+    /// <summary>
+    /// Initializes a new instance of the RegistryHive class.
+    /// </summary>
+    /// <param name="hive">The stream containing the registry hive.</param>
+    /// <param name="ownership">Whether the new object assumes object of the stream.</param>
+    /// <param name="logstreams">LOG1 and LOG2 streams to replay pending changes from</param>
+    public RegistryHive(Stream hive, Ownership ownership, params Stream[] logstreams)
+    {
+        _fileStream = hive;
+        _fileStream.Position = 0;
+        _ownsStream = ownership;
+
+        var buffer = StreamUtilities.ReadExact(_fileStream, HiveHeader.HeaderSize);
+
+        _header = new();
+        var headerSize = _header.ReadFrom(buffer, 0, throwOnInvalidData: false);
+
+        // If header validation failed or dirty state, look for transaction logs
+        if (headerSize == 0 || _header.Sequence1 != _header.Sequence2)
+        {
+            var logs = logstreams?.Where(log => log.Length > 0x1000).ToArray();
+
+            if (logs is not null && logs.Length > 0)
+            {
+                // If we are opening a hive read-only, copy to an in-memory buffer
+                // to be able to replay logs
+                if (!_fileStream.CanWrite)
                 {
-                    yield return File.Open(log2, FileMode.Open, access);
+                    var mem = new MemoryStream((int)_fileStream.Length);
+                    _fileStream.Position = 0;
+                    _fileStream.CopyTo(mem);
+                    mem.Position = 0;
+                    if (ownership == Ownership.Dispose)
+                    {
+                        _fileStream.Dispose();
+                    }
+                    _fileStream = mem;
                 }
-            }
-            else if (File.Exists(log))
-            {
-                yield return File.Open(log, FileMode.Open, access);
-            }
-        }
 
-        /// <summary>
-        /// Initializes a new instance of the RegistryHive class.
-        /// </summary>
-        /// <param name="file">Path to registry hive file. This method will also open
-        /// LOG1 and LOG2 files at the same location if there are pending changes to apply
-        /// to the registry hive.</param>
-        /// <param name="access">Specifies read-only or read/write access</param>
-        /// <remarks>
-        /// The created object does not assume ownership of the stream.
-        /// </remarks>
-        public RegistryHive(DiscFileInfo file, FileAccess access)
-            : this(file.Open(FileMode.Open, access), Ownership.Dispose, OpenLogFiles(file, access).ToArray())
-        {
-        }
+                // Open log files
+                var logfiles = new LogFile[Math.Min(2, logs.Length)];
+                
+                logfiles[0] = new(logs[0]);
 
-        private static IEnumerable<Stream> OpenLogFiles(DiscFileInfo hivePath, FileAccess access)
-        {
-            var log = hivePath.FileSystem.GetFileInfo(hivePath.FullName + ".LOG");
-
-            var log1 = log.FileSystem.GetFileInfo(log.FullName + "1");
-            if (log1.Exists)
-            {
-                yield return log1.Open(FileMode.Open, access);
-
-                var log2 = log.FileSystem.GetFileInfo(log.FullName + "2");
-                if (log2.Exists)
+                if (logs.Length > 1)
                 {
-                    yield return log2.Open(FileMode.Open, access);
+                    logfiles[1] = new(logs[1]);
                 }
-            }
-            else if (log.Exists)
-            {
-                yield return log.Open(FileMode.Open, access);
-            }
-        }
 
-        /// <summary>
-        /// Initializes a new instance of the RegistryHive class.
-        /// </summary>
-        /// <param name="hive">The stream containing the registry hive.</param>
-        /// <param name="logfiles">LOG1 and LOG2 streams to replay pending changes from</param>
-        /// <remarks>
-        /// The created object does not assume ownership of the streams.
-        /// </remarks>
-        public RegistryHive(Stream hive, params Stream[] logfiles)
-            : this(hive, Ownership.None, logfiles) { }
-
-        /// <summary>
-        /// Initializes a new instance of the RegistryHive class.
-        /// </summary>
-        /// <param name="hive">The stream containing the registry hive.</param>
-        /// <param name="ownership">Whether the new object assumes object of the stream.</param>
-        /// <param name="logstreams">LOG1 and LOG2 streams to replay pending changes from</param>
-        public RegistryHive(Stream hive, Ownership ownership, params Stream[] logstreams)
-        {
-            _fileStream = hive;
-            _fileStream.Position = 0;
-            _ownsStream = ownership;
-
-            var buffer = StreamUtilities.ReadExact(_fileStream, HiveHeader.HeaderSize);
-
-            _header = new();
-            var headerSize = _header.ReadFrom(buffer, 0, throwOnInvalidData: false);
-
-            // If header validation failed or dirty state, look for transaction logs
-            if (headerSize == 0 || _header.Sequence1 != _header.Sequence2)
-            {
-                var logs = logstreams?.Where(log => log.Length > 0x1000).ToArray();
-
-                if (logs is not null && logs.Length > 0)
+                // Sort log files in order of sequence
+                if (logfiles.Length > 1 &&
+                    logfiles[0].HiveHeader.Sequence1 >= logfiles[1].HiveHeader.Sequence1)
                 {
-                    // If we are opening a hive read-only, copy to an in-memory buffer
-                    // to be able to replay logs
-                    if (!_fileStream.CanWrite)
-                    {
-                        var mem = new MemoryStream((int)_fileStream.Length);
-                        _fileStream.Position = 0;
-                        _fileStream.CopyTo(mem);
-                        mem.Position = 0;
-                        if (ownership == Ownership.Dispose)
-                        {
-                            _fileStream.Dispose();
-                        }
-                        _fileStream = mem;
-                    }
+                    logfiles = new[] { logfiles[1], logfiles[0] };
+                    logs = new[] { logs[1], logs[0] };
+                }
 
-                    // Open log files
-                    var logfiles = new LogFile[Math.Min(2, logs.Length)];
-                    
-                    logfiles[0] = new(logs[0]);
-
-                    if (logs.Length > 1)
-                    {
-                        logfiles[1] = new(logs[1]);
-                    }
-
-                    // Sort log files in order of sequence
-                    if (logfiles.Length > 1 &&
-                        logfiles[0].HiveHeader.Sequence1 >= logfiles[1].HiveHeader.Sequence1)
-                    {
-                        logfiles = new[] { logfiles[1], logfiles[0] };
-                        logs = new[] { logs[1], logs[0] };
-                    }
-
-                    // If hive header failed validation, recover from latest log
-                    if (headerSize == 0)
-                    {
-                        var lastvalid = logfiles.LastOrDefault(logfile => logfile.HeaderValid);
-                        if (lastvalid is null)
-                        {
-                            throw new IOException("Registry transaction logs are corrupt");
-                        }
-                        _header = lastvalid.HiveHeader;
-                    }
-
-                    int lastSequenceNumber;
-
-                    // First log
-                    if (logfiles.Length > 0 &&
-                        logfiles[0].HiveHeader.Sequence1 >= _header.Sequence2)
-                    {
-                        lastSequenceNumber = logfiles[0].UpdateHive(_fileStream);
-
-                        // Also a secondary log
-                        if (logfiles.Length > 1 &&
-                            logfiles[1].HiveHeader.Sequence1 > _header.Sequence2)
-                        {
-                            // If secondary log continues right after last record in first log
-                            if (logfiles[1].HiveHeader.Sequence1 == lastSequenceNumber + 1)
-                            {
-                                lastSequenceNumber = logfiles[1].UpdateHive(_fileStream);
-                            }
-                            else
-                            {
-                                // Otherwise secondary log is invalid, just get the latest sequence number
-                                // without actually replay the records and zero out the log file
-                                lastSequenceNumber = Math.Max(logfiles[1].HiveHeader.Sequence2, lastSequenceNumber);
-
-                                if (logs[1].CanWrite)
-                                {
-                                    logs[1].SetLength(0);
-                                }
-                            }
-                        }
-                    }
-                    // If only secondary log file is after hive in sequence
-                    else if (logfiles.Length > 1 &&
-                        logfiles[1].HiveHeader.Sequence1 >= _header.Sequence2)
-                    {
-                        lastSequenceNumber = logfiles[1].UpdateHive(_fileStream);
-                    }
-                    else
+                // If hive header failed validation, recover from latest log
+                if (headerSize == 0)
+                {
+                    var lastvalid = logfiles.LastOrDefault(logfile => logfile.HeaderValid);
+                    if (lastvalid is null)
                     {
                         throw new IOException("Registry transaction logs are corrupt");
                     }
-
-                    // Store latest recovered sequence number in the hive header
-                    // and write this modified header to the hive file
-                    _header.Sequence1 = _header.Sequence2 = lastSequenceNumber + 1;
-                    _header.WriteTo(buffer, 0);
-                    _fileStream.Position = 0;
-                    _fileStream.Write(buffer, 0, buffer.Length);
-                    _fileStream.Position = 0;
+                    _header = lastvalid.HiveHeader;
                 }
-                else if (_fileStream.CanWrite)
+
+                int lastSequenceNumber;
+
+                // First log
+                if (logfiles.Length > 0 &&
+                    logfiles[0].HiveHeader.Sequence1 >= _header.Sequence2)
                 {
-                    throw new IOException("Registry hive needs transaction logs to recover pending changes");
-                }
-            }
+                    lastSequenceNumber = logfiles[0].UpdateHive(_fileStream);
 
-            if (ownership == Ownership.Dispose && logstreams is not null)
-            {
-                foreach (var log in logstreams)
-                {
-                    log.Dispose();
-                }
-            }
-
-            // Enumerate hbins
-            _bins = new List<BinHeader>();
-            var pos = 0;
-            while (pos < _header.Length)
-            {
-                _fileStream.Position = BinStart + pos;
-                StreamUtilities.ReadExact(_fileStream, buffer, 0, BinHeader.HeaderSize);
-                var header = new BinHeader();
-                header.ReadFrom(buffer, 0);
-                _bins.Add(header);
-
-                pos += header.BinSize;
-            }
-        }
-
-        /// <summary>
-        /// Gets the root key in the registry hive.
-        /// </summary>
-        public RegistryKey Root
-        {
-            get { return new RegistryKey(this, GetCell<KeyNodeCell>(_header.RootCell)); }
-        }
-
-        /// <summary>
-        /// Disposes of this instance, freeing any underlying stream (if any).
-        /// </summary>
-        public void Dispose()
-        {
-            if (_fileStream is not null && _ownsStream == Ownership.Dispose)
-            {
-                _fileStream.Dispose();
-                _fileStream = null;
-            }
-        }
-
-        /// <summary>
-        /// Creates a new (empty) registry hive.
-        /// </summary>
-        /// <param name="stream">The stream to contain the new hive.</param>
-        /// <returns>The new hive.</returns>
-        /// <remarks>
-        /// The returned object does not assume ownership of the stream.
-        /// </remarks>
-        public static RegistryHive Create(Stream stream)
-        {
-            return Create(stream, Ownership.None);
-        }
-
-        /// <summary>
-        /// Creates a new (empty) registry hive.
-        /// </summary>
-        /// <param name="stream">The stream to contain the new hive.</param>
-        /// <param name="ownership">Whether the returned object owns the stream.</param>
-        /// <returns>The new hive.</returns>
-        public static RegistryHive Create(Stream stream, Ownership ownership)
-        {
-            if (stream is null)
-            {
-                throw new ArgumentNullException(nameof(stream), "Attempt to create registry hive in null stream");
-            }
-
-            // Construct a file with minimal structure - hive header, plus one (empty) bin
-            BinHeader binHeader = new BinHeader();
-            binHeader.FileOffset = 0;
-            binHeader.BinSize = (int)(4 * Sizes.OneKiB);
-
-            HiveHeader hiveHeader = new HiveHeader();
-            hiveHeader.Length = binHeader.BinSize;
-
-            stream.Position = 0;
-
-            byte[] buffer = new byte[hiveHeader.Size];
-            hiveHeader.WriteTo(buffer, 0);
-            stream.Write(buffer, 0, buffer.Length);
-
-            buffer = new byte[binHeader.Size];
-            binHeader.WriteTo(buffer, 0);
-            stream.Position = BinStart;
-            stream.Write(buffer, 0, buffer.Length);
-
-            buffer = new byte[4];
-            EndianUtilities.WriteBytesLittleEndian(binHeader.BinSize - binHeader.Size, buffer, 0);
-            stream.Write(buffer, 0, buffer.Length);
-
-            // Make sure the file is initialized out to the end of the firs bin
-            stream.Position = BinStart + binHeader.BinSize - 1;
-            stream.WriteByte(0);
-
-            // Temporary hive to perform construction of higher-level structures
-            RegistryHive newHive = new RegistryHive(stream);
-            KeyNodeCell rootCell = new KeyNodeCell("root", -1);
-            rootCell.Flags = RegistryKeyFlags.Normal | RegistryKeyFlags.Root;
-            newHive.UpdateCell(rootCell, true);
-
-            RegistrySecurity sd = new RegistrySecurity("O:BAG:BAD:PAI(A;;KA;;;SY)(A;CI;KA;;;BA)");
-            SecurityCell secCell = new SecurityCell(sd);
-            newHive.UpdateCell(secCell, true);
-            secCell.NextIndex = secCell.Index;
-            secCell.PreviousIndex = secCell.Index;
-            newHive.UpdateCell(secCell, false);
-
-            rootCell.SecurityIndex = secCell.Index;
-            newHive.UpdateCell(rootCell, false);
-
-            // Ref the root cell from the hive header
-            hiveHeader.RootCell = rootCell.Index;
-            buffer = new byte[hiveHeader.Size];
-            hiveHeader.WriteTo(buffer, 0);
-            stream.Position = 0;
-            stream.Write(buffer, 0, buffer.Length);
-
-            // Finally, return the new hive
-            return new RegistryHive(stream, ownership);
-        }
-
-        /// <summary>
-        /// Creates a new (empty) registry hive.
-        /// </summary>
-        /// <param name="path">The file to create the new hive in.</param>
-        /// <returns>The new hive.</returns>
-        public static RegistryHive Create(string path)
-        {
-            var locator = new LocalFileLocator(string.Empty);
-            return Create(locator.Open(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None), Ownership.Dispose);
-        }
-
-        internal K GetCell<K>(int index)
-            where K : Cell
-        {
-            Bin bin = GetBin(index);
-
-            if (bin is not null)
-            {
-                return (K)bin.TryGetCell(index);
-            }
-            return null;
-        }
-
-        internal void FreeCell(int index)
-        {
-            Bin bin = GetBin(index);
-
-            if (bin is not null)
-            {
-                bin.FreeCell(index);
-            }
-        }
-
-        internal int UpdateCell(Cell cell, bool canRelocate)
-        {
-            if (cell.Index == -1 && canRelocate)
-            {
-                cell.Index = AllocateRawCell(cell.Size);
-            }
-
-            Bin bin = GetBin(cell.Index);
-
-            if (bin is not null)
-            {
-                if (bin.UpdateCell(cell))
-                {
-                    return cell.Index;
-                }
-                if (canRelocate)
-                {
-                    int oldCell = cell.Index;
-                    cell.Index = AllocateRawCell(cell.Size);
-                    bin = GetBin(cell.Index);
-                    if (!bin.UpdateCell(cell))
+                    // Also a secondary log
+                    if (logfiles.Length > 1 &&
+                        logfiles[1].HiveHeader.Sequence1 > _header.Sequence2)
                     {
-                        cell.Index = oldCell;
-                        throw new RegistryCorruptException("Failed to migrate cell to new location");
+                        // If secondary log continues right after last record in first log
+                        if (logfiles[1].HiveHeader.Sequence1 == lastSequenceNumber + 1)
+                        {
+                            lastSequenceNumber = logfiles[1].UpdateHive(_fileStream);
+                        }
+                        else
+                        {
+                            // Otherwise secondary log is invalid, just get the latest sequence number
+                            // without actually replay the records and zero out the log file
+                            lastSequenceNumber = Math.Max(logfiles[1].HiveHeader.Sequence2, lastSequenceNumber);
+
+                            if (logs[1].CanWrite)
+                            {
+                                logs[1].SetLength(0);
+                            }
+                        }
                     }
-
-                    FreeCell(oldCell);
-                    return cell.Index;
                 }
-                throw new ArgumentException("Can't update cell, needs relocation but relocation disabled",
-                    nameof(canRelocate));
-            }
-            throw new RegistryCorruptException("No bin found containing index: " + cell.Index);
-        }
-
-        internal byte[] RawCellData(int index, int maxBytes)
-        {
-            Bin bin = GetBin(index);
-
-            if (bin is not null)
-            {
-                return bin.ReadRawCellData(index, maxBytes);
-            }
-            return null;
-        }
-
-        internal bool WriteRawCellData(int index, byte[] data, int offset, int count)
-        {
-            Bin bin = GetBin(index);
-
-            if (bin is not null)
-            {
-                return bin.WriteRawCellData(index, data, offset, count);
-            }
-            throw new RegistryCorruptException("No bin found containing index: " + index);
-        }
-
-        internal int AllocateRawCell(int capacity)
-        {
-            int minSize = MathUtilities.RoundUp(capacity + 4, 8); // Allow for size header and ensure multiple of 8
-
-            // Incredibly inefficient algorithm...
-            foreach (BinHeader binHeader in _bins)
-            {
-                Bin bin = LoadBin(binHeader);
-                int cellIndex = bin.AllocateCell(minSize);
-
-                if (cellIndex >= 0)
+                // If only secondary log file is after hive in sequence
+                else if (logfiles.Length > 1 &&
+                    logfiles[1].HiveHeader.Sequence1 >= _header.Sequence2)
                 {
-                    return cellIndex;
+                    lastSequenceNumber = logfiles[1].UpdateHive(_fileStream);
                 }
+                else
+                {
+                    throw new IOException("Registry transaction logs are corrupt");
+                }
+
+                // Store latest recovered sequence number in the hive header
+                // and write this modified header to the hive file
+                _header.Sequence1 = _header.Sequence2 = lastSequenceNumber + 1;
+                _header.WriteTo(buffer, 0);
+                _fileStream.Position = 0;
+                _fileStream.Write(buffer, 0, buffer.Length);
+                _fileStream.Position = 0;
             }
-
-            BinHeader newBinHeader = AllocateBin(minSize);
-            Bin newBin = LoadBin(newBinHeader);
-            return newBin.AllocateCell(minSize);
-        }
-
-        private BinHeader? FindBin(int index)
-        {
-            var bin = _bins
-                .TakeWhile(x => x.FileOffset <= index)
-                .Select(x => new BinHeader?(x))
-                .FirstOrDefault(x => x.Value.FileOffset + x.Value.BinSize > index);
-
-            return bin;
-        }
-
-        private Bin GetBin(int cellIndex)
-        {
-            var binHeader = FindBin(cellIndex);
-
-            if (binHeader is not null)
+            else if (_fileStream.CanWrite)
             {
-                return LoadBin(binHeader.Value);
+                throw new IOException("Registry hive needs transaction logs to recover pending changes");
             }
-
-            return null;
         }
 
-        private Bin LoadBin(BinHeader binHeader)
+        if (ownership == Ownership.Dispose && logstreams is not null)
         {
-            _fileStream.Position = BinStart + binHeader.FileOffset;
-            return new Bin(this, _fileStream);
+            foreach (var log in logstreams)
+            {
+                log.Dispose();
+            }
         }
 
-        private BinHeader AllocateBin(int minSize)
+        // Enumerate hbins
+        _bins = new List<BinHeader>();
+        var pos = 0;
+        while (pos < _header.Length)
         {
-            BinHeader lastBin = _bins[_bins.Count - 1];
+            _fileStream.Position = BinStart + pos;
+            StreamUtilities.ReadExact(_fileStream, buffer, 0, BinHeader.HeaderSize);
+            var header = new BinHeader();
+            header.ReadFrom(buffer, 0);
+            _bins.Add(header);
 
-            BinHeader newBinHeader = new BinHeader();
-            newBinHeader.FileOffset = lastBin.FileOffset + lastBin.BinSize;
-            newBinHeader.BinSize = MathUtilities.RoundUp(minSize + newBinHeader.Size, 4 * (int)Sizes.OneKiB);
+            pos += header.BinSize;
+        }
+    }
 
-            byte[] buffer = new byte[newBinHeader.Size];
-            newBinHeader.WriteTo(buffer, 0);
+    /// <summary>
+    /// Gets the root key in the registry hive.
+    /// </summary>
+    public RegistryKey Root
+    {
+        get { return new RegistryKey(this, GetCell<KeyNodeCell>(_header.RootCell)); }
+    }
+
+    /// <summary>
+    /// Disposes of this instance, freeing any underlying stream (if any).
+    /// </summary>
+    public void Dispose()
+    {
+        if (_fileStream is not null && _ownsStream == Ownership.Dispose)
+        {
+            _fileStream.Dispose();
+            _fileStream = null;
+        }
+    }
+
+    /// <summary>
+    /// Creates a new (empty) registry hive.
+    /// </summary>
+    /// <param name="stream">The stream to contain the new hive.</param>
+    /// <returns>The new hive.</returns>
+    /// <remarks>
+    /// The returned object does not assume ownership of the stream.
+    /// </remarks>
+    public static RegistryHive Create(Stream stream)
+    {
+        return Create(stream, Ownership.None);
+    }
+
+    /// <summary>
+    /// Creates a new (empty) registry hive.
+    /// </summary>
+    /// <param name="stream">The stream to contain the new hive.</param>
+    /// <param name="ownership">Whether the returned object owns the stream.</param>
+    /// <returns>The new hive.</returns>
+    public static RegistryHive Create(Stream stream, Ownership ownership)
+    {
+        if (stream is null)
+        {
+            throw new ArgumentNullException(nameof(stream), "Attempt to create registry hive in null stream");
+        }
+
+        // Construct a file with minimal structure - hive header, plus one (empty) bin
+        var binHeader = new BinHeader
+        {
+            FileOffset = 0,
+            BinSize = (int)(4 * Sizes.OneKiB)
+        };
+
+        var hiveHeader = new HiveHeader
+        {
+            Length = binHeader.BinSize
+        };
+
+        stream.Position = 0;
+
+        var buffer = new byte[hiveHeader.Size];
+        hiveHeader.WriteTo(buffer, 0);
+        stream.Write(buffer, 0, buffer.Length);
+
+        buffer = new byte[binHeader.Size];
+        binHeader.WriteTo(buffer, 0);
+        stream.Position = BinStart;
+        stream.Write(buffer, 0, buffer.Length);
+
+        buffer = new byte[4];
+        EndianUtilities.WriteBytesLittleEndian(binHeader.BinSize - binHeader.Size, buffer, 0);
+        stream.Write(buffer, 0, buffer.Length);
+
+        // Make sure the file is initialized out to the end of the firs bin
+        stream.Position = BinStart + binHeader.BinSize - 1;
+        stream.WriteByte(0);
+
+        // Temporary hive to perform construction of higher-level structures
+        var newHive = new RegistryHive(stream);
+        var rootCell = new KeyNodeCell("root", -1)
+        {
+            Flags = RegistryKeyFlags.Normal | RegistryKeyFlags.Root
+        };
+        newHive.UpdateCell(rootCell, true);
+
+        var sd = new RegistrySecurity("O:BAG:BAD:PAI(A;;KA;;;SY)(A;CI;KA;;;BA)");
+        var secCell = new SecurityCell(sd);
+        newHive.UpdateCell(secCell, true);
+        secCell.NextIndex = secCell.Index;
+        secCell.PreviousIndex = secCell.Index;
+        newHive.UpdateCell(secCell, false);
+
+        rootCell.SecurityIndex = secCell.Index;
+        newHive.UpdateCell(rootCell, false);
+
+        // Ref the root cell from the hive header
+        hiveHeader.RootCell = rootCell.Index;
+        buffer = new byte[hiveHeader.Size];
+        hiveHeader.WriteTo(buffer, 0);
+        stream.Position = 0;
+        stream.Write(buffer, 0, buffer.Length);
+
+        // Finally, return the new hive
+        return new RegistryHive(stream, ownership);
+    }
+
+    /// <summary>
+    /// Creates a new (empty) registry hive.
+    /// </summary>
+    /// <param name="path">The file to create the new hive in.</param>
+    /// <returns>The new hive.</returns>
+    public static RegistryHive Create(string path)
+    {
+        var locator = new LocalFileLocator(string.Empty);
+        return Create(locator.Open(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None), Ownership.Dispose);
+    }
+
+    internal K GetCell<K>(int index)
+        where K : Cell
+    {
+        var bin = GetBin(index);
+
+        if (bin is not null)
+        {
+            return (K)bin.TryGetCell(index);
+        }
+        return null;
+    }
+
+    internal void FreeCell(int index)
+    {
+        var bin = GetBin(index);
+
+        if (bin is not null)
+        {
+            bin.FreeCell(index);
+        }
+    }
+
+    internal int UpdateCell(Cell cell, bool canRelocate)
+    {
+        if (cell.Index == -1 && canRelocate)
+        {
+            cell.Index = AllocateRawCell(cell.Size);
+        }
+
+        var bin = GetBin(cell.Index);
+
+        if (bin is not null)
+        {
+            if (bin.UpdateCell(cell))
+            {
+                return cell.Index;
+            }
+            if (canRelocate)
+            {
+                var oldCell = cell.Index;
+                cell.Index = AllocateRawCell(cell.Size);
+                bin = GetBin(cell.Index);
+                if (!bin.UpdateCell(cell))
+                {
+                    cell.Index = oldCell;
+                    throw new RegistryCorruptException("Failed to migrate cell to new location");
+                }
+
+                FreeCell(oldCell);
+                return cell.Index;
+            }
+            throw new ArgumentException("Can't update cell, needs relocation but relocation disabled",
+                nameof(canRelocate));
+        }
+        throw new RegistryCorruptException("No bin found containing index: " + cell.Index);
+    }
+
+    internal byte[] RawCellData(int index, int maxBytes)
+    {
+        var bin = GetBin(index);
+
+        if (bin is not null)
+        {
+            return bin.ReadRawCellData(index, maxBytes);
+        }
+        return null;
+    }
+
+    internal bool WriteRawCellData(int index, byte[] data, int offset, int count)
+    {
+        var bin = GetBin(index);
+
+        if (bin is not null)
+        {
+            return bin.WriteRawCellData(index, data, offset, count);
+        }
+        throw new RegistryCorruptException("No bin found containing index: " + index);
+    }
+
+    internal int AllocateRawCell(int capacity)
+    {
+        var minSize = MathUtilities.RoundUp(capacity + 4, 8); // Allow for size header and ensure multiple of 8
+
+        // Incredibly inefficient algorithm...
+        foreach (var binHeader in _bins)
+        {
+            var bin = LoadBin(binHeader);
+            var cellIndex = bin.AllocateCell(minSize);
+
+            if (cellIndex >= 0)
+            {
+                return cellIndex;
+            }
+        }
+
+        var newBinHeader = AllocateBin(minSize);
+        var newBin = LoadBin(newBinHeader);
+        return newBin.AllocateCell(minSize);
+    }
+
+    private BinHeader? FindBin(int index)
+    {
+        var bin = _bins
+            .TakeWhile(x => x.FileOffset <= index)
+            .Select(x => new BinHeader?(x))
+            .FirstOrDefault(x => x.Value.FileOffset + x.Value.BinSize > index);
+
+        return bin;
+    }
+
+    private Bin GetBin(int cellIndex)
+    {
+        var binHeader = FindBin(cellIndex);
+
+        if (binHeader is not null)
+        {
+            return LoadBin(binHeader.Value);
+        }
+
+        return null;
+    }
+
+    private Bin LoadBin(BinHeader binHeader)
+    {
+        _fileStream.Position = BinStart + binHeader.FileOffset;
+        return new Bin(this, _fileStream);
+    }
+
+    private BinHeader AllocateBin(int minSize)
+    {
+        var lastBin = _bins[_bins.Count - 1];
+
+        var newBinHeader = new BinHeader
+        {
+            FileOffset = lastBin.FileOffset + lastBin.BinSize
+        };
+        newBinHeader.BinSize = MathUtilities.RoundUp(minSize + newBinHeader.Size, 4 * (int)Sizes.OneKiB);
+
+        var buffer = ArrayPool<byte>.Shared.Rent(newBinHeader.Size);
+        try
+        {
+            newBinHeader.WriteTo(buffer);
             _fileStream.Position = BinStart + newBinHeader.FileOffset;
-            _fileStream.Write(buffer, 0, buffer.Length);
-
-            byte[] cellHeader = new byte[4];
-            EndianUtilities.WriteBytesLittleEndian(newBinHeader.BinSize - newBinHeader.Size, cellHeader, 0);
-            _fileStream.Write(cellHeader, 0, 4);
-
-            // Update hive with new length
-            _header.Length = newBinHeader.FileOffset + newBinHeader.BinSize;
-            _header.Timestamp = DateTime.UtcNow;
-            _header.Sequence1++;
-            _header.Sequence2++;
-            _fileStream.Position = 0;
-            byte[] hiveHeader = StreamUtilities.ReadExact(_fileStream, _header.Size);
-            _header.WriteTo(hiveHeader, 0);
-            _fileStream.Position = 0;
-            _fileStream.Write(hiveHeader, 0, hiveHeader.Length);
-
-            // Make sure the file is initialized to desired position
-            _fileStream.Position = BinStart + _header.Length - 1;
-            _fileStream.WriteByte(0);
-
-            _bins.Add(newBinHeader);
-            return newBinHeader;
+            _fileStream.Write(buffer, 0, newBinHeader.Size);
         }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+
+        Span<byte> cellHeader = stackalloc byte[4];
+        EndianUtilities.WriteBytesLittleEndian(newBinHeader.BinSize - newBinHeader.Size, cellHeader);
+        _fileStream.Write(cellHeader);
+
+        // Update hive with new length
+        _header.Length = newBinHeader.FileOffset + newBinHeader.BinSize;
+        _header.Timestamp = DateTime.UtcNow;
+        _header.Sequence1++;
+        _header.Sequence2++;
+        _fileStream.Position = 0;
+        var hiveHeader = StreamUtilities.ReadExact(_fileStream, _header.Size);
+        _header.WriteTo(hiveHeader, 0);
+        _fileStream.Position = 0;
+        _fileStream.Write(hiveHeader, 0, hiveHeader.Length);
+
+        // Make sure the file is initialized to desired position
+        _fileStream.Position = BinStart + _header.Length - 1;
+        _fileStream.WriteByte(0);
+
+        _bins.Add(newBinHeader);
+        return newBinHeader;
     }
 }

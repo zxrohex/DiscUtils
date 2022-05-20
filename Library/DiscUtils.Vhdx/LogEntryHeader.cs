@@ -23,57 +23,56 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal sealed class LogEntryHeader : IByteArraySerializable
 {
-    internal sealed class LogEntryHeader : IByteArraySerializable
+    public const uint LogEntrySignature = 0x65676F6C;
+
+    private byte[] _data;
+    public uint Checksum;
+    public uint DescriptorCount;
+    public uint EntryLength;
+    public ulong FlushedFileOffset;
+    public ulong LastFileOffset;
+    public Guid LogGuid;
+    public uint Reserved;
+    public ulong SequenceNumber;
+
+    public uint Signature;
+    public uint Tail;
+
+    public bool IsValid
     {
-        public const uint LogEntrySignature = 0x65676F6C;
+        get { return Signature == LogEntrySignature; }
+    }
 
-        private byte[] _data;
-        public uint Checksum;
-        public uint DescriptorCount;
-        public uint EntryLength;
-        public ulong FlushedFileOffset;
-        public ulong LastFileOffset;
-        public Guid LogGuid;
-        public uint Reserved;
-        public ulong SequenceNumber;
+    public int Size
+    {
+        get { return 64; }
+    }
 
-        public uint Signature;
-        public uint Tail;
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        _data = new byte[Size];
+        Array.Copy(buffer, offset, _data, 0, Size);
 
-        public bool IsValid
-        {
-            get { return Signature == LogEntrySignature; }
-        }
+        Signature = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+        Checksum = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+        EntryLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
+        Tail = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
+        SequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 16);
+        DescriptorCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 24);
+        Reserved = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 28);
+        LogGuid = EndianUtilities.ToGuidLittleEndian(buffer, offset + 32);
+        FlushedFileOffset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 48);
+        LastFileOffset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 56);
 
-        public int Size
-        {
-            get { return 64; }
-        }
+        return Size;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            _data = new byte[Size];
-            Array.Copy(buffer, offset, _data, 0, Size);
-
-            Signature = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-            Checksum = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-            EntryLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
-            Tail = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
-            SequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 16);
-            DescriptorCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 24);
-            Reserved = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 28);
-            LogGuid = EndianUtilities.ToGuidLittleEndian(buffer, offset + 32);
-            FlushedFileOffset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 48);
-            LastFileOffset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 56);
-
-            return Size;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -23,41 +23,40 @@
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base.Items
+namespace DiscUtils.Btrfs.Base.Items;
+
+/// <summary>
+/// From an inode to a name in a directory
+/// </summary>
+internal class InodeRef : BaseItem
 {
+    public InodeRef(Key key) : base(key) { }
+
     /// <summary>
-    /// From an inode to a name in a directory
+    ///  index in the directory  
     /// </summary>
-    internal class InodeRef : BaseItem
+    public ulong Index { get; private set; }
+
+    /// <summary>
+    /// (n)
+    /// </summary>
+    public ushort NameLength { get; private set; }
+
+    /// <summary>
+    ///  name in the directory 
+    /// </summary>
+    public string Name { get; private set; }
+    
+    public override int Size
     {
-        public InodeRef(Key key) : base(key) { }
+        get { return 0xa+NameLength; }
+    }
 
-        /// <summary>
-        ///  index in the directory  
-        /// </summary>
-        public ulong Index { get; private set; }
-
-        /// <summary>
-        /// (n)
-        /// </summary>
-        public ushort NameLength { get; private set; }
-
-        /// <summary>
-        ///  name in the directory 
-        /// </summary>
-        public string Name { get; private set; }
-        
-        public override int Size
-        {
-            get { return 0xa+NameLength; }
-        }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            Index = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-            NameLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x8);
-            Name = Encoding.UTF8.GetString(buffer, offset + 0xa, NameLength);
-            return Size;
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        Index = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+        NameLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x8);
+        Name = Encoding.UTF8.GetString(buffer, offset + 0xa, NameLength);
+        return Size;
     }
 }

@@ -23,31 +23,30 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class CatalogThread : IByteArraySerializable
 {
-    internal sealed class CatalogThread : IByteArraySerializable
+    public string Name;
+    public CatalogNodeId ParentId;
+    public CatalogRecordType RecordType;
+
+    public int Size
     {
-        public string Name;
-        public CatalogNodeId ParentId;
-        public CatalogRecordType RecordType;
+        get { return 0; }
+    }
 
-        public int Size
-        {
-            get { return 0; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        RecordType = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(buffer, offset + 0);
+        ParentId = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
+        Name = HfsPlusUtilities.ReadUniStr255(buffer, offset + 8);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            RecordType = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(buffer, offset + 0);
-            ParentId = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-            Name = HfsPlusUtilities.ReadUniStr255(buffer, offset + 8);
+        return 0;
+    }
 
-            return 0;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

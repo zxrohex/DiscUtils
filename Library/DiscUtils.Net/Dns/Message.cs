@@ -22,78 +22,78 @@
 
 using System.Collections.Generic;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+internal class Message
 {
-    internal class Message
+    public Message()
     {
-        public Message()
+        Questions = new List<Question>();
+        Answers = new List<ResourceRecord>();
+        AuthorityRecords = new List<ResourceRecord>();
+        AdditionalRecords = new List<ResourceRecord>();
+    }
+
+    public List<ResourceRecord> AdditionalRecords { get; }
+
+    public List<ResourceRecord> Answers { get; }
+
+    public List<ResourceRecord> AuthorityRecords { get; }
+
+    public MessageFlags Flags { get; set; }
+
+    public List<Question> Questions { get; }
+
+    public ushort TransactionId { get; set; }
+
+    public static Message Read(PacketReader reader)
+    {
+        var result = new Message
         {
-            Questions = new List<Question>();
-            Answers = new List<ResourceRecord>();
-            AuthorityRecords = new List<ResourceRecord>();
-            AdditionalRecords = new List<ResourceRecord>();
+            TransactionId = reader.ReadUShort(),
+            Flags = new MessageFlags(reader.ReadUShort())
+        };
+
+        var questions = reader.ReadUShort();
+        var answers = reader.ReadUShort();
+        var authorityRecords = reader.ReadUShort();
+        var additionalRecords = reader.ReadUShort();
+
+        for (var i = 0; i < questions; ++i)
+        {
+            result.Questions.Add(Question.ReadFrom(reader));
         }
 
-        public List<ResourceRecord> AdditionalRecords { get; }
-
-        public List<ResourceRecord> Answers { get; }
-
-        public List<ResourceRecord> AuthorityRecords { get; }
-
-        public MessageFlags Flags { get; set; }
-
-        public List<Question> Questions { get; }
-
-        public ushort TransactionId { get; set; }
-
-        public static Message Read(PacketReader reader)
+        for (var i = 0; i < answers; ++i)
         {
-            Message result = new Message();
-
-            result.TransactionId = reader.ReadUShort();
-            result.Flags = new MessageFlags(reader.ReadUShort());
-
-            ushort questions = reader.ReadUShort();
-            ushort answers = reader.ReadUShort();
-            ushort authorityRecords = reader.ReadUShort();
-            ushort additionalRecords = reader.ReadUShort();
-
-            for (int i = 0; i < questions; ++i)
-            {
-                result.Questions.Add(Question.ReadFrom(reader));
-            }
-
-            for (int i = 0; i < answers; ++i)
-            {
-                result.Answers.Add(ResourceRecord.ReadFrom(reader));
-            }
-
-            for (int i = 0; i < authorityRecords; ++i)
-            {
-                result.AuthorityRecords.Add(ResourceRecord.ReadFrom(reader));
-            }
-
-            for (int i = 0; i < additionalRecords; ++i)
-            {
-                result.AdditionalRecords.Add(ResourceRecord.ReadFrom(reader));
-            }
-
-            return result;
+            result.Answers.Add(ResourceRecord.ReadFrom(reader));
         }
 
-        public void WriteTo(PacketWriter writer)
+        for (var i = 0; i < authorityRecords; ++i)
         {
-            writer.Write(TransactionId);
-            writer.Write(Flags.Value);
-            writer.Write((ushort)Questions.Count);
-            writer.Write(0);
-            writer.Write(0);
-            writer.Write(0);
+            result.AuthorityRecords.Add(ResourceRecord.ReadFrom(reader));
+        }
 
-            foreach (Question question in Questions)
-            {
-                question.WriteTo(writer);
-            }
+        for (var i = 0; i < additionalRecords; ++i)
+        {
+            result.AdditionalRecords.Add(ResourceRecord.ReadFrom(reader));
+        }
+
+        return result;
+    }
+
+    public void WriteTo(PacketWriter writer)
+    {
+        writer.Write(TransactionId);
+        writer.Write(Flags.Value);
+        writer.Write((ushort)Questions.Count);
+        writer.Write(0);
+        writer.Write(0);
+        writer.Write(0);
+
+        foreach (var question in Questions)
+        {
+            question.WriteTo(writer);
         }
     }
 }

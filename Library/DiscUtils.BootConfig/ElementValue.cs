@@ -22,116 +22,115 @@
 
 using System;
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+/// <summary>
+/// The value of an element.
+/// </summary>
+public abstract class ElementValue
 {
     /// <summary>
-    /// The value of an element.
+    /// Gets the format of the value.
     /// </summary>
-    public abstract class ElementValue
+    public abstract ElementFormat Format { get; }
+
+    /// <summary>
+    /// Gets the parent object (only for Device values).
+    /// </summary>
+    public virtual Guid ParentObject
     {
-        /// <summary>
-        /// Gets the format of the value.
-        /// </summary>
-        public abstract ElementFormat Format { get; }
+        get { return Guid.Empty; }
+    }
 
-        /// <summary>
-        /// Gets the parent object (only for Device values).
-        /// </summary>
-        public virtual Guid ParentObject
+    /// <summary>
+    /// Gets a value representing a device (aka partition).
+    /// </summary>
+    /// <param name="parentObject">Object containing detailed information about the device.</param>
+    /// <param name="physicalVolume">The volume to represent.</param>
+    /// <returns>The value as an object.</returns>
+    public static ElementValue ForDevice(Guid parentObject, PhysicalVolumeInfo physicalVolume)
+    {
+        return new DeviceElementValue(parentObject, physicalVolume);
+    }
+
+    /// <summary>
+    /// Gets a value representing the logical boot device.
+    /// </summary>
+    /// <returns>The boot pseudo-device as an object.</returns>
+    public static ElementValue ForBootDevice()
+    {
+        return new DeviceElementValue();
+    }
+
+    /// <summary>
+    /// Gets a value representing a string value.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The value as an object.</returns>
+    public static ElementValue ForString(string value)
+    {
+        return new StringElementValue(value);
+    }
+
+    /// <summary>
+    /// Gets a value representing an integer value.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The value as an object.</returns>
+    public static ElementValue ForInteger(long value)
+    {
+        return new IntegerElementValue((ulong)value);
+    }
+
+    /// <summary>
+    /// Gets a value representing an integer list value.
+    /// </summary>
+    /// <param name="values">The value to convert.</param>
+    /// <returns>The value as an object.</returns>
+    public static ElementValue ForIntegerList(long[] values)
+    {
+        var ulValues = new ulong[values.Length];
+        for (var i = 0; i < values.Length; ++i)
         {
-            get { return Guid.Empty; }
+            ulValues[i] = (ulong)values[i];
         }
 
-        /// <summary>
-        /// Gets a value representing a device (aka partition).
-        /// </summary>
-        /// <param name="parentObject">Object containing detailed information about the device.</param>
-        /// <param name="physicalVolume">The volume to represent.</param>
-        /// <returns>The value as an object.</returns>
-        public static ElementValue ForDevice(Guid parentObject, PhysicalVolumeInfo physicalVolume)
+        return new IntegerListElementValue(ulValues);
+    }
+
+    /// <summary>
+    /// Gets a value representing a boolean value.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The value as an object.</returns>
+    public static ElementValue ForBoolean(bool value)
+    {
+        return new BooleanElementValue(value);
+    }
+
+    /// <summary>
+    /// Gets a value representing a GUID value.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The value as an object.</returns>
+    public static ElementValue ForGuid(Guid value)
+    {
+        return new GuidElementValue(value.ToString("B"));
+    }
+
+    /// <summary>
+    /// Gets a value representing a GUID list value.
+    /// </summary>
+    /// <param name="values">The value to convert.</param>
+    /// <returns>The value as an object.</returns>
+    public static ElementValue ForGuidList(Guid[] values)
+    {
+        var strValues = new string[values.Length];
+        for (var i = 0; i < values.Length; ++i)
         {
-            return new DeviceElementValue(parentObject, physicalVolume);
+            strValues[i] = values[i].ToString("B");
         }
 
-        /// <summary>
-        /// Gets a value representing the logical boot device.
-        /// </summary>
-        /// <returns>The boot pseudo-device as an object.</returns>
-        public static ElementValue ForBootDevice()
-        {
-            return new DeviceElementValue();
-        }
-
-        /// <summary>
-        /// Gets a value representing a string value.
-        /// </summary>
-        /// <param name="value">The value to convert.</param>
-        /// <returns>The value as an object.</returns>
-        public static ElementValue ForString(string value)
-        {
-            return new StringElementValue(value);
-        }
-
-        /// <summary>
-        /// Gets a value representing an integer value.
-        /// </summary>
-        /// <param name="value">The value to convert.</param>
-        /// <returns>The value as an object.</returns>
-        public static ElementValue ForInteger(long value)
-        {
-            return new IntegerElementValue((ulong)value);
-        }
-
-        /// <summary>
-        /// Gets a value representing an integer list value.
-        /// </summary>
-        /// <param name="values">The value to convert.</param>
-        /// <returns>The value as an object.</returns>
-        public static ElementValue ForIntegerList(long[] values)
-        {
-            ulong[] ulValues = new ulong[values.Length];
-            for (int i = 0; i < values.Length; ++i)
-            {
-                ulValues[i] = (ulong)values[i];
-            }
-
-            return new IntegerListElementValue(ulValues);
-        }
-
-        /// <summary>
-        /// Gets a value representing a boolean value.
-        /// </summary>
-        /// <param name="value">The value to convert.</param>
-        /// <returns>The value as an object.</returns>
-        public static ElementValue ForBoolean(bool value)
-        {
-            return new BooleanElementValue(value);
-        }
-
-        /// <summary>
-        /// Gets a value representing a GUID value.
-        /// </summary>
-        /// <param name="value">The value to convert.</param>
-        /// <returns>The value as an object.</returns>
-        public static ElementValue ForGuid(Guid value)
-        {
-            return new GuidElementValue(value.ToString("B"));
-        }
-
-        /// <summary>
-        /// Gets a value representing a GUID list value.
-        /// </summary>
-        /// <param name="values">The value to convert.</param>
-        /// <returns>The value as an object.</returns>
-        public static ElementValue ForGuidList(Guid[] values)
-        {
-            string[] strValues = new string[values.Length];
-            for (int i = 0; i < values.Length; ++i)
-            {
-                strValues[i] = values[i].ToString("B");
-            }
-
-            return new GuidListElementValue(strValues);
-        }
+        return new GuidListElementValue(strValues);
     }
 }

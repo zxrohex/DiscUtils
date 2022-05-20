@@ -20,21 +20,20 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+/// <summary>
+/// Enumeration used to indicate transfer of disposable objects.
+/// </summary>
+public enum Ownership
 {
     /// <summary>
-    /// Enumeration used to indicate transfer of disposable objects.
+    /// Indicates there is no transfer of ownership.
     /// </summary>
-    public enum Ownership
-    {
-        /// <summary>
-        /// Indicates there is no transfer of ownership.
-        /// </summary>
-        None,
+    None,
 
-        /// <summary>
-        /// Indicates ownership of the stream is transfered, the owner should dispose of the stream when appropriate.
-        /// </summary>
-        Dispose
-    }
+    /// <summary>
+    /// Indicates ownership of the stream is transfered, the owner should dispose of the stream when appropriate.
+    /// </summary>
+    Dispose
 }

@@ -2,3 +2,9 @@
 
 # xUnit1013: Public method should be marked as test
 dotnet_diagnostic.xUnit1013.severity = silent
+
+# IDE0045: Convert to conditional expression
+dotnet_diagnostic.IDE0045.severity = silent
+
+# Default severity for analyzer diagnostics with category 'Style'
+dotnet_analyzer_diagnostic.category-Style.severity = silent

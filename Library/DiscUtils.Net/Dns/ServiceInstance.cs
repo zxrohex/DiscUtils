@@ -21,37 +21,37 @@
 //
 
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Represents an instance of a type of DNS-SD service.
+/// </summary>
+public sealed class ServiceInstance
 {
-    /// <summary>
-    /// Represents an instance of a type of DNS-SD service.
-    /// </summary>
-    public sealed class ServiceInstance
+    internal ServiceInstance(string name)
     {
-        internal ServiceInstance(string name)
-        {
-            Name = name;
-        }
-
-        /// <summary>
-        /// Gets the display name for the service instance.
-        /// </summary>
-        public string DisplayName { get; internal set; }
-
-        /// <summary>
-        /// Gets the EndPoints that service this instance.
-        /// </summary>
-        public IList<ServiceInstanceEndPoint> EndPoints { get; internal set; }
-
-        /// <summary>
-        /// Gets the network name for the service instance (think of this as the unique key).
-        /// </summary>
-        public string Name { get; }
-
-        /// <summary>
-        /// Gets the parameters of the service instance.
-        /// </summary>
-        public Dictionary<string, byte[]> Parameters { get; internal set; }
+        Name = name;
     }
+
+    /// <summary>
+    /// Gets the display name for the service instance.
+    /// </summary>
+    public string DisplayName { get; internal set; }
+
+    /// <summary>
+    /// Gets the EndPoints that service this instance.
+    /// </summary>
+    public IReadOnlyList<ServiceInstanceEndPoint> EndPoints { get; internal set; }
+
+    /// <summary>
+    /// Gets the network name for the service instance (think of this as the unique key).
+    /// </summary>
+    public string Name { get; }
+
+    /// <summary>
+    /// Gets the parameters of the service instance.
+    /// </summary>
+    public Dictionary<string, byte[]> Parameters { get; internal set; }
 }

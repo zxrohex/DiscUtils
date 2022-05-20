@@ -20,131 +20,130 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Enumeration of the known DNS record types.
+/// </summary>
+public enum RecordType
 {
     /// <summary>
-    /// Enumeration of the known DNS record types.
+    ///  No record type defined.
     /// </summary>
-    public enum RecordType
-    {
-        /// <summary>
-        ///  No record type defined.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// DNS A record.
-        /// </summary>
-        Address = 1,
+    /// <summary>
+    /// DNS A record.
+    /// </summary>
+    Address = 1,
 
-        /// <summary>
-        /// DNS NS record.
-        /// </summary>
-        NameServer = 2,
+    /// <summary>
+    /// DNS NS record.
+    /// </summary>
+    NameServer = 2,
 
-        /// <summary>
-        /// DNS MD record.
-        /// </summary>
-        MailDestination = 3,
+    /// <summary>
+    /// DNS MD record.
+    /// </summary>
+    MailDestination = 3,
 
-        /// <summary>
-        /// DNS MF record.
-        /// </summary>
-        MailForwarder = 4,
+    /// <summary>
+    /// DNS MF record.
+    /// </summary>
+    MailForwarder = 4,
 
-        /// <summary>
-        /// DNS CNAME record.
-        /// </summary>
-        CanonicalName = 5,
+    /// <summary>
+    /// DNS CNAME record.
+    /// </summary>
+    CanonicalName = 5,
 
-        /// <summary>
-        /// DNS SOA record.
-        /// </summary>
-        StartOfAuthority = 6,
+    /// <summary>
+    /// DNS SOA record.
+    /// </summary>
+    StartOfAuthority = 6,
 
-        /// <summary>
-        /// DNS MB record.
-        /// </summary>
-        Mailbox = 7,
+    /// <summary>
+    /// DNS MB record.
+    /// </summary>
+    Mailbox = 7,
 
-        /// <summary>
-        /// DNS MG record.
-        /// </summary>
-        MailGroup = 8,
+    /// <summary>
+    /// DNS MG record.
+    /// </summary>
+    MailGroup = 8,
 
-        /// <summary>
-        /// DNS MR record.
-        /// </summary>
-        MailRename = 9,
+    /// <summary>
+    /// DNS MR record.
+    /// </summary>
+    MailRename = 9,
 
-        /// <summary>
-        /// DNS NULL record.
-        /// </summary>
-        Null = 10,
+    /// <summary>
+    /// DNS NULL record.
+    /// </summary>
+    Null = 10,
 
-        /// <summary>
-        /// DNS WKS record.
-        /// </summary>
-        WellKnownService = 11,
+    /// <summary>
+    /// DNS WKS record.
+    /// </summary>
+    WellKnownService = 11,
 
-        /// <summary>
-        /// DNS PTR record.
-        /// </summary>
-        Pointer = 12,
+    /// <summary>
+    /// DNS PTR record.
+    /// </summary>
+    Pointer = 12,
 
-        /// <summary>
-        /// DNS HINFO record.
-        /// </summary>
-        HostInformation = 13,
+    /// <summary>
+    /// DNS HINFO record.
+    /// </summary>
+    HostInformation = 13,
 
-        /// <summary>
-        /// DNS MINFO record.
-        /// </summary>
-        MailboxInformation = 14,
+    /// <summary>
+    /// DNS MINFO record.
+    /// </summary>
+    MailboxInformation = 14,
 
-        /// <summary>
-        /// DNS MX record.
-        /// </summary>
-        MailExchange = 15,
+    /// <summary>
+    /// DNS MX record.
+    /// </summary>
+    MailExchange = 15,
 
-        /// <summary>
-        /// DNS TXT record.
-        /// </summary>
-        Text = 16,
+    /// <summary>
+    /// DNS TXT record.
+    /// </summary>
+    Text = 16,
 
-        /// <summary>
-        /// DNS RP record.
-        /// </summary>
-        ResponsiblePerson = 17,
+    /// <summary>
+    /// DNS RP record.
+    /// </summary>
+    ResponsiblePerson = 17,
 
-        /// <summary>
-        /// DNS AAAA record.
-        /// </summary>
-        IP6Address = 28,
+    /// <summary>
+    /// DNS AAAA record.
+    /// </summary>
+    IP6Address = 28,
 
-        /// <summary>
-        /// DNS SRV record.
-        /// </summary>
-        Service = 33,
+    /// <summary>
+    /// DNS SRV record.
+    /// </summary>
+    Service = 33,
 
-        /// <summary>
-        /// DNS AXFR record.
-        /// </summary>
-        ZoneTransfer = 252,
+    /// <summary>
+    /// DNS AXFR record.
+    /// </summary>
+    ZoneTransfer = 252,
 
-        /// <summary>
-        /// DNS MAILB record.
-        /// </summary>
-        MailboxRecords = 253,
+    /// <summary>
+    /// DNS MAILB record.
+    /// </summary>
+    MailboxRecords = 253,
 
-        /// <summary>
-        /// DNS MAILA record.
-        /// </summary>
-        MailAgentRecords = 254,
+    /// <summary>
+    /// DNS MAILA record.
+    /// </summary>
+    MailAgentRecords = 254,
 
-        /// <summary>
-        /// Wildcard matching all records (*).
-        /// </summary>
-        All = 255
-    }
+    /// <summary>
+    /// Wildcard matching all records (*).
+    /// </summary>
+    All = 255
 }

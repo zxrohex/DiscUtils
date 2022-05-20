@@ -30,341 +30,336 @@ using DiscUtils.Archives;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Xva
+namespace DiscUtils.Xva;
+
+internal class DiskStream : SparseStream
 {
-    internal class DiskStream : SparseStream
+    private readonly TarFile _archive;
+    private readonly string _dir;
+    private readonly long _length;
+    private Stream _currentChunkData;
+
+    private int _currentChunkIndex;
+
+    private long _position;
+    private List<int> _skipChunks;
+
+    public DiskStream(TarFile archive, long length, string dir)
     {
-        private readonly TarFile _archive;
-        private readonly string _dir;
-        private readonly long _length;
-        private Stream _currentChunkData;
+        _archive = archive;
+        _length = length;
+        _dir = dir;
 
-        private int _currentChunkIndex;
-
-        private long _position;
-        private List<int> _skipChunks;
-
-        public DiskStream(TarFile archive, long length, string dir)
+        if (!archive.DirExists(_dir))
         {
-            _archive = archive;
-            _length = length;
-            _dir = dir;
+            throw new IOException("No such disk");
+        }
 
-            if (!archive.DirExists(_dir))
+        ReadChunkSkipList();
+    }
+
+    public override bool CanRead
+    {
+        get { return true; }
+    }
+
+    public override bool CanSeek
+    {
+        get { return true; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
+
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get
+        {
+            var chunkSize = Sizes.OneMiB;
+            var i = 0;
+            var numChunks = (int)((_length + chunkSize - 1) / chunkSize);
+            while (i < numChunks)
             {
-                throw new IOException("No such disk");
-            }
-
-            ReadChunkSkipList();
-        }
-
-        public override bool CanRead
-        {
-            get { return true; }
-        }
-
-        public override bool CanSeek
-        {
-            get { return true; }
-        }
-
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
-
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get
-            {
-                List<StreamExtent> extents = new List<StreamExtent>();
-
-                long chunkSize = Sizes.OneMiB;
-                int i = 0;
-                int numChunks = (int)((_length + chunkSize - 1) / chunkSize);
-                while (i < numChunks)
+                // Find next stored block
+                while (i < numChunks && !ChunkExists(i))
                 {
-                    // Find next stored block
-                    while (i < numChunks && !ChunkExists(i))
-                    {
-                        ++i;
-                    }
-
-                    int start = i;
-
-                    // Find next absent block
-                    while (i < numChunks && ChunkExists(i))
-                    {
-                        ++i;
-                    }
-
-                    if (start != i)
-                    {
-                        extents.Add(new StreamExtent(start * chunkSize, (i - start) * chunkSize));
-                    }
+                    ++i;
                 }
 
-                return extents;
-            }
-        }
+                var start = i;
 
-        public override long Length
-        {
-            get { return _length; }
-        }
-
-        public override long Position
-        {
-            get { return _position; }
-
-            set
-            {
-                if (value > _length)
+                // Find next absent block
+                while (i < numChunks && ChunkExists(i))
                 {
-                    throw new IOException("Attempt to move beyond end of stream");
+                    ++i;
                 }
 
-                _position = value;
+                if (start != i)
+                {
+                    yield return new StreamExtent(start * chunkSize, (i - start) * chunkSize);
+                }
             }
         }
+    }
 
-        public override void Flush() {}
+    public override long Length
+    {
+        get { return _length; }
+    }
 
-        public override int Read(byte[] buffer, int offset, int count)
+    public override long Position
+    {
+        get { return _position; }
+
+        set
         {
-            if (_position == _length)
+            if (value > _length)
             {
-                return 0;
+                throw new IOException("Attempt to move beyond end of stream");
             }
 
-            if (_position > _length)
-            {
-                throw new IOException("Attempt to read beyond end of stream");
-            }
-
-            int chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
-
-            if (_currentChunkIndex != chunk || _currentChunkData == null)
-            {
-                if (_currentChunkData != null)
-                {
-                    _currentChunkData.Dispose();
-                    _currentChunkData = null;
-                }
-
-                if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
-                {
-                    _currentChunkData = new ZeroStream(Sizes.OneMiB);
-                }
-
-                _currentChunkIndex = chunk;
-            }
-
-            long chunkOffset = _position % Sizes.OneMiB;
-            int toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), count);
-
-            _currentChunkData.Position = chunkOffset;
-
-            int numRead = _currentChunkData.Read(buffer, offset, toRead);
-            _position += numRead;
-            return numRead;
+            _position = value;
         }
+    }
+
+    public override void Flush() {}
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        if (_position == _length)
+        {
+            return 0;
+        }
+
+        if (_position > _length)
+        {
+            throw new IOException("Attempt to read beyond end of stream");
+        }
+
+        var chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
+
+        if (_currentChunkIndex != chunk || _currentChunkData == null)
+        {
+            if (_currentChunkData != null)
+            {
+                _currentChunkData.Dispose();
+                _currentChunkData = null;
+            }
+
+            if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
+            {
+                _currentChunkData = new ZeroStream(Sizes.OneMiB);
+            }
+
+            _currentChunkIndex = chunk;
+        }
+
+        var chunkOffset = _position % Sizes.OneMiB;
+        var toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), count);
+
+        _currentChunkData.Position = chunkOffset;
+
+        var numRead = _currentChunkData.Read(buffer, offset, toRead);
+        _position += numRead;
+        return numRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (_position == _length)
         {
-            if (_position == _length)
-            {
-                return 0;
-            }
-
-            if (_position > _length)
-            {
-                throw new IOException("Attempt to read beyond end of stream");
-            }
-
-            int chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
-
-            if (_currentChunkIndex != chunk || _currentChunkData == null)
-            {
-                if (_currentChunkData != null)
-                {
-                    _currentChunkData.Dispose();
-                    _currentChunkData = null;
-                }
-
-                if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
-                {
-                    _currentChunkData = new ZeroStream(Sizes.OneMiB);
-                }
-
-                _currentChunkIndex = chunk;
-            }
-
-            long chunkOffset = _position % Sizes.OneMiB;
-            int toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), count);
-
-            _currentChunkData.Position = chunkOffset;
-
-            int numRead = await _currentChunkData.ReadAsync(buffer, offset, toRead, cancellationToken).ConfigureAwait(false);
-            _position += numRead;
-            return numRead;
+            return 0;
         }
+
+        if (_position > _length)
+        {
+            throw new IOException("Attempt to read beyond end of stream");
+        }
+
+        var chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
+
+        if (_currentChunkIndex != chunk || _currentChunkData == null)
+        {
+            if (_currentChunkData != null)
+            {
+                _currentChunkData.Dispose();
+                _currentChunkData = null;
+            }
+
+            if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
+            {
+                _currentChunkData = new ZeroStream(Sizes.OneMiB);
+            }
+
+            _currentChunkIndex = chunk;
+        }
+
+        var chunkOffset = _position % Sizes.OneMiB;
+        var toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), count);
+
+        _currentChunkData.Position = chunkOffset;
+
+        var numRead = await _currentChunkData.ReadAsync(buffer, offset, toRead, cancellationToken).ConfigureAwait(false);
+        _position += numRead;
+        return numRead;
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (_position == _length)
         {
-            if (_position == _length)
-            {
-                return 0;
-            }
-
-            if (_position > _length)
-            {
-                throw new IOException("Attempt to read beyond end of stream");
-            }
-
-            int chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
-
-            if (_currentChunkIndex != chunk || _currentChunkData == null)
-            {
-                if (_currentChunkData != null)
-                {
-                    _currentChunkData.Dispose();
-                    _currentChunkData = null;
-                }
-
-                if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
-                {
-                    _currentChunkData = new ZeroStream(Sizes.OneMiB);
-                }
-
-                _currentChunkIndex = chunk;
-            }
-
-            long chunkOffset = _position % Sizes.OneMiB;
-            int toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), buffer.Length);
-
-            _currentChunkData.Position = chunkOffset;
-
-            int numRead = await _currentChunkData.ReadAsync(buffer[..toRead], cancellationToken).ConfigureAwait(false);
-            _position += numRead;
-            return numRead;
+            return 0;
         }
 
-        public override int Read(Span<byte> buffer)
+        if (_position > _length)
         {
-            if (_position == _length)
-            {
-                return 0;
-            }
-
-            if (_position > _length)
-            {
-                throw new IOException("Attempt to read beyond end of stream");
-            }
-
-            int chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
-
-            if (_currentChunkIndex != chunk || _currentChunkData == null)
-            {
-                if (_currentChunkData != null)
-                {
-                    _currentChunkData.Dispose();
-                    _currentChunkData = null;
-                }
-
-                if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
-                {
-                    _currentChunkData = new ZeroStream(Sizes.OneMiB);
-                }
-
-                _currentChunkIndex = chunk;
-            }
-
-            long chunkOffset = _position % Sizes.OneMiB;
-            int toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), buffer.Length);
-
-            _currentChunkData.Position = chunkOffset;
-
-            int numRead = _currentChunkData.Read(buffer[..toRead]);
-            _position += numRead;
-            return numRead;
+            throw new IOException("Attempt to read beyond end of stream");
         }
+
+        var chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
+
+        if (_currentChunkIndex != chunk || _currentChunkData == null)
+        {
+            if (_currentChunkData != null)
+            {
+                _currentChunkData.Dispose();
+                _currentChunkData = null;
+            }
+
+            if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
+            {
+                _currentChunkData = new ZeroStream(Sizes.OneMiB);
+            }
+
+            _currentChunkIndex = chunk;
+        }
+
+        var chunkOffset = _position % Sizes.OneMiB;
+        var toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), buffer.Length);
+
+        _currentChunkData.Position = chunkOffset;
+
+        var numRead = await _currentChunkData.ReadAsync(buffer[..toRead], cancellationToken).ConfigureAwait(false);
+        _position += numRead;
+        return numRead;
+    }
+
+    public override int Read(Span<byte> buffer)
+    {
+        if (_position == _length)
+        {
+            return 0;
+        }
+
+        if (_position > _length)
+        {
+            throw new IOException("Attempt to read beyond end of stream");
+        }
+
+        var chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
+
+        if (_currentChunkIndex != chunk || _currentChunkData == null)
+        {
+            if (_currentChunkData != null)
+            {
+                _currentChunkData.Dispose();
+                _currentChunkData = null;
+            }
+
+            if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
+            {
+                _currentChunkData = new ZeroStream(Sizes.OneMiB);
+            }
+
+            _currentChunkIndex = chunk;
+        }
+
+        var chunkOffset = _position % Sizes.OneMiB;
+        var toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), buffer.Length);
+
+        _currentChunkData.Position = chunkOffset;
+
+        var numRead = _currentChunkData.Read(buffer[..toRead]);
+        _position += numRead;
+        return numRead;
+    }
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        var effectiveOffset = offset;
+        if (origin == SeekOrigin.Current)
         {
-            long effectiveOffset = offset;
-            if (origin == SeekOrigin.Current)
-            {
-                effectiveOffset += _position;
-            }
-            else if (origin == SeekOrigin.End)
-            {
-                effectiveOffset += _length;
-            }
-
-            if (effectiveOffset < 0)
-            {
-                throw new IOException("Attempt to move before beginning of disk");
-            }
-            Position = effectiveOffset;
-            return Position;
+            effectiveOffset += _position;
+        }
+        else if (origin == SeekOrigin.End)
+        {
+            effectiveOffset += _length;
         }
 
-        public override void SetLength(long value)
+        if (effectiveOffset < 0)
         {
-            throw new NotSupportedException();
+            throw new IOException("Attempt to move before beginning of disk");
         }
+        Position = effectiveOffset;
+        return Position;
+    }
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
+    public override void SetLength(long value)
+    {
+        throw new NotSupportedException();
+    }
 
-        private bool ChunkExists(int i)
-        {
-            return _archive.FileExists(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, CorrectChunkIndex(i)));
-        }
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
 
-        private void ReadChunkSkipList()
+    private bool ChunkExists(int i)
+    {
+        return _archive.FileExists(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, CorrectChunkIndex(i)));
+    }
+
+    private void ReadChunkSkipList()
+    {
+        var skipChunks = new List<int>();
+        foreach (var fileInfo in _archive.GetFiles(_dir))
         {
-            List<int> skipChunks = new List<int>();
-            foreach (var fileInfo in _archive.GetFiles(_dir))
+            if (fileInfo.Length == 0)
             {
-                if (fileInfo.Length == 0)
+                var path = fileInfo.Name.Replace('/', '\\');
+
+                if (int.TryParse(Utilities.GetFileFromPath(path), NumberStyles.Integer, CultureInfo.InvariantCulture, out var index))
                 {
-                    string path = fileInfo.Name.Replace('/', '\\');
-
-                    if (int.TryParse(Utilities.GetFileFromPath(path), NumberStyles.Integer, CultureInfo.InvariantCulture, out var index))
-                    {
-                        skipChunks.Add(index);
-                    }
+                    skipChunks.Add(index);
                 }
             }
-
-            skipChunks.Sort();
-            _skipChunks = skipChunks;
         }
 
-        private int CorrectChunkIndex(int rawIndex)
+        skipChunks.Sort();
+        _skipChunks = skipChunks;
+    }
+
+    private int CorrectChunkIndex(int rawIndex)
+    {
+        var index = rawIndex;
+        for (var i = 0; i < _skipChunks.Count; ++i)
         {
-            int index = rawIndex;
-            for (int i = 0; i < _skipChunks.Count; ++i)
+            if (index >= _skipChunks[i])
             {
-                if (index >= _skipChunks[i])
-                {
-                    ++index;
-                }
-                else if (index < +_skipChunks[i])
-                {
-                    break;
-                }
+                ++index;
             }
-
-            return index;
+            else if (index < +_skipChunks[i])
+            {
+                break;
+            }
         }
+
+        return index;
     }
 }

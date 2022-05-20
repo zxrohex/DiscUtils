@@ -20,18 +20,17 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Dmg
+namespace DiscUtils.Dmg;
+
+internal enum RunType : uint
 {
-    internal enum RunType : uint
-    {
-        None = 0x00000000,
-        Raw = 0x00000001,
-        Zeros = 0x00000002,
-        AdcCompressed = 0x80000004,
-        ZlibCompressed = 0x80000005,
-        BZlibCompressed = 0x80000006,
-        LzfseCompressed = 0x80000007,
-        Comment = 0x7FFFFFFE,
-        Terminator = 0xFFFFFFFF
-    }
+    None = 0x00000000,
+    Raw = 0x00000001,
+    Zeros = 0x00000002,
+    AdcCompressed = 0x80000004,
+    ZlibCompressed = 0x80000005,
+    BZlibCompressed = 0x80000006,
+    LzfseCompressed = 0x80000007,
+    Comment = 0x7FFFFFFE,
+    Terminator = 0xFFFFFFFF
 }

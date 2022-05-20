@@ -23,39 +23,38 @@
 
 using System.IO;
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+
+internal class BTreeInodeLeaf : BtreeHeader
 {
-    using System;
-
-    internal class BTreeInodeLeaf : BtreeHeader
+    public BTreeInodeRecord[] Records { get; private set; }
+    public override int Size
     {
-        public BTreeInodeRecord[] Records { get; private set; }
-        public override int Size
-        {
-            get { return base.Size + (NumberOfRecords * 0x10); }
-        }
+        get { return base.Size + (NumberOfRecords * 0x10); }
+    }
 
-        public BTreeInodeLeaf(uint superBlockVersion) : base(superBlockVersion){}
+    public BTreeInodeLeaf(uint superBlockVersion) : base(superBlockVersion){}
 
-        public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        base.ReadFrom(buffer, offset);
+        offset += base.Size;
+        if (Level != 0)
+            throw new IOException("invalid B+tree level - expected 1");
+        Records = new BTreeInodeRecord[NumberOfRecords];
+        for (var i = 0; i < NumberOfRecords; i++)
         {
-            base.ReadFrom(buffer, offset);
-            offset += base.Size;
-            if (Level != 0)
-                throw new IOException("invalid B+tree level - expected 1");
-            Records = new BTreeInodeRecord[NumberOfRecords];
-            for (int i = 0; i < NumberOfRecords; i++)
-            {
-                var rec = new BTreeInodeRecord();
-                offset += rec.ReadFrom(buffer, offset);
-                Records[i] = rec;
-            }
-            return Size;
+            var rec = new BTreeInodeRecord();
+            offset += rec.ReadFrom(buffer, offset);
+            Records[i] = rec;
         }
+        return Size;
+    }
 
-        public override void LoadBtree(AllocationGroup ag)
-        {
-            
-        }
+    public override void LoadBtree(AllocationGroup ag)
+    {
+        
     }
 }

@@ -28,89 +28,88 @@ using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal class File : IVfsFile
 {
-    internal class File : IVfsFile
+    private IBuffer _content;
+
+    public File(Context context, uint inodeNum, Inode inode)
     {
-        private IBuffer _content;
+        Context = context;
+        InodeNumber = inodeNum;
+        Inode = inode;
+    }
 
-        public File(Context context, uint inodeNum, Inode inode)
-        {
-            Context = context;
-            InodeNumber = inodeNum;
-            Inode = inode;
-        }
+    protected Context Context { get; }
 
-        protected Context Context { get; }
+    internal Inode Inode { get; }
 
-        internal Inode Inode { get; }
+    internal uint InodeNumber { get; }
 
-        internal uint InodeNumber { get; }
+    public DateTime LastAccessTimeUtc
+    {
+        get { return ((long)Inode.AccessTime).FromUnixTimeSeconds().DateTime; }
 
-        public DateTime LastAccessTimeUtc
-        {
-            get { return ((long)Inode.AccessTime).FromUnixTimeSeconds().DateTime; }
+        set { throw new NotImplementedException(); }
+    }
 
-            set { throw new NotImplementedException(); }
-        }
+    public DateTime LastWriteTimeUtc
+    {
+        get { return ((long) Inode.ModificationTime).FromUnixTimeSeconds().DateTime; }
 
-        public DateTime LastWriteTimeUtc
-        {
-            get { return ((long) Inode.ModificationTime).FromUnixTimeSeconds().DateTime; }
+        set { throw new NotImplementedException(); }
+    }
 
-            set { throw new NotImplementedException(); }
-        }
+    public DateTime CreationTimeUtc
+    {
+        get { return ((long) Inode.CreationTime).FromUnixTimeSeconds().DateTime; }
 
-        public DateTime CreationTimeUtc
-        {
-            get { return ((long) Inode.CreationTime).FromUnixTimeSeconds().DateTime; }
+        set { throw new NotImplementedException(); }
+    }
 
-            set { throw new NotImplementedException(); }
-        }
+    public FileAttributes FileAttributes
+    {
+        get { return FromMode(Inode.Mode); }
 
-        public FileAttributes FileAttributes
-        {
-            get { return FromMode(Inode.Mode); }
+        set { throw new NotImplementedException(); }
+    }
 
-            set { throw new NotImplementedException(); }
-        }
+    public long FileLength
+    {
+        get { return Inode.FileSize; }
+    }
 
-        public long FileLength
-        {
-            get { return Inode.FileSize; }
-        }
-
-        public IBuffer FileContent
-        {
-            get
-            {
-                if (_content == null)
-                {
-                    _content = Inode.GetContentBuffer(Context);
-                }
-
-                return _content;
-            }
-        }
-
-        public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+    public IBuffer FileContent
+    {
+        get
         {
             if (_content == null)
             {
                 _content = Inode.GetContentBuffer(Context);
             }
 
-            if (_content is not IFileBuffer fileBuffer)
-            {
-                return Enumerable.Empty<StreamExtent>();
-            }
-
-            return fileBuffer.EnumerateAllocationExtents();
+            return _content;
         }
+    }
 
-        private static FileAttributes FromMode(uint mode)
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+    {
+        if (_content == null)
         {
-            return Utilities.FileAttributesFromUnixFileType((UnixFileType)((mode >> 12) & 0xF));
+            _content = Inode.GetContentBuffer(Context);
         }
+
+        if (_content is not IFileBuffer fileBuffer)
+        {
+            return Enumerable.Empty<StreamExtent>();
+        }
+
+        return fileBuffer.EnumerateAllocationExtents();
+    }
+
+    private static FileAttributes FromMode(uint mode)
+    {
+        return Utilities.FileAttributesFromUnixFileType((UnixFileType)((mode >> 12) & 0xF));
     }
 }

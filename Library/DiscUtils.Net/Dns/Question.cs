@@ -20,31 +20,31 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+internal sealed class Question
 {
-    internal sealed class Question
+    public RecordClass Class { get; set; }
+    public string Name { get; set; }
+
+    public RecordType Type { get; set; }
+
+    public static Question ReadFrom(PacketReader reader)
     {
-        public RecordClass Class { get; set; }
-        public string Name { get; set; }
-
-        public RecordType Type { get; set; }
-
-        public static Question ReadFrom(PacketReader reader)
+        var question = new Question
         {
-            Question question = new Question();
+            Name = reader.ReadName(),
+            Type = (RecordType)reader.ReadUShort(),
+            Class = (RecordClass)reader.ReadUShort()
+        };
 
-            question.Name = reader.ReadName();
-            question.Type = (RecordType)reader.ReadUShort();
-            question.Class = (RecordClass)reader.ReadUShort();
+        return question;
+    }
 
-            return question;
-        }
-
-        public void WriteTo(PacketWriter writer)
-        {
-            writer.WriteName(Name);
-            writer.Write((ushort)Type);
-            writer.Write((ushort)Class);
-        }
+    public void WriteTo(PacketWriter writer)
+    {
+        writer.WriteName(Name);
+        writer.Write((ushort)Type);
+        writer.Write((ushort)Class);
     }
 }

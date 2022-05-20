@@ -32,7 +32,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            Nfs3MountResult result = new Nfs3MountResult()
+            var result = new Nfs3MountResult()
             {
                 AuthFlavours = new List<RpcAuthFlavour>()
                  {
@@ -48,13 +48,13 @@ namespace LibraryTests.Nfs
 
             Nfs3MountResult clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 result.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new Nfs3MountResult(reader);
             }
 

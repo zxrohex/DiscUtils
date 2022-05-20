@@ -22,42 +22,41 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class Response : BaseResponse
 {
-    internal class Response : BaseResponse
+    public uint BidiReadResidualCount;
+    public uint ExpectedDataSequenceNumber;
+    public BasicHeaderSegment Header;
+    public uint ResidualCount;
+    public byte ResponseCode;
+    public ScsiStatus Status;
+
+    public override void Parse(ProtocolDataUnit pdu)
     {
-        public uint BidiReadResidualCount;
-        public uint ExpectedDataSequenceNumber;
-        public BasicHeaderSegment Header;
-        public uint ResidualCount;
-        public byte ResponseCode;
-        public ScsiStatus Status;
+        Parse(pdu.HeaderData, 0);
+    }
 
-        public override void Parse(ProtocolDataUnit pdu)
+    public void Parse(byte[] headerData, int headerOffset)
+    {
+        Header = new BasicHeaderSegment();
+        Header.ReadFrom(headerData, headerOffset);
+
+        if (Header.OpCode != OpCode.ScsiResponse)
         {
-            Parse(pdu.HeaderData, 0);
+            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.ScsiResponse +
+                                               " was " + Header.OpCode);
         }
 
-        public void Parse(byte[] headerData, int headerOffset)
-        {
-            Header = new BasicHeaderSegment();
-            Header.ReadFrom(headerData, headerOffset);
-
-            if (Header.OpCode != OpCode.ScsiResponse)
-            {
-                throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.ScsiResponse +
-                                                   " was " + Header.OpCode);
-            }
-
-            ResponseCode = headerData[headerOffset + 2];
-            StatusPresent = true;
-            Status = (ScsiStatus)headerData[headerOffset + 3];
-            StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-            ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-            MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-            ExpectedDataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
-            BidiReadResidualCount = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 40);
-            ResidualCount = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 44);
-        }
+        ResponseCode = headerData[headerOffset + 2];
+        StatusPresent = true;
+        Status = (ScsiStatus)headerData[headerOffset + 3];
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
+        ExpectedDataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
+        BidiReadResidualCount = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 40);
+        ResidualCount = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 44);
     }
 }

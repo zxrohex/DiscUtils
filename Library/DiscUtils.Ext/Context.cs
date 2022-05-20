@@ -23,16 +23,15 @@
 using System.IO;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal class Context : VfsContext
 {
-    internal class Context : VfsContext
-    {
-        public ExtFileSystemOptions Options { get; set; }
+    public ExtFileSystemOptions Options { get; set; }
 
-        public Stream RawStream { get; set; }
+    public Stream RawStream { get; set; }
 
-        public SuperBlock SuperBlock { get; set; }
+    public SuperBlock SuperBlock { get; set; }
 
-        public JournalSuperBlock JournalSuperblock { get; set; }
-    }
+    public JournalSuperBlock JournalSuperblock { get; set; }
 }

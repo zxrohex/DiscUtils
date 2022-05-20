@@ -20,48 +20,47 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+using System.Collections.Generic;
+
+internal abstract class BTreeExtentHeader : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
-    using System.Collections.Generic;
+    public const uint BtreeMagic = 0x424d4150;
 
-    internal abstract class BTreeExtentHeader : IByteArraySerializable
+    public uint Magic { get; private set; }
+
+    public ushort Level { get; protected set; }
+
+    public ushort NumberOfRecords { get; protected set; }
+
+    public long LeftSibling { get; private set; }
+
+    public long RightSibling { get; private set; }
+
+    public virtual int Size
     {
-        public const uint BtreeMagic = 0x424d4150;
-
-        public uint Magic { get; private set; }
-
-        public ushort Level { get; protected set; }
-
-        public ushort NumberOfRecords { get; protected set; }
-
-        public long LeftSibling { get; private set; }
-
-        public long RightSibling { get; private set; }
-
-        public virtual int Size
-        {
-            get { return 24; }
-        }
-
-        public virtual int ReadFrom(byte[] buffer, int offset)
-        {
-            Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            Level = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x4);
-            NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x6);
-            LeftSibling = EndianUtilities.ToInt64BigEndian(buffer, offset + 0x8);
-            RightSibling = EndianUtilities.ToInt64BigEndian(buffer, offset + 0xC);
-            return 24;
-        }
-
-        public virtual void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public abstract void LoadBtree(Context context);
-
-        public abstract IList<Extent> GetExtents();
+        get { return 24; }
     }
+
+    public virtual int ReadFrom(byte[] buffer, int offset)
+    {
+        Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        Level = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x4);
+        NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x6);
+        LeftSibling = EndianUtilities.ToInt64BigEndian(buffer, offset + 0x8);
+        RightSibling = EndianUtilities.ToInt64BigEndian(buffer, offset + 0xC);
+        return 24;
+    }
+
+    public virtual void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public abstract void LoadBtree(Context context);
+
+    public abstract IEnumerable<Extent> GetExtents();
 }

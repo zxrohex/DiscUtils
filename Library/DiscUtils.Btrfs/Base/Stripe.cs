@@ -23,54 +23,53 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+/// <summary>
+/// Maps logical address to physical
+/// </summary>
+internal class Stripe : IByteArraySerializable
 {
+    public static readonly int Length = 0x20;
+
     /// <summary>
-    /// Maps logical address to physical
+    /// device id
     /// </summary>
-    internal class Stripe : IByteArraySerializable
+    public ulong DeviceId { get; private set; }
+
+    /// <summary>
+    /// offset
+    /// </summary>
+    public ulong Offset { get; private set; }
+
+    /// <summary>
+    /// device UUID
+    /// </summary>
+    public Guid DeviceUuid { get; private set; }
+
+    public int Size
     {
-        public static readonly int Length = 0x20;
+        get { return Length; }
+    }
 
-        /// <summary>
-        /// device id
-        /// </summary>
-        public ulong DeviceId { get; private set; }
-
-        /// <summary>
-        /// offset
-        /// </summary>
-        public ulong Offset { get; private set; }
-
-        /// <summary>
-        /// device UUID
-        /// </summary>
-        public Guid DeviceUuid { get; private set; }
-
-        public int Size
+    public Key DevItemKey
+    {
+        get
         {
-            get { return Length; }
+            return new Key(DeviceId,ItemType.DevItem,Offset);
         }
+    }
 
-        public Key DevItemKey
-        {
-            get
-            {
-                return new Key(DeviceId,ItemType.DevItem,Offset);
-            }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        DeviceId = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+        Offset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
+        DeviceUuid = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0x10);
+        return Size;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            DeviceId = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-            Offset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-            DeviceUuid = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0x10);
-            return Size;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -20,24 +20,23 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Archives
+namespace DiscUtils.Archives;
+
+public sealed class TarFileRecord
 {
-    public sealed class TarFileRecord
+    public TarHeader Header { get; }
+
+    public long Start { get; }
+
+    public string Name => Header.FileName;
+
+    public long Length => Header.FileLength;
+
+    public TarFileRecord(TarHeader hdr, long start)
     {
-        public TarHeader Header { get; }
-
-        public long Start { get; }
-
-        public string Name => Header.FileName;
-
-        public long Length => Header.FileLength;
-
-        public TarFileRecord(TarHeader hdr, long start)
-        {
-            Header = hdr;
-            Start = start;
-        }
-
-        public override string ToString() => Name;
+        Header = hdr;
+        Start = start;
     }
+
+    public override string ToString() => Name;
 }

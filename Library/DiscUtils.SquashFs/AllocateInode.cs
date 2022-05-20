@@ -1,4 +1,3 @@
-﻿namespace DiscUtils.SquashFs
-{
-    internal delegate uint AllocateInode();
-}
+﻿namespace DiscUtils.SquashFs;
+
+internal delegate uint AllocateInode();

@@ -24,91 +24,88 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal struct NtfsStream
 {
-    internal struct NtfsStream
+    private readonly File _file;
+
+    public NtfsStream(File file, NtfsAttribute attr)
     {
-        private readonly File _file;
+        _file = file;
+        Attribute = attr;
+    }
 
-        public NtfsStream(File file, NtfsAttribute attr)
+    public NtfsAttribute Attribute { get; }
+
+    public AttributeType AttributeType
+    {
+        get { return Attribute.Type; }
+    }
+
+    public string Name
+    {
+        get { return Attribute.Name; }
+    }
+
+    /// <summary>
+    /// Gets the content of a stream.
+    /// </summary>
+    /// <typeparam name="T">The stream's content structure.</typeparam>
+    /// <returns>The content.</returns>
+    public T GetContent<T>()
+        where T : IByteArraySerializable, IDiagnosticTraceable, new()
+    {
+        byte[] buffer;
+        using (Stream s = Open(FileAccess.Read))
         {
-            _file = file;
-            Attribute = attr;
+            buffer = StreamUtilities.ReadExact(s, (int)s.Length);
         }
 
-        public NtfsAttribute Attribute { get; }
+        var value = new T();
+        value.ReadFrom(buffer, 0);
+        return value;
+    }
 
-        public AttributeType AttributeType
-        {
-            get { return Attribute.Type; }
-        }
+    /// <summary>
+    /// Sets the content of a stream.
+    /// </summary>
+    /// <typeparam name="T">The stream's content structure.</typeparam>
+    /// <param name="value">The new value for the stream.</param>
+    public void SetContent<T>(T value)
+        where T : IByteArraySerializable, IDiagnosticTraceable, new()
+    {
+        var buffer = new byte[value.Size];
+        value.WriteTo(buffer, 0);
+        using Stream s = Open(FileAccess.Write);
+        s.Write(buffer, 0, buffer.Length);
+        s.SetLength(buffer.Length);
+    }
 
-        public string Name
-        {
-            get { return Attribute.Name; }
-        }
+    public SparseStream Open(FileAccess access)
+    {
+        return Attribute.Open(access);
+    }
 
-        /// <summary>
-        /// Gets the content of a stream.
-        /// </summary>
-        /// <typeparam name="T">The stream's content structure.</typeparam>
-        /// <returns>The content.</returns>
-        public T GetContent<T>()
-            where T : IByteArraySerializable, IDiagnosticTraceable, new()
+    public IEnumerable<Range<long, long>> GetClusters()
+    {
+        return Attribute.GetClusters();
+    }
+
+    internal IEnumerable<StreamExtent> GetAbsoluteExtents()
+    {
+        long clusterSize = _file.Context.BiosParameterBlock.BytesPerCluster;
+        if (Attribute.IsNonResident)
         {
-            byte[] buffer;
-            using (Stream s = Open(FileAccess.Read))
+            var clusters = Attribute.GetClusters();
+            foreach (var clusterRange in clusters)
             {
-                buffer = StreamUtilities.ReadExact(s, (int)s.Length);
-            }
-
-            T value = new T();
-            value.ReadFrom(buffer, 0);
-            return value;
-        }
-
-        /// <summary>
-        /// Sets the content of a stream.
-        /// </summary>
-        /// <typeparam name="T">The stream's content structure.</typeparam>
-        /// <param name="value">The new value for the stream.</param>
-        public void SetContent<T>(T value)
-            where T : IByteArraySerializable, IDiagnosticTraceable, new()
-        {
-            byte[] buffer = new byte[value.Size];
-            value.WriteTo(buffer, 0);
-            using (Stream s = Open(FileAccess.Write))
-            {
-                s.Write(buffer, 0, buffer.Length);
-                s.SetLength(buffer.Length);
+                yield return new StreamExtent(clusterRange.Offset * clusterSize, clusterRange.Count * clusterSize);
             }
         }
-
-        public SparseStream Open(FileAccess access)
+        else
         {
-            return Attribute.Open(access);
-        }
-
-        public IEnumerable<Range<long, long>> GetClusters()
-        {
-            return Attribute.GetClusters();
-        }
-
-        internal IEnumerable<StreamExtent> GetAbsoluteExtents()
-        {
-            long clusterSize = _file.Context.BiosParameterBlock.BytesPerCluster;
-            if (Attribute.IsNonResident)
-            {
-                var clusters = Attribute.GetClusters();
-                foreach (Range<long, long> clusterRange in clusters)
-                {
-                    yield return new StreamExtent(clusterRange.Offset * clusterSize, clusterRange.Count * clusterSize);
-                }
-            }
-            else
-            {
-                yield return new StreamExtent(Attribute.OffsetToAbsolutePos(0), Attribute.Length);
-            }
+            yield return new StreamExtent(Attribute.OffsetToAbsolutePos(0), Attribute.Length);
         }
     }
 }

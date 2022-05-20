@@ -23,54 +23,52 @@
 using System;
 using System.Collections.Generic;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+internal sealed class RpcClient : IRpcClient
 {
-    internal sealed class RpcClient : IRpcClient
+    private uint _nextTransaction;
+    private readonly string _serverAddress;
+    private Dictionary<int, RpcTcpTransport> _transports = new Dictionary<int, RpcTcpTransport>();
+
+    public RpcClient(string address, RpcCredentials credential)
     {
-        private uint _nextTransaction;
-        private readonly string _serverAddress;
-        private Dictionary<int, RpcTcpTransport> _transports = new Dictionary<int, RpcTcpTransport>();
+        _serverAddress = address;
+        Credentials = credential;
+        _nextTransaction = (uint)new Random().Next();
+        _transports[PortMap2.ProgramIdentifier] = new RpcTcpTransport(address, 111);
+    }
 
-        public RpcClient(string address, RpcCredentials credential)
+    public RpcCredentials Credentials { get; }
+
+    public void Dispose()
+    {
+        if (_transports != null)
         {
-            _serverAddress = address;
-            Credentials = credential;
-            _nextTransaction = (uint)new Random().Next();
-            _transports[PortMap2.ProgramIdentifier] = new RpcTcpTransport(address, 111);
-        }
-
-        public RpcCredentials Credentials { get; }
-
-        public void Dispose()
-        {
-            if (_transports != null)
+            foreach (var transport in _transports.Values)
             {
-                foreach (RpcTcpTransport transport in _transports.Values)
-                {
-                    transport.Dispose();
-                }
-
-                _transports = null;
-            }
-        }
-
-        public uint NextTransactionId()
-        {
-            return _nextTransaction++;
-        }
-
-        public IRpcTransport GetTransport(int program, int version)
-        {
-            RpcTcpTransport transport;
-            if (!_transports.TryGetValue(program, out transport))
-            {
-                PortMap2 pm = new PortMap2(this);
-                int port = pm.GetPort(program, version, PortMap2Protocol.Tcp);
-                transport = new RpcTcpTransport(_serverAddress, port);
-                _transports[program] = transport;
+                transport.Dispose();
             }
 
-            return transport;
+            _transports = null;
         }
+    }
+
+    public uint NextTransactionId()
+    {
+        return _nextTransaction++;
+    }
+
+    public IRpcTransport GetTransport(int program, int version)
+    {
+        if (!_transports.TryGetValue(program, out var transport))
+        {
+            var pm = new PortMap2(this);
+            var port = pm.GetPort(program, version, PortMap2Protocol.Tcp);
+            transport = new RpcTcpTransport(_serverAddress, port);
+            _transports[program] = transport;
+        }
+
+        return transport;
     }
 }

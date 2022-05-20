@@ -20,11 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum PortMap2Protocol
 {
-    public enum PortMap2Protocol
-    {
-        Tcp = 6,
-        Udp = 17
-    }
+    Tcp = 6,
+    Udp = 17
 }

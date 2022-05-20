@@ -21,27 +21,26 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using DiscUtils.Internal;
+using System.Collections.Generic;
+
+[LogicalVolumeFactory]
+internal class LogicalVolumeManagerFactory : LogicalVolumeFactory
 {
-    using DiscUtils.Internal;
-    using System.Collections.Generic;
-
-    [LogicalVolumeFactory]
-    internal class LogicalVolumeManagerFactory : LogicalVolumeFactory
+    public override bool HandlesPhysicalVolume(PhysicalVolumeInfo volume)
     {
-        public override bool HandlesPhysicalVolume(PhysicalVolumeInfo volume)
-        {
-            return LogicalVolumeManager.HandlesPhysicalVolume(volume);
-        }
+        return LogicalVolumeManager.HandlesPhysicalVolume(volume);
+    }
 
-        public override void MapDisks(IEnumerable<VirtualDisk> disks, Dictionary<string, LogicalVolumeInfo> result)
+    public override void MapDisks(IEnumerable<VirtualDisk> disks, Dictionary<string, LogicalVolumeInfo> result)
+    {
+        var mgr = new LogicalVolumeManager(disks);
+        
+        foreach (var vol in mgr.GetLogicalVolumes())
         {
-            LogicalVolumeManager mgr = new LogicalVolumeManager(disks);
-            
-            foreach (var vol in mgr.GetLogicalVolumes())
-            {
-                result.Add(vol.Identity, vol);
-            }
+            result.Add(vol.Identity, vol);
         }
     }
 }

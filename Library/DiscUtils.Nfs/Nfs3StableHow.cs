@@ -21,12 +21,11 @@
 //
 
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum Nfs3StableHow : uint
 {
-    public enum Nfs3StableHow : uint
-    {
-        Unstable = 0,
-        DataSync = 1,
-        FileSynce = 2
-    }
+    Unstable = 0,
+    DataSync = 1,
+    FileSynce = 2
 }

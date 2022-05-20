@@ -20,12 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs
-{
-    public class Subvolume
-    {
-        public ulong Id { get; internal set; }
+namespace DiscUtils.Btrfs;
 
-        public string Name { get; internal set; }
-    }
+public class Subvolume
+{
+    public ulong Id { get; internal set; }
+
+    public string Name { get; internal set; }
 }

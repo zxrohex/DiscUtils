@@ -24,142 +24,141 @@ using System;
 using System.Collections.Generic;
 using DiscUtils.Registry;
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+/// <summary>
+/// Represents a Boot Configuration Database store (i.e. a BCD file).
+/// </summary>
+public class Store
 {
+    private readonly BaseStorage _store;
+
     /// <summary>
-    /// Represents a Boot Configuration Database store (i.e. a BCD file).
+    /// Initializes a new instance of the Store class.
     /// </summary>
-    public class Store
+    /// <param name="key">The registry key that is the root of the configuration database.</param>
+    public Store(RegistryKey key)
     {
-        private readonly BaseStorage _store;
+        _store = new DiscUtilsRegistryStorage(key);
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the Store class.
-        /// </summary>
-        /// <param name="key">The registry key that is the root of the configuration database.</param>
-        public Store(RegistryKey key)
+    /// <summary>
+    /// Gets the objects within the store.
+    /// </summary>
+    public IEnumerable<BcdObject> Objects
+    {
+        get
         {
-            _store = new DiscUtilsRegistryStorage(key);
-        }
-
-        /// <summary>
-        /// Gets the objects within the store.
-        /// </summary>
-        public IEnumerable<BcdObject> Objects
-        {
-            get
+            foreach (var obj in _store.EnumerateObjects())
             {
-                foreach (Guid obj in _store.EnumerateObjects())
-                {
-                    yield return new BcdObject(_store, obj);
-                }
+                yield return new BcdObject(_store, obj);
             }
         }
+    }
 
-        /// <summary>
-        /// Initializes a new Boot Configuration Database.
-        /// </summary>
-        /// <param name="root">The registry key at the root of the database.</param>
-        /// <returns>The BCD store.</returns>
-        public static Store Initialize(RegistryKey root)
-        {
-            RegistryKey descKey = root.CreateSubKey("Description");
-            descKey.SetValue("KeyName", "BCD00000001");
-            root.CreateSubKey("Objects");
-            return new Store(root);
-        }
+    /// <summary>
+    /// Initializes a new Boot Configuration Database.
+    /// </summary>
+    /// <param name="root">The registry key at the root of the database.</param>
+    /// <returns>The BCD store.</returns>
+    public static Store Initialize(RegistryKey root)
+    {
+        var descKey = root.CreateSubKey("Description");
+        descKey.SetValue("KeyName", "BCD00000001");
+        root.CreateSubKey("Objects");
+        return new Store(root);
+    }
 
-        /// <summary>
-        /// Gets an object from the store.
-        /// </summary>
-        /// <param name="id">The identity of the object.</param>
-        /// <returns>The requested object, or <c>null</c>.</returns>
-        public BcdObject GetObject(Guid id)
+    /// <summary>
+    /// Gets an object from the store.
+    /// </summary>
+    /// <param name="id">The identity of the object.</param>
+    /// <returns>The requested object, or <c>null</c>.</returns>
+    public BcdObject GetObject(Guid id)
+    {
+        if (_store.ObjectExists(id))
         {
-            if (_store.ObjectExists(id))
-            {
-                return new BcdObject(_store, id);
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Creates a specific object.
-        /// </summary>
-        /// <param name="id">The identity of the object to create.</param>
-        /// <param name="type">The object's type.</param>
-        /// <returns>The object representing the new application.</returns>
-        public BcdObject CreateObject(Guid id, int type)
-        {
-            _store.CreateObject(id, type);
             return new BcdObject(_store, id);
         }
+        return null;
+    }
 
-        /// <summary>
-        /// Creates an application object.
-        /// </summary>
-        /// <param name="imageType">The image type of the application.</param>
-        /// <param name="appType">The application's type.</param>
-        /// <returns>The object representing the new application.</returns>
-        public BcdObject CreateApplication(ApplicationImageType imageType, ApplicationType appType)
-        {
-            Guid obj = _store.CreateObject(Guid.NewGuid(), BcdObject.MakeApplicationType(imageType, appType));
-            return new BcdObject(_store, obj);
-        }
+    /// <summary>
+    /// Creates a specific object.
+    /// </summary>
+    /// <param name="id">The identity of the object to create.</param>
+    /// <param name="type">The object's type.</param>
+    /// <returns>The object representing the new application.</returns>
+    public BcdObject CreateObject(Guid id, int type)
+    {
+        _store.CreateObject(id, type);
+        return new BcdObject(_store, id);
+    }
 
-        /// <summary>
-        /// Creates an application object.
-        /// </summary>
-        /// <param name="id">The identity of the object to create.</param>
-        /// <param name="imageType">The image type of the application.</param>
-        /// <param name="appType">The application's type.</param>
-        /// <returns>The object representing the new application.</returns>
-        public BcdObject CreateApplication(Guid id, ApplicationImageType imageType, ApplicationType appType)
-        {
-            Guid obj = _store.CreateObject(id, BcdObject.MakeApplicationType(imageType, appType));
-            return new BcdObject(_store, obj);
-        }
+    /// <summary>
+    /// Creates an application object.
+    /// </summary>
+    /// <param name="imageType">The image type of the application.</param>
+    /// <param name="appType">The application's type.</param>
+    /// <returns>The object representing the new application.</returns>
+    public BcdObject CreateApplication(ApplicationImageType imageType, ApplicationType appType)
+    {
+        var obj = _store.CreateObject(Guid.NewGuid(), BcdObject.MakeApplicationType(imageType, appType));
+        return new BcdObject(_store, obj);
+    }
 
-        /// <summary>
-        /// Creates an 'inherit' object that contains common settings.
-        /// </summary>
-        /// <param name="inheritType">The type of object the settings apply to.</param>
-        /// <returns>The object representing the new settings.</returns>
-        public BcdObject CreateInherit(InheritType inheritType)
-        {
-            Guid obj = _store.CreateObject(Guid.NewGuid(), BcdObject.MakeInheritType(inheritType));
-            return new BcdObject(_store, obj);
-        }
+    /// <summary>
+    /// Creates an application object.
+    /// </summary>
+    /// <param name="id">The identity of the object to create.</param>
+    /// <param name="imageType">The image type of the application.</param>
+    /// <param name="appType">The application's type.</param>
+    /// <returns>The object representing the new application.</returns>
+    public BcdObject CreateApplication(Guid id, ApplicationImageType imageType, ApplicationType appType)
+    {
+        var obj = _store.CreateObject(id, BcdObject.MakeApplicationType(imageType, appType));
+        return new BcdObject(_store, obj);
+    }
 
-        /// <summary>
-        /// Creates an 'inherit' object that contains common settings.
-        /// </summary>
-        /// <param name="id">The identity of the object to create.</param>
-        /// <param name="inheritType">The type of object the settings apply to.</param>
-        /// <returns>The object representing the new settings.</returns>
-        public BcdObject CreateInherit(Guid id, InheritType inheritType)
-        {
-            Guid obj = _store.CreateObject(id, BcdObject.MakeInheritType(inheritType));
-            return new BcdObject(_store, obj);
-        }
+    /// <summary>
+    /// Creates an 'inherit' object that contains common settings.
+    /// </summary>
+    /// <param name="inheritType">The type of object the settings apply to.</param>
+    /// <returns>The object representing the new settings.</returns>
+    public BcdObject CreateInherit(InheritType inheritType)
+    {
+        var obj = _store.CreateObject(Guid.NewGuid(), BcdObject.MakeInheritType(inheritType));
+        return new BcdObject(_store, obj);
+    }
 
-        /// <summary>
-        /// Creates a new device object, representing a partition.
-        /// </summary>
-        /// <returns>The object representing the new device.</returns>
-        public BcdObject CreateDevice()
-        {
-            Guid obj = _store.CreateObject(Guid.NewGuid(), 0x30000000);
-            return new BcdObject(_store, obj);
-        }
+    /// <summary>
+    /// Creates an 'inherit' object that contains common settings.
+    /// </summary>
+    /// <param name="id">The identity of the object to create.</param>
+    /// <param name="inheritType">The type of object the settings apply to.</param>
+    /// <returns>The object representing the new settings.</returns>
+    public BcdObject CreateInherit(Guid id, InheritType inheritType)
+    {
+        var obj = _store.CreateObject(id, BcdObject.MakeInheritType(inheritType));
+        return new BcdObject(_store, obj);
+    }
 
-        /// <summary>
-        /// Removes an object.
-        /// </summary>
-        /// <param name="id">The identity of the object to remove.</param>
-        public void RemoveObject(Guid id)
-        {
-            _store.DeleteObject(id);
-        }
+    /// <summary>
+    /// Creates a new device object, representing a partition.
+    /// </summary>
+    /// <returns>The object representing the new device.</returns>
+    public BcdObject CreateDevice()
+    {
+        var obj = _store.CreateObject(Guid.NewGuid(), 0x30000000);
+        return new BcdObject(_store, obj);
+    }
+
+    /// <summary>
+    /// Removes an object.
+    /// </summary>
+    /// <param name="id">The identity of the object to remove.</param>
+    public void RemoveObject(Guid id)
+    {
+        _store.DeleteObject(id);
     }
 }

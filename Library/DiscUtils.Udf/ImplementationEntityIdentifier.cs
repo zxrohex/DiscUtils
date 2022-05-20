@@ -23,15 +23,14 @@
 using System.Globalization;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class ImplementationEntityIdentifier : EntityIdentifier
 {
-    internal class ImplementationEntityIdentifier : EntityIdentifier
+    public override string ToString()
     {
-        public override string ToString()
-        {
-            OSClass osClass = (OSClass)Suffix[0];
-            OSIdentifier osId = (OSIdentifier)EndianUtilities.ToUInt16BigEndian(Suffix, 0);
-            return string.Format(CultureInfo.InvariantCulture, "{0} [OS {1} {2}]", Identifier, osClass, osId);
-        }
+        var osClass = (OSClass)Suffix[0];
+        var osId = (OSIdentifier)EndianUtilities.ToUInt16BigEndian(Suffix, 0);
+        return $"{Identifier} [OS {osClass} {osId}]";
     }
 }

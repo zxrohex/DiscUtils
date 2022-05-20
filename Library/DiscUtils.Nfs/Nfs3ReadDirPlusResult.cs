@@ -24,91 +24,90 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3ReadDirPlusResult : Nfs3CallResult
 {
-    public sealed class Nfs3ReadDirPlusResult : Nfs3CallResult
+    internal Nfs3ReadDirPlusResult(XdrDataReader reader)
     {
-        internal Nfs3ReadDirPlusResult(XdrDataReader reader)
+        Status = (Nfs3Status)reader.ReadInt32();
+        if (reader.ReadBool())
         {
-            Status = (Nfs3Status)reader.ReadInt32();
-            if (reader.ReadBool())
+            DirAttributes = new Nfs3FileAttributes(reader);
+        }
+
+        if (Status == Nfs3Status.Ok)
+        {
+            CookieVerifier = reader.ReadUInt64();
+
+            DirEntries = new List<Nfs3DirectoryEntry>();
+            while (reader.ReadBool())
             {
-                DirAttributes = new Nfs3FileAttributes(reader);
+                var dirEntry = new Nfs3DirectoryEntry(reader);
+                DirEntries.Add(dirEntry);
             }
 
-            if (Status == Nfs3Status.Ok)
-            {
-                CookieVerifier = reader.ReadUInt64();
+            Eof = reader.ReadBool();
+        }
+    }
 
-                DirEntries = new List<Nfs3DirectoryEntry>();
-                while (reader.ReadBool())
-                {
-                    Nfs3DirectoryEntry dirEntry = new Nfs3DirectoryEntry(reader);
-                    DirEntries.Add(dirEntry);
-                }
+    public Nfs3ReadDirPlusResult()
+    {
+    }
 
-                Eof = reader.ReadBool();
-            }
+    public ulong CookieVerifier { get; set; }
+
+    public Nfs3FileAttributes DirAttributes { get; set; }
+
+    public List<Nfs3DirectoryEntry> DirEntries { get; set; }
+
+    public bool Eof { get; set; }
+
+    public override void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)Status);
+
+        writer.Write(DirAttributes != null);
+        if (DirAttributes != null)
+        {
+            DirAttributes.Write(writer);
         }
 
-        public Nfs3ReadDirPlusResult()
+        if (Status == Nfs3Status.Ok)
         {
-        }
+            writer.Write(CookieVerifier);
 
-        public ulong CookieVerifier { get; set; }
-
-        public Nfs3FileAttributes DirAttributes { get; set; }
-
-        public List<Nfs3DirectoryEntry> DirEntries { get; set; }
-
-        public bool Eof { get; set; }
-
-        public override void Write(XdrDataWriter writer)
-        {
-            writer.Write((int)Status);
-
-            writer.Write(DirAttributes != null);
-            if (DirAttributes != null)
+            foreach (var entry in DirEntries)
             {
-                DirAttributes.Write(writer);
-            }
-
-            if (Status == Nfs3Status.Ok)
-            {
-                writer.Write(CookieVerifier);
-
-                foreach (var entry in DirEntries)
-                {
-                    writer.Write(true);
-                    entry.Write(writer);
-                }
-
-                writer.Write(false);
-                writer.Write(Eof);
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Nfs3ReadDirPlusResult);
-        }
-
-        public bool Equals(Nfs3ReadDirPlusResult other)
-        {
-            if (other == null)
-            {
-                return false;
+                writer.Write(true);
+                entry.Write(writer);
             }
 
-            return other.Status == Status
-                && object.Equals(other.DirAttributes, DirAttributes)
-                && Enumerable.SequenceEqual(other.DirEntries, DirEntries)
-                && other.CookieVerifier == CookieVerifier;
+            writer.Write(false);
+            writer.Write(Eof);
+        }
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3ReadDirPlusResult);
+    }
+
+    public bool Equals(Nfs3ReadDirPlusResult other)
+    {
+        if (other == null)
+        {
+            return false;
         }
 
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Status, DirAttributes, CookieVerifier, DirEntries);
-        }
+        return other.Status == Status
+            && object.Equals(other.DirAttributes, DirAttributes)
+            && Enumerable.SequenceEqual(other.DirEntries, DirEntries)
+            && other.CookieVerifier == CookieVerifier;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Status, DirAttributes, CookieVerifier, DirEntries);
     }
 }

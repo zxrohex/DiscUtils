@@ -20,18 +20,17 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal class BuildParameters
 {
-    internal class BuildParameters
+    public BuildParameters()
     {
-        public BuildParameters()
-        {
-            VolumeIdentifier = string.Empty;
-            UseJoliet = true;
-        }
-
-        public bool UseJoliet { get; set; }
-
-        public string VolumeIdentifier { get; set; }
+        VolumeIdentifier = string.Empty;
+        UseJoliet = true;
     }
+
+    public bool UseJoliet { get; set; }
+
+    public string VolumeIdentifier { get; set; }
 }

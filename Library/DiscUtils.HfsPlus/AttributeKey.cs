@@ -23,70 +23,69 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal class AttributeKey : BTreeKey
 {
-    internal class AttributeKey : BTreeKey
+    private ushort _keyLength;
+    private ushort _pad;
+    private uint _startBlock;
+
+    public AttributeKey() {}
+
+    public AttributeKey(CatalogNodeId nodeId, string name)
     {
-        private ushort _keyLength;
-        private ushort _pad;
-        private uint _startBlock;
+        FileId = nodeId;
+        Name = name;
+    }
 
-        public AttributeKey() {}
+    public CatalogNodeId FileId { get; private set; }
 
-        public AttributeKey(CatalogNodeId nodeId, string name)
+    public string Name { get; private set; }
+
+    public override int Size
+    {
+        get { throw new NotImplementedException(); }
+    }
+
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        _keyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
+        _pad = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
+        FileId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 4));
+        _startBlock = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
+        Name = HfsPlusUtilities.ReadUniStr255(buffer, offset + 12);
+
+        return _keyLength + 2;
+    }
+
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override int CompareTo(BTreeKey other)
+    {
+        return CompareTo(other as AttributeKey);
+    }
+
+    public int CompareTo(AttributeKey other)
+    {
+        if (other == null)
         {
-            FileId = nodeId;
-            Name = name;
+            throw new ArgumentNullException(nameof(other));
         }
 
-        public CatalogNodeId FileId { get; private set; }
-
-        public string Name { get; private set; }
-
-        public override int Size
+        if (FileId != other.FileId)
         {
-            get { throw new NotImplementedException(); }
+            return FileId < other.FileId ? -1 : 1;
         }
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            _keyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
-            _pad = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
-            FileId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 4));
-            _startBlock = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-            Name = HfsPlusUtilities.ReadUniStr255(buffer, offset + 12);
+        return HfsPlusUtilities.FastUnicodeCompare(Name, other.Name);
+    }
 
-            return _keyLength + 2;
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override int CompareTo(BTreeKey other)
-        {
-            return CompareTo(other as AttributeKey);
-        }
-
-        public int CompareTo(AttributeKey other)
-        {
-            if (other == null)
-            {
-                throw new ArgumentNullException(nameof(other));
-            }
-
-            if (FileId != other.FileId)
-            {
-                return FileId < other.FileId ? -1 : 1;
-            }
-
-            return HfsPlusUtilities.FastUnicodeCompare(Name, other.Name);
-        }
-
-        public override string ToString()
-        {
-            return Name + " (" + FileId + ")";
-        }
+    public override string ToString()
+    {
+        return Name + " (" + FileId + ")";
     }
 }

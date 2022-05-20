@@ -20,51 +20,50 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+/// <summary>
+/// The known formats used to store BCD values.
+/// </summary>
+public enum ElementFormat
 {
     /// <summary>
-    /// The known formats used to store BCD values.
+    /// Unknown format.
     /// </summary>
-    public enum ElementFormat
-    {
-        /// <summary>
-        /// Unknown format.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// A block device, or partition.
-        /// </summary>
-        Device = 1,
+    /// <summary>
+    /// A block device, or partition.
+    /// </summary>
+    Device = 1,
 
-        /// <summary>
-        /// A unicode string.
-        /// </summary>
-        String = 2,
+    /// <summary>
+    /// A unicode string.
+    /// </summary>
+    String = 2,
 
-        /// <summary>
-        /// A Globally Unique Identifier (GUID).
-        /// </summary>
-        Guid = 3,
+    /// <summary>
+    /// A Globally Unique Identifier (GUID).
+    /// </summary>
+    Guid = 3,
 
-        /// <summary>
-        /// A GUID list.
-        /// </summary>
-        GuidList = 4,
+    /// <summary>
+    /// A GUID list.
+    /// </summary>
+    GuidList = 4,
 
-        /// <summary>
-        /// An integer.
-        /// </summary>
-        Integer = 5,
+    /// <summary>
+    /// An integer.
+    /// </summary>
+    Integer = 5,
 
-        /// <summary>
-        /// A boolean.
-        /// </summary>
-        Boolean = 6,
+    /// <summary>
+    /// A boolean.
+    /// </summary>
+    Boolean = 6,
 
-        /// <summary>
-        /// An integer list.
-        /// </summary>
-        IntegerList = 7
-    }
+    /// <summary>
+    /// An integer list.
+    /// </summary>
+    IntegerList = 7
 }

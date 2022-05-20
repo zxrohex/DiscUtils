@@ -20,10 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal abstract class BTree
 {
-    internal abstract class BTree
-    {
-        internal abstract int NodeSize { get; }
-    }
+    internal abstract int NodeSize { get; }
 }

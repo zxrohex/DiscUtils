@@ -22,31 +22,30 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal class CompressionResourceHeader
 {
-    internal class CompressionResourceHeader
+    public uint DataSize { get; private set; }
+
+    public uint Flags { get; private set; }
+
+    public uint HeaderSize { get; private set; }
+
+    public static int Size
     {
-        public uint DataSize { get; private set; }
+        get { return 16; }
+    }
 
-        public uint Flags { get; private set; }
+    public uint TotalSize { get; private set; }
 
-        public uint HeaderSize { get; private set; }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        HeaderSize = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        TotalSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
+        DataSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
+        Flags = EndianUtilities.ToUInt32BigEndian(buffer, offset + 12);
 
-        public static int Size
-        {
-            get { return 16; }
-        }
-
-        public uint TotalSize { get; private set; }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            HeaderSize = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            TotalSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-            DataSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-            Flags = EndianUtilities.ToUInt32BigEndian(buffer, offset + 12);
-
-            return Size;
-        }
+        return Size;
     }
 }

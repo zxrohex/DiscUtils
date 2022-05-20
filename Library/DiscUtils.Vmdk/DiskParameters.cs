@@ -22,87 +22,84 @@
 
 using System;
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+/// <summary>
+/// The parameters used to create a new VMDK file.
+/// </summary>
+public sealed class DiskParameters
 {
     /// <summary>
-    /// The parameters used to create a new VMDK file.
+    /// Initializes a new instance of the DiskParameters class with default values.
     /// </summary>
-    public sealed class DiskParameters
+    public DiskParameters() {}
+
+    /// <summary>
+    /// Initializes a new instance of the DiskParameters class with generic parameters.
+    /// </summary>
+    /// <param name="genericParameters">The generic parameters to copy.</param>
+    public DiskParameters(VirtualDiskParameters genericParameters)
     {
-        /// <summary>
-        /// Initializes a new instance of the DiskParameters class with default values.
-        /// </summary>
-        public DiskParameters() {}
+        Capacity = genericParameters.Capacity;
+        Geometry = genericParameters.Geometry;
+        BiosGeometry = genericParameters.BiosGeometry;
 
-        /// <summary>
-        /// Initializes a new instance of the DiskParameters class with generic parameters.
-        /// </summary>
-        /// <param name="genericParameters">The generic parameters to copy.</param>
-        public DiskParameters(VirtualDiskParameters genericParameters)
+        if (genericParameters.ExtendedParameters.TryGetValue(Disk.ExtendedParameterKeyCreateType,
+                                 out var stringCreateType))
         {
-            Capacity = genericParameters.Capacity;
-            Geometry = genericParameters.Geometry;
-            BiosGeometry = genericParameters.BiosGeometry;
+            CreateType = (DiskCreateType)Enum.Parse(typeof(DiskCreateType), stringCreateType);
+        }
+        else
+        {
+            CreateType = DiskCreateType.MonolithicSparse;
+        }
 
-            string stringCreateType;
-            if (genericParameters.ExtendedParameters.TryGetValue(Disk.ExtendedParameterKeyCreateType,
-                                     out stringCreateType))
+        if (genericParameters.AdapterType == GenericDiskAdapterType.Ide)
+        {
+            AdapterType = DiskAdapterType.Ide;
+        }
+        else
+        {
+            if (genericParameters.ExtendedParameters.TryGetValue(Disk.ExtendedParameterKeyAdapterType,
+                                     out var stringAdapterType))
             {
-                CreateType = (DiskCreateType)Enum.Parse(typeof(DiskCreateType), stringCreateType);
-            }
-            else
-            {
-                CreateType = DiskCreateType.MonolithicSparse;
-            }
+                AdapterType = (DiskAdapterType)Enum.Parse(typeof(DiskAdapterType), stringAdapterType);
 
-            if (genericParameters.AdapterType == GenericDiskAdapterType.Ide)
-            {
-                AdapterType = DiskAdapterType.Ide;
-            }
-            else
-            {
-                string stringAdapterType;
-                if (genericParameters.ExtendedParameters.TryGetValue(Disk.ExtendedParameterKeyAdapterType,
-                                         out stringAdapterType))
-                {
-                    AdapterType = (DiskAdapterType)Enum.Parse(typeof(DiskAdapterType), stringAdapterType);
-
-                    // Don't refining sub-type of SCSI actually select IDE
-                    if (AdapterType == DiskAdapterType.Ide)
-                    {
-                        AdapterType = DiskAdapterType.LsiLogicScsi;
-                    }
-                }
-                else
+                // Don't refining sub-type of SCSI actually select IDE
+                if (AdapterType == DiskAdapterType.Ide)
                 {
                     AdapterType = DiskAdapterType.LsiLogicScsi;
                 }
             }
+            else
+            {
+                AdapterType = DiskAdapterType.LsiLogicScsi;
+            }
         }
-
-        /// <summary>
-        /// Gets or sets the type of emulated disk adapter.
-        /// </summary>
-        public DiskAdapterType AdapterType { get; set; }
-
-        /// <summary>
-        /// Gets or sets the BIOS Geometry of the virtual disk.
-        /// </summary>
-        public Geometry BiosGeometry { get; set; }
-
-        /// <summary>
-        /// Gets or sets the capacity of the virtual disk.
-        /// </summary>
-        public long Capacity { get; set; }
-
-        /// <summary>
-        /// Gets or sets the type of VMDK file to create.
-        /// </summary>
-        public DiskCreateType CreateType { get; set; }
-
-        /// <summary>
-        /// Gets or sets the Physical Geometry of the virtual disk.
-        /// </summary>
-        public Geometry Geometry { get; set; }
     }
+
+    /// <summary>
+    /// Gets or sets the type of emulated disk adapter.
+    /// </summary>
+    public DiskAdapterType AdapterType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the BIOS Geometry of the virtual disk.
+    /// </summary>
+    public Geometry BiosGeometry { get; set; }
+
+    /// <summary>
+    /// Gets or sets the capacity of the virtual disk.
+    /// </summary>
+    public long Capacity { get; set; }
+
+    /// <summary>
+    /// Gets or sets the type of VMDK file to create.
+    /// </summary>
+    public DiskCreateType CreateType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Physical Geometry of the virtual disk.
+    /// </summary>
+    public Geometry Geometry { get; set; }
 }

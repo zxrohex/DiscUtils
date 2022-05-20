@@ -20,42 +20,41 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+using DiscUtils.Streams;
+using System.IO;
+
+internal class JournalSuperBlock : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System.IO;
-
-    internal class JournalSuperBlock : IByteArraySerializable
+    public uint BlockSize;
+    public uint MaxLength;
+    public const uint Magic = 0xC03B3998;
+    /// <inheritdoc />
+    public int Size { get { return 1024; } }
+    
+    /// <inheritdoc />
+    public int ReadFrom(byte[] buffer, int offset)
     {
-        public uint BlockSize;
-        public uint MaxLength;
-        public const uint Magic = 0xC03B3998;
-        /// <inheritdoc />
-        public int Size { get { return 1024; } }
-        
-        /// <inheritdoc />
-        public int ReadFrom(byte[] buffer, int offset)
+        var magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        if (magic != Magic)
         {
-            var magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            if (magic != Magic)
-            {
-                throw new IOException("Invalid journal magic - probably not an Ext file system");
-            }
-            var blocktype = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x4);
-            if (blocktype != 3 && blocktype != 4)
-            {
-                throw new IOException("Invalid journal block type - no superblock found");
-            }
-            BlockSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xc);
-            MaxLength = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x10);
-
-            return 1024;
+            throw new IOException("Invalid journal magic - probably not an Ext file system");
         }
-
-        /// <inheritdoc />
-        public void WriteTo(byte[] buffer, int offset)
+        var blocktype = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x4);
+        if (blocktype != 3 && blocktype != 4)
         {
-            throw new System.NotImplementedException();
+            throw new IOException("Invalid journal block type - no superblock found");
         }
+        BlockSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xc);
+        MaxLength = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x10);
+
+        return 1024;
+    }
+
+    /// <inheritdoc />
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new System.NotImplementedException();
     }
 }

@@ -1,9 +1,8 @@
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+internal enum DescriptorFileEntryType
 {
-    internal enum DescriptorFileEntryType
-    {
-        NoValue = 0,
-        Quoted = 1,
-        Plain = 2
-    }
+    NoValue = 0,
+    Quoted = 1,
+    Plain = 2
 }

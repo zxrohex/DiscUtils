@@ -20,18 +20,17 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using System;
+
+[Flags]
+internal enum RawLocationFlags : uint
 {
-    using System;
+    /// <summary>
+    /// The raw location descriptor should be ignored
+    /// </summary>
+    Ignored = 0x00000001,
 
-    [Flags]
-    internal enum RawLocationFlags : uint
-    {
-        /// <summary>
-        /// The raw location descriptor should be ignored
-        /// </summary>
-        Ignored = 0x00000001,
-
-        None = 0x00000000
-    }
+    None = 0x00000000
 }

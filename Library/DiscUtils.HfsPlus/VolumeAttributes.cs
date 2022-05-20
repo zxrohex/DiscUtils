@@ -22,19 +22,18 @@
 
 using System;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+[Flags]
+internal enum VolumeAttributes : uint
 {
-    [Flags]
-    internal enum VolumeAttributes : uint
-    {
-        None = 0,
-        VolumeHardwareLock = 0x00000080,
-        VolumeUnmounted = 0x00000100,
-        VolumeSparedBlocks = 0x00000200,
-        VolumeNoCacheRequired = 0x00000400,
-        BootVolumeInconsistent = 0x00000800,
-        CatalogNodeIdsReused = 0x00001000,
-        VolumeJournaled = 0x00002000,
-        VolumeSoftwareLock = 0x00008000
-    }
+    None = 0,
+    VolumeHardwareLock = 0x00000080,
+    VolumeUnmounted = 0x00000100,
+    VolumeSparedBlocks = 0x00000200,
+    VolumeNoCacheRequired = 0x00000400,
+    BootVolumeInconsistent = 0x00000800,
+    CatalogNodeIdsReused = 0x00001000,
+    VolumeJournaled = 0x00002000,
+    VolumeSoftwareLock = 0x00008000
 }

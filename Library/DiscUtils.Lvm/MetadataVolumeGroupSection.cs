@@ -20,158 +20,150 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+internal class MetadataVolumeGroupSection
 {
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
+    public string Name;
+    public string Id;
+    public ulong SequenceNumber;
+    public string Format;
+    public VolumeGroupStatus Status;
+    public string[] Flags;
+    public ulong ExtentSize;
+    public ulong MaxLv;
+    public ulong MaxPv;
+    public ulong MetadataCopies;
 
-    internal class MetadataVolumeGroupSection
+    public MetadataPhysicalVolumeSection[] PhysicalVolumes;
+    public MetadataLogicalVolumeSection[] LogicalVolumes;
+
+
+    internal void Parse(string head, TextReader data)
     {
-        public string Name;
-        public string Id;
-        public ulong SequenceNumber;
-        public string Format;
-        public VolumeGroupStatus Status;
-        public string[] Flags;
-        public ulong ExtentSize;
-        public ulong MaxLv;
-        public ulong MaxPv;
-        public ulong MetadataCopies;
-
-        public MetadataPhysicalVolumeSection[] PhysicalVolumes;
-        public MetadataLogicalVolumeSection[] LogicalVolumes;
-
-
-        internal void Parse(string head, TextReader data)
+        Name = head.Trim().TrimEnd('{').TrimEnd();
+        string line;
+        while ((line = Metadata.ReadLine(data)) != null)
         {
-            Name = head.Trim().TrimEnd('{').TrimEnd();
-            string line;
-            while ((line = Metadata.ReadLine(data)) != null)
+            if (line == String.Empty) continue;
+            if (line.Contains("="))
             {
-                if (line == String.Empty) continue;
-                if (line.Contains("="))
+                var parameter = Metadata.ParseParameter(line);
+                switch (parameter.Key.Trim().ToLowerInvariant())
                 {
-                    var parameter = Metadata.ParseParameter(line);
-                    switch (parameter.Key.Trim().ToLowerInvariant())
-                    {
-                        case "id":
-                            Id = Metadata.ParseStringValue(parameter.Value);
-                            break;
-                        case "seqno":
-                            SequenceNumber = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        case "format":
-                            Format = Metadata.ParseStringValue(parameter.Value);
-                            break;
-                        case "status":
-                            var values = Metadata.ParseArrayValue(parameter.Value);
-                            foreach (var value in values)
+                    case "id":
+                        Id = Metadata.ParseStringValue(parameter.Value);
+                        break;
+                    case "seqno":
+                        SequenceNumber = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    case "format":
+                        Format = Metadata.ParseStringValue(parameter.Value);
+                        break;
+                    case "status":
+                        var values = Metadata.ParseArrayValue(parameter.Value);
+                        foreach (var value in values)
+                        {
+                            Status |= value.ToLowerInvariant().Trim() switch
                             {
-                                switch (value.ToLowerInvariant().Trim())
-                                {
-                                    case "read":
-                                        Status |= VolumeGroupStatus.Read;
-                                        break;
-                                    case "write":
-                                        Status |= VolumeGroupStatus.Write;
-                                        break;
-                                    case "resizeable":
-                                        Status |= VolumeGroupStatus.Resizeable;
-                                        break;
-                                    default:
-                                        throw new ArgumentOutOfRangeException("status", "Unexpected status in volume group metadata");
-                                }
-                            }
-                            break;
-                        case "flags":
-                            Flags = Metadata.ParseArrayValue(parameter.Value);
-                            break;
-                        case "extent_size":
-                            ExtentSize = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        case "max_lv":
-                            MaxLv = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        case "max_pv":
-                            MaxPv = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        case "metadata_copies":
-                            MetadataCopies = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in volume group metadata");
-                    }
-                }
-                else if (line.EndsWith("{"))
-                {
-                    var sectionName = line.TrimEnd('{').TrimEnd().ToLowerInvariant();
-                    switch (sectionName)
-                    {
-                        case "physical_volumes":
-                            PhysicalVolumes = ParsePhysicalVolumeSection(data).ToArray();
-                            break;
-                        case "logical_volumes":
-                            LogicalVolumes = ParseLogicalVolumeSection(data).ToArray();
-
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(sectionName, "Unexpected section in volume group metadata");
-                    }
-                }
-                else if (line.EndsWith("}"))
-                {
-                    break;
+                                "read" => VolumeGroupStatus.Read,
+                                "write" => VolumeGroupStatus.Write,
+                                "resizeable" => VolumeGroupStatus.Resizeable,
+                                _ => throw new ArgumentOutOfRangeException("status", "Unexpected status in volume group metadata"),
+                            };
+                        }
+                        break;
+                    case "flags":
+                        Flags = Metadata.ParseArrayValue(parameter.Value);
+                        break;
+                    case "extent_size":
+                        ExtentSize = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    case "max_lv":
+                        MaxLv = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    case "max_pv":
+                        MaxPv = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    case "metadata_copies":
+                        MetadataCopies = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in volume group metadata");
                 }
             }
-        }
-
-        private IEnumerable<MetadataLogicalVolumeSection> ParseLogicalVolumeSection(TextReader data)
-        {
-            string line;
-            while ((line = Metadata.ReadLine(data)) != null)
+            else if (line.EndsWith("{"))
             {
-                if (line == String.Empty) continue;
-                if (line.EndsWith("{"))
+                var sectionName = line.TrimEnd('{').TrimEnd().ToLowerInvariant();
+                switch (sectionName)
                 {
-                    var pv = new MetadataLogicalVolumeSection();
-                    pv.Parse(line, data);
-                    yield return pv;
-                }
-                else if (line.EndsWith("}"))
-                {
-                    break;
+                    case "physical_volumes":
+                        PhysicalVolumes = ParsePhysicalVolumeSection(data).ToArray();
+                        break;
+                    case "logical_volumes":
+                        LogicalVolumes = ParseLogicalVolumeSection(data).ToArray();
+
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(sectionName, "Unexpected section in volume group metadata");
                 }
             }
-        }
-
-        private IEnumerable<MetadataPhysicalVolumeSection> ParsePhysicalVolumeSection(TextReader data)
-        {
-            string line;
-            while ((line = Metadata.ReadLine(data)) != null)
+            else if (line.EndsWith("}"))
             {
-                if (line == String.Empty) continue;
-                if (line.EndsWith("{"))
-                {
-                    var pv = new MetadataPhysicalVolumeSection();
-                    pv.Parse(line, data);
-                    yield return pv;
-                }
-                else if (line.EndsWith("}"))
-                {
-                    break;
-                }
+                break;
             }
         }
     }
 
-    [Flags]
-    internal enum VolumeGroupStatus
+    private IEnumerable<MetadataLogicalVolumeSection> ParseLogicalVolumeSection(TextReader data)
     {
-        None = 0x0,
-        Read = 0x1,
-        Write = 0x2,
-        Resizeable = 0x4,
+        string line;
+        while ((line = Metadata.ReadLine(data)) != null)
+        {
+            if (line == String.Empty) continue;
+            if (line.EndsWith("{"))
+            {
+                var pv = new MetadataLogicalVolumeSection();
+                pv.Parse(line, data);
+                yield return pv;
+            }
+            else if (line.EndsWith("}"))
+            {
+                break;
+            }
+        }
     }
+
+    private IEnumerable<MetadataPhysicalVolumeSection> ParsePhysicalVolumeSection(TextReader data)
+    {
+        string line;
+        while ((line = Metadata.ReadLine(data)) != null)
+        {
+            if (line == String.Empty) continue;
+            if (line.EndsWith("{"))
+            {
+                var pv = new MetadataPhysicalVolumeSection();
+                pv.Parse(line, data);
+                yield return pv;
+            }
+            else if (line.EndsWith("}"))
+            {
+                break;
+            }
+        }
+    }
+}
+
+[Flags]
+internal enum VolumeGroupStatus
+{
+    None = 0x0,
+    Read = 0x1,
+    Write = 0x2,
+    Resizeable = 0x4,
 }

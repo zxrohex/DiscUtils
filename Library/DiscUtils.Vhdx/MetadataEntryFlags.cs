@@ -22,14 +22,13 @@
 
 using System;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+[Flags]
+internal enum MetadataEntryFlags : uint
 {
-    [Flags]
-    internal enum MetadataEntryFlags : uint
-    {
-        None = 0x00,
-        IsUser = 0x01,
-        IsVirtualDisk = 0x02,
-        IsRequired = 0x04
-    }
+    None = 0x00,
+    IsUser = 0x01,
+    IsVirtualDisk = 0x02,
+    IsRequired = 0x04
 }

@@ -23,17 +23,16 @@
 using System.IO;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class Context : VfsContext
 {
-    internal sealed class Context : VfsContext
-    {
-        public BTree<AttributeKey> Attributes { get; set; }
+    public BTree<AttributeKey> Attributes { get; set; }
 
-        public BTree<CatalogKey> Catalog { get; set; }
+    public BTree<CatalogKey> Catalog { get; set; }
 
-        public BTree<ExtentKey> ExtentsOverflow { get; set; }
+    public BTree<ExtentKey> ExtentsOverflow { get; set; }
 
-        public VolumeHeader VolumeHeader { get; set; }
-        public Stream VolumeStream { get; set; }
-    }
+    public VolumeHeader VolumeHeader { get; set; }
+    public Stream VolumeStream { get; set; }
 }

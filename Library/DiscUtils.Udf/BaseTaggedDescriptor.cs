@@ -24,46 +24,45 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal abstract class BaseTaggedDescriptor : IByteArraySerializable
 {
-    internal abstract class BaseTaggedDescriptor : IByteArraySerializable
+    internal readonly TagIdentifier RequiredTagIdentifier;
+    public DescriptorTag Tag;
+
+    protected BaseTaggedDescriptor(TagIdentifier id)
     {
-        internal readonly TagIdentifier RequiredTagIdentifier;
-        public DescriptorTag Tag;
-
-        protected BaseTaggedDescriptor(TagIdentifier id)
-        {
-            RequiredTagIdentifier = id;
-        }
-
-        public int Size
-        {
-            get { return 512; }
-        }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            if (!DescriptorTag.IsValid(buffer, offset))
-            {
-                throw new InvalidDataException("Invalid Anchor Volume Descriptor Pointer (invalid tag)");
-            }
-
-            Tag = new DescriptorTag();
-            Tag.ReadFrom(buffer, offset);
-
-            if (UdfUtilities.ComputeCrc(buffer, offset + Tag.Size, Tag.DescriptorCrcLength) != Tag.DescriptorCrc)
-            {
-                throw new InvalidDataException("Invalid Anchor Volume Descriptor Pointer (invalid CRC)");
-            }
-
-            return Parse(buffer, offset);
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public abstract int Parse(byte[] buffer, int offset);
+        RequiredTagIdentifier = id;
     }
+
+    public int Size
+    {
+        get { return 512; }
+    }
+
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        if (!DescriptorTag.IsValid(buffer, offset))
+        {
+            throw new InvalidDataException("Invalid Anchor Volume Descriptor Pointer (invalid tag)");
+        }
+
+        Tag = new DescriptorTag();
+        Tag.ReadFrom(buffer, offset);
+
+        if (UdfUtilities.ComputeCrc(buffer, offset + Tag.Size, Tag.DescriptorCrcLength) != Tag.DescriptorCrc)
+        {
+            throw new InvalidDataException("Invalid Anchor Volume Descriptor Pointer (invalid CRC)");
+        }
+
+        return Parse(buffer, offset);
+    }
+
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public abstract int Parse(byte[] buffer, int offset);
 }

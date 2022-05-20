@@ -20,30 +20,29 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.LogicalDiskManager
+namespace DiscUtils.LogicalDiskManager;
+
+internal sealed class DiskGroupRecord : DatabaseRecord
 {
-    internal sealed class DiskGroupRecord : DatabaseRecord
+    public string GroupGuidString;
+    public uint Unknown1;
+
+    protected override void DoReadFrom(byte[] buffer, int offset)
     {
-        public string GroupGuidString;
-        public uint Unknown1;
+        base.DoReadFrom(buffer, offset);
 
-        protected override void DoReadFrom(byte[] buffer, int offset)
+        var pos = offset + 0x18;
+
+        Id = ReadVarULong(buffer, ref pos);
+        Name = ReadVarString(buffer, ref pos);
+        if ((Flags & 0xF0) == 0x40)
         {
-            base.DoReadFrom(buffer, offset);
-
-            int pos = offset + 0x18;
-
-            Id = ReadVarULong(buffer, ref pos);
-            Name = ReadVarString(buffer, ref pos);
-            if ((Flags & 0xF0) == 0x40)
-            {
-                GroupGuidString = ReadBinaryGuid(buffer, ref pos).ToString();
-            }
-            else
-            {
-                GroupGuidString = ReadVarString(buffer, ref pos);
-            }
-            Unknown1 = ReadUInt(buffer, ref pos);
+            GroupGuidString = ReadBinaryGuid(buffer, ref pos).ToString();
         }
+        else
+        {
+            GroupGuidString = ReadVarString(buffer, ref pos);
+        }
+        Unknown1 = ReadUInt(buffer, ref pos);
     }
 }

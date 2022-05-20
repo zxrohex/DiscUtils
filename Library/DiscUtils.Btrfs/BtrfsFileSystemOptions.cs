@@ -20,29 +20,28 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs
+namespace DiscUtils.Btrfs;
+
+public class BtrfsFileSystemOptions : DiscFileSystemOptions
 {
-    public class BtrfsFileSystemOptions : DiscFileSystemOptions
+    private ulong _subvolumeId;
+
+    public BtrfsFileSystemOptions()
     {
-        private ulong _subvolumeId;
-
-        public BtrfsFileSystemOptions()
-        {
-            UseDefaultSubvolume = true;
-        }
-
-        public ulong SubvolumeId
-        {
-            get { return _subvolumeId; }
-            set
-            {
-                _subvolumeId = value;
-                UseDefaultSubvolume = false;
-            }
-        }
-
-        public bool VerifyChecksums { get; set; }
-
-        internal bool UseDefaultSubvolume { get; private set; }
+        UseDefaultSubvolume = true;
     }
+
+    public ulong SubvolumeId
+    {
+        get { return _subvolumeId; }
+        set
+        {
+            _subvolumeId = value;
+            UseDefaultSubvolume = false;
+        }
+    }
+
+    public bool VerifyChecksums { get; set; }
+
+    internal bool UseDefaultSubvolume { get; private set; }
 }

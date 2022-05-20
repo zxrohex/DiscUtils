@@ -22,98 +22,97 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3FileAttributes
 {
-    public sealed class Nfs3FileAttributes
+    public Nfs3FileTime AccessTime;
+    public long BytesUsed;
+    public Nfs3FileTime ChangeTime;
+    public ulong FileId;
+    public ulong FileSystemId;
+    public uint Gid;
+    public uint LinkCount;
+    public UnixFilePermissions Mode;
+    public Nfs3FileTime ModifyTime;
+    public uint RdevMajor;
+    public uint RdevMinor;
+    public long Size;
+    public Nfs3FileType Type;
+    public uint Uid;
+
+    public Nfs3FileAttributes()
     {
-        public Nfs3FileTime AccessTime;
-        public long BytesUsed;
-        public Nfs3FileTime ChangeTime;
-        public ulong FileId;
-        public ulong FileSystemId;
-        public uint Gid;
-        public uint LinkCount;
-        public UnixFilePermissions Mode;
-        public Nfs3FileTime ModifyTime;
-        public uint RdevMajor;
-        public uint RdevMinor;
-        public long Size;
-        public Nfs3FileType Type;
-        public uint Uid;
+    }
 
-        public Nfs3FileAttributes()
+    internal Nfs3FileAttributes(XdrDataReader reader)
+    {
+        Type = (Nfs3FileType)reader.ReadInt32();
+        Mode = (UnixFilePermissions)reader.ReadInt32();
+        LinkCount = reader.ReadUInt32();
+        Uid = reader.ReadUInt32();
+        Gid = reader.ReadUInt32();
+        Size = reader.ReadInt64();
+        BytesUsed = reader.ReadInt64();
+        RdevMajor = reader.ReadUInt32();
+        RdevMinor = reader.ReadUInt32();
+        FileSystemId = reader.ReadUInt64();
+        FileId = reader.ReadUInt64();
+        AccessTime = new Nfs3FileTime(reader);
+        ModifyTime = new Nfs3FileTime(reader);
+        ChangeTime = new Nfs3FileTime(reader);
+    }
+
+    internal void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)Type);
+        writer.Write((int)Mode);
+        writer.Write(LinkCount);
+        writer.Write(Uid);
+        writer.Write(Gid);
+        writer.Write(Size);
+        writer.Write(BytesUsed);
+        writer.Write(RdevMajor);
+        writer.Write(RdevMinor);
+        writer.Write(FileSystemId);
+        writer.Write(FileId);
+        AccessTime.Write(writer);
+        ModifyTime.Write(writer);
+        ChangeTime.Write(writer);
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3FileAttributes);
+    }
+
+    public bool Equals(Nfs3FileAttributes other)
+    {
+        if (other == null)
         {
+            return false;
         }
 
-        internal Nfs3FileAttributes(XdrDataReader reader)
-        {
-            Type = (Nfs3FileType)reader.ReadInt32();
-            Mode = (UnixFilePermissions)reader.ReadInt32();
-            LinkCount = reader.ReadUInt32();
-            Uid = reader.ReadUInt32();
-            Gid = reader.ReadUInt32();
-            Size = reader.ReadInt64();
-            BytesUsed = reader.ReadInt64();
-            RdevMajor = reader.ReadUInt32();
-            RdevMinor = reader.ReadUInt32();
-            FileSystemId = reader.ReadUInt64();
-            FileId = reader.ReadUInt64();
-            AccessTime = new Nfs3FileTime(reader);
-            ModifyTime = new Nfs3FileTime(reader);
-            ChangeTime = new Nfs3FileTime(reader);
-        }
+        return other.Type == Type
+            && other.Mode == Mode
+            && other.LinkCount == LinkCount
+            && other.Uid == Uid
+            && other.Gid == Gid
+            && other.Size == Size
+            && other.BytesUsed == BytesUsed
+            && other.RdevMajor == RdevMajor
+            && other.RdevMinor == RdevMinor
+            && other.FileSystemId == FileSystemId
+            && other.FileId == FileId
+            && object.Equals(other.AccessTime, AccessTime)
+            && object.Equals(other.ModifyTime, ModifyTime)
+            && object.Equals(other.ChangeTime, ChangeTime);
+    }
 
-        internal void Write(XdrDataWriter writer)
-        {
-            writer.Write((int)Type);
-            writer.Write((int)Mode);
-            writer.Write(LinkCount);
-            writer.Write(Uid);
-            writer.Write(Gid);
-            writer.Write(Size);
-            writer.Write(BytesUsed);
-            writer.Write(RdevMajor);
-            writer.Write(RdevMinor);
-            writer.Write(FileSystemId);
-            writer.Write(FileId);
-            AccessTime.Write(writer);
-            ModifyTime.Write(writer);
-            ChangeTime.Write(writer);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Nfs3FileAttributes);
-        }
-
-        public bool Equals(Nfs3FileAttributes other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other.Type == Type
-                && other.Mode == Mode
-                && other.LinkCount == LinkCount
-                && other.Uid == Uid
-                && other.Gid == Gid
-                && other.Size == Size
-                && other.BytesUsed == BytesUsed
-                && other.RdevMajor == RdevMajor
-                && other.RdevMinor == RdevMinor
-                && other.FileSystemId == FileSystemId
-                && other.FileId == FileId
-                && object.Equals(other.AccessTime, AccessTime)
-                && object.Equals(other.ModifyTime, ModifyTime)
-                && object.Equals(other.ChangeTime, ChangeTime);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(
-                HashCode.Combine(Type, Mode, LinkCount, Uid, Gid, Size, BytesUsed, RdevMajor),
-                RdevMinor, FileSystemId, FileId, AccessTime, ModifyTime, ChangeTime);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(
+            HashCode.Combine(Type, Mode, LinkCount, Uid, Gid, Size, BytesUsed, RdevMajor),
+            RdevMinor, FileSystemId, FileId, AccessTime, ModifyTime, ChangeTime);
     }
 }

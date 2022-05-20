@@ -24,22 +24,21 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.VirtualFileSystem
-{
-    [VfsFileSystemFactory]
-    internal class TarFileSystemFactory : VfsFileSystemFactory
-    {
-        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
-        {
-            if (TarFileSystem.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("TAR", "TAR", Open);
-            }
-        }
+namespace DiscUtils.VirtualFileSystem;
 
-        private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+[VfsFileSystemFactory]
+internal class TarFileSystemFactory : VfsFileSystemFactory
+{
+    public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+    {
+        if (TarFileSystem.Detect(stream))
         {
-            return new TarFileSystem(stream, "TAR", ownsStream: true);
+            yield return new VfsFileSystemInfo("TAR", "TAR", Open);
         }
+    }
+
+    private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new TarFileSystem(stream, "TAR", ownsStream: true);
     }
 }

@@ -23,45 +23,44 @@
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class ScsiReportLunsResponse : ScsiResponse
 {
-    internal class ScsiReportLunsResponse : ScsiResponse
+    private uint _availableLuns;
+
+    public List<ulong> Luns { get; private set; }
+
+    public override uint NeededDataLength
     {
-        private uint _availableLuns;
+        get { return _availableLuns * 8 + 8; }
+    }
 
-        public List<ulong> Luns { get; private set; }
+    public override bool Truncated
+    {
+        get { return _availableLuns != Luns.Count; }
+    }
 
-        public override uint NeededDataLength
+    public override void ReadFrom(byte[] buffer, int offset, int count)
+    {
+        Luns = new List<ulong>();
+
+        if (count == 0)
         {
-            get { return _availableLuns * 8 + 8; }
+            return;
         }
 
-        public override bool Truncated
+        if (count < 8)
         {
-            get { return _availableLuns != Luns.Count; }
+            throw new InvalidProtocolException("Data truncated too far");
         }
 
-        public override void ReadFrom(byte[] buffer, int offset, int count)
+        _availableLuns = EndianUtilities.ToUInt32BigEndian(buffer, offset) / 8;
+        var pos = 8;
+        while (pos <= count - 8 && Luns.Count < _availableLuns)
         {
-            Luns = new List<ulong>();
-
-            if (count == 0)
-            {
-                return;
-            }
-
-            if (count < 8)
-            {
-                throw new InvalidProtocolException("Data truncated too far");
-            }
-
-            _availableLuns = EndianUtilities.ToUInt32BigEndian(buffer, offset) / 8;
-            int pos = 8;
-            while (pos <= count - 8 && Luns.Count < _availableLuns)
-            {
-                Luns.Add(EndianUtilities.ToUInt64BigEndian(buffer, offset + pos));
-                pos += 8;
-            }
+            Luns.Add(EndianUtilities.ToUInt64BigEndian(buffer, offset + pos));
+            pos += 8;
         }
     }
 }

@@ -20,68 +20,67 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using DiscUtils.Streams;
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+internal class VolumeGroupMetadata : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
+    public const string VgMetadataMagic = " LVM2 x[5A%r0N*>";
+    public const uint VgMetadataVersion = 1;
+    public uint Crc;
+    public ulong CalculatedCrc;
+    public string Magic;
+    public uint Version;
+    public ulong Start;
+    public ulong Length;
+    public RawLocation[] RawLocations;
+    public string Metadata;
+    public Metadata ParsedMetadata;
 
-    internal class VolumeGroupMetadata : IByteArraySerializable
+    /// <inheritdoc />
+    public int Size { get { return (int) Length; } }
+
+    /// <inheritdoc />
+    public int ReadFrom(byte[] buffer, int offset)
     {
-        public const string VgMetadataMagic = " LVM2 x[5A%r0N*>";
-        public const uint VgMetadataVersion = 1;
-        public uint Crc;
-        public ulong CalculatedCrc;
-        public string Magic;
-        public uint Version;
-        public ulong Start;
-        public ulong Length;
-        public RawLocation[] RawLocations;
-        public string Metadata;
-        public Metadata ParsedMetadata;
+        Crc = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
+        CalculatedCrc = PhysicalVolume.CalcCrc(buffer, offset + 0x4, PhysicalVolume.SECTOR_SIZE - 0x4);
+        Magic = EndianUtilities.BytesToString(buffer, offset + 0x4, 0x10);
+        Version = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x14);
+        Start = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x18);
+        Length = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x20);
 
-        /// <inheritdoc />
-        public int Size { get { return (int) Length; } }
-
-        /// <inheritdoc />
-        public int ReadFrom(byte[] buffer, int offset)
+        var locations = new List<RawLocation>();
+        var locationOffset = offset + 0x28;
+        while (true)
         {
-            Crc = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-            CalculatedCrc = PhysicalVolume.CalcCrc(buffer, offset + 0x4, PhysicalVolume.SECTOR_SIZE - 0x4);
-            Magic = EndianUtilities.BytesToString(buffer, offset + 0x4, 0x10);
-            Version = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x14);
-            Start = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x18);
-            Length = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x20);
-
-            var locations = new List<RawLocation>();
-            var locationOffset = offset + 0x28;
-            while (true)
-            {
-                var location = new RawLocation();
-                locationOffset += location.ReadFrom(buffer, locationOffset);
-                if (location.Offset == 0 && location.Length == 0 && location.Checksum == 0 && location.Flags == 0) break;
-                locations.Add(location);
-            }
-            RawLocations = locations.ToArray();
-            foreach (var location in RawLocations)
-            {
-                if ((location.Flags & RawLocationFlags.Ignored) != 0)
-                    continue;
-                var checksum = PhysicalVolume.CalcCrc(buffer, (int) location.Offset, (int) location.Length);
-                if (location.Checksum != checksum)
-                    throw new IOException("invalid metadata checksum");
-                Metadata = EndianUtilities.BytesToString(buffer, (int)location.Offset, (int)location.Length);
-                ParsedMetadata = Lvm.Metadata.Parse(Metadata);
-                break;
-            }
-            return Size;
+            var location = new RawLocation();
+            locationOffset += location.ReadFrom(buffer, locationOffset);
+            if (location.Offset == 0 && location.Length == 0 && location.Checksum == 0 && location.Flags == 0) break;
+            locations.Add(location);
         }
-
-        /// <inheritdoc />
-        public void WriteTo(byte[] buffer, int offset)
+        RawLocations = locations.ToArray();
+        foreach (var location in RawLocations)
         {
-            throw new NotImplementedException();
+            if ((location.Flags & RawLocationFlags.Ignored) != 0)
+                continue;
+            var checksum = PhysicalVolume.CalcCrc(buffer, (int) location.Offset, (int) location.Length);
+            if (location.Checksum != checksum)
+                throw new IOException("invalid metadata checksum");
+            Metadata = EndianUtilities.BytesToString(buffer, (int)location.Offset, (int)location.Length);
+            ParsedMetadata = Lvm.Metadata.Parse(Metadata);
+            break;
         }
+        return Size;
+    }
+
+    /// <inheritdoc />
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

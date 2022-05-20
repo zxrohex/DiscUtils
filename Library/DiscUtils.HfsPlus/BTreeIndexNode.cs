@@ -23,108 +23,107 @@
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal class BTreeIndexNode<TKey> : BTreeKeyedNode<TKey>
+    where TKey : BTreeKey, new()
 {
-    internal class BTreeIndexNode<TKey> : BTreeKeyedNode<TKey>
-        where TKey : BTreeKey, new()
+    private BTreeIndexRecord<TKey>[] _records;
+
+    public BTreeIndexNode(BTree tree, BTreeNodeDescriptor descriptor)
+        : base(tree, descriptor) {}
+
+    public override byte[] FindKey(TKey key)
     {
-        private BTreeIndexRecord<TKey>[] _records;
+        var nextResult = _records[0].Key.CompareTo(key);
 
-        public BTreeIndexNode(BTree tree, BTreeNodeDescriptor descriptor)
-            : base(tree, descriptor) {}
-
-        public override byte[] FindKey(TKey key)
+        var idx = 0;
+        while (idx < _records.Length)
         {
-            int nextResult = _records[0].Key.CompareTo(key);
+            var thisResult = nextResult;
 
-            int idx = 0;
-            while (idx < _records.Length)
+            if (idx + 1 < _records.Length)
             {
-                int thisResult = nextResult;
-
-                if (idx + 1 < _records.Length)
-                {
-                    nextResult = _records[idx + 1].Key.CompareTo(key);
-                }
-                else
-                {
-                    nextResult = 1;
-                }
-
-                if (thisResult > 0)
-                {
-                    // This record's key is too big, so no chance further records
-                    // will match.
-                    return null;
-                }
-                if (nextResult > 0)
-                {
-                    // Next record's key is too big, so worth looking at children
-                    BTreeKeyedNode<TKey> child = ((BTree<TKey>)Tree).GetKeyedNode(_records[idx].ChildId);
-                    return child.FindKey(key);
-                }
-
-                idx++;
+                nextResult = _records[idx + 1].Key.CompareTo(key);
+            }
+            else
+            {
+                nextResult = 1;
             }
 
-            return null;
-        }
-
-        public override void VisitRange(BTreeVisitor<TKey> visitor)
-        {
-            int nextResult = visitor(_records[0].Key, null);
-
-            int idx = 0;
-            while (idx < _records.Length)
+            if (thisResult > 0)
             {
-                int thisResult = nextResult;
-
-                if (idx + 1 < _records.Length)
-                {
-                    nextResult = visitor(_records[idx + 1].Key, null);
-                }
-                else
-                {
-                    nextResult = 1;
-                }
-
-                if (thisResult > 0)
-                {
-                    // This record's key is too big, so no chance further records
-                    // will match.
-                    return;
-                }
-                if (nextResult >= 0)
-                {
-                    // Next record's key isn't too small, so worth looking at children
-                    BTreeKeyedNode<TKey> child = ((BTree<TKey>)Tree).GetKeyedNode(_records[idx].ChildId);
-                    child.VisitRange(visitor);
-                }
-
-                idx++;
+                // This record's key is too big, so no chance further records
+                // will match.
+                return null;
             }
-        }
-
-        protected override IList<BTreeNodeRecord> ReadRecords(byte[] buffer, int offset)
-        {
-            int numRecords = Descriptor.NumRecords;
-            int nodeSize = Tree.NodeSize;
-
-            _records = new BTreeIndexRecord<TKey>[numRecords];
-
-            int start = EndianUtilities.ToUInt16BigEndian(buffer, offset + nodeSize - 2);
-
-            for (int i = 0; i < numRecords; ++i)
+            if (nextResult > 0)
             {
-                int end = EndianUtilities.ToUInt16BigEndian(buffer, offset + nodeSize - (i + 2) * 2);
-
-                _records[i] = new BTreeIndexRecord<TKey>(end - start);
-                _records[i].ReadFrom(buffer, offset + start);
-
-                start = end;
+                // Next record's key is too big, so worth looking at children
+                var child = ((BTree<TKey>)Tree).GetKeyedNode(_records[idx].ChildId);
+                return child.FindKey(key);
             }
 
-            return _records;
+            idx++;
         }
+
+        return null;
+    }
+
+    public override void VisitRange(BTreeVisitor<TKey> visitor)
+    {
+        var nextResult = visitor(_records[0].Key, null);
+
+        var idx = 0;
+        while (idx < _records.Length)
+        {
+            var thisResult = nextResult;
+
+            if (idx + 1 < _records.Length)
+            {
+                nextResult = visitor(_records[idx + 1].Key, null);
+            }
+            else
+            {
+                nextResult = 1;
+            }
+
+            if (thisResult > 0)
+            {
+                // This record's key is too big, so no chance further records
+                // will match.
+                return;
+            }
+            if (nextResult >= 0)
+            {
+                // Next record's key isn't too small, so worth looking at children
+                var child = ((BTree<TKey>)Tree).GetKeyedNode(_records[idx].ChildId);
+                child.VisitRange(visitor);
+            }
+
+            idx++;
+        }
+    }
+
+    protected override IList<BTreeNodeRecord> ReadRecords(byte[] buffer, int offset)
+    {
+        int numRecords = Descriptor.NumRecords;
+        var nodeSize = Tree.NodeSize;
+
+        _records = new BTreeIndexRecord<TKey>[numRecords];
+
+        int start = EndianUtilities.ToUInt16BigEndian(buffer, offset + nodeSize - 2);
+
+        for (var i = 0; i < numRecords; ++i)
+        {
+            int end = EndianUtilities.ToUInt16BigEndian(buffer, offset + nodeSize - (i + 2) * 2);
+
+            _records[i] = new BTreeIndexRecord<TKey>(end - start);
+            _records[i].ReadFrom(buffer, offset + start);
+
+            start = end;
+        }
+
+        return _records;
     }
 }

@@ -23,18 +23,16 @@
 using System.Globalization;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class UdfEntityIdentifier : EntityIdentifier
 {
-    internal class UdfEntityIdentifier : EntityIdentifier
+    public override string ToString()
     {
-        public override string ToString()
-        {
-            string major = ((uint)Suffix[1]).ToString("X", CultureInfo.InvariantCulture);
-            string minor = ((uint)Suffix[0]).ToString("X", CultureInfo.InvariantCulture);
-            OSClass osClass = (OSClass)Suffix[2];
-            OSIdentifier osId = (OSIdentifier)EndianUtilities.ToUInt16BigEndian(Suffix, 2);
-            return string.Format(CultureInfo.InvariantCulture, "{0} [UDF {1}.{2} : OS {3} {4}]", Identifier, major,
-                minor, osClass, osId);
-        }
+        var major = ((uint)Suffix[1]).ToString("X", CultureInfo.InvariantCulture);
+        var minor = ((uint)Suffix[0]).ToString("X", CultureInfo.InvariantCulture);
+        var osClass = (OSClass)Suffix[2];
+        var osId = (OSIdentifier)EndianUtilities.ToUInt16BigEndian(Suffix, 2);
+        return $"{Identifier} [UDF {major}.{minor} : OS {osClass} {osId}]";
     }
 }

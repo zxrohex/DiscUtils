@@ -22,25 +22,24 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal sealed class DeviceInode : Inode
 {
-    internal sealed class DeviceInode : Inode
+    public uint DeviceId { get; set; }
+
+    public override int Size
     {
-        public uint DeviceId { get; set; }
+        get { return 24; }
+    }
 
-        public override int Size
-        {
-            get { return 24; }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        base.ReadFrom(buffer, offset);
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            base.ReadFrom(buffer, offset);
+        NumLinks = EndianUtilities.ToInt32LittleEndian(buffer, offset + 16);
+        DeviceId = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
 
-            NumLinks = EndianUtilities.ToInt32LittleEndian(buffer, offset + 16);
-            DeviceId = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
-
-            return 24;
-        }
+        return 24;
     }
 }

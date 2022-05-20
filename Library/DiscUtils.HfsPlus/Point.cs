@@ -23,29 +23,28 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class Point : IByteArraySerializable
 {
-    internal sealed class Point : IByteArraySerializable
+    public short Horizontal;
+    public short Vertical;
+
+    public int Size
     {
-        public short Horizontal;
-        public short Vertical;
+        get { return 4; }
+    }
 
-        public int Size
-        {
-            get { return 4; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Vertical = EndianUtilities.ToInt16BigEndian(buffer, offset + 0);
+        Horizontal = EndianUtilities.ToInt16BigEndian(buffer, offset + 2);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Vertical = EndianUtilities.ToInt16BigEndian(buffer, offset + 0);
-            Horizontal = EndianUtilities.ToInt16BigEndian(buffer, offset + 2);
+        return 4;
+    }
 
-            return 4;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

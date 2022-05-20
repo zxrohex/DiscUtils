@@ -26,148 +26,147 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+/// <summary>
+/// Base class for streams that wrap another stream.
+/// </summary>
+/// <remarks>
+/// Provides the default implementation of methods &amp; properties, so
+/// wrapping streams need only override the methods they need to intercept.
+/// </remarks>
+public class WrappingStream : SparseStream
 {
-    /// <summary>
-    /// Base class for streams that wrap another stream.
-    /// </summary>
-    /// <remarks>
-    /// Provides the default implementation of methods &amp; properties, so
-    /// wrapping streams need only override the methods they need to intercept.
-    /// </remarks>
-    public class WrappingStream : SparseStream
+    private readonly Ownership _ownership;
+    private SparseStream _wrapped;
+
+    public WrappingStream(SparseStream toWrap, Ownership ownership)
     {
-        private readonly Ownership _ownership;
-        private SparseStream _wrapped;
+        _wrapped = toWrap;
+        _ownership = ownership;
+    }
 
-        public WrappingStream(SparseStream toWrap, Ownership ownership)
-        {
-            _wrapped = toWrap;
-            _ownership = ownership;
-        }
+    public override bool CanRead
+    {
+        get { return _wrapped.CanRead; }
+    }
 
-        public override bool CanRead
-        {
-            get { return _wrapped.CanRead; }
-        }
+    public override bool CanSeek
+    {
+        get { return _wrapped.CanSeek; }
+    }
 
-        public override bool CanSeek
-        {
-            get { return _wrapped.CanSeek; }
-        }
+    public override bool CanWrite
+    {
+        get { return _wrapped.CanWrite; }
+    }
 
-        public override bool CanWrite
-        {
-            get { return _wrapped.CanWrite; }
-        }
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get { return _wrapped.Extents; }
+    }
 
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get { return _wrapped.Extents; }
-        }
+    public override long Length
+    {
+        get { return _wrapped.Length; }
+    }
 
-        public override long Length
-        {
-            get { return _wrapped.Length; }
-        }
+    public override long Position
+    {
+        get { return _wrapped.Position; }
+        set { _wrapped.Position = value; }
+    }
 
-        public override long Position
-        {
-            get { return _wrapped.Position; }
-            set { _wrapped.Position = value; }
-        }
+    public override void Flush()
+    {
+        _wrapped.Flush();
+    }
 
-        public override void Flush()
-        {
-            _wrapped.Flush();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return _wrapped.Read(buffer, offset, count);
-        }
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        return _wrapped.Read(buffer, offset, count);
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
-        }
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-        {
-            return _wrapped.ReadAsync(buffer, cancellationToken);
-        }
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        return _wrapped.ReadAsync(buffer, cancellationToken);
+    }
 
-        public override int Read(Span<byte> buffer)
-        {
-            return _wrapped.Read(buffer);
-        }
+    public override int Read(Span<byte> buffer)
+    {
+        return _wrapped.Read(buffer);
+    }
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return _wrapped.Seek(offset, origin);
-        }
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        return _wrapped.Seek(offset, origin);
+    }
 
-        public override void SetLength(long value)
-        {
-            _wrapped.SetLength(value);
-        }
+    public override void SetLength(long value)
+    {
+        _wrapped.SetLength(value);
+    }
 
-        public override void Clear(int count)
-        {
-            _wrapped.Clear(count);
-        }
+    public override void Clear(int count)
+    {
+        _wrapped.Clear(count);
+    }
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            _wrapped.Write(buffer, offset, count);
-        }
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        _wrapped.Write(buffer, offset, count);
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
-        }
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
-        {
-            return _wrapped.WriteAsync(buffer, cancellationToken);
-        }
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        return _wrapped.WriteAsync(buffer, cancellationToken);
+    }
 
-        public override void Write(ReadOnlySpan<byte> buffer)
-        {
-            _wrapped.Write(buffer);
-        }
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        _wrapped.Write(buffer);
+    }
 #endif
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task FlushAsync(CancellationToken cancellationToken) =>
-            _wrapped.FlushAsync(cancellationToken);
+    public override Task FlushAsync(CancellationToken cancellationToken) =>
+        _wrapped.FlushAsync(cancellationToken);
 #endif
 
-        protected override void Dispose(bool disposing)
+    protected override void Dispose(bool disposing)
+    {
+        try
         {
-            try
+            if (disposing)
             {
-                if (disposing)
+                if (_wrapped != null && _ownership == Ownership.Dispose)
                 {
-                    if (_wrapped != null && _ownership == Ownership.Dispose)
-                    {
-                        _wrapped.Dispose();
-                    }
-
-                    _wrapped = null;
+                    _wrapped.Dispose();
                 }
+
+                _wrapped = null;
             }
-            finally
-            {
-                base.Dispose(disposing);
-            }
+        }
+        finally
+        {
+            base.Dispose(disposing);
         }
     }
 }

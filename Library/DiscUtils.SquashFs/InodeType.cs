@@ -20,23 +20,22 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal enum InodeType : ushort
 {
-    internal enum InodeType : ushort
-    {
-        Directory = 1,
-        File = 2,
-        Symlink = 3,
-        BlockDevice = 4,
-        CharacterDevice = 5,
-        Fifo = 6,
-        Socket = 7,
-        ExtendedDirectory = 8,
-        ExtendedFile = 9,
-        ExtendedSymlink = 10,
-        ExtendedBlockDevice = 11,
-        ExtendedCharacterDevice = 12,
-        ExtendedFifo = 13,
-        ExtendedSocket = 14
-    }
+    Directory = 1,
+    File = 2,
+    Symlink = 3,
+    BlockDevice = 4,
+    CharacterDevice = 5,
+    Fifo = 6,
+    Socket = 7,
+    ExtendedDirectory = 8,
+    ExtendedFile = 9,
+    ExtendedSymlink = 10,
+    ExtendedBlockDevice = 11,
+    ExtendedCharacterDevice = 12,
+    ExtendedFifo = 13,
+    ExtendedSocket = 14
 }

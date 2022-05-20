@@ -3,7 +3,7 @@
   
   <!-- Package related stuff -->
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1;net45;net48;net6.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net46;net48;net6.0</TargetFrameworks>
     <LangVersion>preview</LangVersion>
     <PackageProjectUrl>https://github.com/LTRData/DiscUtils</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

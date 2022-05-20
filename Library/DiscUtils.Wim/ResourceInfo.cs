@@ -23,25 +23,24 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Wim
+namespace DiscUtils.Wim;
+
+internal class ResourceInfo
 {
-    internal class ResourceInfo
+    public const int Size = ShortResourceHeader.Size + 26;
+    public byte[] Hash;
+
+    public ShortResourceHeader Header;
+    public ushort PartNumber;
+    public uint RefCount;
+
+    public void Read(byte[] buffer, int offset)
     {
-        public const int Size = ShortResourceHeader.Size + 26;
-        public byte[] Hash;
-
-        public ShortResourceHeader Header;
-        public ushort PartNumber;
-        public uint RefCount;
-
-        public void Read(byte[] buffer, int offset)
-        {
-            Header = new ShortResourceHeader();
-            Header.Read(buffer, offset);
-            PartNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + ShortResourceHeader.Size);
-            RefCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset + ShortResourceHeader.Size + 2);
-            Hash = new byte[20];
-            Array.Copy(buffer, offset + ShortResourceHeader.Size + 6, Hash, 0, 20);
-        }
+        Header = new ShortResourceHeader();
+        Header.Read(buffer, offset);
+        PartNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + ShortResourceHeader.Size);
+        RefCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset + ShortResourceHeader.Size + 2);
+        Hash = new byte[20];
+        Array.Copy(buffer, offset + ShortResourceHeader.Size + 6, Hash, 0, 20);
     }
 }

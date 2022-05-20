@@ -23,31 +23,30 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Dmg
+namespace DiscUtils.Dmg;
+
+internal class UdifChecksum : IByteArraySerializable
 {
-    internal class UdifChecksum : IByteArraySerializable
+    public uint ChecksumSize;
+    public byte[] Data;
+    public uint Type;
+
+    public int Size
     {
-        public uint ChecksumSize;
-        public byte[] Data;
-        public uint Type;
+        get { return 136; }
+    }
 
-        public int Size
-        {
-            get { return 136; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Type = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
+        ChecksumSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
+        Data = EndianUtilities.ToByteArray(buffer, offset + 8, 128);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Type = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-            ChecksumSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-            Data = EndianUtilities.ToByteArray(buffer, offset + 8, 128);
+        return 136;
+    }
 
-            return 136;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

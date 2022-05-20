@@ -24,98 +24,89 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Partitions
+namespace DiscUtils.Partitions;
+
+internal class BiosExtendedPartitionTable
 {
-    internal class BiosExtendedPartitionTable
+    private readonly Stream _disk;
+    private readonly uint _firstSector;
+    private readonly Geometry _diskGeometry;
+
+    public BiosExtendedPartitionTable(Stream disk, uint firstSector, Geometry diskGeometry)
     {
-        private readonly Stream _disk;
-        private readonly uint _firstSector;
-        private readonly Geometry _diskGeometry;
+        _disk = disk;
+        _firstSector = firstSector;
+        _diskGeometry = diskGeometry;
+    }
 
-        public BiosExtendedPartitionTable(Stream disk, uint firstSector, Geometry diskGeometry)
+    public IEnumerable<BiosPartitionRecord> GetPartitions()
+    {
+        var partPos = _firstSector;
+        while (partPos != 0)
         {
-            _disk = disk;
-            _firstSector = firstSector;
-            _diskGeometry = diskGeometry;
-        }
-
-        public List<BiosPartitionRecord> GetPartitions()
-        {
-            List<BiosPartitionRecord> result = new List<BiosPartitionRecord>();
-
-            uint partPos = _firstSector;
-            while (partPos != 0)
+            _disk.Position = partPos * _diskGeometry.BytesPerSector;
+            var sector = StreamUtilities.ReadExact(_disk, _diskGeometry.BytesPerSector);
+            if (sector[510] != 0x55 || sector[511] != 0xAA)
             {
-                _disk.Position = partPos * _diskGeometry.BytesPerSector;
-                byte[] sector = StreamUtilities.ReadExact(_disk, _diskGeometry.BytesPerSector);
-                if (sector[510] != 0x55 || sector[511] != 0xAA)
-                {
-                    throw new IOException("Invalid extended partition sector");
-                }
-
-                uint nextPartPos = 0;
-                for (int offset = 0x1BE; offset <= 0x1EE; offset += 0x10)
-                {
-                    BiosPartitionRecord thisPart = new BiosPartitionRecord(sector, offset, partPos, -1);
-
-                    if (thisPart.StartCylinder != 0 || thisPart.StartHead != 0 || thisPart.StartSector != 0 || 
-                        (thisPart.LBAStart != 0 && thisPart.LBALength != 0))
-                    {
-                        if (thisPart.PartitionType != 0x05 && thisPart.PartitionType != 0x0F)
-                        {
-                            result.Add(thisPart);
-                        }
-                        else
-                        {
-                            nextPartPos = _firstSector + thisPart.LBAStart;
-                        }
-                    }
-                }
-
-                partPos = nextPartPos;
+                throw new IOException("Invalid extended partition sector");
             }
 
-            return result;
-        }
-
-        /// <summary>
-        /// Gets all of the disk ranges containing partition table data.
-        /// </summary>
-        /// <returns>Set of stream extents, indicated as byte offset from the start of the disk.</returns>
-        public IEnumerable<StreamExtent> GetMetadataDiskExtents()
-        {
-            List<StreamExtent> extents = new List<StreamExtent>();
-
-            uint partPos = _firstSector;
-            while (partPos != 0)
+            uint nextPartPos = 0;
+            for (var offset = 0x1BE; offset <= 0x1EE; offset += 0x10)
             {
-                extents.Add(new StreamExtent((long)partPos * _diskGeometry.BytesPerSector, _diskGeometry.BytesPerSector));
+                var thisPart = new BiosPartitionRecord(sector, offset, partPos, -1);
 
-                _disk.Position = (long)partPos * _diskGeometry.BytesPerSector;
-                byte[] sector = StreamUtilities.ReadExact(_disk, _diskGeometry.BytesPerSector);
-                if (sector[510] != 0x55 || sector[511] != 0xAA)
+                if (thisPart.StartCylinder != 0 || thisPart.StartHead != 0 || thisPart.StartSector != 0 || 
+                    (thisPart.LBAStart != 0 && thisPart.LBALength != 0))
                 {
-                    throw new IOException("Invalid extended partition sector");
-                }
-
-                uint nextPartPos = 0;
-                for (int offset = 0x1BE; offset <= 0x1EE; offset += 0x10)
-                {
-                    BiosPartitionRecord thisPart = new BiosPartitionRecord(sector, offset, partPos, -1);
-
-                    if (thisPart.StartCylinder != 0 || thisPart.StartHead != 0 || thisPart.StartSector != 0)
+                    if (thisPart.PartitionType != 0x05 && thisPart.PartitionType != 0x0F)
                     {
-                        if (thisPart.PartitionType == 0x05 || thisPart.PartitionType == 0x0F)
-                        {
-                            nextPartPos = _firstSector + thisPart.LBAStart;
-                        }
+                        yield return thisPart;
+                    }
+                    else
+                    {
+                        nextPartPos = _firstSector + thisPart.LBAStart;
                     }
                 }
-
-                partPos = nextPartPos;
             }
 
-            return extents;
+            partPos = nextPartPos;
+        }
+    }
+
+    /// <summary>
+    /// Gets all of the disk ranges containing partition table data.
+    /// </summary>
+    /// <returns>Set of stream extents, indicated as byte offset from the start of the disk.</returns>
+    public IEnumerable<StreamExtent> GetMetadataDiskExtents()
+    {
+        var partPos = _firstSector;
+        while (partPos != 0)
+        {
+            yield return new StreamExtent((long)partPos * _diskGeometry.BytesPerSector, _diskGeometry.BytesPerSector);
+
+            _disk.Position = (long)partPos * _diskGeometry.BytesPerSector;
+            var sector = StreamUtilities.ReadExact(_disk, _diskGeometry.BytesPerSector);
+            if (sector[510] != 0x55 || sector[511] != 0xAA)
+            {
+                throw new IOException("Invalid extended partition sector");
+            }
+
+            uint nextPartPos = 0;
+            for (var offset = 0x1BE; offset <= 0x1EE; offset += 0x10)
+            {
+                var thisPart = new BiosPartitionRecord(sector, offset, partPos, -1);
+
+                if (thisPart.StartCylinder != 0 || thisPart.StartHead != 0 || thisPart.StartSector != 0)
+                {
+                    if (thisPart.PartitionType == 0x05 || thisPart.PartitionType == 0x0F)
+                    {
+                        nextPartPos = _firstSector + thisPart.LBAStart;
+                    }
+                }
+            }
+
+            partPos = nextPartPos;
         }
     }
 }

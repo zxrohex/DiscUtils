@@ -25,22 +25,21 @@ using DiscUtils.Vfs;
 using DiscUtils.Streams;
 using System.Collections.Generic;
 
-namespace DiscUtils.Fat
-{
-    [VfsFileSystemFactory]
-    internal class FileSystemFactory : VfsFileSystemFactory
-    {
-        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
-        {
-            if (FatFileSystem.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("FAT", "Microsoft FAT", Open);
-            }
-        }
+namespace DiscUtils.Fat;
 
-        private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+[VfsFileSystemFactory]
+internal class FileSystemFactory : VfsFileSystemFactory
+{
+    public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+    {
+        if (FatFileSystem.Detect(stream))
         {
-            return new FatFileSystem(stream, Ownership.None, parameters);
+            yield return new VfsFileSystemInfo("FAT", "Microsoft FAT", Open);
         }
+    }
+
+    private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new FatFileSystem(stream, Ownership.None, parameters);
     }
 }

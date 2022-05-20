@@ -35,9 +35,9 @@ namespace LibraryTests.Vmdk
         
         public DiskBuilderTest()
         {
-            MemoryStream fileStream = new MemoryStream();
-            DiscUtils.Vhd.Disk baseFile = DiscUtils.Vhd.Disk.InitializeDynamic(fileStream, Ownership.Dispose, 16 * 1024L * 1024);
-            for (int i = 0; i < 8; i += 1024 * 1024)
+            var fileStream = new MemoryStream();
+            var baseFile = DiscUtils.Vhd.Disk.InitializeDynamic(fileStream, Ownership.Dispose, 16 * 1024L * 1024);
+            for (var i = 0; i < 8; i += 1024 * 1024)
             {
                 baseFile.Content.Position = i;
                 baseFile.Content.WriteByte((byte)i);
@@ -52,56 +52,56 @@ namespace LibraryTests.Vmdk
         [Fact]
         public void BuildFixed()
         {
-            DiskBuilder builder = new DiskBuilder();
-            builder.DiskType = DiskCreateType.Vmfs;
-            builder.Content = diskContent;
+            var builder = new DiskBuilder
+            {
+                DiskType = DiskCreateType.Vmfs,
+                Content = diskContent
+            };
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
+            var fileSpecs = builder.Build("foo").ToArray();
             Assert.Equal(2, fileSpecs.Length);
             Assert.Equal("foo.vmdk", fileSpecs[0].Name);
 
-            DiskBuilderFileSystem dbfs = new DiskBuilderFileSystem(fileSpecs);
+            var dbfs = new DiskBuilderFileSystem(fileSpecs);
 
-            using (Disk disk = new Disk(dbfs, "foo.vmdk", FileAccess.Read))
+            using var disk = new Disk(dbfs, "foo.vmdk", FileAccess.Read);
+            for (var i = 0; i < 8; i += 1024 * 1024)
             {
-                for (int i = 0; i < 8; i += 1024 * 1024)
-                {
-                    disk.Content.Position = i;
-                    Assert.Equal(i, disk.Content.ReadByte());
-                }
-
-                disk.Content.Position = 15 * 1024 * 1024;
-                Assert.Equal(0xFF, disk.Content.ReadByte());
+                disk.Content.Position = i;
+                Assert.Equal(i, disk.Content.ReadByte());
             }
+
+            disk.Content.Position = 15 * 1024 * 1024;
+            Assert.Equal(0xFF, disk.Content.ReadByte());
         }
 
         [Fact]
         public void BuildDynamic()
         {
-            DiskBuilder builder = new DiskBuilder();
-            builder.DiskType = DiskCreateType.VmfsSparse;
-            builder.Content = diskContent;
+            var builder = new DiskBuilder
+            {
+                DiskType = DiskCreateType.VmfsSparse,
+                Content = diskContent
+            };
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
+            var fileSpecs = builder.Build("foo").ToArray();
             Assert.Equal(2, fileSpecs.Length);
             Assert.Equal("foo.vmdk", fileSpecs[0].Name);
 
 
-            DiskBuilderFileSystem dbfs = new DiskBuilderFileSystem(fileSpecs);
+            var dbfs = new DiskBuilderFileSystem(fileSpecs);
 
-            using (Disk disk = new Disk(dbfs, "foo.vmdk", FileAccess.Read))
+            using var disk = new Disk(dbfs, "foo.vmdk", FileAccess.Read);
+            for (var i = 0; i < 8; i += 1024 * 1024)
             {
-                for (int i = 0; i < 8; i += 1024 * 1024)
-                {
-                    disk.Content.Position = i;
-                    Assert.Equal(i, disk.Content.ReadByte());
-                }
-
-                disk.Content.Position = 15 * 1024 * 1024;
-                Assert.Equal(0xFF, disk.Content.ReadByte());
+                disk.Content.Position = i;
+                Assert.Equal(i, disk.Content.ReadByte());
             }
+
+            disk.Content.Position = 15 * 1024 * 1024;
+            Assert.Equal(0xFF, disk.Content.ReadByte());
         }
     }
 }

@@ -22,65 +22,64 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public class RpcReplyHeader
 {
-    public class RpcReplyHeader
+    public RpcAcceptedReplyHeader AcceptReply;
+    public RpcRejectedReplyHeader RejectedReply;
+    public RpcReplyStatus Status;
+
+    public RpcReplyHeader()
     {
-        public RpcAcceptedReplyHeader AcceptReply;
-        public RpcRejectedReplyHeader RejectedReply;
-        public RpcReplyStatus Status;
+    }
 
-        public RpcReplyHeader()
+    public RpcReplyHeader(XdrDataReader reader)
+    {
+        Status = (RpcReplyStatus)reader.ReadInt32();
+        if (Status == RpcReplyStatus.Accepted)
         {
+            AcceptReply = new RpcAcceptedReplyHeader(reader);
+        }
+        else
+        {
+            RejectedReply = new RpcRejectedReplyHeader(reader);
+        }
+    }
+
+    public void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)Status);
+
+        if (Status == RpcReplyStatus.Accepted)
+        {
+            AcceptReply.Write(writer);
+        }
+        else
+        {
+            RejectedReply.Write(writer);
+        }
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as RpcReplyHeader);
+    }
+
+    public bool Equals(RpcReplyHeader other)
+    {
+        if (other == null)
+        {
+            return false;
         }
 
-        public RpcReplyHeader(XdrDataReader reader)
-        {
-            Status = (RpcReplyStatus)reader.ReadInt32();
-            if (Status == RpcReplyStatus.Accepted)
-            {
-                AcceptReply = new RpcAcceptedReplyHeader(reader);
-            }
-            else
-            {
-                RejectedReply = new RpcRejectedReplyHeader(reader);
-            }
-        }
+        return other.Status == Status
+            && object.Equals(other.AcceptReply, AcceptReply)
+            && object.Equals(other.RejectedReply, RejectedReply);
+    }
 
-        public void Write(XdrDataWriter writer)
-        {
-            writer.Write((int)Status);
-
-            if (Status == RpcReplyStatus.Accepted)
-            {
-                AcceptReply.Write(writer);
-            }
-            else
-            {
-                RejectedReply.Write(writer);
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as RpcReplyHeader);
-        }
-
-        public bool Equals(RpcReplyHeader other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other.Status == Status
-                && object.Equals(other.AcceptReply, AcceptReply)
-                && object.Equals(other.RejectedReply, RejectedReply);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Status, AcceptReply, RejectedReply);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Status, AcceptReply, RejectedReply);
     }
 }

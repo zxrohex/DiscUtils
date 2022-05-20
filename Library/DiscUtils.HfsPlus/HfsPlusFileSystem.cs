@@ -20,48 +20,53 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+/// <summary>
+/// Class that interprets Apple's HFS+ file system, found in DMG files.
+/// </summary>
+public class HfsPlusFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocationExtentsEnumerable
 {
     /// <summary>
-    /// Class that interprets Apple's HFS+ file system, found in DMG files.
+    /// Initializes a new instance of the HfsPlusFileSystem class.
     /// </summary>
-    public class HfsPlusFileSystem : VfsFileSystemFacade, IUnixFileSystem
+    /// <param name="stream">A stream containing the file system.</param>
+    public HfsPlusFileSystem(Stream stream)
+        : base(new HfsPlusFileSystemImpl(stream)) {}
+
+    /// <summary>
+    /// Gets the Unix (BSD) file information about a file or directory.
+    /// </summary>
+    /// <param name="path">The path of the file or directory.</param>
+    /// <returns>Unix file information.</returns>
+    public UnixFileSystemInfo GetUnixFileInfo(string path)
     {
-        /// <summary>
-        /// Initializes a new instance of the HfsPlusFileSystem class.
-        /// </summary>
-        /// <param name="stream">A stream containing the file system.</param>
-        public HfsPlusFileSystem(Stream stream)
-            : base(new HfsPlusFileSystemImpl(stream)) {}
+        return GetRealFileSystem<HfsPlusFileSystemImpl>().GetUnixFileInfo(path);
+    }
 
-        /// <summary>
-        /// Gets the Unix (BSD) file information about a file or directory.
-        /// </summary>
-        /// <param name="path">The path of the file or directory.</param>
-        /// <returns>Unix file information.</returns>
-        public UnixFileSystemInfo GetUnixFileInfo(string path)
+    internal static bool Detect(Stream stream)
+    {
+        if (stream.Length < 1536)
         {
-            return GetRealFileSystem<HfsPlusFileSystemImpl>().GetUnixFileInfo(path);
+            return false;
         }
 
-        internal static bool Detect(Stream stream)
-        {
-            if (stream.Length < 1536)
-            {
-                return false;
-            }
+        stream.Position = 1024;
 
-            stream.Position = 1024;
+        var headerBuf = StreamUtilities.ReadExact(stream, 512);
+        var hdr = new VolumeHeader();
+        hdr.ReadFrom(headerBuf, 0);
 
-            byte[] headerBuf = StreamUtilities.ReadExact(stream, 512);
-            VolumeHeader hdr = new VolumeHeader();
-            hdr.ReadFrom(headerBuf, 0);
+        return hdr.IsValid;
+    }
 
-            return hdr.IsValid;
-        }
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    {
+        return GetRealFileSystem<HfsPlusFileSystemImpl>().EnumerateAllocationExtents(path);
     }
 }

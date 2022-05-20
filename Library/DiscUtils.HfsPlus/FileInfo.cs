@@ -23,33 +23,32 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal class FileInfo : IByteArraySerializable
 {
-    internal class FileInfo : IByteArraySerializable
+    public uint FileCreator;
+    public uint FileType;
+    public FinderFlags FinderFlags;
+    public Point Point;
+
+    public int Size
     {
-        public uint FileCreator;
-        public uint FileType;
-        public FinderFlags FinderFlags;
-        public Point Point;
+        get { return 16; }
+    }
 
-        public int Size
-        {
-            get { return 16; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        FileType = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
+        FileCreator = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
+        FinderFlags = (FinderFlags)EndianUtilities.ToUInt16BigEndian(buffer, offset + 8);
+        Point = EndianUtilities.ToStruct<Point>(buffer, offset + 10);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            FileType = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-            FileCreator = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-            FinderFlags = (FinderFlags)EndianUtilities.ToUInt16BigEndian(buffer, offset + 8);
-            Point = EndianUtilities.ToStruct<Point>(buffer, offset + 10);
+        return 16;
+    }
 
-            return 16;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -35,9 +35,9 @@ namespace LibraryTests.Vhd
 
         public DiskBuilderTest()
         {
-            MemoryStream fileStream = new MemoryStream();
-            Disk baseFile = Disk.InitializeDynamic(fileStream, Ownership.Dispose, 16 * 1024L * 1024);
-            for (int i = 0; i < 8; i += 1024 * 1024)
+            var fileStream = new MemoryStream();
+            var baseFile = Disk.InitializeDynamic(fileStream, Ownership.Dispose, 16 * 1024L * 1024);
+            for (var i = 0; i < 8; i += 1024 * 1024)
             {
                 baseFile.Content.Position = i;
                 baseFile.Content.WriteByte((byte)i);
@@ -52,51 +52,51 @@ namespace LibraryTests.Vhd
         [Fact]
         public void BuildFixed()
         {
-            DiskBuilder builder = new DiskBuilder();
-            builder.DiskType = FileType.Fixed;
-            builder.Content = diskContent;
+            var builder = new DiskBuilder
+            {
+                DiskType = FileType.Fixed,
+                Content = diskContent
+            };
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
+            var fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhd", fileSpecs[0].Name);
 
-            using (Disk disk = new Disk(fileSpecs[0].OpenStream(), Ownership.Dispose))
+            using var disk = new Disk(fileSpecs[0].OpenStream(), Ownership.Dispose);
+            for (var i = 0; i < 8; i += 1024 * 1024)
             {
-                for (int i = 0; i < 8; i += 1024 * 1024)
-                {
-                    disk.Content.Position = i;
-                    Assert.Equal(i, disk.Content.ReadByte());
-                }
-
-                disk.Content.Position = 15 * 1024 * 1024;
-                Assert.Equal(0xFF, disk.Content.ReadByte());
+                disk.Content.Position = i;
+                Assert.Equal(i, disk.Content.ReadByte());
             }
+
+            disk.Content.Position = 15 * 1024 * 1024;
+            Assert.Equal(0xFF, disk.Content.ReadByte());
         }
 
         [Fact]
         public void BuildDynamic()
         {
-            DiskBuilder builder = new DiskBuilder();
-            builder.DiskType = FileType.Dynamic;
-            builder.Content = diskContent;
+            var builder = new DiskBuilder
+            {
+                DiskType = FileType.Dynamic,
+                Content = diskContent
+            };
 
 
-            DiskImageFileSpecification[] fileSpecs = builder.Build("foo").ToArray();
+            var fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhd", fileSpecs[0].Name);
 
-            using (Disk disk = new Disk(fileSpecs[0].OpenStream(), Ownership.Dispose))
+            using var disk = new Disk(fileSpecs[0].OpenStream(), Ownership.Dispose);
+            for (var i = 0; i < 8; i += 1024 * 1024)
             {
-                for (int i = 0; i < 8; i += 1024 * 1024)
-                {
-                    disk.Content.Position = i;
-                    Assert.Equal(i, disk.Content.ReadByte());
-                }
-
-                disk.Content.Position = 15 * 1024 * 1024;
-                Assert.Equal(0xFF, disk.Content.ReadByte());
+                disk.Content.Position = i;
+                Assert.Equal(i, disk.Content.ReadByte());
             }
+
+            disk.Content.Position = 15 * 1024 * 1024;
+            Assert.Equal(0xFF, disk.Content.ReadByte());
         }
     }
 }

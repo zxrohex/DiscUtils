@@ -23,36 +23,35 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class LongAllocationDescriptor : IByteArraySerializable
 {
-    internal class LongAllocationDescriptor : IByteArraySerializable
+    public uint ExtentLength;
+    public LogicalBlockAddress ExtentLocation;
+    public byte[] ImplementationUse;
+
+    public int Size
     {
-        public uint ExtentLength;
-        public LogicalBlockAddress ExtentLocation;
-        public byte[] ImplementationUse;
+        get { return 16; }
+    }
 
-        public int Size
-        {
-            get { return 16; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        ExtentLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
+        ExtentLocation = new LogicalBlockAddress();
+        ExtentLocation.ReadFrom(buffer, offset + 4);
+        ImplementationUse = EndianUtilities.ToByteArray(buffer, offset + 10, 6);
+        return 16;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            ExtentLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-            ExtentLocation = new LogicalBlockAddress();
-            ExtentLocation.ReadFrom(buffer, offset + 4);
-            ImplementationUse = EndianUtilities.ToByteArray(buffer, offset + 10, 6);
-            return 16;
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string ToString()
-        {
-            return ExtentLocation + ":+" + ExtentLength;
-        }
+    public override string ToString()
+    {
+        return ExtentLocation + ":+" + ExtentLength;
     }
 }

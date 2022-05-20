@@ -24,43 +24,42 @@ using System.IO;
 using DiscUtils.Partitions;
 using DiscUtils.Streams;
 
-namespace DiscUtils.ApplePartitionMap
+namespace DiscUtils.ApplePartitionMap;
+
+[PartitionTableFactory]
+internal sealed class PartitionMapFactory : PartitionTableFactory
 {
-    [PartitionTableFactory]
-    internal sealed class PartitionMapFactory : PartitionTableFactory
+    public override bool DetectIsPartitioned(Stream s)
     {
-        public override bool DetectIsPartitioned(Stream s)
+        if (s.Length < 1024)
         {
-            if (s.Length < 1024)
-            {
-                return false;
-            }
-
-            s.Position = 0;
-
-            byte[] initialBytes = StreamUtilities.ReadExact(s, 1024);
-
-            BlockZero b0 = new BlockZero();
-            b0.ReadFrom(initialBytes, 0);
-            if (b0.Signature != 0x4552)
-            {
-                return false;
-            }
-
-            PartitionMapEntry initialPart = new PartitionMapEntry(s);
-            initialPart.ReadFrom(initialBytes, 512);
-
-            return initialPart.Signature == 0x504d;
+            return false;
         }
 
-        public override PartitionTable DetectPartitionTable(VirtualDisk disk)
-        {
-            if (!DetectIsPartitioned(disk.Content))
-            {
-                return null;
-            }
+        s.Position = 0;
 
-            return new PartitionMap(disk.Content);
+        var initialBytes = StreamUtilities.ReadExact(s, 1024);
+
+        var b0 = new BlockZero();
+        b0.ReadFrom(initialBytes, 0);
+        if (b0.Signature != 0x4552)
+        {
+            return false;
         }
+
+        var initialPart = new PartitionMapEntry(s);
+        initialPart.ReadFrom(initialBytes, 512);
+
+        return initialPart.Signature == 0x504d;
+    }
+
+    public override PartitionTable DetectPartitionTable(VirtualDisk disk)
+    {
+        if (!DetectIsPartitioned(disk.Content))
+        {
+            return null;
+        }
+
+        return new PartitionMap(disk.Content);
     }
 }

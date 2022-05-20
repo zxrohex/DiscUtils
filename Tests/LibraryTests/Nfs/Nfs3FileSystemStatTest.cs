@@ -32,7 +32,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            Nfs3FileSystemStat attributes = new Nfs3FileSystemStat()
+            var attributes = new Nfs3FileSystemStat()
             {
                 AvailableFreeFileSlotCount = 1,
                 AvailableFreeSpaceBytes = 2,
@@ -45,13 +45,13 @@ namespace LibraryTests.Nfs
 
             Nfs3FileSystemStat clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 attributes.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new Nfs3FileSystemStat(reader);
             }
 

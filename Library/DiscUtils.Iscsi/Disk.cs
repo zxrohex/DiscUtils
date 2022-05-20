@@ -26,157 +26,156 @@ using System.IO;
 using DiscUtils.Partitions;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+/// <summary>
+/// Represents a disk accessed via iSCSI.
+/// </summary>
+public class Disk : VirtualDisk
 {
-    /// <summary>
-    /// Represents a disk accessed via iSCSI.
-    /// </summary>
-    public class Disk : VirtualDisk
+    private readonly FileAccess _access;
+    private LunCapacity _capacity;
+    private readonly long _lun;
+    private readonly Session _session;
+
+    private DiskStream _stream;
+
+    internal Disk(Session session, long lun, FileAccess access)
     {
-        private readonly FileAccess _access;
-        private LunCapacity _capacity;
-        private readonly long _lun;
-        private readonly Session _session;
+        _session = session;
+        _lun = lun;
+        _access = access;
+    }
 
-        private DiskStream _stream;
-
-        internal Disk(Session session, long lun, FileAccess access)
+    /// <summary>
+    /// Gets the size of the disk's logical blocks (in bytes).
+    /// </summary>
+    public override int BlockSize
+    {
+        get
         {
-            _session = session;
-            _lun = lun;
-            _access = access;
-        }
-
-        /// <summary>
-        /// Gets the size of the disk's logical blocks (in bytes).
-        /// </summary>
-        public override int BlockSize
-        {
-            get
+            if (_capacity == null)
             {
-                if (_capacity == null)
-                {
-                    _capacity = _session.GetCapacity(_lun);
-                }
-
-                return _capacity.BlockSize;
+                _capacity = _session.GetCapacity(_lun);
             }
+
+            return _capacity.BlockSize;
         }
+    }
 
-        /// <summary>
-        /// Gets a value indicating whether the layer data is opened for writing.
-        /// </summary>
-        public override bool CanWrite => _access.HasFlag(FileAccess.Write);
+    /// <summary>
+    /// Gets a value indicating whether the layer data is opened for writing.
+    /// </summary>
+    public override bool CanWrite => _access.HasFlag(FileAccess.Write);
 
-        /// <summary>
-        /// The capacity of the disk.
-        /// </summary>
-        public override long Capacity
+    /// <summary>
+    /// The capacity of the disk.
+    /// </summary>
+    public override long Capacity
+    {
+        get
         {
-            get
+            if (_capacity == null)
             {
-                if (_capacity == null)
-                {
-                    _capacity = _session.GetCapacity(_lun);
-                }
-
-                return _capacity.BlockSize * _capacity.LogicalBlockCount;
+                _capacity = _session.GetCapacity(_lun);
             }
-        }
 
-        /// <summary>
-        /// Gets a stream that provides access to the disk's content.
-        /// </summary>
-        public override SparseStream Content
+            return _capacity.BlockSize * _capacity.LogicalBlockCount;
+        }
+    }
+
+    /// <summary>
+    /// Gets a stream that provides access to the disk's content.
+    /// </summary>
+    public override SparseStream Content
+    {
+        get
         {
-            get
+            if (_stream == null)
             {
-                if (_stream == null)
-                {
-                    _stream = new DiskStream(_session, _lun, _access);
-                }
-
-                return _stream;
+                _stream = new DiskStream(_session, _lun, _access);
             }
-        }
 
-        /// <summary>
-        /// Gets the type of disk represented by this object.
-        /// </summary>
-        public override VirtualDiskClass DiskClass
-        {
-            get { return VirtualDiskClass.HardDisk; }
+            return _stream;
         }
+    }
 
-        /// <summary>
-        /// Gets information about the type of disk.
-        /// </summary>
-        /// <remarks>This property provides access to meta-data about the disk format, for example whether the
-        /// BIOS geometry is preserved in the disk file.</remarks>
-        public override VirtualDiskTypeInfo DiskTypeInfo
+    /// <summary>
+    /// Gets the type of disk represented by this object.
+    /// </summary>
+    public override VirtualDiskClass DiskClass
+    {
+        get { return VirtualDiskClass.HardDisk; }
+    }
+
+    /// <summary>
+    /// Gets information about the type of disk.
+    /// </summary>
+    /// <remarks>This property provides access to meta-data about the disk format, for example whether the
+    /// BIOS geometry is preserved in the disk file.</remarks>
+    public override VirtualDiskTypeInfo DiskTypeInfo
+    {
+        get
         {
-            get
+            return new VirtualDiskTypeInfo
             {
-                return new VirtualDiskTypeInfo
-                {
-                    Name = "iSCSI",
-                    Variant = string.Empty,
-                    CanBeHardDisk = true,
-                    DeterministicGeometry = false,
-                    PreservesBiosGeometry = false,
-                    CalcGeometry = Geometry.FromCapacity
-                };
-            }
+                Name = "iSCSI",
+                Variant = string.Empty,
+                CanBeHardDisk = true,
+                DeterministicGeometry = false,
+                PreservesBiosGeometry = false,
+                CalcGeometry = Geometry.FromCapacity
+            };
         }
+    }
 
-        /// <summary>
-        /// The Geometry of the disk.
-        /// </summary>
-        public override Geometry Geometry
+    /// <summary>
+    /// The Geometry of the disk.
+    /// </summary>
+    public override Geometry Geometry
+    {
+        get
         {
-            get
-            {
-                // We detect the geometry (which will return a sensible default if the disk has no partitions).
-                // We don't rely on asking the iSCSI target for the geometry because frequently values are returned
-                // that are not valid as BIOS disk geometries.
-                Stream stream = Content;
-                long pos = stream.Position;
+            // We detect the geometry (which will return a sensible default if the disk has no partitions).
+            // We don't rely on asking the iSCSI target for the geometry because frequently values are returned
+            // that are not valid as BIOS disk geometries.
+            Stream stream = Content;
+            var pos = stream.Position;
 
-                Geometry result = BiosPartitionTable.DetectGeometry(stream);
+            var result = BiosPartitionTable.DetectGeometry(stream);
 
-                stream.Position = pos;
+            stream.Position = pos;
 
-                return result;
-            }
+            return result;
         }
+    }
 
-        /// <summary>
-        /// Gets the disk layers that constitute the disk.
-        /// </summary>
-        public override IEnumerable<VirtualDiskLayer> Layers
-        {
-            get { yield break; }
-        }
+    /// <summary>
+    /// Gets the disk layers that constitute the disk.
+    /// </summary>
+    public override IEnumerable<VirtualDiskLayer> Layers
+    {
+        get { yield break; }
+    }
 
-        /// <summary>
-        /// Create a new differencing disk, possibly within an existing disk.
-        /// </summary>
-        /// <param name="fileSystem">The file system to create the disk on.</param>
-        /// <param name="path">The path (or URI) for the disk to create.</param>
-        /// <returns>The newly created disk.</returns>
-        public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path)
-        {
-            throw new NotSupportedException("Differencing disks not supported for iSCSI disks");
-        }
+    /// <summary>
+    /// Create a new differencing disk, possibly within an existing disk.
+    /// </summary>
+    /// <param name="fileSystem">The file system to create the disk on.</param>
+    /// <param name="path">The path (or URI) for the disk to create.</param>
+    /// <returns>The newly created disk.</returns>
+    public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path)
+    {
+        throw new NotSupportedException("Differencing disks not supported for iSCSI disks");
+    }
 
-        /// <summary>
-        /// Create a new differencing disk.
-        /// </summary>
-        /// <param name="path">The path (or URI) for the disk to create.</param>
-        /// <returns>The newly created disk.</returns>
-        public override VirtualDisk CreateDifferencingDisk(string path)
-        {
-            throw new NotSupportedException("Differencing disks not supported for iSCSI disks");
-        }
+    /// <summary>
+    /// Create a new differencing disk.
+    /// </summary>
+    /// <param name="path">The path (or URI) for the disk to create.</param>
+    /// <returns>The newly created disk.</returns>
+    public override VirtualDisk CreateDifferencingDisk(string path)
+    {
+        throw new NotSupportedException("Differencing disks not supported for iSCSI disks");
     }
 }

@@ -20,22 +20,21 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public class BuilderBufferExtentSource : BuilderExtentSource
 {
-    public class BuilderBufferExtentSource : BuilderExtentSource
+    private readonly byte[] _buffer;
+
+    public BuilderBufferExtentSource(byte[] buffer)
     {
-        private readonly byte[] _buffer;
+        _buffer = buffer;
+    }
 
-        public BuilderBufferExtentSource(byte[] buffer)
-        {
-            _buffer = buffer;
-        }
+    public override long Length => _buffer.Length;
 
-        public override long Length => _buffer.Length;
-
-        public override BuilderExtent Fix(long pos)
-        {
-            return new BuilderBufferExtent(pos, _buffer);
-        }
+    public override BuilderExtent Fix(long pos)
+    {
+        return new BuilderBufferExtent(pos, _buffer);
     }
 }

@@ -24,38 +24,37 @@ using System;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal sealed class FileHeader : IByteArraySerializable
 {
-    internal sealed class FileHeader : IByteArraySerializable
+    public const ulong VhdxSignature = 0x656C696678646876;
+    public string Creator;
+
+    public ulong Signature = VhdxSignature;
+
+    public bool IsValid
     {
-        public const ulong VhdxSignature = 0x656C696678646876;
-        public string Creator;
+        get { return Signature == VhdxSignature; }
+    }
 
-        public ulong Signature = VhdxSignature;
+    public int Size
+    {
+        get { return (int)(64 * Sizes.OneKiB); }
+    }
 
-        public bool IsValid
-        {
-            get { return Signature == VhdxSignature; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Signature = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0);
+        Creator = Encoding.Unicode.GetString(buffer, offset + 8, 256 * 2).TrimEnd('\0');
 
-        public int Size
-        {
-            get { return (int)(64 * Sizes.OneKiB); }
-        }
+        return Size;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Signature = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0);
-            Creator = Encoding.Unicode.GetString(buffer, offset + 8, 256 * 2).TrimEnd('\0');
-
-            return Size;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            Array.Clear(buffer, offset, Size);
-            EndianUtilities.WriteBytesLittleEndian(Signature, buffer, offset + 0);
-            Encoding.Unicode.GetBytes(Creator, 0, Creator.Length, buffer, offset + 8);
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        Array.Clear(buffer, offset, Size);
+        EndianUtilities.WriteBytesLittleEndian(Signature, buffer, offset + 0);
+        Encoding.Unicode.GetBytes(Creator, 0, Creator.Length, buffer, offset + 8);
     }
 }

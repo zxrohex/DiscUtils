@@ -25,141 +25,140 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+internal sealed class Nfs3FileStream : SparseStream
 {
-    internal sealed class Nfs3FileStream : SparseStream
+    private readonly FileAccess _access;
+    private readonly Nfs3Client _client;
+    private readonly Nfs3FileHandle _handle;
+
+    private long _length;
+    private long _position;
+
+    public Nfs3FileStream(Nfs3Client client, Nfs3FileHandle handle, FileAccess access)
     {
-        private readonly FileAccess _access;
-        private readonly Nfs3Client _client;
-        private readonly Nfs3FileHandle _handle;
+        _client = client;
+        _handle = handle;
+        _access = access;
 
-        private long _length;
-        private long _position;
+        _length = _client.GetAttributes(_handle).Size;
+    }
 
-        public Nfs3FileStream(Nfs3Client client, Nfs3FileHandle handle, FileAccess access)
+    public override bool CanRead
+    {
+        get { return _access != FileAccess.Write; }
+    }
+
+    public override bool CanSeek
+    {
+        get { return true; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return _access != FileAccess.Read; }
+    }
+
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get { yield return new StreamExtent(0, Length); }
+    }
+
+    public override long Length
+    {
+        get { return _length; }
+    }
+
+    public override long Position
+    {
+        get { return _position; }
+        set { _position = value; }
+    }
+
+    public override void Flush() {}
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        var numToRead = (int)Math.Min(_client.FileSystemInfo.ReadMaxBytes, count);
+        var readResult = _client.Read(_handle, _position, numToRead);
+
+        var toCopy = Math.Min(count, readResult.Count);
+
+        Array.Copy(readResult.Data, 0, buffer, offset, toCopy);
+
+        if (readResult.Eof)
         {
-            _client = client;
-            _handle = handle;
-            _access = access;
-
-            _length = _client.GetAttributes(_handle).Size;
+            _length = _position + readResult.Count;
         }
 
-        public override bool CanRead
-        {
-            get { return _access != FileAccess.Write; }
-        }
-
-        public override bool CanSeek
-        {
-            get { return true; }
-        }
-
-        public override bool CanWrite
-        {
-            get { return _access != FileAccess.Read; }
-        }
-
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get { return new[] { new StreamExtent(0, Length) }; }
-        }
-
-        public override long Length
-        {
-            get { return _length; }
-        }
-
-        public override long Position
-        {
-            get { return _position; }
-            set { _position = value; }
-        }
-
-        public override void Flush() {}
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            int numToRead = (int)Math.Min(_client.FileSystemInfo.ReadMaxBytes, count);
-            Nfs3ReadResult readResult = _client.Read(_handle, _position, numToRead);
-
-            int toCopy = Math.Min(count, readResult.Count);
-
-            Array.Copy(readResult.Data, 0, buffer, offset, toCopy);
-
-            if (readResult.Eof)
-            {
-                _length = _position + readResult.Count;
-            }
-
-            _position += toCopy;
-            return toCopy;
-        }
+        _position += toCopy;
+        return toCopy;
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override int Read(Span<byte> buffer)
+    public override int Read(Span<byte> buffer)
+    {
+        var numToRead = (int)Math.Min(_client.FileSystemInfo.ReadMaxBytes, buffer.Length);
+        var readResult = _client.Read(_handle, _position, numToRead);
+
+        var toCopy = Math.Min(buffer.Length, readResult.Count);
+
+        readResult.Data.AsSpan(0, toCopy).CopyTo(buffer);
+
+        if (readResult.Eof)
         {
-            int numToRead = (int)Math.Min(_client.FileSystemInfo.ReadMaxBytes, buffer.Length);
-            Nfs3ReadResult readResult = _client.Read(_handle, _position, numToRead);
-
-            int toCopy = Math.Min(buffer.Length, readResult.Count);
-
-            readResult.Data.AsSpan(0, toCopy).CopyTo(buffer);
-
-            if (readResult.Eof)
-            {
-                _length = _position + readResult.Count;
-            }
-
-            _position += toCopy;
-            return toCopy;
+            _length = _position + readResult.Count;
         }
+
+        _position += toCopy;
+        return toCopy;
+    }
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        var newPos = offset;
+        if (origin == SeekOrigin.Current)
         {
-            long newPos = offset;
-            if (origin == SeekOrigin.Current)
-            {
-                newPos += _position;
-            }
-            else if (origin == SeekOrigin.End)
-            {
-                newPos += Length;
-            }
-
-            _position = newPos;
-            return newPos;
+            newPos += _position;
+        }
+        else if (origin == SeekOrigin.End)
+        {
+            newPos += Length;
         }
 
-        public override void SetLength(long value)
+        _position = newPos;
+        return newPos;
+    }
+
+    public override void SetLength(long value)
+    {
+        if (CanWrite)
         {
-            if (CanWrite)
-            {
-                _client.SetAttributes(_handle, new Nfs3SetAttributes { SetSize = true, Size = value });
-                _length = value;
-            }
-            else
-            {
-                throw new InvalidOperationException("Attempt to change length of read-only file");
-            }
+            _client.SetAttributes(_handle, new Nfs3SetAttributes { SetSize = true, Size = value });
+            _length = value;
+        }
+        else
+        {
+            throw new InvalidOperationException("Attempt to change length of read-only file");
+        }
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        var totalWritten = 0;
+
+        while (totalWritten < count)
+        {
+            var numToWrite = (int)Math.Min(_client.FileSystemInfo.WriteMaxBytes, (uint)(count - totalWritten));
+
+            var numWritten = _client.Write(_handle, _position, buffer, offset + totalWritten, numToWrite);
+
+            _position += numWritten;
+            totalWritten += numWritten;
         }
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            int totalWritten = 0;
-
-            while (totalWritten < count)
-            {
-                int numToWrite = (int)Math.Min(_client.FileSystemInfo.WriteMaxBytes, (uint)(count - totalWritten));
-
-                int numWritten = _client.Write(_handle, _position, buffer, offset + totalWritten, numToWrite);
-
-                _position += numWritten;
-                totalWritten += numWritten;
-            }
-
-            _length = Math.Max(_length, _position);
-        }
+        _length = Math.Max(_length, _position);
     }
 }

@@ -20,14 +20,13 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal abstract class Authenticator
 {
-    internal abstract class Authenticator
-    {
-        public abstract string Identifier { get; }
+    public abstract string Identifier { get; }
 
-        public abstract bool GetParameters(TextBuffer textBuffer);
+    public abstract bool GetParameters(TextBuffer textBuffer);
 
-        public abstract void SetParameters(TextBuffer textBuffer);
-    }
+    public abstract void SetParameters(TextBuffer textBuffer);
 }

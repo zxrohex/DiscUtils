@@ -20,17 +20,16 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+/// <summary>
+/// Base class for all RPC credentials.
+/// </summary>
+public abstract class RpcCredentials
 {
-    /// <summary>
-    /// Base class for all RPC credentials.
-    /// </summary>
-    public abstract class RpcCredentials
-    {
-        internal RpcCredentials() {}
+    internal RpcCredentials() {}
 
-        internal abstract RpcAuthFlavour AuthFlavour { get; }
+    internal abstract RpcAuthFlavour AuthFlavour { get; }
 
-        internal abstract void Write(XdrDataWriter writer);
-    }
+    internal abstract void Write(XdrDataWriter writer);
 }

@@ -22,76 +22,75 @@
 
 using System;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+/// <summary>
+/// Class representing a region in a VHDX file.
+/// </summary>
+public sealed class RegionInfo
 {
-    /// <summary>
-    /// Class representing a region in a VHDX file.
-    /// </summary>
-    public sealed class RegionInfo
+    private readonly RegionEntry _entry;
+
+    internal RegionInfo(RegionEntry entry)
     {
-        private readonly RegionEntry _entry;
+        _entry = entry;
+    }
 
-        internal RegionInfo(RegionEntry entry)
-        {
-            _entry = entry;
-        }
+    /// <summary>
+    /// Gets the file offset of this region within the VHDX file.
+    /// </summary>
+    public long FileOffset
+    {
+        get { return _entry.FileOffset; }
+    }
 
-        /// <summary>
-        /// Gets the file offset of this region within the VHDX file.
-        /// </summary>
-        public long FileOffset
-        {
-            get { return _entry.FileOffset; }
-        }
+    /// <summary>
+    /// Gets the unique identifier for this region.
+    /// </summary>
+    public Guid Guid
+    {
+        get { return _entry.Guid; }
+    }
 
-        /// <summary>
-        /// Gets the unique identifier for this region.
-        /// </summary>
-        public Guid Guid
-        {
-            get { return _entry.Guid; }
-        }
+    /// <summary>
+    /// Gets a value indicating whether this region is required.
+    /// </summary>
+    /// <remarks>
+    /// To load a VHDX file, a parser must be able to interpret all regions marked as required.
+    /// </remarks>
+    public bool IsRequired
+    {
+        get { return (_entry.Flags & RegionFlags.Required) != 0; }
+    }
 
-        /// <summary>
-        /// Gets a value indicating whether this region is required.
-        /// </summary>
-        /// <remarks>
-        /// To load a VHDX file, a parser must be able to interpret all regions marked as required.
-        /// </remarks>
-        public bool IsRequired
-        {
-            get { return (_entry.Flags & RegionFlags.Required) != 0; }
-        }
+    /// <summary>
+    /// Gets the length of this region within the VHDX file.
+    /// </summary>
+    public long Length
+    {
+        get { return _entry.Length; }
+    }
 
-        /// <summary>
-        /// Gets the length of this region within the VHDX file.
-        /// </summary>
-        public long Length
+    /// <summary>
+    /// Gets the well-known name (if any) of the region.
+    /// </summary>
+    /// <remarks>
+    /// VHDX 1.0 specification defines the "BAT" and "Metadata Region", unknown regions
+    /// will return as <c>null</c>.
+    /// </remarks>
+    public string WellKnownName
+    {
+        get
         {
-            get { return _entry.Length; }
-        }
-
-        /// <summary>
-        /// Gets the well-known name (if any) of the region.
-        /// </summary>
-        /// <remarks>
-        /// VHDX 1.0 specification defines the "BAT" and "Metadata Region", unknown regions
-        /// will return as <c>null</c>.
-        /// </remarks>
-        public string WellKnownName
-        {
-            get
+            if (_entry.Guid == RegionEntry.BatGuid)
             {
-                if (_entry.Guid == RegionEntry.BatGuid)
-                {
-                    return "BAT";
-                }
-                if (_entry.Guid == RegionEntry.MetadataRegionGuid)
-                {
-                    return "Metadata Region";
-                }
-                return null;
+                return "BAT";
             }
+            if (_entry.Guid == RegionEntry.MetadataRegionGuid)
+            {
+                return "Metadata Region";
+            }
+            return null;
         }
     }
 }

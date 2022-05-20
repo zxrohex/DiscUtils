@@ -24,106 +24,97 @@ using System;
 using System.Globalization;
 using System.IO;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+using System.Runtime.Serialization;
+
+/// <summary>
+/// Exception thrown when some invalid file system data is found, indicating probably corruption.
+/// </summary>
+[Serializable]
+public sealed class RpcException : IOException
 {
-    using System.Runtime.Serialization;
+    /// <summary>
+    /// Initializes a new instance of the RpcException class.
+    /// </summary>
+    public RpcException() {}
 
     /// <summary>
-    /// Exception thrown when some invalid file system data is found, indicating probably corruption.
+    /// Initializes a new instance of the RpcException class.
     /// </summary>
-    [Serializable]
-    public sealed class RpcException : IOException
+    /// <param name="message">The exception message.</param>
+    public RpcException(string message)
+        : base(message) {}
+
+    /// <summary>
+    /// Initializes a new instance of the RpcException class.
+    /// </summary>
+    /// <param name="message">The exception message.</param>
+    /// <param name="innerException">The inner exception.</param>
+    public RpcException(string message, Exception innerException)
+        : base(message, innerException) {}
+
+    /// <summary>
+    /// Initializes a new instance of the RpcException class.
+    /// </summary>
+    /// <param name="reply">The RPC reply from the server.</param>
+    internal RpcException(RpcReplyHeader reply)
+        : base(GenerateMessage(reply)) {}
+
+    /// <summary>
+    /// Initializes a new instance of the RpcException class.
+    /// </summary>
+    /// <param name="info">The serialization info.</param>
+    /// <param name="context">The streaming context.</param>
+    private RpcException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
     {
-        /// <summary>
-        /// Initializes a new instance of the RpcException class.
-        /// </summary>
-        public RpcException() {}
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the RpcException class.
-        /// </summary>
-        /// <param name="message">The exception message.</param>
-        public RpcException(string message)
-            : base(message) {}
-
-        /// <summary>
-        /// Initializes a new instance of the RpcException class.
-        /// </summary>
-        /// <param name="message">The exception message.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public RpcException(string message, Exception innerException)
-            : base(message, innerException) {}
-
-        /// <summary>
-        /// Initializes a new instance of the RpcException class.
-        /// </summary>
-        /// <param name="reply">The RPC reply from the server.</param>
-        internal RpcException(RpcReplyHeader reply)
-            : base(GenerateMessage(reply)) {}
-
-        /// <summary>
-        /// Initializes a new instance of the RpcException class.
-        /// </summary>
-        /// <param name="info">The serialization info.</param>
-        /// <param name="context">The streaming context.</param>
-        private RpcException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
+    private static string GenerateMessage(RpcReplyHeader reply)
+    {
+        if (reply.Status == RpcReplyStatus.Accepted)
         {
-        }
+            switch (reply.AcceptReply.AcceptStatus)
+            {
+                case RpcAcceptStatus.Success:
+                    return "RPC success";
+                case RpcAcceptStatus.ProgramUnavailable:
+                    return "RPC program unavailable";
+                case RpcAcceptStatus.ProgramVersionMismatch:
+                    if (reply.AcceptReply.MismatchInfo.Low == reply.AcceptReply.MismatchInfo.High)
+                    {
+                        return "RPC program version mismatch, server supports version " +
+                               reply.AcceptReply.MismatchInfo.Low;
+                    }
+                    return "RPC program version mismatch, server supports versions " +
+                           reply.AcceptReply.MismatchInfo.Low + " through " +
+                           reply.AcceptReply.MismatchInfo.High;
 
-        private static string GenerateMessage(RpcReplyHeader reply)
+                case RpcAcceptStatus.ProcedureUnavailable:
+                    return "RPC procedure unavailable";
+                case RpcAcceptStatus.GarbageArguments:
+                    return "RPC corrupt procedure arguments";
+                default:
+                    return "RPC failure";
+            }
+        }
+        if (reply.RejectedReply.Status == RpcRejectedStatus.AuthError)
         {
-            if (reply.Status == RpcReplyStatus.Accepted)
+            return reply.RejectedReply.AuthenticationStatus switch
             {
-                switch (reply.AcceptReply.AcceptStatus)
-                {
-                    case RpcAcceptStatus.Success:
-                        return "RPC success";
-                    case RpcAcceptStatus.ProgramUnavailable:
-                        return "RPC program unavailable";
-                    case RpcAcceptStatus.ProgramVersionMismatch:
-                        if (reply.AcceptReply.MismatchInfo.Low == reply.AcceptReply.MismatchInfo.High)
-                        {
-                            return "RPC program version mismatch, server supports version " +
-                                   reply.AcceptReply.MismatchInfo.Low;
-                        }
-                        return "RPC program version mismatch, server supports versions " +
-                               reply.AcceptReply.MismatchInfo.Low + " through " +
-                               reply.AcceptReply.MismatchInfo.High;
-
-                    case RpcAcceptStatus.ProcedureUnavailable:
-                        return "RPC procedure unavailable";
-                    case RpcAcceptStatus.GarbageArguments:
-                        return "RPC corrupt procedure arguments";
-                    default:
-                        return "RPC failure";
-                }
-            }
-            if (reply.RejectedReply.Status == RpcRejectedStatus.AuthError)
-            {
-                switch (reply.RejectedReply.AuthenticationStatus)
-                {
-                    case RpcAuthenticationStatus.BadCredentials:
-                        return "RPC authentication credentials bad";
-                    case RpcAuthenticationStatus.RejectedCredentials:
-                        return "RPC rejected authentication credentials";
-                    case RpcAuthenticationStatus.BadVerifier:
-                        return "RPC bad authentication verifier";
-                    case RpcAuthenticationStatus.RejectedVerifier:
-                        return "RPC rejected authentication verifier";
-                    case RpcAuthenticationStatus.TooWeak:
-                        return "RPC authentication credentials too weak";
-                    default:
-                        return "RPC authentication failure";
-                }
-            }
-            if (reply.RejectedReply.MismatchInfo != null)
-            {
-                return string.Format(CultureInfo.InvariantCulture,
-                    "RPC protocol version mismatch, server supports versions {0} through {1}",
-                    reply.RejectedReply.MismatchInfo.Low, reply.RejectedReply.MismatchInfo.High);
-            }
-            return "RPC protocol version mismatch, server didn't indicate supported versions";
+                RpcAuthenticationStatus.BadCredentials => "RPC authentication credentials bad",
+                RpcAuthenticationStatus.RejectedCredentials => "RPC rejected authentication credentials",
+                RpcAuthenticationStatus.BadVerifier => "RPC bad authentication verifier",
+                RpcAuthenticationStatus.RejectedVerifier => "RPC rejected authentication verifier",
+                RpcAuthenticationStatus.TooWeak => "RPC authentication credentials too weak",
+                _ => "RPC authentication failure",
+            };
         }
+        if (reply.RejectedReply.MismatchInfo != null)
+        {
+            return $"RPC protocol version mismatch, server supports versions {reply.RejectedReply.MismatchInfo.Low} through {reply.RejectedReply.MismatchInfo.High}";
+        }
+        return "RPC protocol version mismatch, server didn't indicate supported versions";
     }
 }

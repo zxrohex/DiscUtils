@@ -25,97 +25,95 @@ using System.Management.Automation;
 using DiscUtils.Partitions;
 using DiscUtils.PowerShell.VirtualDiskProvider;
 
-namespace DiscUtils.PowerShell
+namespace DiscUtils.PowerShell;
+
+public enum VolumeManagerType
 {
-    public enum VolumeManagerType
+    Bios = 0,
+    Gpt = 1
+}
+
+[Cmdlet("Initialize", "VirtualDisk")]
+public class InitializeVirtualDiskCommand : PSCmdlet
+{
+    [Parameter(Position = 0)]
+    public string LiteralPath { get; set; }
+
+    [Parameter(ValueFromPipeline = true)]
+    public PSObject InputObject { get; set; }
+
+    [Parameter]
+    public VolumeManagerType VolumeManager { get; set; }
+
+    [Parameter]
+    public int Signature { get; set; }
+
+
+    protected override void ProcessRecord()
     {
-        Bios = 0,
-        Gpt = 1
-    }
+        PSObject diskObject = null;
+        VirtualDisk disk = null;
 
-    [Cmdlet("Initialize", "VirtualDisk")]
-    public class InitializeVirtualDiskCommand : PSCmdlet
-    {
-        [Parameter(Position = 0)]
-        public string LiteralPath { get; set; }
-
-        [Parameter(ValueFromPipeline = true)]
-        public PSObject InputObject { get; set; }
-
-        [Parameter]
-        public VolumeManagerType VolumeManager { get; set; }
-
-        [Parameter]
-        public int Signature { get; set; }
-
-
-        protected override void ProcessRecord()
+        if (InputObject != null)
         {
-            PSObject diskObject = null;
-            VirtualDisk disk = null;
+            diskObject = InputObject;
+            disk = diskObject.BaseObject as VirtualDisk;
+        }
+        if (disk == null && string.IsNullOrEmpty(LiteralPath))
+        {
+            WriteError(new ErrorRecord(
+                new ArgumentException("No disk specified"),
+                "NoDiskSpecified",
+                ErrorCategory.InvalidArgument,
+                null));
+            return;
+        }
 
-            if (InputObject != null)
-            {
-                diskObject = InputObject;
-                disk = diskObject.BaseObject as VirtualDisk;
-            }
-            if (disk == null && string.IsNullOrEmpty(LiteralPath))
+        if (disk == null)
+        {
+            diskObject = SessionState.InvokeProvider.Item.Get(LiteralPath)[0];
+
+            if (diskObject.BaseObject is not VirtualDisk vdisk)
             {
                 WriteError(new ErrorRecord(
-                    new ArgumentException("No disk specified"),
-                    "NoDiskSpecified",
+                    new ArgumentException("Path specified is not a virtual disk"),
+                    "BadDiskSpecified",
                     ErrorCategory.InvalidArgument,
                     null));
                 return;
+
             }
 
-            if (disk == null)
-            {
-                diskObject = SessionState.InvokeProvider.Item.Get(LiteralPath)[0];
-                VirtualDisk vdisk = diskObject.BaseObject as VirtualDisk;
-
-                if (vdisk == null)
-                {
-                    WriteError(new ErrorRecord(
-                        new ArgumentException("Path specified is not a virtual disk"),
-                        "BadDiskSpecified",
-                        ErrorCategory.InvalidArgument,
-                        null));
-                    return;
-
-                }
-
-                disk = vdisk;
-            }
-
-            PartitionTable pt = null;
-            if (VolumeManager == VolumeManagerType.Bios)
-            {
-                pt = BiosPartitionTable.Initialize(disk);
-            }
-            else
-            {
-                pt = GuidPartitionTable.Initialize(disk);
-            }
-
-            if (Signature != 0)
-            {
-                disk.Signature = Signature;
-            }
-            else
-            {
-                disk.Signature = new Random().Next();
-            }
-
-            // Changed volume layout, force a rescan
-            var drive = diskObject.Properties["PSDrive"].Value as VirtualDiskPSDriveInfo;
-            if (drive != null)
-            {
-                drive.RescanVolumes();
-            }
-
-
-            WriteObject(disk);
+            disk = vdisk;
         }
+
+        PartitionTable pt;
+        if (VolumeManager == VolumeManagerType.Bios)
+        {
+            pt = BiosPartitionTable.Initialize(disk);
+        }
+        else
+        {
+            pt = GuidPartitionTable.Initialize(disk);
+        }
+
+        if (Signature != 0)
+        {
+            disk.Signature = Signature;
+        }
+        else
+        {
+            disk.Signature = new Random().Next();
+        }
+
+        // Changed volume layout, force a rescan
+        var drive = diskObject.Properties["PSDrive"].Value as VirtualDiskPSDriveInfo;
+        if (drive != null)
+        {
+            drive.RescanVolumes();
+        }
+
+
+        WriteObject(disk);
     }
 }

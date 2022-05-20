@@ -22,62 +22,39 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Registry
+namespace DiscUtils.Registry;
+
+/// <summary>
+/// Base class for the different kinds of cell present in a hive.
+/// </summary>
+internal abstract class Cell : IByteArraySerializable
 {
-    /// <summary>
-    /// Base class for the different kinds of cell present in a hive.
-    /// </summary>
-    internal abstract class Cell : IByteArraySerializable
+    public Cell(int index)
     {
-        public Cell(int index)
+        Index = index;
+    }
+
+    public int Index { get; set; }
+
+    public abstract int Size { get; }
+
+    public abstract int ReadFrom(byte[] buffer, int offset);
+
+    public abstract void WriteTo(byte[] buffer, int offset);
+
+    internal static Cell Parse(RegistryHive hive, int index, byte[] buffer, int pos)
+    {
+        var type = EndianUtilities.BytesToString(buffer, pos, 2);
+        Cell result = type switch
         {
-            Index = index;
-        }
-
-        public int Index { get; set; }
-
-        public abstract int Size { get; }
-
-        public abstract int ReadFrom(byte[] buffer, int offset);
-
-        public abstract void WriteTo(byte[] buffer, int offset);
-
-        internal static Cell Parse(RegistryHive hive, int index, byte[] buffer, int pos)
-        {
-            string type = EndianUtilities.BytesToString(buffer, pos, 2);
-
-            Cell result = null;
-
-            switch (type)
-            {
-                case "nk":
-                    result = new KeyNodeCell(index);
-                    break;
-
-                case "sk":
-                    result = new SecurityCell(index);
-                    break;
-
-                case "vk":
-                    result = new ValueCell(index);
-                    break;
-
-                case "lh":
-                case "lf":
-                    result = new SubKeyHashedListCell(hive, index);
-                    break;
-
-                case "li":
-                case "ri":
-                    result = new SubKeyIndirectListCell(hive, index);
-                    break;
-
-                default:
-                    throw new RegistryCorruptException("Unknown cell type '" + type + "'");
-            }
-
-            result.ReadFrom(buffer, pos);
-            return result;
-        }
+            "nk" => new KeyNodeCell(index),
+            "sk" => new SecurityCell(index),
+            "vk" => new ValueCell(index),
+            "lh" or "lf" => new SubKeyHashedListCell(hive, index),
+            "li" or "ri" => new SubKeyIndirectListCell(hive, index),
+            _ => throw new RegistryCorruptException("Unknown cell type '" + type + "'"),
+        };
+        result.ReadFrom(buffer, pos);
+        return result;
     }
 }

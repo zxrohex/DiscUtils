@@ -20,34 +20,33 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+/// <summary>
+/// Options controlling the behaviour of NFS file system.
+/// </summary>
+public sealed class NfsFileSystemOptions : DiscFileSystemOptions
 {
     /// <summary>
-    /// Options controlling the behaviour of NFS file system.
+    /// Initializes a new instance of the NfsFileSystemOptions class.
     /// </summary>
-    public sealed class NfsFileSystemOptions : DiscFileSystemOptions
+    public NfsFileSystemOptions()
     {
-        /// <summary>
-        /// Initializes a new instance of the NfsFileSystemOptions class.
-        /// </summary>
-        public NfsFileSystemOptions()
-        {
-            NewFilePermissions = UnixFilePermissions.OwnerRead | UnixFilePermissions.OwnerWrite
-                                 | UnixFilePermissions.GroupRead | UnixFilePermissions.GroupWrite;
-            NewDirectoryPermissions = UnixFilePermissions.OwnerRead | UnixFilePermissions.OwnerWrite |
-                                      UnixFilePermissions.OwnerExecute
-                                      | UnixFilePermissions.GroupRead | UnixFilePermissions.GroupWrite |
-                                      UnixFilePermissions.GroupExecute;
-        }
-
-        /// <summary>
-        /// Gets or sets the permission mask to apply to newly created directories.
-        /// </summary>
-        public UnixFilePermissions NewDirectoryPermissions { get; set; }
-
-        /// <summary>
-        /// Gets or sets the permission mask to apply to newly created files.
-        /// </summary>
-        public UnixFilePermissions NewFilePermissions { get; set; }
+        NewFilePermissions = UnixFilePermissions.OwnerRead | UnixFilePermissions.OwnerWrite
+                             | UnixFilePermissions.GroupRead | UnixFilePermissions.GroupWrite;
+        NewDirectoryPermissions = UnixFilePermissions.OwnerRead | UnixFilePermissions.OwnerWrite |
+                                  UnixFilePermissions.OwnerExecute
+                                  | UnixFilePermissions.GroupRead | UnixFilePermissions.GroupWrite |
+                                  UnixFilePermissions.GroupExecute;
     }
+
+    /// <summary>
+    /// Gets or sets the permission mask to apply to newly created directories.
+    /// </summary>
+    public UnixFilePermissions NewDirectoryPermissions { get; set; }
+
+    /// <summary>
+    /// Gets or sets the permission mask to apply to newly created files.
+    /// </summary>
+    public UnixFilePermissions NewFilePermissions { get; set; }
 }

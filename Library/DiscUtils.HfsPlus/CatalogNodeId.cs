@@ -22,42 +22,41 @@
 
 using System.Globalization;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal struct CatalogNodeId
 {
-    internal struct CatalogNodeId
+    public static readonly CatalogNodeId RootParentId = new CatalogNodeId(1);
+    public static readonly CatalogNodeId RootFolderId = new CatalogNodeId(2);
+    public static readonly CatalogNodeId ExtentsFileId = new CatalogNodeId(3);
+    public static readonly CatalogNodeId CatalogFileId = new CatalogNodeId(4);
+    public static readonly CatalogNodeId BadBlockFileId = new CatalogNodeId(5);
+    public static readonly CatalogNodeId AllocationFileId = new CatalogNodeId(6);
+    public static readonly CatalogNodeId StartupFileId = new CatalogNodeId(7);
+    public static readonly CatalogNodeId AttributesFileId = new CatalogNodeId(8);
+    public static readonly CatalogNodeId RepairCatalogFileId = new CatalogNodeId(14);
+    public static readonly CatalogNodeId BogusExtentFileId = new CatalogNodeId(15);
+    public static readonly CatalogNodeId FirstUserCatalogNodeId = new CatalogNodeId(16);
+
+    private readonly uint _id;
+
+    public CatalogNodeId(uint id)
     {
-        public static readonly CatalogNodeId RootParentId = new CatalogNodeId(1);
-        public static readonly CatalogNodeId RootFolderId = new CatalogNodeId(2);
-        public static readonly CatalogNodeId ExtentsFileId = new CatalogNodeId(3);
-        public static readonly CatalogNodeId CatalogFileId = new CatalogNodeId(4);
-        public static readonly CatalogNodeId BadBlockFileId = new CatalogNodeId(5);
-        public static readonly CatalogNodeId AllocationFileId = new CatalogNodeId(6);
-        public static readonly CatalogNodeId StartupFileId = new CatalogNodeId(7);
-        public static readonly CatalogNodeId AttributesFileId = new CatalogNodeId(8);
-        public static readonly CatalogNodeId RepairCatalogFileId = new CatalogNodeId(14);
-        public static readonly CatalogNodeId BogusExtentFileId = new CatalogNodeId(15);
-        public static readonly CatalogNodeId FirstUserCatalogNodeId = new CatalogNodeId(16);
+        _id = id;
+    }
 
-        private readonly uint _id;
+    public static implicit operator uint(CatalogNodeId nodeId)
+    {
+        return nodeId._id;
+    }
 
-        public CatalogNodeId(uint id)
-        {
-            _id = id;
-        }
+    public static implicit operator CatalogNodeId(uint id)
+    {
+        return new CatalogNodeId(id);
+    }
 
-        public static implicit operator uint(CatalogNodeId nodeId)
-        {
-            return nodeId._id;
-        }
-
-        public static implicit operator CatalogNodeId(uint id)
-        {
-            return new CatalogNodeId(id);
-        }
-
-        public override string ToString()
-        {
-            return _id.ToString(CultureInfo.InvariantCulture);
-        }
+    public override string ToString()
+    {
+        return _id.ToString(CultureInfo.InvariantCulture);
     }
 }

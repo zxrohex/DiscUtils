@@ -23,16 +23,15 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal abstract class BTreeKey : IByteArraySerializable, IComparable<BTreeKey>
 {
-    internal abstract class BTreeKey : IByteArraySerializable, IComparable<BTreeKey>
-    {
-        public abstract int Size { get; }
+    public abstract int Size { get; }
 
-        public abstract int ReadFrom(byte[] buffer, int offset);
+    public abstract int ReadFrom(byte[] buffer, int offset);
 
-        public abstract void WriteTo(byte[] buffer, int offset);
+    public abstract void WriteTo(byte[] buffer, int offset);
 
-        public abstract int CompareTo(BTreeKey other);
-    }
+    public abstract int CompareTo(BTreeKey other);
 }

@@ -27,172 +27,171 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Fat
+namespace DiscUtils.Fat;
+
+internal class FatFileStream : SparseStream
 {
-    internal class FatFileStream : SparseStream
+    private readonly Directory _dir;
+    private readonly long _dirId;
+    private readonly ClusterStream _stream;
+
+    private bool didWrite;
+
+    public FatFileStream(FatFileSystem fileSystem, Directory dir, long fileId, FileAccess access)
     {
-        private readonly Directory _dir;
-        private readonly long _dirId;
-        private readonly ClusterStream _stream;
+        _dir = dir;
+        _dirId = fileId;
 
-        private bool didWrite;
+        var dirEntry = _dir.GetEntry(_dirId);
+        _stream = new ClusterStream(fileSystem, access, dirEntry.FirstCluster, (uint)dirEntry.FileSize);
+        _stream.FirstClusterChanged += FirstClusterAllocatedHandler;
+    }
 
-        public FatFileStream(FatFileSystem fileSystem, Directory dir, long fileId, FileAccess access)
+    public override bool CanRead
+    {
+        get { return _stream.CanRead; }
+    }
+
+    public override bool CanSeek
+    {
+        get { return _stream.CanSeek; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return _stream.CanWrite; }
+    }
+
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get { yield return new StreamExtent(0, Length); }
+    }
+
+    public override long Length
+    {
+        get { return _stream.Length; }
+    }
+
+    public override long Position
+    {
+        get { return _stream.Position; }
+        set { _stream.Position = value; }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (_dir.FileSystem.CanWrite)
         {
-            _dir = dir;
-            _dirId = fileId;
-
-            DirectoryEntry dirEntry = _dir.GetEntry(_dirId);
-            _stream = new ClusterStream(fileSystem, access, dirEntry.FirstCluster, (uint)dirEntry.FileSize);
-            _stream.FirstClusterChanged += FirstClusterAllocatedHandler;
-        }
-
-        public override bool CanRead
-        {
-            get { return _stream.CanRead; }
-        }
-
-        public override bool CanSeek
-        {
-            get { return _stream.CanSeek; }
-        }
-
-        public override bool CanWrite
-        {
-            get { return _stream.CanWrite; }
-        }
-
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get { return new[] { new StreamExtent(0, Length) }; }
-        }
-
-        public override long Length
-        {
-            get { return _stream.Length; }
-        }
-
-        public override long Position
-        {
-            get { return _stream.Position; }
-            set { _stream.Position = value; }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (_dir.FileSystem.CanWrite)
+            try
             {
-                try
-                {
-                    DateTime now = _dir.FileSystem.ConvertFromUtc(DateTime.UtcNow);
+                var now = _dir.FileSystem.ConvertFromUtc(DateTime.UtcNow);
 
-                    DirectoryEntry dirEntry = _dir.GetEntry(_dirId);
-                    dirEntry.LastAccessTime = now;
-                    if (didWrite)
-                    {
-                        dirEntry.FileSize = (int)_stream.Length;
-                        dirEntry.LastWriteTime = now;
-                    }
-
-                    _dir.UpdateEntry(_dirId, dirEntry);
-                }
-                finally
+                var dirEntry = _dir.GetEntry(_dirId);
+                dirEntry.LastAccessTime = now;
+                if (didWrite)
                 {
-                    base.Dispose(disposing);
+                    dirEntry.FileSize = (int)_stream.Length;
+                    dirEntry.LastWriteTime = now;
                 }
+
+                _dir.UpdateEntry(_dirId, dirEntry);
+            }
+            finally
+            {
+                base.Dispose(disposing);
             }
         }
+    }
 
-        public override void SetLength(long value)
-        {
-            didWrite = true;
-            _stream.SetLength(value);
-        }
+    public override void SetLength(long value)
+    {
+        didWrite = true;
+        _stream.SetLength(value);
+    }
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            didWrite = true;
-            _stream.Write(buffer, offset, count);
-        }
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        didWrite = true;
+        _stream.Write(buffer, offset, count);
+    }
 
-        public override void Flush()
-        {
-            _stream.Flush();
-        }
+    public override void Flush()
+    {
+        _stream.Flush();
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
 
-        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-        {
-            didWrite = true;
-            return _stream.BeginWrite(buffer, offset, count, callback, state);
-        }
+    public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+    {
+        didWrite = true;
+        return _stream.BeginWrite(buffer, offset, count, callback, state);
+    }
 
-        public override void EndWrite(IAsyncResult asyncResult) => _stream.EndWrite(asyncResult);
+    public override void EndWrite(IAsyncResult asyncResult) => _stream.EndWrite(asyncResult);
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            didWrite = true;
-            return _stream.WriteAsync(buffer, offset, count, cancellationToken);
-        }
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        didWrite = true;
+        return _stream.WriteAsync(buffer, offset, count, cancellationToken);
+    }
 
-        public override Task FlushAsync(CancellationToken cancellationToken) => _stream.FlushAsync(cancellationToken);
+    public override Task FlushAsync(CancellationToken cancellationToken) => _stream.FlushAsync(cancellationToken);
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 
-        public override void Write(ReadOnlySpan<byte> buffer)
-        {
-            didWrite = true;
-            _stream.Write(buffer);
-        }
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        didWrite = true;
+        _stream.Write(buffer);
+    }
 
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            didWrite = true;
-            return _stream.WriteAsync(buffer, cancellationToken);
-        }
-
-#endif
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        didWrite = true;
+        return _stream.WriteAsync(buffer, cancellationToken);
+    }
 
 #endif
 
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return _stream.Read(buffer, offset, count);
-        }
+#endif
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        return _stream.Read(buffer, offset, count);
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
-            _stream.BeginRead(buffer, offset, count, callback, state);
+    public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+        _stream.BeginRead(buffer, offset, count, callback, state);
 
-        public override int EndRead(IAsyncResult asyncResult) =>
-            _stream.EndRead(asyncResult);
+    public override int EndRead(IAsyncResult asyncResult) =>
+        _stream.EndRead(asyncResult);
 
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-            _stream.ReadAsync(buffer, offset, count, cancellationToken);
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+        _stream.ReadAsync(buffer, offset, count, cancellationToken);
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 
-        public override int Read(Span<byte> buffer) =>
-            _stream.Read(buffer);
+    public override int Read(Span<byte> buffer) =>
+        _stream.Read(buffer);
 
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
-            _stream.ReadAsync(buffer, cancellationToken);
-
-#endif
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+        _stream.ReadAsync(buffer, cancellationToken);
 
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return _stream.Seek(offset, origin);
-        }
+#endif
 
-        private void FirstClusterAllocatedHandler(uint cluster)
-        {
-            DirectoryEntry dirEntry = _dir.GetEntry(_dirId);
-            dirEntry.FirstCluster = cluster;
-            _dir.UpdateEntry(_dirId, dirEntry);
-        }
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        return _stream.Seek(offset, origin);
+    }
+
+    private void FirstClusterAllocatedHandler(uint cluster)
+    {
+        var dirEntry = _dir.GetEntry(_dirId);
+        dirEntry.FirstCluster = cluster;
+        _dir.UpdateEntry(_dirId, dirEntry);
     }
 }

@@ -15,19 +15,17 @@ namespace LibraryTests.Lvm
         public void Lvm2VhdxZip()
         {
             SetupHelper.SetupComplete();
-            using (FileStream fs = File.OpenRead(Path.Combine("..", "..", "..", "Lvm", "Data", "lvm2.zip")))
-            using (Stream vhdx = ZipUtilities.ReadFileFromZip(fs))
-            using (var diskImage = new DiskImageFile(vhdx, Ownership.Dispose))
-            using (var disk = new Disk(new List<DiskImageFile> { diskImage }, Ownership.Dispose))
-            {
-                var manager = new VolumeManager(disk);
-                var logicalVolumes = manager.GetLogicalVolumes();
-                Assert.Equal(3, logicalVolumes.Length);
+            using var fs = File.OpenRead(Path.Combine("..", "..", "..", "Lvm", "Data", "lvm2.zip"));
+            using var vhdx = ZipUtilities.ReadFileFromZip(fs);
+            using var diskImage = new DiskImageFile(vhdx, Ownership.Dispose);
+            using var disk = new Disk(new List<DiskImageFile> { diskImage }, Ownership.Dispose);
+            var manager = new VolumeManager(disk);
+            var logicalVolumes = manager.GetLogicalVolumes();
+            Assert.Equal(3, logicalVolumes.Length);
 
-                Assert.Equal(1283457024, logicalVolumes[0].Length);
-                Assert.Equal(746586112, logicalVolumes[1].Length);
-                Assert.Equal(1178599424, logicalVolumes[2].Length);
-            }
+            Assert.Equal(1283457024, logicalVolumes[0].Length);
+            Assert.Equal(746586112, logicalVolumes[1].Length);
+            Assert.Equal(1178599424, logicalVolumes[2].Length);
         }
     }
 }

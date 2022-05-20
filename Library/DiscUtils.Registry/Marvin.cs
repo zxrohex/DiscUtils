@@ -18,7 +18,7 @@ internal static class Marvin
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ComputeHash32(ReadOnlySpan<byte> data, ulong seed)
     {
-        long hash64 = ComputeHash(data, seed);
+        var hash64 = ComputeHash(data, seed);
         return ((int)(hash64 >> 32)) ^ (int)hash64;
     }
 
@@ -27,14 +27,14 @@ internal static class Marvin
     /// </summary>
     public static long ComputeHash(ReadOnlySpan<byte> data, ulong seed)
     {
-        uint p0 = (uint)seed;
-        uint p1 = (uint)(seed >> 32);
+        var p0 = (uint)seed;
+        var p1 = (uint)(seed >> 32);
 
         if (data.Length >= sizeof(uint))
         {
-            ReadOnlySpan<uint> uData = MemoryMarshal.Cast<byte, uint>(data);
+            var uData = MemoryMarshal.Cast<byte, uint>(data);
 
-            for (int i = 0; i < uData.Length; i++)
+            for (var i = 0; i < uData.Length; i++)
             {
                 p0 += uData[i];
                 Block(ref p0, ref p1);
@@ -43,7 +43,7 @@ internal static class Marvin
             // byteOffset = data.Length - data.Length % 4
             // is equivalent to clearing last 2 bits of length
             // Using it directly gives a perf hit for short strings making it at least 5% or more slower.
-            int byteOffset = data.Length & (~3);
+            var byteOffset = data.Length & (~3);
             data = data.Slice(byteOffset);
         }
 
@@ -79,8 +79,8 @@ internal static class Marvin
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void Block(ref uint rp0, ref uint rp1)
     {
-        uint p0 = rp0;
-        uint p1 = rp1;
+        var p0 = rp0;
+        var p1 = rp1;
 
         p1 ^= p0;
         p0 = _rotl(p0, 20);
@@ -109,11 +109,9 @@ internal static class Marvin
 
     private static ulong GenerateSeed()
     {
-        using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
-        {
-            var bytes = new byte[sizeof(ulong)];
-            rng.GetBytes(bytes);
-            return BitConverter.ToUInt64(bytes, 0);
-        }
+        using var rng = RandomNumberGenerator.Create();
+        var bytes = new byte[sizeof(ulong)];
+        rng.GetBytes(bytes);
+        return BitConverter.ToUInt64(bytes, 0);
     }
 }

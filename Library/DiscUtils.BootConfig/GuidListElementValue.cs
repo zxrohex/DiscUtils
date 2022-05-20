@@ -20,41 +20,40 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class GuidListElementValue : ElementValue
 {
-    internal class GuidListElementValue : ElementValue
+    private readonly string[] _values;
+
+    public GuidListElementValue(string[] values)
     {
-        private readonly string[] _values;
+        _values = values;
+    }
 
-        public GuidListElementValue(string[] values)
+    public override ElementFormat Format
+    {
+        get { return ElementFormat.GuidList; }
+    }
+
+    public override string ToString()
+    {
+        if (_values == null || _values.Length == 0)
         {
-            _values = values;
+            return "<none>";
         }
 
-        public override ElementFormat Format
+        var result = _values[0];
+        for (var i = 1; i < _values.Length; ++i)
         {
-            get { return ElementFormat.GuidList; }
+            result += "," + _values[i];
         }
 
-        public override string ToString()
-        {
-            if (_values == null || _values.Length == 0)
-            {
-                return "<none>";
-            }
+        return result;
+    }
 
-            string result = _values[0];
-            for (int i = 1; i < _values.Length; ++i)
-            {
-                result += "," + _values[i];
-            }
-
-            return result;
-        }
-
-        internal string[] GetGuidStrings()
-        {
-            return _values;
-        }
+    internal string[] GetGuidStrings()
+    {
+        return _values;
     }
 }

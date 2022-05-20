@@ -25,191 +25,190 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+/// <summary>
+/// Converts a Buffer into a Stream.
+/// </summary>
+public class BufferStream : SparseStream
 {
+    private readonly FileAccess _access;
+    private readonly IBuffer _buffer;
+
+    private long _position;
+
     /// <summary>
-    /// Converts a Buffer into a Stream.
+    /// Initializes a new instance of the BufferStream class.
     /// </summary>
-    public class BufferStream : SparseStream
+    /// <param name="buffer">The buffer to use.</param>
+    /// <param name="access">The access permitted to clients.</param>
+    public BufferStream(IBuffer buffer, FileAccess access)
     {
-        private readonly FileAccess _access;
-        private readonly IBuffer _buffer;
+        _buffer = buffer;
+        _access = access;
+    }
 
-        private long _position;
+    /// <summary>
+    /// Gets an indication of whether read access is permitted.
+    /// </summary>
+    public override bool CanRead
+    {
+        get { return _access != FileAccess.Write; }
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the BufferStream class.
-        /// </summary>
-        /// <param name="buffer">The buffer to use.</param>
-        /// <param name="access">The access permitted to clients.</param>
-        public BufferStream(IBuffer buffer, FileAccess access)
+    /// <summary>
+    /// Gets an indication of whether seeking is permitted.
+    /// </summary>
+    public override bool CanSeek
+    {
+        get { return true; }
+    }
+
+    /// <summary>
+    /// Gets an indication of whether write access is permitted.
+    /// </summary>
+    public override bool CanWrite
+    {
+        get { return _access != FileAccess.Read; }
+    }
+
+    /// <summary>
+    /// Gets the stored extents within the sparse stream.
+    /// </summary>
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get { return _buffer.Extents; }
+    }
+
+    /// <summary>
+    /// Gets the length of the stream (the capacity of the underlying buffer).
+    /// </summary>
+    public override long Length
+    {
+        get { return _buffer.Capacity; }
+    }
+
+    /// <summary>
+    /// Gets and sets the current position within the stream.
+    /// </summary>
+    public override long Position
+    {
+        get { return _position; }
+        set { _position = value; }
+    }
+
+    /// <summary>
+    /// Flushes all data to the underlying storage.
+    /// </summary>
+    public override void Flush() {}
+
+    /// <summary>
+    /// Reads a number of bytes from the stream.
+    /// </summary>
+    /// <param name="buffer">The destination buffer.</param>
+    /// <param name="offset">The start offset within the destination buffer.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The number of bytes read.</returns>
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        if (!CanRead)
         {
-            _buffer = buffer;
-            _access = access;
+            throw new IOException("Attempt to read from write-only stream");
         }
 
-        /// <summary>
-        /// Gets an indication of whether read access is permitted.
-        /// </summary>
-        public override bool CanRead
+        StreamUtilities.AssertBufferParameters(buffer, offset, count);
+
+        var numRead = _buffer.Read(_position, buffer, offset, count);
+        _position += numRead;
+        return numRead;
+    }
+
+    /// <summary>
+    /// Changes the current stream position.
+    /// </summary>
+    /// <param name="offset">The origin-relative stream position.</param>
+    /// <param name="origin">The origin for the stream position.</param>
+    /// <returns>The new stream position.</returns>
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        var effectiveOffset = offset;
+        if (origin == SeekOrigin.Current)
         {
-            get { return _access != FileAccess.Write; }
+            effectiveOffset += _position;
+        }
+        else if (origin == SeekOrigin.End)
+        {
+            effectiveOffset += _buffer.Capacity;
         }
 
-        /// <summary>
-        /// Gets an indication of whether seeking is permitted.
-        /// </summary>
-        public override bool CanSeek
+        if (effectiveOffset < 0)
         {
-            get { return true; }
+            throw new IOException("Attempt to move before beginning of disk");
+        }
+        _position = effectiveOffset;
+        return _position;
+    }
+
+    /// <summary>
+    /// Sets the length of the stream (the underlying buffer's capacity).
+    /// </summary>
+    /// <param name="value">The new length of the stream.</param>
+    public override void SetLength(long value)
+    {
+        _buffer.SetCapacity(value);
+    }
+
+    /// <summary>
+    /// Writes a buffer to the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to write.</param>
+    /// <param name="offset">The starting offset within buffer.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        if (!CanWrite)
+        {
+            throw new IOException("Attempt to write to read-only stream");
         }
 
-        /// <summary>
-        /// Gets an indication of whether write access is permitted.
-        /// </summary>
-        public override bool CanWrite
+        StreamUtilities.AssertBufferParameters(buffer, offset, count);
+
+        _buffer.Write(_position, buffer, offset, count);
+        _position += count;
+    }
+
+    /// <summary>
+    /// Clears bytes from the stream.
+    /// </summary>
+    /// <param name="count">The number of bytes (from the current position) to clear.</param>
+    /// <remarks>
+    /// <para>Logically equivalent to writing <c>count</c> null/zero bytes to the stream, some
+    /// implementations determine that some (or all) of the range indicated is not actually
+    /// stored.  There is no direct, automatic, correspondence to clearing bytes and them
+    /// not being represented as an 'extent' - for example, the implementation of the underlying
+    /// stream may not permit fine-grained extent storage.</para>
+    /// <para>It is always safe to call this method to 'zero-out' a section of a stream, regardless of
+    /// the underlying stream implementation.</para>
+    /// </remarks>
+    public override void Clear(int count)
+    {
+        if (!CanWrite)
         {
-            get { return _access != FileAccess.Read; }
+            throw new IOException("Attempt to erase bytes in a read-only stream");
         }
 
-        /// <summary>
-        /// Gets the stored extents within the sparse stream.
-        /// </summary>
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get { return _buffer.Extents; }
-        }
+        _buffer.Clear(_position, count);
+        _position += count;
+    }
 
-        /// <summary>
-        /// Gets the length of the stream (the capacity of the underlying buffer).
-        /// </summary>
-        public override long Length
-        {
-            get { return _buffer.Capacity; }
-        }
-
-        /// <summary>
-        /// Gets and sets the current position within the stream.
-        /// </summary>
-        public override long Position
-        {
-            get { return _position; }
-            set { _position = value; }
-        }
-
-        /// <summary>
-        /// Flushes all data to the underlying storage.
-        /// </summary>
-        public override void Flush() {}
-
-        /// <summary>
-        /// Reads a number of bytes from the stream.
-        /// </summary>
-        /// <param name="buffer">The destination buffer.</param>
-        /// <param name="offset">The start offset within the destination buffer.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The number of bytes read.</returns>
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (!CanRead)
-            {
-                throw new IOException("Attempt to read from write-only stream");
-            }
-
-            StreamUtilities.AssertBufferParameters(buffer, offset, count);
-
-            int numRead = _buffer.Read(_position, buffer, offset, count);
-            _position += numRead;
-            return numRead;
-        }
-
-        /// <summary>
-        /// Changes the current stream position.
-        /// </summary>
-        /// <param name="offset">The origin-relative stream position.</param>
-        /// <param name="origin">The origin for the stream position.</param>
-        /// <returns>The new stream position.</returns>
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            long effectiveOffset = offset;
-            if (origin == SeekOrigin.Current)
-            {
-                effectiveOffset += _position;
-            }
-            else if (origin == SeekOrigin.End)
-            {
-                effectiveOffset += _buffer.Capacity;
-            }
-
-            if (effectiveOffset < 0)
-            {
-                throw new IOException("Attempt to move before beginning of disk");
-            }
-            _position = effectiveOffset;
-            return _position;
-        }
-
-        /// <summary>
-        /// Sets the length of the stream (the underlying buffer's capacity).
-        /// </summary>
-        /// <param name="value">The new length of the stream.</param>
-        public override void SetLength(long value)
-        {
-            _buffer.SetCapacity(value);
-        }
-
-        /// <summary>
-        /// Writes a buffer to the stream.
-        /// </summary>
-        /// <param name="buffer">The buffer to write.</param>
-        /// <param name="offset">The starting offset within buffer.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            if (!CanWrite)
-            {
-                throw new IOException("Attempt to write to read-only stream");
-            }
-
-            StreamUtilities.AssertBufferParameters(buffer, offset, count);
-
-            _buffer.Write(_position, buffer, offset, count);
-            _position += count;
-        }
-
-        /// <summary>
-        /// Clears bytes from the stream.
-        /// </summary>
-        /// <param name="count">The number of bytes (from the current position) to clear.</param>
-        /// <remarks>
-        /// <para>Logically equivalent to writing <c>count</c> null/zero bytes to the stream, some
-        /// implementations determine that some (or all) of the range indicated is not actually
-        /// stored.  There is no direct, automatic, correspondence to clearing bytes and them
-        /// not being represented as an 'extent' - for example, the implementation of the underlying
-        /// stream may not permit fine-grained extent storage.</para>
-        /// <para>It is always safe to call this method to 'zero-out' a section of a stream, regardless of
-        /// the underlying stream implementation.</para>
-        /// </remarks>
-        public override void Clear(int count)
-        {
-            if (!CanWrite)
-            {
-                throw new IOException("Attempt to erase bytes in a read-only stream");
-            }
-
-            _buffer.Clear(_position, count);
-            _position += count;
-        }
-
-        /// <summary>
-        /// Gets the parts of a stream that are stored, within a specified range.
-        /// </summary>
-        /// <param name="start">The offset of the first byte of interest.</param>
-        /// <param name="count">The number of bytes of interest.</param>
-        /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
-        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
-        {
-            return _buffer.GetExtentsInRange(start, count);
-        }
+    /// <summary>
+    /// Gets the parts of a stream that are stored, within a specified range.
+    /// </summary>
+    /// <param name="start">The offset of the first byte of interest.</param>
+    /// <param name="count">The number of bytes of interest.</param>
+    /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
+    public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    {
+        return _buffer.GetExtentsInRange(start, count);
     }
 }

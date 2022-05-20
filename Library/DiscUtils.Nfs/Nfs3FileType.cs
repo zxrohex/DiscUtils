@@ -20,17 +20,16 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum Nfs3FileType
 {
-    public enum Nfs3FileType
-    {
-        None = 0,
-        File = 1,
-        Directory = 2,
-        BlockDevice = 3,
-        CharacterDevice = 4,
-        SymbolicLink = 5,
-        Socket = 6,
-        NamedPipe = 7
-    }
+    None = 0,
+    File = 1,
+    Directory = 2,
+    BlockDevice = 3,
+    CharacterDevice = 4,
+    SymbolicLink = 5,
+    Socket = 6,
+    NamedPipe = 7
 }

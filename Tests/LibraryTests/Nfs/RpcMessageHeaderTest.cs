@@ -31,17 +31,17 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            RpcMessageHeader header = RpcMessageHeader.Accepted(1);
+            var header = RpcMessageHeader.Accepted(1);
 
             RpcMessageHeader clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 header.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new RpcMessageHeader(reader);
             }
 

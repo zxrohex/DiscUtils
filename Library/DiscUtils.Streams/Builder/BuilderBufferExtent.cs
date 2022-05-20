@@ -24,80 +24,79 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public class BuilderBufferExtent : BuilderExtent
 {
-    public class BuilderBufferExtent : BuilderExtent
+    private byte[] _buffer;
+    private readonly bool _fixedBuffer;
+
+    public BuilderBufferExtent(long start, long length)
+        : base(start, length) {}
+
+    public BuilderBufferExtent(long start, byte[] buffer)
+        : base(start, buffer.Length)
     {
-        private byte[] _buffer;
-        private readonly bool _fixedBuffer;
+        _fixedBuffer = true;
+        _buffer = buffer;
+    }
 
-        public BuilderBufferExtent(long start, long length)
-            : base(start, length) {}
+    public override void Dispose() {}
 
-        public BuilderBufferExtent(long start, byte[] buffer)
-            : base(start, buffer.Length)
+    public override void PrepareForRead()
+    {
+        if (!_fixedBuffer)
         {
-            _fixedBuffer = true;
-            _buffer = buffer;
+            _buffer = GetBuffer();
         }
+    }
 
-        public override void Dispose() {}
-
-        public override void PrepareForRead()
-        {
-            if (!_fixedBuffer)
-            {
-                _buffer = GetBuffer();
-            }
-        }
-
-        public override int Read(long diskOffset, byte[] block, int offset, int count)
-        {
-            int startOffset = (int)(diskOffset - Start);
-            int numBytes = (int)Math.Min(Length - startOffset, count);
-            Array.Copy(_buffer, startOffset, block, offset, numBytes);
-            return numBytes;
-        }
+    public override int Read(long diskOffset, byte[] block, int offset, int count)
+    {
+        var startOffset = (int)(diskOffset - Start);
+        var numBytes = (int)Math.Min(Length - startOffset, count);
+        Array.Copy(_buffer, startOffset, block, offset, numBytes);
+        return numBytes;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
-        {
-            int startOffset = (int)(diskOffset - Start);
-            int numBytes = (int)Math.Min(Length - startOffset, count);
-            Array.Copy(_buffer, startOffset, block, offset, numBytes);
-            return Task.FromResult(numBytes);
-        }
+    public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+    {
+        var startOffset = (int)(diskOffset - Start);
+        var numBytes = (int)Math.Min(Length - startOffset, count);
+        Array.Copy(_buffer, startOffset, block, offset, numBytes);
+        return Task.FromResult(numBytes);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
-        {
-            int startOffset = (int)(diskOffset - Start);
-            int numBytes = (int)Math.Min(Length - startOffset, block.Length);
-            _buffer.AsMemory().Slice(startOffset, numBytes).CopyTo(block);
-            return new(numBytes);
-        }
+    public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
+    {
+        var startOffset = (int)(diskOffset - Start);
+        var numBytes = (int)Math.Min(Length - startOffset, block.Length);
+        _buffer.AsMemory().Slice(startOffset, numBytes).CopyTo(block);
+        return new(numBytes);
+    }
 
-        public override int Read(long diskOffset, Span<byte> block)
-        {
-            int startOffset = (int)(diskOffset - Start);
-            int numBytes = (int)Math.Min(Length - startOffset, block.Length);
-            _buffer.AsSpan().Slice(startOffset, numBytes).CopyTo(block);
-            return numBytes;
-        }
+    public override int Read(long diskOffset, Span<byte> block)
+    {
+        var startOffset = (int)(diskOffset - Start);
+        var numBytes = (int)Math.Min(Length - startOffset, block.Length);
+        _buffer.AsSpan().Slice(startOffset, numBytes).CopyTo(block);
+        return numBytes;
+    }
 #endif
 
-        public override void DisposeReadState()
+    public override void DisposeReadState()
+    {
+        if (!_fixedBuffer)
         {
-            if (!_fixedBuffer)
-            {
-                _buffer = null;
-            }
+            _buffer = null;
         }
+    }
 
-        protected virtual byte[] GetBuffer()
-        {
-            throw new NotImplementedException($"Derived class '{GetType().FullName}' should implement GetBuffer()");
-        }
+    protected virtual byte[] GetBuffer()
+    {
+        throw new NotImplementedException($"Derived class '{GetType().FullName}' should implement GetBuffer()");
     }
 }

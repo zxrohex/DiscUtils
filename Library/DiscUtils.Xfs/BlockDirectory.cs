@@ -20,91 +20,90 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+using System.Collections.Generic;
+using DiscUtils.Streams;
+
+internal class BlockDirectory : IByteArraySerializable
 {
-    using System;
-    using System.Collections.Generic;
-    using DiscUtils.Streams;
+    private readonly Context _context;
+    public const uint HeaderMagic = 0x58443242;
 
-    internal class BlockDirectory : IByteArraySerializable
+    public uint Magic { get; protected set; }
+
+    public uint LeafCount { get; private set; }
+
+    public uint LeafStale { get; private set; }
+
+    public BlockDirectoryDataFree[] BestFree { get; private set; }
+
+    public List<BlockDirectoryData> Entries { get; private set; }
+
+    public virtual int Size
     {
-        private readonly Context _context;
-        public const uint HeaderMagic = 0x58443242;
+        get { return 16 + 3*32; }
+    }
 
-        public uint Magic { get; protected set; }
+    protected virtual int ReadHeader(byte[] buffer, int offset)
+    {
+        Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        return 0x4;
+    }
 
-        public uint LeafCount { get; private set; }
+    protected virtual int HeaderPadding
+    {
+        get { return 0; }
+    }
 
-        public uint LeafStale { get; private set; }
+    public BlockDirectory(Context context)
+    {
+        _context = context;
+    }
 
-        public BlockDirectoryDataFree[] BestFree { get; private set; }
+    public virtual bool HasValidMagic
+    {
+        get { return Magic == HeaderMagic; }
+    }
 
-        public List<BlockDirectoryData> Entries { get; private set; }
-
-        public virtual int Size
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        offset += ReadHeader(buffer, offset);
+        BestFree = new BlockDirectoryDataFree[3];
+        for (var i = 0; i < BestFree.Length; i++)
         {
-            get { return 16 + 3*32; }
+            var free = new BlockDirectoryDataFree();
+            offset += free.ReadFrom(buffer, offset);
+            BestFree[i] = free;
         }
+        offset += HeaderPadding;
 
-        protected virtual int ReadHeader(byte[] buffer, int offset)
+        LeafStale = EndianUtilities.ToUInt32BigEndian(buffer, buffer.Length - 0x4);
+        LeafCount = EndianUtilities.ToUInt32BigEndian(buffer, buffer.Length - 0x8);
+        var entries = new List<BlockDirectoryData>();
+        var eof = buffer.Length - 0x8 - LeafCount*0x8;
+        while (offset < eof)
         {
-            Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            return 0x4;
-        }
-
-        protected virtual int HeaderPadding
-        {
-            get { return 0; }
-        }
-
-        public BlockDirectory(Context context)
-        {
-            _context = context;
-        }
-
-        public virtual bool HasValidMagic
-        {
-            get { return Magic == HeaderMagic; }
-        }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            offset += ReadHeader(buffer, offset);
-            BestFree = new BlockDirectoryDataFree[3];
-            for (int i = 0; i < BestFree.Length; i++)
+            BlockDirectoryData entry;
+            if (buffer[offset] == 0xff && buffer[offset + 0x1] == 0xff)
             {
-                var free = new BlockDirectoryDataFree();
-                offset += free.ReadFrom(buffer, offset);
-                BestFree[i] = free;
+                //unused
+                entry = new BlockDirectoryDataUnused();
             }
-            offset += HeaderPadding;
-
-            LeafStale = EndianUtilities.ToUInt32BigEndian(buffer, buffer.Length - 0x4);
-            LeafCount = EndianUtilities.ToUInt32BigEndian(buffer, buffer.Length - 0x8);
-            var entries = new List<BlockDirectoryData>();
-            var eof = buffer.Length - 0x8 - LeafCount*0x8;
-            while (offset < eof)
+            else
             {
-                BlockDirectoryData entry;
-                if (buffer[offset] == 0xff && buffer[offset + 0x1] == 0xff)
-                {
-                    //unused
-                    entry = new BlockDirectoryDataUnused();
-                }
-                else
-                {
-                    entry = new BlockDirectoryDataEntry(_context);
-                }
-                offset += entry.ReadFrom(buffer, offset);
-                entries.Add(entry);
+                entry = new BlockDirectoryDataEntry(_context);
             }
-            Entries = entries;
-            return buffer.Length - offset;
+            offset += entry.ReadFrom(buffer, offset);
+            entries.Add(entry);
         }
+        Entries = entries;
+        return buffer.Length - offset;
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

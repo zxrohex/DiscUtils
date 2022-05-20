@@ -24,43 +24,42 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class MetadataPartition : LogicalPartition
 {
-    internal class MetadataPartition : LogicalPartition
+    private readonly File _metadataFile;
+    private MetadataPartitionMap _partitionMap;
+
+    public MetadataPartition(UdfContext context, LogicalVolumeDescriptor volumeDescriptor,
+                             MetadataPartitionMap partitionMap)
+        : base(context, volumeDescriptor)
     {
-        private readonly File _metadataFile;
-        private MetadataPartitionMap _partitionMap;
+        _partitionMap = partitionMap;
 
-        public MetadataPartition(UdfContext context, LogicalVolumeDescriptor volumeDescriptor,
-                                 MetadataPartitionMap partitionMap)
-            : base(context, volumeDescriptor)
+        var physical = context.PhysicalPartitions[partitionMap.PartitionNumber];
+        var fileEntryPos = partitionMap.MetadataFileLocation * (long)volumeDescriptor.LogicalBlockSize;
+
+        var entryData = StreamUtilities.ReadExact(physical.Content, fileEntryPos, _context.PhysicalSectorSize);
+        if (!DescriptorTag.IsValid(entryData, 0))
         {
-            _partitionMap = partitionMap;
-
-            PhysicalPartition physical = context.PhysicalPartitions[partitionMap.PartitionNumber];
-            long fileEntryPos = partitionMap.MetadataFileLocation * (long)volumeDescriptor.LogicalBlockSize;
-
-            byte[] entryData = StreamUtilities.ReadExact(physical.Content, fileEntryPos, _context.PhysicalSectorSize);
-            if (!DescriptorTag.IsValid(entryData, 0))
-            {
-                throw new IOException("Invalid descriptor tag looking for Metadata file entry");
-            }
-
-            DescriptorTag dt = EndianUtilities.ToStruct<DescriptorTag>(entryData, 0);
-            if (dt.TagIdentifier == TagIdentifier.ExtendedFileEntry)
-            {
-                ExtendedFileEntry efe = EndianUtilities.ToStruct<ExtendedFileEntry>(entryData, 0);
-                _metadataFile = new File(context, physical, efe, _volumeDescriptor.LogicalBlockSize);
-            }
-            else
-            {
-                throw new NotImplementedException("Only EFE implemented for Metadata file entry");
-            }
+            throw new IOException("Invalid descriptor tag looking for Metadata file entry");
         }
 
-        public override IBuffer Content
+        var dt = EndianUtilities.ToStruct<DescriptorTag>(entryData, 0);
+        if (dt.TagIdentifier == TagIdentifier.ExtendedFileEntry)
         {
-            get { return _metadataFile.FileContent; }
+            var efe = EndianUtilities.ToStruct<ExtendedFileEntry>(entryData, 0);
+            _metadataFile = new File(context, physical, efe, _volumeDescriptor.LogicalBlockSize);
         }
+        else
+        {
+            throw new NotImplementedException("Only EFE implemented for Metadata file entry");
+        }
+    }
+
+    public override IBuffer Content
+    {
+        get { return _metadataFile.FileContent; }
     }
 }

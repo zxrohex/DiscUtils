@@ -22,41 +22,40 @@
 
 using System.Globalization;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+/// <summary>
+/// Class representing the capacity of a LUN.
+/// </summary>
+public class LunCapacity
 {
     /// <summary>
-    /// Class representing the capacity of a LUN.
+    /// Initializes a new instance of the LunCapacity class.
     /// </summary>
-    public class LunCapacity
+    /// <param name="logicalBlockCount">The number of logical blocks.</param>
+    /// <param name="blockSize">The size of each block.</param>
+    public LunCapacity(long logicalBlockCount, int blockSize)
     {
-        /// <summary>
-        /// Initializes a new instance of the LunCapacity class.
-        /// </summary>
-        /// <param name="logicalBlockCount">The number of logical blocks.</param>
-        /// <param name="blockSize">The size of each block.</param>
-        public LunCapacity(long logicalBlockCount, int blockSize)
-        {
-            LogicalBlockCount = logicalBlockCount;
-            BlockSize = blockSize;
-        }
+        LogicalBlockCount = logicalBlockCount;
+        BlockSize = blockSize;
+    }
 
-        /// <summary>
-        /// Gets the size of each logical block.
-        /// </summary>
-        public int BlockSize { get; }
+    /// <summary>
+    /// Gets the size of each logical block.
+    /// </summary>
+    public int BlockSize { get; }
 
-        /// <summary>
-        /// Gets the number of logical blocks in the LUN.
-        /// </summary>
-        public long LogicalBlockCount { get; }
+    /// <summary>
+    /// Gets the number of logical blocks in the LUN.
+    /// </summary>
+    public long LogicalBlockCount { get; }
 
-        /// <summary>
-        /// Gets the capacity (in bytes) as a string.
-        /// </summary>
-        /// <returns>A string containing an integer.</returns>
-        public override string ToString()
-        {
-            return (BlockSize * LogicalBlockCount).ToString(CultureInfo.InvariantCulture);
-        }
+    /// <summary>
+    /// Gets the capacity (in bytes) as a string.
+    /// </summary>
+    /// <returns>A string containing an integer.</returns>
+    public override string ToString()
+    {
+        return (BlockSize * LogicalBlockCount).ToString(CultureInfo.InvariantCulture);
     }
 }

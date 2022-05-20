@@ -20,31 +20,30 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils
+namespace DiscUtils;
+
+/// <summary>
+/// Enumeration of different classes of disk.
+/// </summary>
+public enum VirtualDiskClass
 {
     /// <summary>
-    /// Enumeration of different classes of disk.
+    /// Unknown (or unspecified) type.
     /// </summary>
-    public enum VirtualDiskClass
-    {
-        /// <summary>
-        /// Unknown (or unspecified) type.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// Hard disk.
-        /// </summary>
-        HardDisk = 1,
+    /// <summary>
+    /// Hard disk.
+    /// </summary>
+    HardDisk = 1,
 
-        /// <summary>
-        /// Optical disk, such as CD or DVD.
-        /// </summary>
-        OpticalDisk = 2,
+    /// <summary>
+    /// Optical disk, such as CD or DVD.
+    /// </summary>
+    OpticalDisk = 2,
 
-        /// <summary>
-        /// Floppy disk.
-        /// </summary>
-        FloppyDisk = 3
-    }
+    /// <summary>
+    /// Floppy disk.
+    /// </summary>
+    FloppyDisk = 3
 }

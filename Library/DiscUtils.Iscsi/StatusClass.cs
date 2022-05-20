@@ -1,10 +1,9 @@
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal enum StatusClass
 {
-    internal enum StatusClass
-    {
-        Success = 0,
-        Redirection = 1,
-        InitiatorError = 2,
-        TargetError = 3
-    }
+    Success = 0,
+    Redirection = 1,
+    InitiatorError = 2,
+    TargetError = 3
 }

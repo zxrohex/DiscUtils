@@ -25,102 +25,102 @@ using System.Globalization;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal class ReparsePoints
 {
-    internal class ReparsePoints
+    private readonly File _file;
+    private readonly IndexView<Key, Data> _index;
+
+    public ReparsePoints(File file)
     {
-        private readonly File _file;
-        private readonly IndexView<Key, Data> _index;
+        _file = file;
+        _index = new IndexView<Key, Data>(file.GetIndex("$R"));
+    }
 
-        public ReparsePoints(File file)
+    internal void Add(uint tag, FileRecordReference file)
+    {
+        var newKey = new Key
         {
-            _file = file;
-            _index = new IndexView<Key, Data>(file.GetIndex("$R"));
+            Tag = tag,
+            File = file
+        };
+
+        var data = new Data();
+
+        _index[newKey] = data;
+        _file.UpdateRecordInMft();
+    }
+
+    internal void Remove(uint tag, FileRecordReference file)
+    {
+        var key = new Key
+        {
+            Tag = tag,
+            File = file
+        };
+
+        _index.Remove(key);
+        _file.UpdateRecordInMft();
+    }
+
+    internal void Dump(TextWriter writer, string indent)
+    {
+        writer.WriteLine(indent + "REPARSE POINT INDEX");
+
+        foreach (var entry in _index.Entries)
+        {
+            writer.WriteLine(indent + "  REPARSE POINT INDEX ENTRY");
+            writer.WriteLine(indent + "            Tag: " +
+                             entry.Key.Tag.ToString("x", CultureInfo.InvariantCulture));
+            writer.WriteLine(indent + "  MFT Reference: " + entry.Key.File);
+        }
+    }
+
+    internal struct Key : IByteArraySerializable
+    {
+        public FileRecordReference File;
+        public uint Tag;
+
+        public int Size
+        {
+            get { return 12; }
         }
 
-        internal void Add(uint tag, FileRecordReference file)
+        public int ReadFrom(byte[] buffer, int offset)
         {
-            Key newKey = new Key();
-            newKey.Tag = tag;
-            newKey.File = file;
-
-            Data data = new Data();
-
-            _index[newKey] = data;
-            _file.UpdateRecordInMft();
+            Tag = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
+            File = new FileRecordReference(EndianUtilities.ToUInt64LittleEndian(buffer, offset + 4));
+            return 12;
         }
 
-        internal void Remove(uint tag, FileRecordReference file)
+        public void WriteTo(byte[] buffer, int offset)
         {
-            Key key = new Key();
-            key.Tag = tag;
-            key.File = file;
-
-            _index.Remove(key);
-            _file.UpdateRecordInMft();
+            EndianUtilities.WriteBytesLittleEndian(Tag, buffer, offset);
+            EndianUtilities.WriteBytesLittleEndian(File.Value, buffer, offset + 4);
+            ////Utilities.WriteBytesLittleEndian((uint)0, buffer, offset + 12);
         }
 
-        internal void Dump(TextWriter writer, string indent)
-        {
-            writer.WriteLine(indent + "REPARSE POINT INDEX");
+        public override string ToString() => $"{Tag:x}:{File}";
+    }
 
-            foreach (KeyValuePair<Key, Data> entry in _index.Entries)
-            {
-                writer.WriteLine(indent + "  REPARSE POINT INDEX ENTRY");
-                writer.WriteLine(indent + "            Tag: " +
-                                 entry.Key.Tag.ToString("x", CultureInfo.InvariantCulture));
-                writer.WriteLine(indent + "  MFT Reference: " + entry.Key.File);
-            }
+    internal struct Data : IByteArraySerializable
+    {
+        public int Size
+        {
+            get { return 0; }
         }
 
-        internal struct Key : IByteArraySerializable
+        public int ReadFrom(byte[] buffer, int offset)
         {
-            public FileRecordReference File;
-            public uint Tag;
-
-            public int Size
-            {
-                get { return 12; }
-            }
-
-            public int ReadFrom(byte[] buffer, int offset)
-            {
-                Tag = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-                File = new FileRecordReference(EndianUtilities.ToUInt64LittleEndian(buffer, offset + 4));
-                return 12;
-            }
-
-            public void WriteTo(byte[] buffer, int offset)
-            {
-                EndianUtilities.WriteBytesLittleEndian(Tag, buffer, offset);
-                EndianUtilities.WriteBytesLittleEndian(File.Value, buffer, offset + 4);
-                ////Utilities.WriteBytesLittleEndian((uint)0, buffer, offset + 12);
-            }
-
-            public override string ToString()
-            {
-                return string.Format(CultureInfo.InvariantCulture, "{0:x}:", Tag) + File;
-            }
+            return 0;
         }
 
-        internal struct Data : IByteArraySerializable
+        public void WriteTo(byte[] buffer, int offset) {}
+
+        public override string ToString()
         {
-            public int Size
-            {
-                get { return 0; }
-            }
-
-            public int ReadFrom(byte[] buffer, int offset)
-            {
-                return 0;
-            }
-
-            public void WriteTo(byte[] buffer, int offset) {}
-
-            public override string ToString()
-            {
-                return "<no data>";
-            }
+            return "<no data>";
         }
     }
 }

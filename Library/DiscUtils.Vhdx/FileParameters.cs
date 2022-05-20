@@ -22,34 +22,33 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal sealed class FileParameters : IByteArraySerializable
 {
-    internal sealed class FileParameters : IByteArraySerializable
+    public const uint DefaultBlockSize = 32 * (uint)Sizes.OneMiB;
+    public const uint DefaultDifferencingBlockSize = 2 * (uint)Sizes.OneMiB;
+    public const uint DefaultDynamicBlockSize = 32 * (uint)Sizes.OneMiB;
+
+    public uint BlockSize;
+    public FileParametersFlags Flags;
+
+    public int Size
     {
-        public const uint DefaultBlockSize = 32 * (uint)Sizes.OneMiB;
-        public const uint DefaultDifferencingBlockSize = 2 * (uint)Sizes.OneMiB;
-        public const uint DefaultDynamicBlockSize = 32 * (uint)Sizes.OneMiB;
+        get { return 8; }
+    }
 
-        public uint BlockSize;
-        public FileParametersFlags Flags;
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        BlockSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+        Flags = (FileParametersFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
 
-        public int Size
-        {
-            get { return 8; }
-        }
+        return 8;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            BlockSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-            Flags = (FileParametersFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-
-            return 8;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer, offset + 0);
-            EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer, offset + 4);
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer, offset + 0);
+        EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer, offset + 4);
     }
 }

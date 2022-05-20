@@ -20,13 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs.Base.Items
+namespace DiscUtils.Btrfs.Base.Items;
+
+/// <summary>
+/// Maps logical address to physical
+/// </summary>
+internal class XattrItem : DirItem
 {
-    /// <summary>
-    /// Maps logical address to physical
-    /// </summary>
-    internal class XattrItem : DirItem
-    {
-        public XattrItem(Key key) : base(key) {}
-    }
+    public XattrItem(Key key) : base(key) {}
 }

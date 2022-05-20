@@ -22,29 +22,28 @@
 
 using System.IO;
 
-namespace DiscUtils.Partitions
-{
-    [PartitionTableFactory]
-    internal sealed class DefaultPartitionTableFactory : PartitionTableFactory
-    {
-        public override bool DetectIsPartitioned(Stream s)
-        {
-            return BiosPartitionTable.IsValid(s);
-        }
+namespace DiscUtils.Partitions;
 
-        public override PartitionTable DetectPartitionTable(VirtualDisk disk)
+[PartitionTableFactory]
+internal sealed class DefaultPartitionTableFactory : PartitionTableFactory
+{
+    public override bool DetectIsPartitioned(Stream s)
+    {
+        return BiosPartitionTable.IsValid(s);
+    }
+
+    public override PartitionTable DetectPartitionTable(VirtualDisk disk)
+    {
+        if (BiosPartitionTable.IsValid(disk.Content))
         {
-            if (BiosPartitionTable.IsValid(disk.Content))
+            var table = new BiosPartitionTable(disk);
+            var partitions = table.Partitions;
+            if (partitions.Count == 1 && partitions[0].BiosType == BiosPartitionTypes.GptProtective)
             {
-                var table = new BiosPartitionTable(disk);
-                var partitions = table.Partitions;
-                if (partitions.Count == 1 && partitions[0].BiosType == BiosPartitionTypes.GptProtective)
-                {
-                    return new GuidPartitionTable(disk);
-                }
-                return table;
+                return new GuidPartitionTable(disk);
             }
-            return null;
+            return table;
         }
+        return null;
     }
 }

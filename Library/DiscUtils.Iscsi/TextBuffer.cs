@@ -23,139 +23,138 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class TextBuffer
 {
-    internal class TextBuffer
+    private readonly List<KeyValuePair<string, string>> _records;
+
+    public TextBuffer()
     {
-        private readonly List<KeyValuePair<string, string>> _records;
+        _records = new List<KeyValuePair<string, string>>();
+    }
 
-        public TextBuffer()
-        {
-            _records = new List<KeyValuePair<string, string>>();
-        }
+    internal int Count
+    {
+        get { return _records.Count; }
+    }
 
-        internal int Count
+    public string this[string key]
+    {
+        get
         {
-            get { return _records.Count; }
-        }
-
-        public string this[string key]
-        {
-            get
+            foreach (var entry in _records)
             {
-                foreach (KeyValuePair<string, string> entry in _records)
+                if (entry.Key == key)
                 {
-                    if (entry.Key == key)
-                    {
-                        return entry.Value;
-                    }
+                    return entry.Value;
                 }
-
-                return null;
             }
 
-            set
-            {
-                for (int i = 0; i < _records.Count; ++i)
-                {
-                    if (_records[i].Key == key)
-                    {
-                        _records[i] = new KeyValuePair<string, string>(key, value);
-                        return;
-                    }
-                }
-
-                _records.Add(new KeyValuePair<string, string>(key, value));
-            }
+            return null;
         }
 
-        public IEnumerable<KeyValuePair<string, string>> Lines
+        set
         {
-            get { return _records; }
-        }
-
-        public int Size
-        {
-            get
-            {
-                int i = 0;
-
-                foreach (KeyValuePair<string, string> entry in _records)
-                {
-                    i += entry.Key.Length + entry.Value.Length + 2;
-                }
-
-                return i;
-            }
-        }
-
-        public void Add(string key, string value)
-        {
-            _records.Add(new KeyValuePair<string, string>(key, value));
-        }
-
-        public void ReadFrom(byte[] buffer, int offset, int length)
-        {
-            if (buffer == null)
-            {
-                return;
-            }
-
-            int end = offset + length;
-            int i = offset;
-            while (i < end)
-            {
-                int nameStart = i;
-                while (i < end && buffer[i] != '=')
-                {
-                    ++i;
-                }
-
-                if (i >= end)
-                {
-                    throw new InvalidProtocolException("Invalid text buffer");
-                }
-
-                string name = Encoding.ASCII.GetString(buffer, nameStart, i - nameStart);
-
-                ++i;
-                int valueStart = i;
-                while (i < end && buffer[i] != '\0')
-                {
-                    ++i;
-                }
-
-                string value = Encoding.ASCII.GetString(buffer, valueStart, i - valueStart);
-                ++i;
-
-                Add(name, value);
-            }
-        }
-
-        public int WriteTo(byte[] buffer, int offset)
-        {
-            int i = offset;
-
-            foreach (KeyValuePair<string, string> entry in _records)
-            {
-                i += Encoding.ASCII.GetBytes(entry.Key, 0, entry.Key.Length, buffer, i);
-                buffer[i++] = (byte)'=';
-                i += Encoding.ASCII.GetBytes(entry.Value, 0, entry.Value.Length, buffer, i);
-                buffer[i++] = 0;
-            }
-
-            return i - offset;
-        }
-
-        internal void Remove(string key)
-        {
-            for (int i = 0; i < _records.Count; ++i)
+            for (var i = 0; i < _records.Count; ++i)
             {
                 if (_records[i].Key == key)
                 {
-                    _records.RemoveAt(i);
+                    _records[i] = new KeyValuePair<string, string>(key, value);
                     return;
                 }
+            }
+
+            _records.Add(new KeyValuePair<string, string>(key, value));
+        }
+    }
+
+    public IEnumerable<KeyValuePair<string, string>> Lines
+    {
+        get { return _records; }
+    }
+
+    public int Size
+    {
+        get
+        {
+            var i = 0;
+
+            foreach (var entry in _records)
+            {
+                i += entry.Key.Length + entry.Value.Length + 2;
+            }
+
+            return i;
+        }
+    }
+
+    public void Add(string key, string value)
+    {
+        _records.Add(new KeyValuePair<string, string>(key, value));
+    }
+
+    public void ReadFrom(byte[] buffer, int offset, int length)
+    {
+        if (buffer == null)
+        {
+            return;
+        }
+
+        var end = offset + length;
+        var i = offset;
+        while (i < end)
+        {
+            var nameStart = i;
+            while (i < end && buffer[i] != '=')
+            {
+                ++i;
+            }
+
+            if (i >= end)
+            {
+                throw new InvalidProtocolException("Invalid text buffer");
+            }
+
+            var name = Encoding.ASCII.GetString(buffer, nameStart, i - nameStart);
+
+            ++i;
+            var valueStart = i;
+            while (i < end && buffer[i] != '\0')
+            {
+                ++i;
+            }
+
+            var value = Encoding.ASCII.GetString(buffer, valueStart, i - valueStart);
+            ++i;
+
+            Add(name, value);
+        }
+    }
+
+    public int WriteTo(byte[] buffer, int offset)
+    {
+        var i = offset;
+
+        foreach (var entry in _records)
+        {
+            i += Encoding.ASCII.GetBytes(entry.Key, 0, entry.Key.Length, buffer, i);
+            buffer[i++] = (byte)'=';
+            i += Encoding.ASCII.GetBytes(entry.Value, 0, entry.Value.Length, buffer, i);
+            buffer[i++] = 0;
+        }
+
+        return i - offset;
+    }
+
+    internal void Remove(string key)
+    {
+        for (var i = 0; i < _records.Count; ++i)
+        {
+            if (_records[i].Key == key)
+            {
+                _records.RemoveAt(i);
+                return;
             }
         }
     }

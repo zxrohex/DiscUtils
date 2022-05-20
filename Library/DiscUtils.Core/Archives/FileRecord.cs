@@ -20,19 +20,18 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Archives
-{
-    internal sealed class FileRecord
-    {
-        public long Length;
-        public string Name;
-        public long Start;
+namespace DiscUtils.Archives;
 
-        public FileRecord(string name, long start, long length)
-        {
-            Name = name;
-            Start = start;
-            Length = length;
-        }
+internal sealed class FileRecord
+{
+    public long Length;
+    public string Name;
+    public long Start;
+
+    public FileRecord(string name, long start, long length)
+    {
+        Name = name;
+        Start = start;
+        Length = length;
     }
 }

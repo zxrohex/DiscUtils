@@ -22,15 +22,14 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+[Flags]
+public enum Nfs3FileSystemProperties
 {
-    [Flags]
-    public enum Nfs3FileSystemProperties
-    {
-        None = 0,
-        HardLinks = 1,
-        SymbolicLinks = 2,
-        Homogeneous = 4,
-        SetTime = 8
-    }
+    None = 0,
+    HardLinks = 1,
+    SymbolicLinks = 2,
+    Homogeneous = 4,
+    SetTime = 8
 }

@@ -23,80 +23,79 @@
 using System;
 using System.Collections.Generic;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3Export
 {
-    public sealed class Nfs3Export
+    internal Nfs3Export(XdrDataReader reader)
     {
-        internal Nfs3Export(XdrDataReader reader)
+        DirPath = reader.ReadString(Nfs3Mount.MaxPathLength);
+
+        var groups = new List<string>();
+        while (reader.ReadBool())
         {
-            DirPath = reader.ReadString(Nfs3Mount.MaxPathLength);
-
-            List<string> groups = new List<string>();
-            while (reader.ReadBool())
-            {
-                groups.Add(reader.ReadString(Nfs3Mount.MaxNameLength));
-            }
-
-            Groups = groups;
+            groups.Add(reader.ReadString(Nfs3Mount.MaxNameLength));
         }
 
-        public Nfs3Export()
+        Groups = groups;
+    }
+
+    public Nfs3Export()
+    {
+    }
+
+    public string DirPath { get; set; }
+
+    public List<string> Groups { get; set; }
+
+    internal void Write(XdrDataWriter writer)
+    {
+        writer.Write(DirPath);
+
+        foreach (var group in Groups)
         {
+            writer.Write(true);
+            writer.Write(group);
         }
 
-        public string DirPath { get; set; }
+        writer.Write(false);
+    }
 
-        public List<string> Groups { get; set; }
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3Export);
+    }
 
-        internal void Write(XdrDataWriter writer)
+    public bool Equals(Nfs3Export other)
+    {
+        if (other == null)
         {
-            writer.Write(DirPath);
-
-            foreach (var group in Groups)
-            {
-                writer.Write(true);
-                writer.Write(group);
-            }
-
-            writer.Write(false);
+            return false;
         }
 
-        public override bool Equals(object obj)
+        if (!string.Equals(other.DirPath, DirPath))
         {
-            return Equals(obj as Nfs3Export);
+            return false;
         }
 
-        public bool Equals(Nfs3Export other)
+        if (other.Groups == null || Groups == null)
         {
-            if (other == null)
+            return false;
+        }
+
+        for (var i = 0; i < Groups.Count; i++)
+        {
+            if (!string.Equals(other.Groups[i], Groups[i]))
             {
                 return false;
             }
-
-            if (!string.Equals(other.DirPath, DirPath))
-            {
-                return false;
-            }
-
-            if (other.Groups == null || Groups == null)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < Groups.Count; i++)
-            {
-                if (!string.Equals(other.Groups[i], Groups[i]))
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(DirPath, Groups);
-        }
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(DirPath, Groups);
     }
 }

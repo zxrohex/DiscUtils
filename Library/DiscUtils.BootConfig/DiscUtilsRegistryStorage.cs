@@ -25,138 +25,137 @@ using System.Collections.Generic;
 using System.Globalization;
 using DiscUtils.Registry;
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class DiscUtilsRegistryStorage : BaseStorage
 {
-    internal class DiscUtilsRegistryStorage : BaseStorage
+    private const string ElementsPathTemplate = @"Objects\{0}\Elements";
+    private const string ElementPathTemplate = @"Objects\{0}\Elements\{1:X8}";
+    private const string ObjectTypePathTemplate = @"Objects\{0}\Description";
+    private const string ObjectsPath = @"Objects";
+
+    private readonly RegistryKey _rootKey;
+
+    public DiscUtilsRegistryStorage(RegistryKey key)
     {
-        private const string ElementsPathTemplate = @"Objects\{0}\Elements";
-        private const string ElementPathTemplate = @"Objects\{0}\Elements\{1:X8}";
-        private const string ObjectTypePathTemplate = @"Objects\{0}\Description";
-        private const string ObjectsPath = @"Objects";
+        _rootKey = key;
+    }
 
-        private readonly RegistryKey _rootKey;
+    public override string GetString(Guid obj, int element)
+    {
+        return GetValue(obj, element) as string;
+    }
 
-        public DiscUtilsRegistryStorage(RegistryKey key)
+    public override void SetString(Guid obj, int element, string value)
+    {
+        SetValue(obj, element, value);
+    }
+
+    public override byte[] GetBinary(Guid obj, int element)
+    {
+        return GetValue(obj, element) as byte[];
+    }
+
+    public override void SetBinary(Guid obj, int element, byte[] value)
+    {
+        SetValue(obj, element, value);
+    }
+
+    public override string[] GetMultiString(Guid obj, int element)
+    {
+        return GetValue(obj, element) as string[];
+    }
+
+    public override void SetMultiString(Guid obj, int element, string[] values)
+    {
+        SetValue(obj, element, values);
+    }
+
+    public override IEnumerable<Guid> EnumerateObjects()
+    {
+        var parentKey = _rootKey.OpenSubKey("Objects");
+        foreach (var key in parentKey.GetSubKeyNames())
         {
-            _rootKey = key;
+            yield return new Guid(key);
         }
+    }
 
-        public override string GetString(Guid obj, int element)
+    public override IEnumerable<int> EnumerateElements(Guid obj)
+    {
+        var path = string.Format(CultureInfo.InvariantCulture, ElementsPathTemplate, obj.ToString("B"));
+        var parentKey = _rootKey.OpenSubKey(path);
+        foreach (var key in parentKey.GetSubKeyNames())
         {
-            return GetValue(obj, element) as string;
+            yield return int.Parse(key, NumberStyles.HexNumber);
         }
+    }
 
-        public override void SetString(Guid obj, int element, string value)
-        {
-            SetValue(obj, element, value);
-        }
+    public override int GetObjectType(Guid obj)
+    {
+        var path = string.Format(CultureInfo.InvariantCulture, ObjectTypePathTemplate, obj.ToString("B"));
 
-        public override byte[] GetBinary(Guid obj, int element)
-        {
-            return GetValue(obj, element) as byte[];
-        }
+        var descKey = _rootKey.OpenSubKey(path);
 
-        public override void SetBinary(Guid obj, int element, byte[] value)
-        {
-            SetValue(obj, element, value);
-        }
+        var val = descKey.GetValue("Type");
+        return (int)val;
+    }
 
-        public override string[] GetMultiString(Guid obj, int element)
-        {
-            return GetValue(obj, element) as string[];
-        }
+    public override bool HasValue(Guid obj, int element)
+    {
+        var path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
+        return _rootKey.OpenSubKey(path) != null;
+    }
 
-        public override void SetMultiString(Guid obj, int element, string[] values)
-        {
-            SetValue(obj, element, values);
-        }
+    public override bool ObjectExists(Guid obj)
+    {
+        var path = string.Format(CultureInfo.InvariantCulture, ObjectTypePathTemplate, obj.ToString("B"));
 
-        public override IEnumerable<Guid> EnumerateObjects()
-        {
-            RegistryKey parentKey = _rootKey.OpenSubKey("Objects");
-            foreach (string key in parentKey.GetSubKeyNames())
-            {
-                yield return new Guid(key);
-            }
-        }
+        return _rootKey.OpenSubKey(path) != null;
+    }
 
-        public override IEnumerable<int> EnumerateElements(Guid obj)
-        {
-            string path = string.Format(CultureInfo.InvariantCulture, ElementsPathTemplate, obj.ToString("B"));
-            RegistryKey parentKey = _rootKey.OpenSubKey(path);
-            foreach (string key in parentKey.GetSubKeyNames())
-            {
-                yield return int.Parse(key, NumberStyles.HexNumber);
-            }
-        }
+    public override Guid CreateObject(Guid obj, int type)
+    {
+        var realObj = obj == Guid.Empty ? Guid.NewGuid() : obj;
+        var path = string.Format(CultureInfo.InvariantCulture, ObjectTypePathTemplate, realObj.ToString("B"));
 
-        public override int GetObjectType(Guid obj)
-        {
-            string path = string.Format(CultureInfo.InvariantCulture, ObjectTypePathTemplate, obj.ToString("B"));
+        var key = _rootKey.CreateSubKey(path);
+        key.SetValue("Type", type, RegistryValueType.Dword);
 
-            RegistryKey descKey = _rootKey.OpenSubKey(path);
+        return realObj;
+    }
 
-            object val = descKey.GetValue("Type");
-            return (int)val;
-        }
+    public override void CreateElement(Guid obj, int element)
+    {
+        var path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
 
-        public override bool HasValue(Guid obj, int element)
-        {
-            string path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
-            return _rootKey.OpenSubKey(path) != null;
-        }
+        _rootKey.CreateSubKey(path);
+    }
 
-        public override bool ObjectExists(Guid obj)
-        {
-            string path = string.Format(CultureInfo.InvariantCulture, ObjectTypePathTemplate, obj.ToString("B"));
+    public override void DeleteObject(Guid obj)
+    {
+        var path = string.Format(CultureInfo.InvariantCulture, ObjectTypePathTemplate, obj.ToString("B"));
 
-            return _rootKey.OpenSubKey(path) != null;
-        }
+        _rootKey.DeleteSubKeyTree(path);
+    }
 
-        public override Guid CreateObject(Guid obj, int type)
-        {
-            Guid realObj = obj == Guid.Empty ? Guid.NewGuid() : obj;
-            string path = string.Format(CultureInfo.InvariantCulture, ObjectTypePathTemplate, realObj.ToString("B"));
+    public override void DeleteElement(Guid obj, int element)
+    {
+        var path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
 
-            RegistryKey key = _rootKey.CreateSubKey(path);
-            key.SetValue("Type", type, RegistryValueType.Dword);
+        _rootKey.DeleteSubKeyTree(path);
+    }
 
-            return realObj;
-        }
+    private object GetValue(Guid obj, int element)
+    {
+        var path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
+        var key = _rootKey.OpenSubKey(path);
+        return key.GetValue("Element");
+    }
 
-        public override void CreateElement(Guid obj, int element)
-        {
-            string path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
-
-            _rootKey.CreateSubKey(path);
-        }
-
-        public override void DeleteObject(Guid obj)
-        {
-            string path = string.Format(CultureInfo.InvariantCulture, ObjectTypePathTemplate, obj.ToString("B"));
-
-            _rootKey.DeleteSubKeyTree(path);
-        }
-
-        public override void DeleteElement(Guid obj, int element)
-        {
-            string path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
-
-            _rootKey.DeleteSubKeyTree(path);
-        }
-
-        private object GetValue(Guid obj, int element)
-        {
-            string path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
-            RegistryKey key = _rootKey.OpenSubKey(path);
-            return key.GetValue("Element");
-        }
-
-        private void SetValue(Guid obj, int element, object value)
-        {
-            string path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
-            RegistryKey key = _rootKey.OpenSubKey(path);
-            key.SetValue("Element", value);
-        }
+    private void SetValue(Guid obj, int element, object value)
+    {
+        var path = string.Format(CultureInfo.InvariantCulture, ElementPathTemplate, obj.ToString("B"), element);
+        var key = _rootKey.OpenSubKey(path);
+        key.SetValue("Element", value);
     }
 }

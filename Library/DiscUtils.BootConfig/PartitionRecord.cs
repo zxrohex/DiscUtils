@@ -24,121 +24,112 @@ using System;
 using System.Globalization;
 using DiscUtils.Streams;
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class PartitionRecord : DeviceRecord
 {
-    internal class PartitionRecord : DeviceRecord
+    public byte[] DiskIdentity { get; set; }
+
+    public byte[] PartitionIdentity { get; set; }
+    public int PartitionType { get; set; }
+
+    public override int Size
     {
-        public byte[] DiskIdentity { get; set; }
+        get { return 0x48; }
+    }
 
-        public byte[] PartitionIdentity { get; set; }
-        public int PartitionType { get; set; }
+    public override void GetBytes(byte[] data, int offset)
+    {
+        WriteHeader(data, offset);
 
-        public override int Size
+        if (Type == 5)
         {
-            get { return 0x48; }
+            Array.Clear(data, offset + 0x10, 0x38);
         }
-
-        public override void GetBytes(byte[] data, int offset)
+        else if (Type == 6)
         {
-            WriteHeader(data, offset);
+            EndianUtilities.WriteBytesLittleEndian(PartitionType, data, offset + 0x24);
 
-            if (Type == 5)
+            if (PartitionType == 1)
             {
-                Array.Clear(data, offset + 0x10, 0x38);
+                Array.Copy(DiskIdentity, 0, data, offset + 0x28, 4);
+                Array.Copy(PartitionIdentity, 0, data, offset + 0x10, 8);
             }
-            else if (Type == 6)
+            else if (PartitionType == 0)
             {
-                EndianUtilities.WriteBytesLittleEndian(PartitionType, data, offset + 0x24);
-
-                if (PartitionType == 1)
-                {
-                    Array.Copy(DiskIdentity, 0, data, offset + 0x28, 4);
-                    Array.Copy(PartitionIdentity, 0, data, offset + 0x10, 8);
-                }
-                else if (PartitionType == 0)
-                {
-                    Array.Copy(DiskIdentity, 0, data, offset + 0x28, 16);
-                    Array.Copy(PartitionIdentity, 0, data, offset + 0x10, 16);
-                }
-                else
-                {
-                    throw new NotImplementedException("Unknown partition type: " + PartitionType);
-                }
+                Array.Copy(DiskIdentity, 0, data, offset + 0x28, 16);
+                Array.Copy(PartitionIdentity, 0, data, offset + 0x10, 16);
             }
             else
             {
-                throw new NotImplementedException("Unknown device type: " + Type);
+                throw new NotImplementedException("Unknown partition type: " + PartitionType);
             }
         }
-
-        public override string ToString()
+        else
         {
-            if (Type == 5)
-            {
-                return "<boot device>";
-            }
-            if (Type == 6)
-            {
-                if (PartitionType == 1)
-                {
-                    return string.Format(
-                        CultureInfo.InvariantCulture,
-                        "(disk:{0:X2}{1:X2}{2:X2}{3:X2} part-offset:{4})",
-                        DiskIdentity[0],
-                        DiskIdentity[1],
-                        DiskIdentity[2],
-                        DiskIdentity[3],
-                        EndianUtilities.ToUInt64LittleEndian(PartitionIdentity, 0));
-                }
-                Guid diskGuid = EndianUtilities.ToGuidLittleEndian(DiskIdentity, 0);
-                Guid partitionGuid = EndianUtilities.ToGuidLittleEndian(PartitionIdentity, 0);
-                return string.Format(CultureInfo.InvariantCulture, "(disk:{0} partition:{1})", diskGuid,
-                    partitionGuid);
-            }
-            if (Type == 8)
-            {
-                return "custom:<unknown>";
-            }
-            return "<unknown>";
+            throw new NotImplementedException("Unknown device type: " + Type);
         }
+    }
 
-        protected override void DoParse(byte[] data, int offset)
+    public override string ToString()
+    {
+        if (Type == 5)
         {
-            base.DoParse(data, offset);
-
-            if (Type == 5)
+            return "<boot device>";
+        }
+        if (Type == 6)
+        {
+            if (PartitionType == 1)
             {
-                // Nothing to do - just empty...
+                return $"(disk:{DiskIdentity[0]:X2}{DiskIdentity[1]:X2}{DiskIdentity[2]:X2}{DiskIdentity[3]:X2} part-offset:{EndianUtilities.ToUInt64LittleEndian(PartitionIdentity, 0)})";
             }
-            else if (Type == 6)
-            {
-                PartitionType = EndianUtilities.ToInt32LittleEndian(data, offset + 0x24);
+            var diskGuid = EndianUtilities.ToGuidLittleEndian(DiskIdentity, 0);
+            var partitionGuid = EndianUtilities.ToGuidLittleEndian(PartitionIdentity, 0);
+            return $"(disk:{diskGuid} partition:{partitionGuid})";
+        }
+        if (Type == 8)
+        {
+            return "custom:<unknown>";
+        }
+        return "<unknown>";
+    }
 
-                if (PartitionType == 1)
-                {
-                    // BIOS disk
-                    DiskIdentity = new byte[4];
-                    Array.Copy(data, offset + 0x28, DiskIdentity, 0, 4);
-                    PartitionIdentity = new byte[8];
-                    Array.Copy(data, offset + 0x10, PartitionIdentity, 0, 8);
-                }
-                else if (PartitionType == 0)
-                {
-                    // GPT disk
-                    DiskIdentity = new byte[16];
-                    Array.Copy(data, offset + 0x28, DiskIdentity, 0, 16);
-                    PartitionIdentity = new byte[16];
-                    Array.Copy(data, offset + 0x10, PartitionIdentity, 0, 16);
-                }
-                else
-                {
-                    throw new NotImplementedException("Unknown partition type: " + PartitionType);
-                }
+    protected override void DoParse(byte[] data, int offset)
+    {
+        base.DoParse(data, offset);
+
+        if (Type == 5)
+        {
+            // Nothing to do - just empty...
+        }
+        else if (Type == 6)
+        {
+            PartitionType = EndianUtilities.ToInt32LittleEndian(data, offset + 0x24);
+
+            if (PartitionType == 1)
+            {
+                // BIOS disk
+                DiskIdentity = new byte[4];
+                Array.Copy(data, offset + 0x28, DiskIdentity, 0, 4);
+                PartitionIdentity = new byte[8];
+                Array.Copy(data, offset + 0x10, PartitionIdentity, 0, 8);
+            }
+            else if (PartitionType == 0)
+            {
+                // GPT disk
+                DiskIdentity = new byte[16];
+                Array.Copy(data, offset + 0x28, DiskIdentity, 0, 16);
+                PartitionIdentity = new byte[16];
+                Array.Copy(data, offset + 0x10, PartitionIdentity, 0, 16);
             }
             else
             {
-                throw new NotImplementedException("Unknown device type: " + Type);
+                throw new NotImplementedException("Unknown partition type: " + PartitionType);
             }
+        }
+        else
+        {
+            throw new NotImplementedException("Unknown device type: " + Type);
         }
     }
 }

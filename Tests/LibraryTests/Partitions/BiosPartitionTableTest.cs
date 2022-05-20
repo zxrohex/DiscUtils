@@ -33,10 +33,10 @@ namespace LibraryTests.Partitions
         public void Initialize()
         {
             long capacity = 3 * 1024 * 1024;
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.FromCapacity(capacity);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var geom = Geometry.FromCapacity(capacity);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
             Assert.Equal(0, table.Count);
         }
@@ -45,12 +45,12 @@ namespace LibraryTests.Partitions
         public void CreateWholeDisk()
         {
             long capacity = 3 * 1024 * 1024;
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.FromCapacity(capacity);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var geom = Geometry.FromCapacity(capacity);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
-            int idx = table.Create(WellKnownPartitionType.WindowsFat, true);
+            var idx = table.Create(WellKnownPartitionType.WindowsFat, true);
 
             // Make sure the partition fills all but the first track on the disk.
             Assert.Equal(geom.TotalSectorsLong, table[idx].SectorCount + geom.SectorsPerTrack);
@@ -76,12 +76,12 @@ namespace LibraryTests.Partitions
         public void CreateWholeDiskAligned()
         {
             long capacity = 3 * 1024 * 1024;
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.FromCapacity(capacity);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var geom = Geometry.FromCapacity(capacity);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
-            int idx = table.CreateAligned(WellKnownPartitionType.WindowsFat, true, 64 * 1024);
+            var idx = table.CreateAligned(WellKnownPartitionType.WindowsFat, true, 64 * 1024);
 
             Assert.Equal(0, table[idx].FirstSector % 128);
             Assert.Equal(0, (table[idx].LastSector + 1) % 128);
@@ -95,12 +95,12 @@ namespace LibraryTests.Partitions
         public void CreateBySize()
         {
             long capacity = 3 * 1024 * 1024;
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.FromCapacity(capacity);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var geom = Geometry.FromCapacity(capacity);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
-            int idx = table.Create(2 * 1024 * 1024, WellKnownPartitionType.WindowsFat, false);
+            var idx = table.Create(2 * 1024 * 1024, WellKnownPartitionType.WindowsFat, false);
 
             // Make sure the partition is within 10% of the size requested.
             Assert.True((2 * 1024 * 2) * 0.9 < table[idx].SectorCount);
@@ -113,10 +113,10 @@ namespace LibraryTests.Partitions
         [Fact]
         public void CreateBySizeInGap()
         {
-            SparseMemoryStream ms = new SparseMemoryStream();
-            Geometry geom = new Geometry(15, 30, 63);
+            var ms = new SparseMemoryStream();
+            var geom = new Geometry(15, 30, 63);
             ms.SetLength(geom.Capacity);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
             Assert.Equal(0, table.CreatePrimaryByCylinder(0, 4, 33, false));
             Assert.Equal(1, table.CreatePrimaryByCylinder(10, 14, 33, false));
@@ -126,15 +126,15 @@ namespace LibraryTests.Partitions
         [Fact]
         public void CreateBySizeInGapAligned()
         {
-            SparseMemoryStream ms = new SparseMemoryStream();
-            Geometry geom = new Geometry(15, 30, 63);
+            var ms = new SparseMemoryStream();
+            var geom = new Geometry(15, 30, 63);
             ms.SetLength(geom.Capacity);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
             Assert.Equal(0, table.CreatePrimaryByCylinder(0, 4, 33, false));
             Assert.Equal(1, table.CreatePrimaryByCylinder(10, 14, 33, false));
 
-            int idx = table.CreateAligned(3 * 1024 * 1024, WellKnownPartitionType.WindowsFat, true, 64 * 1024);
+            var idx = table.CreateAligned(3 * 1024 * 1024, WellKnownPartitionType.WindowsFat, true, 64 * 1024);
             Assert.Equal(2, idx);
 
             Assert.Equal(0, table[idx].FirstSector % 128);
@@ -144,10 +144,10 @@ namespace LibraryTests.Partitions
         [Fact]
         public void CreateByCylinder()
         {
-            SparseMemoryStream ms = new SparseMemoryStream();
-            Geometry geom = new Geometry(15, 30, 63);
+            var ms = new SparseMemoryStream();
+            var geom = new Geometry(15, 30, 63);
             ms.SetLength(geom.Capacity);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
             Assert.Equal(0, table.CreatePrimaryByCylinder(0, 4, 33, false));
             Assert.Equal(1, table.CreatePrimaryByCylinder(10, 14, 33, false));
@@ -162,16 +162,16 @@ namespace LibraryTests.Partitions
         public void Delete()
         {
             long capacity = 10 * 1024 * 1024;
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.FromCapacity(capacity);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var geom = Geometry.FromCapacity(capacity);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
             Assert.Equal(0, table.Create(1 * 1024 * 1024, WellKnownPartitionType.WindowsFat, false));
             Assert.Equal(1, table.Create(2 * 1024 * 1024, WellKnownPartitionType.WindowsFat, false));
             Assert.Equal(2, table.Create(3 * 1024 * 1024, WellKnownPartitionType.WindowsFat, false));
 
-            long[] sectorCount = new long[] { table[0].SectorCount, table[1].SectorCount, table[2].SectorCount };
+            var sectorCount = new long[] { table[0].SectorCount, table[1].SectorCount, table[2].SectorCount };
 
             table.Delete(1);
 
@@ -183,10 +183,10 @@ namespace LibraryTests.Partitions
         public void SetActive()
         {
             long capacity = 10 * 1024 * 1024;
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.FromCapacity(capacity);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var geom = Geometry.FromCapacity(capacity);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
             table.Create(1 * 1024 * 1024, WellKnownPartitionType.WindowsFat, false);
             table.Create(2 * 1024 * 1024, WellKnownPartitionType.WindowsFat, false);
@@ -201,11 +201,11 @@ namespace LibraryTests.Partitions
         [Fact]
         public void LargeDisk()
         {
-            long capacity = 300 * 1024L * 1024L * 1024;
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var capacity = 300 * 1024L * 1024L * 1024;
+            var ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.LbaAssistedBiosGeometry(capacity, 512);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var geom = Geometry.LbaAssistedBiosGeometry(capacity, 512);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
             table.Create(150 * 1024L * 1024L * 1024, WellKnownPartitionType.WindowsNtfs, false);
             table.Create(20 * 1024L * 1024L * 1024, WellKnownPartitionType.WindowsNtfs, false);
@@ -224,14 +224,14 @@ namespace LibraryTests.Partitions
         [Fact]
         public void VeryLargePartition()
         {
-            long capacity = 1300 * 1024L * 1024L * 1024;
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var capacity = 1300 * 1024L * 1024L * 1024;
+            var ms = new SparseMemoryStream();
             ms.SetLength(capacity);
-            Geometry geom = Geometry.LbaAssistedBiosGeometry(capacity, 512);
-            BiosPartitionTable table = BiosPartitionTable.Initialize(ms, geom);
+            var geom = Geometry.LbaAssistedBiosGeometry(capacity, 512);
+            var table = BiosPartitionTable.Initialize(ms, geom);
 
             // exception occurs here
-            int i = table.CreatePrimaryByCylinder(0, 150000, (byte)WellKnownPartitionType.WindowsNtfs, true);
+            var i = table.CreatePrimaryByCylinder(0, 150000, (byte)WellKnownPartitionType.WindowsNtfs, true);
 
             Assert.Equal(150000, geom.ToChsAddress(table[0].LastSector).Cylinder);
         }

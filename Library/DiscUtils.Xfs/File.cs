@@ -21,67 +21,73 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+using System.IO;
+using DiscUtils.Vfs;
+using DiscUtils.Internal;
+using DiscUtils.Streams;
+using System.Linq;
+using System.Collections.Generic;
+
+internal class File : IVfsFile
 {
-    using System;
-    using System.IO;
-    using DiscUtils.Vfs;
-    using DiscUtils.Internal;
-    using DiscUtils.Streams;
+    protected readonly Context Context;
+    internal readonly Inode Inode;
+    private IBuffer _content;
 
-    internal class File : IVfsFile
+    public File(Context context, Inode inode)
     {
-        protected readonly Context Context;
-        protected readonly Inode Inode;
-        private IBuffer _content;
-
-        public File(Context context, Inode inode)
-        {
-            Context = context;
-            Inode = inode;
-        }
-
-        public DateTime LastAccessTimeUtc
-        {
-            get { return Inode.AccessTime; }
-            set { throw new NotImplementedException(); }
-        }
-
-        public DateTime LastWriteTimeUtc
-        {
-            get { return Inode.ModificationTime; }
-            set { throw new NotImplementedException(); }
-        }
-
-        public DateTime CreationTimeUtc
-        {
-            get { return Inode.CreationTime; }
-            set { throw new NotImplementedException(); }
-        }
-
-        public FileAttributes FileAttributes
-        {
-            get { return Utilities.FileAttributesFromUnixFileType(Inode.FileType); }
-            set { throw new NotImplementedException(); }
-        }
-
-        public long FileLength
-        {
-            get { return (long) Inode.Length; }
-        }
-
-        public IBuffer FileContent
-        {
-            get
-            {
-                if (_content == null)
-                {
-                    _content = Inode.GetContentBuffer(Context);
-                }
-
-                return _content;
-            }
-        }
-        
+        Context = context;
+        Inode = inode;
     }
+
+    public DateTime LastAccessTimeUtc
+    {
+        get { return Inode.AccessTime; }
+        set { throw new NotImplementedException(); }
+    }
+
+    public DateTime LastWriteTimeUtc
+    {
+        get { return Inode.ModificationTime; }
+        set { throw new NotImplementedException(); }
+    }
+
+    public DateTime CreationTimeUtc
+    {
+        get { return Inode.CreationTime; }
+        set { throw new NotImplementedException(); }
+    }
+
+    public FileAttributes FileAttributes
+    {
+        get { return Utilities.FileAttributesFromUnixFileType(Inode.FileType); }
+        set { throw new NotImplementedException(); }
+    }
+
+    public long FileLength
+    {
+        get { return (long) Inode.Length; }
+    }
+
+    public IBuffer FileContent
+    {
+        get
+        {
+            if (_content == null)
+            {
+                _content = Inode.GetContentBuffer(Context);
+            }
+
+            return _content;
+        }
+    }
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+    {
+        return Inode.EnumerateAllocationExtents(Context);
+    }
+
 }

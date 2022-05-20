@@ -31,10 +31,10 @@ namespace LibraryTests
         [Fact]
         public void Detect()
         {
-            MemoryStream shortStream = new MemoryStream(new byte[5]);
+            var shortStream = new MemoryStream(new byte[5]);
             Assert.Empty(FileSystemManager.DetectFileSystems(shortStream));
 
-            MemoryStream longStream = new MemoryStream(new byte[100000]);
+            var longStream = new MemoryStream(new byte[100000]);
             Assert.Empty(FileSystemManager.DetectFileSystems(longStream));
         }
     }

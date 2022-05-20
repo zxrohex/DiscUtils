@@ -20,11 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Ntfs.Internals
+namespace DiscUtils.Ntfs.Internals;
+
+internal sealed class UnknownAttribute : GenericAttribute
 {
-    internal sealed class UnknownAttribute : GenericAttribute
-    {
-        public UnknownAttribute(INtfsContext context, AttributeRecord record)
-            : base(context, record) {}
-    }
+    public UnknownAttribute(INtfsContext context, AttributeRecord record)
+        : base(context, record) {}
 }

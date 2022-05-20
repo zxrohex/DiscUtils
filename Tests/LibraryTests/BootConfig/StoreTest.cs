@@ -33,11 +33,11 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void Initialize()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
 
 
-            int i = 0;
+            var i = 0;
             foreach (var obj in s.Objects)
             {
                 ++i;
@@ -48,40 +48,40 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void CreateApplication()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
 
-            BcdObject obj = s.CreateApplication(ApplicationImageType.WindowsBoot, ApplicationType.BootManager);
+            var obj = s.CreateApplication(ApplicationImageType.WindowsBoot, ApplicationType.BootManager);
             Assert.NotEqual(Guid.Empty, obj.Identity);
 
             Assert.Equal(ObjectType.Application, obj.ObjectType);
 
-            BcdObject reGet = s.GetObject(obj.Identity);
+            var reGet = s.GetObject(obj.Identity);
             Assert.Equal(obj.Identity, reGet.Identity);
         }
 
         [Fact]
         public void CreateDevice()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
 
-            BcdObject obj = s.CreateDevice();
+            var obj = s.CreateDevice();
             Assert.NotEqual(Guid.Empty, obj.Identity);
 
             Assert.Equal(ObjectType.Device, obj.ObjectType);
 
-            BcdObject reGet = s.GetObject(obj.Identity);
+            var reGet = s.GetObject(obj.Identity);
             Assert.Equal(obj.Identity, reGet.Identity);
         }
 
         [Fact]
         public void CreateInherit()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
 
-            BcdObject obj = s.CreateInherit(InheritType.ApplicationObjects);
+            var obj = s.CreateInherit(InheritType.ApplicationObjects);
             Assert.NotEqual(Guid.Empty, obj.Identity);
 
             Assert.Equal(ObjectType.Inherit, obj.ObjectType);
@@ -89,25 +89,25 @@ namespace LibraryTests.BootConfig
             Assert.True(obj.IsInheritableBy(ObjectType.Application));
             Assert.False(obj.IsInheritableBy(ObjectType.Device));
 
-            BcdObject reGet = s.GetObject(obj.Identity);
+            var reGet = s.GetObject(obj.Identity);
             Assert.Equal(obj.Identity, reGet.Identity);
         }
 
         [Fact]
         public void RemoveObject()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
 
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var obj = s.CreateInherit(InheritType.AnyObject);
             s.RemoveObject(obj.Identity);
         }
 
         [Fact]
         public void RemoveObject_NonExistent()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
 
             s.RemoveObject(Guid.NewGuid());
         }

@@ -22,10 +22,9 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal abstract class Partition
 {
-    internal abstract class Partition
-    {
-        public abstract IBuffer Content { get; }
-    }
+    public abstract IBuffer Content { get; }
 }

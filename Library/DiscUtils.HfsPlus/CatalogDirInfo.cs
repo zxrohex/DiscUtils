@@ -23,31 +23,30 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class CatalogDirInfo : CommonCatalogFileInfo
 {
-    internal sealed class CatalogDirInfo : CommonCatalogFileInfo
+    public ushort Flags;
+    public uint Valence;
+
+    public override int Size
     {
-        public ushort Flags;
-        public uint Valence;
+        get { throw new NotImplementedException(); }
+    }
 
-        public override int Size
-        {
-            get { throw new NotImplementedException(); }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        base.ReadFrom(buffer, offset);
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            base.ReadFrom(buffer, offset);
+        Flags = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
+        Valence = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
 
-            Flags = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
-            Valence = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
+        return 0;
+    }
 
-            return 0;
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

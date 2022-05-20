@@ -24,188 +24,188 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vdi
+namespace DiscUtils.Vdi;
+
+internal class HeaderRecord
 {
-    internal class HeaderRecord
+    private FileVersion _fileVersion;
+    public int BlockCount;
+    public int BlockExtraSize;
+    public int BlocksAllocated;
+    public int BlockSize;
+    public uint BlocksOffset;
+    public string Comment;
+    public uint DataOffset;
+    public long DiskSize;
+    public ImageFlags Flags;
+    public uint HeaderSize;
+    public ImageType ImageType;
+    public GeometryRecord LChsGeometry;
+    public GeometryRecord LegacyGeometry;
+    public Guid ModificationId;
+    public Guid ParentId;
+    public Guid ParentModificationId;
+    public Guid UniqueId;
+
+    public static HeaderRecord Initialized(ImageType type, ImageFlags flags, long size, int blockSize,
+                                           int blockExtra)
     {
-        private FileVersion _fileVersion;
-        public int BlockCount;
-        public int BlockExtraSize;
-        public int BlocksAllocated;
-        public int BlockSize;
-        public uint BlocksOffset;
-        public string Comment;
-        public uint DataOffset;
-        public long DiskSize;
-        public ImageFlags Flags;
-        public uint HeaderSize;
-        public ImageType ImageType;
-        public GeometryRecord LChsGeometry;
-        public GeometryRecord LegacyGeometry;
-        public Guid ModificationId;
-        public Guid ParentId;
-        public Guid ParentModificationId;
-        public Guid UniqueId;
-
-        public static HeaderRecord Initialized(ImageType type, ImageFlags flags, long size, int blockSize,
-                                               int blockExtra)
+        var result = new HeaderRecord
         {
-            HeaderRecord result = new HeaderRecord();
+            _fileVersion = new FileVersion(0x00010001),
+            HeaderSize = 400,
+            ImageType = type,
+            Flags = flags,
+            Comment = "Created by .NET DiscUtils",
+            LegacyGeometry = new GeometryRecord(),
+            DiskSize = size,
+            BlockSize = blockSize,
+            BlockExtraSize = blockExtra,
+            BlockCount = (int)((size + blockSize - 1) / blockSize),
+            BlocksAllocated = 0
+        };
 
-            result._fileVersion = new FileVersion(0x00010001);
-            result.HeaderSize = 400;
-            result.ImageType = type;
-            result.Flags = flags;
-            result.Comment = "Created by .NET DiscUtils";
-            result.LegacyGeometry = new GeometryRecord();
-            result.DiskSize = size;
-            result.BlockSize = blockSize;
-            result.BlockExtraSize = blockExtra;
-            result.BlockCount = (int)((size + blockSize - 1) / blockSize);
-            result.BlocksAllocated = 0;
+        result.BlocksOffset = (PreHeaderRecord.Size + result.HeaderSize + 511) / 512 * 512;
+        result.DataOffset = (uint)((result.BlocksOffset + result.BlockCount * 4 + 511) / 512 * 512);
 
-            result.BlocksOffset = (PreHeaderRecord.Size + result.HeaderSize + 511) / 512 * 512;
-            result.DataOffset = (uint)((result.BlocksOffset + result.BlockCount * 4 + 511) / 512 * 512);
+        result.UniqueId = Guid.NewGuid();
+        result.ModificationId = Guid.NewGuid();
 
-            result.UniqueId = Guid.NewGuid();
-            result.ModificationId = Guid.NewGuid();
+        result.LChsGeometry = new GeometryRecord();
 
-            result.LChsGeometry = new GeometryRecord();
+        return result;
+    }
 
-            return result;
+    public void Read(FileVersion version, Stream s)
+    {
+        int headerSize;
+
+        _fileVersion = version;
+
+        // Determine header size...
+        if (version.Major == 0)
+        {
+            headerSize = 348;
+        }
+        else
+        {
+            var savedPos = s.Position;
+            headerSize = EndianUtilities.ToInt32LittleEndian(StreamUtilities.ReadExact(s, 4), 0);
+            s.Position = savedPos;
         }
 
-        public void Read(FileVersion version, Stream s)
+        var buffer = StreamUtilities.ReadExact(s, headerSize);
+        Read(version, buffer, 0);
+    }
+
+    public int Read(FileVersion version, byte[] buffer, int offset)
+    {
+        if (version.Major == 0)
         {
-            int headerSize;
+            ImageType = (ImageType)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+            Flags = (ImageFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+            Comment = EndianUtilities.BytesToString(buffer, offset + 8, 256).TrimEnd('\0');
+            LegacyGeometry = new GeometryRecord();
+            LegacyGeometry.Read(buffer, offset + 264);
+            DiskSize = EndianUtilities.ToInt64LittleEndian(buffer, offset + 280);
+            BlockSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 288);
+            BlockCount = EndianUtilities.ToInt32LittleEndian(buffer, offset + 292);
+            BlocksAllocated = EndianUtilities.ToInt32LittleEndian(buffer, offset + 296);
+            UniqueId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 300);
+            ModificationId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 316);
+            ParentId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 332);
+            HeaderSize = 348;
+            BlocksOffset = HeaderSize + PreHeaderRecord.Size;
+            DataOffset = (uint)(BlocksOffset + BlockCount * 4);
+            BlockExtraSize = 0;
+            ParentModificationId = Guid.Empty;
+        }
+        else if (version.Major == 1 && version.Minor == 1)
+        {
+            HeaderSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+            ImageType = (ImageType)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+            Flags = (ImageFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
+            Comment = EndianUtilities.BytesToString(buffer, offset + 12, 256).TrimEnd('\0');
+            BlocksOffset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 268);
+            DataOffset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 272);
+            LegacyGeometry = new GeometryRecord();
+            LegacyGeometry.Read(buffer, offset + 276);
+            DiskSize = EndianUtilities.ToInt64LittleEndian(buffer, offset + 296);
+            BlockSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 304);
+            BlockExtraSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 308);
+            BlockCount = EndianUtilities.ToInt32LittleEndian(buffer, offset + 312);
+            BlocksAllocated = EndianUtilities.ToInt32LittleEndian(buffer, offset + 316);
+            UniqueId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 320);
+            ModificationId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 336);
+            ParentId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 352);
+            ParentModificationId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 368);
 
-            _fileVersion = version;
-
-            // Determine header size...
-            if (version.Major == 0)
+            if (HeaderSize > 384)
             {
-                headerSize = 348;
+                LChsGeometry = new GeometryRecord();
+                LChsGeometry.Read(buffer, offset + 384);
             }
-            else
-            {
-                long savedPos = s.Position;
-                headerSize = EndianUtilities.ToInt32LittleEndian(StreamUtilities.ReadExact(s, 4), 0);
-                s.Position = savedPos;
-            }
-
-            byte[] buffer = StreamUtilities.ReadExact(s, headerSize);
-            Read(version, buffer, 0);
+        }
+        else
+        {
+            throw new IOException("Unrecognized file version: " + version);
         }
 
-        public int Read(FileVersion version, byte[] buffer, int offset)
+        return (int)HeaderSize;
+    }
+
+    public void Write(Stream s)
+    {
+        var buffer = new byte[HeaderSize];
+        Write(buffer, 0);
+        s.Write(buffer, 0, buffer.Length);
+    }
+
+    public int Write(byte[] buffer, int offset)
+    {
+        if (_fileVersion.Major == 0)
         {
-            if (version.Major == 0)
-            {
-                ImageType = (ImageType)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-                Flags = (ImageFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-                Comment = EndianUtilities.BytesToString(buffer, offset + 8, 256).TrimEnd('\0');
-                LegacyGeometry = new GeometryRecord();
-                LegacyGeometry.Read(buffer, offset + 264);
-                DiskSize = EndianUtilities.ToInt64LittleEndian(buffer, offset + 280);
-                BlockSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 288);
-                BlockCount = EndianUtilities.ToInt32LittleEndian(buffer, offset + 292);
-                BlocksAllocated = EndianUtilities.ToInt32LittleEndian(buffer, offset + 296);
-                UniqueId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 300);
-                ModificationId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 316);
-                ParentId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 332);
-                HeaderSize = 348;
-                BlocksOffset = HeaderSize + PreHeaderRecord.Size;
-                DataOffset = (uint)(BlocksOffset + BlockCount * 4);
-                BlockExtraSize = 0;
-                ParentModificationId = Guid.Empty;
-            }
-            else if (version.Major == 1 && version.Minor == 1)
-            {
-                HeaderSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-                ImageType = (ImageType)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-                Flags = (ImageFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
-                Comment = EndianUtilities.BytesToString(buffer, offset + 12, 256).TrimEnd('\0');
-                BlocksOffset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 268);
-                DataOffset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 272);
-                LegacyGeometry = new GeometryRecord();
-                LegacyGeometry.Read(buffer, offset + 276);
-                DiskSize = EndianUtilities.ToInt64LittleEndian(buffer, offset + 296);
-                BlockSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 304);
-                BlockExtraSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 308);
-                BlockCount = EndianUtilities.ToInt32LittleEndian(buffer, offset + 312);
-                BlocksAllocated = EndianUtilities.ToInt32LittleEndian(buffer, offset + 316);
-                UniqueId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 320);
-                ModificationId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 336);
-                ParentId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 352);
-                ParentModificationId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 368);
+            EndianUtilities.WriteBytesLittleEndian((uint)ImageType, buffer, offset + 0);
+            EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer, offset + 4);
+            EndianUtilities.StringToBytes(Comment, buffer, offset + 8, 256);
+            LegacyGeometry.Write(buffer, offset + 264);
+            EndianUtilities.WriteBytesLittleEndian(DiskSize, buffer, offset + 280);
+            EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer, offset + 288);
+            EndianUtilities.WriteBytesLittleEndian(BlockCount, buffer, offset + 292);
+            EndianUtilities.WriteBytesLittleEndian(BlocksAllocated, buffer, offset + 296);
+            EndianUtilities.WriteBytesLittleEndian(UniqueId, buffer, offset + 300);
+            EndianUtilities.WriteBytesLittleEndian(ModificationId, buffer, offset + 316);
+            EndianUtilities.WriteBytesLittleEndian(ParentId, buffer, offset + 332);
+        }
+        else if (_fileVersion.Major == 1 && _fileVersion.Minor == 1)
+        {
+            EndianUtilities.WriteBytesLittleEndian(HeaderSize, buffer, offset + 0);
+            EndianUtilities.WriteBytesLittleEndian((uint)ImageType, buffer, offset + 4);
+            EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer, offset + 8);
+            EndianUtilities.StringToBytes(Comment, buffer, offset + 12, 256);
+            EndianUtilities.WriteBytesLittleEndian(BlocksOffset, buffer, offset + 268);
+            EndianUtilities.WriteBytesLittleEndian(DataOffset, buffer, offset + 272);
+            LegacyGeometry.Write(buffer, offset + 276);
+            EndianUtilities.WriteBytesLittleEndian(DiskSize, buffer, offset + 296);
+            EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer, offset + 304);
+            EndianUtilities.WriteBytesLittleEndian(BlockExtraSize, buffer, offset + 308);
+            EndianUtilities.WriteBytesLittleEndian(BlockCount, buffer, offset + 312);
+            EndianUtilities.WriteBytesLittleEndian(BlocksAllocated, buffer, offset + 316);
+            EndianUtilities.WriteBytesLittleEndian(UniqueId, buffer, offset + 320);
+            EndianUtilities.WriteBytesLittleEndian(ModificationId, buffer, offset + 336);
+            EndianUtilities.WriteBytesLittleEndian(ParentId, buffer, offset + 352);
+            EndianUtilities.WriteBytesLittleEndian(ParentModificationId, buffer, offset + 368);
 
-                if (HeaderSize > 384)
-                {
-                    LChsGeometry = new GeometryRecord();
-                    LChsGeometry.Read(buffer, offset + 384);
-                }
-            }
-            else
+            if (HeaderSize > 384)
             {
-                throw new IOException("Unrecognized file version: " + version);
+                LChsGeometry.Write(buffer, offset + 384);
             }
-
-            return (int)HeaderSize;
+        }
+        else
+        {
+            throw new IOException("Unrecognized file version: " + _fileVersion);
         }
 
-        public void Write(Stream s)
-        {
-            byte[] buffer = new byte[HeaderSize];
-            Write(buffer, 0);
-            s.Write(buffer, 0, buffer.Length);
-        }
-
-        public int Write(byte[] buffer, int offset)
-        {
-            if (_fileVersion.Major == 0)
-            {
-                EndianUtilities.WriteBytesLittleEndian((uint)ImageType, buffer, offset + 0);
-                EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer, offset + 4);
-                EndianUtilities.StringToBytes(Comment, buffer, offset + 8, 256);
-                LegacyGeometry.Write(buffer, offset + 264);
-                EndianUtilities.WriteBytesLittleEndian(DiskSize, buffer, offset + 280);
-                EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer, offset + 288);
-                EndianUtilities.WriteBytesLittleEndian(BlockCount, buffer, offset + 292);
-                EndianUtilities.WriteBytesLittleEndian(BlocksAllocated, buffer, offset + 296);
-                EndianUtilities.WriteBytesLittleEndian(UniqueId, buffer, offset + 300);
-                EndianUtilities.WriteBytesLittleEndian(ModificationId, buffer, offset + 316);
-                EndianUtilities.WriteBytesLittleEndian(ParentId, buffer, offset + 332);
-            }
-            else if (_fileVersion.Major == 1 && _fileVersion.Minor == 1)
-            {
-                EndianUtilities.WriteBytesLittleEndian(HeaderSize, buffer, offset + 0);
-                EndianUtilities.WriteBytesLittleEndian((uint)ImageType, buffer, offset + 4);
-                EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer, offset + 8);
-                EndianUtilities.StringToBytes(Comment, buffer, offset + 12, 256);
-                EndianUtilities.WriteBytesLittleEndian(BlocksOffset, buffer, offset + 268);
-                EndianUtilities.WriteBytesLittleEndian(DataOffset, buffer, offset + 272);
-                LegacyGeometry.Write(buffer, offset + 276);
-                EndianUtilities.WriteBytesLittleEndian(DiskSize, buffer, offset + 296);
-                EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer, offset + 304);
-                EndianUtilities.WriteBytesLittleEndian(BlockExtraSize, buffer, offset + 308);
-                EndianUtilities.WriteBytesLittleEndian(BlockCount, buffer, offset + 312);
-                EndianUtilities.WriteBytesLittleEndian(BlocksAllocated, buffer, offset + 316);
-                EndianUtilities.WriteBytesLittleEndian(UniqueId, buffer, offset + 320);
-                EndianUtilities.WriteBytesLittleEndian(ModificationId, buffer, offset + 336);
-                EndianUtilities.WriteBytesLittleEndian(ParentId, buffer, offset + 352);
-                EndianUtilities.WriteBytesLittleEndian(ParentModificationId, buffer, offset + 368);
-
-                if (HeaderSize > 384)
-                {
-                    LChsGeometry.Write(buffer, offset + 384);
-                }
-            }
-            else
-            {
-                throw new IOException("Unrecognized file version: " + _fileVersion);
-            }
-
-            return (int)HeaderSize;
-        }
+        return (int)HeaderSize;
     }
 }

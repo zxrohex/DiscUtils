@@ -23,40 +23,41 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal class NodeItem : IByteArraySerializable
 {
-    internal class NodeItem : IByteArraySerializable
+    public static readonly int Length = Key.Length + 0x8;
+    
+    public Key Key { get; set; }
+
+    public uint DataOffset { get; set; }
+
+    public uint DataSize { get; set; }
+    
+    public virtual int Size
     {
-        public static readonly int Length = Key.Length + 0x8;
-        
-        public Key Key { get; set; }
+        get { return Length; }
+    }
 
-        public uint DataOffset { get; set; }
+    public virtual int ReadFrom(byte[] buffer, int offset) => ReadFrom(buffer.AsSpan(offset));
 
-        public uint DataSize { get; set; }
-        
-        public virtual int Size
-        {
-            get { return Length; }
-        }
+    public virtual int ReadFrom(ReadOnlySpan<byte> buffer)
+    {
+        Key = new Key();
+        var offset = Key.ReadFrom(buffer);
+        DataOffset = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(offset));
+        DataSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(offset + 0x4));
+        return Size;
+    }
 
-        public virtual int ReadFrom(byte[] buffer, int offset)
-        {
-            Key = new Key();
-            offset += Key.ReadFrom(buffer, offset);
-            DataOffset = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-            DataSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset+0x4);
-            return Size;
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string ToString()
-        {
-            return Key.ToString();
-        }
+    public override string ToString()
+    {
+        return Key.ToString();
     }
 }

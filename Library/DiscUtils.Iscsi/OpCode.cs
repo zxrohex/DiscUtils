@@ -20,34 +20,33 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iscsi
-{
-    internal enum OpCode : byte
-    {
-        //
-        // Initiator op-codes.
-        //
-        NopOut = 0x00,
-        ScsiCommand = 0x01,
-        ScsiTaskManagementRequest = 0x02,
-        LoginRequest = 0x03,
-        TextRequest = 0x04,
-        ScsiDataOut = 0x05,
-        LogoutRequest = 0x06,
-        SnackRequest = 0x10,
+namespace DiscUtils.Iscsi;
 
-        //
-        // Target op-codes.
-        //
-        NopIn = 0x20,
-        ScsiResponse = 0x21,
-        ScsiTaskManagementResponse = 0x22,
-        LoginResponse = 0x23,
-        TextResponse = 0x24,
-        ScsiDataIn = 0x25,
-        LogoutResponse = 0x26,
-        ReadyToTransfer = 0x31,
-        AsynchronousMessage = 0x32,
-        Reject = 0x3f
-    }
+internal enum OpCode : byte
+{
+    //
+    // Initiator op-codes.
+    //
+    NopOut = 0x00,
+    ScsiCommand = 0x01,
+    ScsiTaskManagementRequest = 0x02,
+    LoginRequest = 0x03,
+    TextRequest = 0x04,
+    ScsiDataOut = 0x05,
+    LogoutRequest = 0x06,
+    SnackRequest = 0x10,
+
+    //
+    // Target op-codes.
+    //
+    NopIn = 0x20,
+    ScsiResponse = 0x21,
+    ScsiTaskManagementResponse = 0x22,
+    LoginResponse = 0x23,
+    TextResponse = 0x24,
+    ScsiDataIn = 0x25,
+    LogoutResponse = 0x26,
+    ReadyToTransfer = 0x31,
+    AsynchronousMessage = 0x32,
+    Reject = 0x3f
 }

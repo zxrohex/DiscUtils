@@ -24,77 +24,76 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class DescriptorTag : IByteArraySerializable
 {
-    internal class DescriptorTag : IByteArraySerializable
+    public ushort DescriptorCrc;
+    public ushort DescriptorCrcLength;
+    public ushort DescriptorVersion;
+    public byte TagChecksum;
+    public TagIdentifier TagIdentifier;
+    public uint TagLocation;
+    public ushort TagSerialNumber;
+
+    public int Size
     {
-        public ushort DescriptorCrc;
-        public ushort DescriptorCrcLength;
-        public ushort DescriptorVersion;
-        public byte TagChecksum;
-        public TagIdentifier TagIdentifier;
-        public uint TagLocation;
-        public ushort TagSerialNumber;
+        get { return 16; }
+    }
 
-        public int Size
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        TagIdentifier = (TagIdentifier)EndianUtilities.ToUInt16LittleEndian(buffer, offset);
+        DescriptorVersion = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
+        TagChecksum = buffer[offset + 4];
+        TagSerialNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
+        DescriptorCrc = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 8);
+        DescriptorCrcLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 10);
+        TagLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
+
+        return 16;
+    }
+
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public static bool IsValid(byte[] buffer, int offset)
+    {
+        byte checkSum = 0;
+
+        if (EndianUtilities.ToUInt16LittleEndian(buffer, offset) == 0)
         {
-            get { return 16; }
+            return false;
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
+        for (var i = 0; i < 4; ++i)
         {
-            TagIdentifier = (TagIdentifier)EndianUtilities.ToUInt16LittleEndian(buffer, offset);
-            DescriptorVersion = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
-            TagChecksum = buffer[offset + 4];
-            TagSerialNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
-            DescriptorCrc = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 8);
-            DescriptorCrcLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 10);
-            TagLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
-
-            return 16;
+            checkSum += buffer[offset + i];
         }
 
-        public void WriteTo(byte[] buffer, int offset)
+        for (var i = 5; i < 16; ++i)
         {
-            throw new NotImplementedException();
+            checkSum += buffer[offset + i];
         }
 
-        public static bool IsValid(byte[] buffer, int offset)
+        return checkSum == buffer[offset + 4];
+    }
+
+    public static bool TryFromStream(Stream stream, out DescriptorTag result)
+    {
+        var next = StreamUtilities.ReadExact(stream, 512);
+        if (!IsValid(next, 0))
         {
-            byte checkSum = 0;
-
-            if (EndianUtilities.ToUInt16LittleEndian(buffer, offset) == 0)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < 4; ++i)
-            {
-                checkSum += buffer[offset + i];
-            }
-
-            for (int i = 5; i < 16; ++i)
-            {
-                checkSum += buffer[offset + i];
-            }
-
-            return checkSum == buffer[offset + 4];
+            result = null;
+            return false;
         }
 
-        public static bool TryFromStream(Stream stream, out DescriptorTag result)
-        {
-            byte[] next = StreamUtilities.ReadExact(stream, 512);
-            if (!IsValid(next, 0))
-            {
-                result = null;
-                return false;
-            }
+        var dt = new DescriptorTag();
+        dt.ReadFrom(next, 0);
 
-            DescriptorTag dt = new DescriptorTag();
-            dt.ReadFrom(next, 0);
-
-            result = dt;
-            return true;
-        }
+        result = dt;
+        return true;
     }
 }

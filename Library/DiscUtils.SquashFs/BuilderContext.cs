@@ -22,25 +22,24 @@
 
 using System.IO;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal sealed class BuilderContext
 {
-    internal sealed class BuilderContext
-    {
-        public AllocateId AllocateId { get; set; }
+    public AllocateId AllocateId { get; set; }
 
-        public AllocateInode AllocateInode { get; set; }
+    public AllocateInode AllocateInode { get; set; }
 
-        public int DataBlockSize { get; set; }
+    public int DataBlockSize { get; set; }
 
-        public MetablockWriter DirectoryWriter { get; set; }
+    public MetablockWriter DirectoryWriter { get; set; }
 
-        public MetablockWriter InodeWriter { get; set; }
+    public MetablockWriter InodeWriter { get; set; }
 
-        public byte[] IoBuffer { get; set; }
-        public Stream RawStream { get; set; }
+    public byte[] IoBuffer { get; set; }
+    public Stream RawStream { get; set; }
 
-        public WriteDataBlock WriteDataBlock { get; set; }
+    public WriteDataBlock WriteDataBlock { get; set; }
 
-        public WriteFragment WriteFragment { get; set; }
-    }
+    public WriteFragment WriteFragment { get; set; }
 }

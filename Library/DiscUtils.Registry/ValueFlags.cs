@@ -22,26 +22,25 @@
 
 using System;
 
-namespace DiscUtils.Registry
+namespace DiscUtils.Registry;
+
+[Flags]
+internal enum ValueFlags : ushort
 {
-    [Flags]
-    internal enum ValueFlags : ushort
-    {
-        Named = 0x0001,
-        Unknown0002 = 0x0002,
-        Unknown0004 = 0x0004,
-        Unknown0008 = 0x0008,
-        Unknown0010 = 0x0010,
-        Unknown0020 = 0x0020,
-        Unknown0040 = 0x0040,
-        Unknown0080 = 0x0080,
-        Unknown0100 = 0x0100,
-        Unknown0200 = 0x0200,
-        Unknown0400 = 0x0400,
-        Unknown0800 = 0x0800,
-        Unknown1000 = 0x1000,
-        Unknown2000 = 0x2000,
-        Unknown4000 = 0x4000,
-        Unknown8000 = 0x8000
-    }
+    Named = 0x0001,
+    Unknown0002 = 0x0002,
+    Unknown0004 = 0x0004,
+    Unknown0008 = 0x0008,
+    Unknown0010 = 0x0010,
+    Unknown0020 = 0x0020,
+    Unknown0040 = 0x0040,
+    Unknown0080 = 0x0080,
+    Unknown0100 = 0x0100,
+    Unknown0200 = 0x0200,
+    Unknown0400 = 0x0400,
+    Unknown0800 = 0x0800,
+    Unknown1000 = 0x1000,
+    Unknown2000 = 0x2000,
+    Unknown4000 = 0x4000,
+    Unknown8000 = 0x8000
 }

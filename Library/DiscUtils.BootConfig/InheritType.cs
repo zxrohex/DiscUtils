@@ -20,31 +20,30 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+/// <summary>
+/// Indicates the type of objects that can inherit from an object.
+/// </summary>
+public enum InheritType
 {
     /// <summary>
-    /// Indicates the type of objects that can inherit from an object.
+    /// Undefined value.
     /// </summary>
-    public enum InheritType
-    {
-        /// <summary>
-        /// Undefined value.
-        /// </summary>
-        None = 0x0,
+    None = 0x0,
 
-        /// <summary>
-        /// Any type of object may inherit from this object.
-        /// </summary>
-        AnyObject = 0x1,
+    /// <summary>
+    /// Any type of object may inherit from this object.
+    /// </summary>
+    AnyObject = 0x1,
 
-        /// <summary>
-        /// Only Application objects may inherit from this object.
-        /// </summary>
-        ApplicationObjects = 0x2,
+    /// <summary>
+    /// Only Application objects may inherit from this object.
+    /// </summary>
+    ApplicationObjects = 0x2,
 
-        /// <summary>
-        /// Only Device objects may inherit from this object.
-        /// </summary>
-        DeviceObjects = 0x3
-    }
+    /// <summary>
+    /// Only Device objects may inherit from this object.
+    /// </summary>
+    DeviceObjects = 0x3
 }

@@ -1,41 +1,40 @@
-﻿namespace System
+﻿namespace System;
+
+/// <summary>
+/// DateTimeOffset extension methods.
+/// </summary>
+public static class DateTimeOffsetExtensions
 {
     /// <summary>
-    /// DateTimeOffset extension methods.
+    /// The Epoch common to most (all?) Unix systems.
     /// </summary>
-    public static class DateTimeOffsetExtensions
+    public static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>
+    /// Converts the current Unix time to a DateTimeOffset.
+    /// </summary>
+    /// <param name="seconds">Seconds since UnixEpoch.</param>
+    /// <returns>DateTimeOffset.</returns>
+    public static DateTimeOffset FromUnixTimeSeconds(this long seconds)
     {
-        /// <summary>
-        /// The Epoch common to most (all?) Unix systems.
-        /// </summary>
-        public static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-
-        /// <summary>
-        /// Converts the current Unix time to a DateTimeOffset.
-        /// </summary>
-        /// <param name="seconds">Seconds since UnixEpoch.</param>
-        /// <returns>DateTimeOffset.</returns>
-        public static DateTimeOffset FromUnixTimeSeconds(this long seconds)
-        {
 #if NETSTANDARD || NETCOREAPP || NET461_OR_GREATER
-            return DateTimeOffset.FromUnixTimeSeconds(seconds);
+        return DateTimeOffset.FromUnixTimeSeconds(seconds);
 #else
-            DateTimeOffset dateTimeOffset = new DateTimeOffset(DateTimeOffsetExtensions.UnixEpoch);
-            dateTimeOffset = dateTimeOffset.AddSeconds(seconds);
-            return dateTimeOffset;
+        var dateTimeOffset = new DateTimeOffset(DateTimeOffsetExtensions.UnixEpoch);
+        dateTimeOffset = dateTimeOffset.AddSeconds(seconds);
+        return dateTimeOffset;
 #endif
-        }
-
-        /// <summary>
-        /// Converts the current DateTimeOffset to Unix time.
-        /// </summary>
-        /// <param name="dateTimeOffset">DateTimeOffset.</param>
-        /// <returns>Seconds since UnixEpoch.</returns>
-        public static long ToUnixTimeSeconds(this DateTimeOffset dateTimeOffset)
-        {
-            long unixTimeStampInTicks = (dateTimeOffset.ToUniversalTime() - DateTimeOffsetExtensions.UnixEpoch).Ticks;
-            return unixTimeStampInTicks / TimeSpan.TicksPerSecond;
-        }
-
     }
+
+    /// <summary>
+    /// Converts the current DateTimeOffset to Unix time.
+    /// </summary>
+    /// <param name="dateTimeOffset">DateTimeOffset.</param>
+    /// <returns>Seconds since UnixEpoch.</returns>
+    public static long ToUnixTimeSeconds(this DateTimeOffset dateTimeOffset)
+    {
+        var unixTimeStampInTicks = (dateTimeOffset.ToUniversalTime() - DateTimeOffsetExtensions.UnixEpoch).Ticks;
+        return unixTimeStampInTicks / TimeSpan.TicksPerSecond;
+    }
+
 }

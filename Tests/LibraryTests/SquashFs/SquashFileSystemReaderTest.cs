@@ -31,14 +31,14 @@ namespace LibraryTests.SquashFs
         [Fact]
         public void Detect()
         {
-            MemoryStream ms = new MemoryStream(new byte[1000]);
+            var ms = new MemoryStream(new byte[1000]);
             Assert.False(SquashFileSystemReader.Detect(ms));
 
             ms = new MemoryStream(new byte[10]);
             Assert.False(SquashFileSystemReader.Detect(ms));
 
-            MemoryStream emptyFs = new MemoryStream();
-            SquashFileSystemBuilder builder = new SquashFileSystemBuilder();
+            var emptyFs = new MemoryStream();
+            var builder = new SquashFileSystemBuilder();
             builder.Build(emptyFs);
             Assert.True(SquashFileSystemReader.Detect(emptyFs));
         }

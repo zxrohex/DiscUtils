@@ -24,69 +24,68 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public class BuilderBytesExtent : BuilderExtent
 {
-    public class BuilderBytesExtent : BuilderExtent
+    protected byte[] _data;
+
+    public BuilderBytesExtent(long start, byte[] data)
+        : base(start, data.Length)
     {
-        protected byte[] _data;
+        _data = data;
+    }
 
-        public BuilderBytesExtent(long start, byte[] data)
-            : base(start, data.Length)
-        {
-            _data = data;
-        }
+    protected BuilderBytesExtent(long start, long length)
+        : base(start, length) {}
 
-        protected BuilderBytesExtent(long start, long length)
-            : base(start, length) {}
+    public override void Dispose() {}
 
-        public override void Dispose() {}
+    public override void PrepareForRead() {}
 
-        public override void PrepareForRead() {}
+    public override int Read(long diskOffset, byte[] block, int offset, int count)
+    {
+        var start = (int)Math.Min(diskOffset - Start, _data.Length);
+        var numRead = Math.Min(count, _data.Length - start);
 
-        public override int Read(long diskOffset, byte[] block, int offset, int count)
-        {
-            int start = (int)Math.Min(diskOffset - Start, _data.Length);
-            int numRead = Math.Min(count, _data.Length - start);
+        Array.Copy(_data, start, block, offset, numRead);
 
-            Array.Copy(_data, start, block, offset, numRead);
-
-            return numRead;
-        }
+        return numRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
-        {
-            int start = (int)Math.Min(diskOffset - Start, _data.Length);
-            int numRead = Math.Min(count, _data.Length - start);
+    public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+    {
+        var start = (int)Math.Min(diskOffset - Start, _data.Length);
+        var numRead = Math.Min(count, _data.Length - start);
 
-            Array.Copy(_data, start, block, offset, numRead);
+        Array.Copy(_data, start, block, offset, numRead);
 
-            return Task.FromResult(numRead);
-        }
+        return Task.FromResult(numRead);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
-        {
-            int start = (int)Math.Min(diskOffset - Start, _data.Length);
-            int numRead = Math.Min(block.Length, _data.Length - start);
+    public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
+    {
+        var start = (int)Math.Min(diskOffset - Start, _data.Length);
+        var numRead = Math.Min(block.Length, _data.Length - start);
 
-            _data.AsMemory(start, numRead).CopyTo(block);
+        _data.AsMemory(start, numRead).CopyTo(block);
 
-            return new(numRead);
-        }
+        return new(numRead);
+    }
 
-        public override int Read(long diskOffset, Span<byte> block)
-        {
-            int start = (int)Math.Min(diskOffset - Start, _data.Length);
-            int numRead = Math.Min(block.Length, _data.Length - start);
+    public override int Read(long diskOffset, Span<byte> block)
+    {
+        var start = (int)Math.Min(diskOffset - Start, _data.Length);
+        var numRead = Math.Min(block.Length, _data.Length - start);
 
-            _data.AsSpan(start, numRead).CopyTo(block);
+        _data.AsSpan(start, numRead).CopyTo(block);
 
-            return numRead;
-        }
+        return numRead;
+    }
 #endif
 
-        public override void DisposeReadState() {}
-    }
+    public override void DisposeReadState() {}
 }

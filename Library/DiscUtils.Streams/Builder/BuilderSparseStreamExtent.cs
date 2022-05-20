@@ -25,67 +25,66 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public class BuilderSparseStreamExtent : BuilderExtent
 {
-    public class BuilderSparseStreamExtent : BuilderExtent
+    private readonly Ownership _ownership;
+    private SparseStream _stream;
+
+    public BuilderSparseStreamExtent(long start, SparseStream stream)
+        : this(start, stream, Ownership.None) {}
+
+    public BuilderSparseStreamExtent(long start, SparseStream stream, Ownership ownership)
+        : base(start, stream.Length)
     {
-        private readonly Ownership _ownership;
-        private SparseStream _stream;
+        _stream = stream;
+        _ownership = ownership;
+    }
 
-        public BuilderSparseStreamExtent(long start, SparseStream stream)
-            : this(start, stream, Ownership.None) {}
+    public override IEnumerable<StreamExtent> StreamExtents
+    {
+        get { return StreamExtent.Offset(_stream.Extents, Start); }
+    }
 
-        public BuilderSparseStreamExtent(long start, SparseStream stream, Ownership ownership)
-            : base(start, stream.Length)
+    public override void Dispose()
+    {
+        if (_stream != null && _ownership == Ownership.Dispose)
         {
-            _stream = stream;
-            _ownership = ownership;
+            _stream.Dispose();
+            _stream = null;
         }
+    }
 
-        public override IEnumerable<StreamExtent> StreamExtents
-        {
-            get { return StreamExtent.Offset(_stream.Extents, Start); }
-        }
+    public override void PrepareForRead() {}
 
-        public override void Dispose()
-        {
-            if (_stream != null && _ownership == Ownership.Dispose)
-            {
-                _stream.Dispose();
-                _stream = null;
-            }
-        }
-
-        public override void PrepareForRead() {}
-
-        public override int Read(long diskOffset, byte[] block, int offset, int count)
-        {
-            _stream.Position = diskOffset - Start;
-            return _stream.Read(block, offset, count);
-        }
+    public override int Read(long diskOffset, byte[] block, int offset, int count)
+    {
+        _stream.Position = diskOffset - Start;
+        return _stream.Read(block, offset, count);
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
-        {
-            _stream.Position = diskOffset - Start;
-            return _stream.ReadAsync(block, offset, count, cancellationToken);
-        }
+    public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+    {
+        _stream.Position = diskOffset - Start;
+        return _stream.ReadAsync(block, offset, count, cancellationToken);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
-        {
-            _stream.Position = diskOffset - Start;
-            return _stream.ReadAsync(block, cancellationToken);
-        }
+    public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
+    {
+        _stream.Position = diskOffset - Start;
+        return _stream.ReadAsync(block, cancellationToken);
+    }
 
-        public override int Read(long diskOffset, Span<byte> block)
-        {
-            _stream.Position = diskOffset - Start;
-            return _stream.Read(block);
-        }
+    public override int Read(long diskOffset, Span<byte> block)
+    {
+        _stream.Position = diskOffset - Start;
+        return _stream.Read(block);
+    }
 #endif
 
-        public override void DisposeReadState() {}
-    }
+    public override void DisposeReadState() {}
 }

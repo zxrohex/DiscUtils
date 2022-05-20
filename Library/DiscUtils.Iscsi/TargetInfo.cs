@@ -22,49 +22,48 @@
 
 using System.Collections.Generic;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+/// <summary>
+/// Information about an iSCSI Target.
+/// </summary>
+/// <remarks>
+/// A target contains zero or more LUNs.
+/// </remarks>
+public class TargetInfo
 {
+    private readonly TargetAddress[] _addresses;
+
     /// <summary>
-    /// Information about an iSCSI Target.
+    /// Initializes a new instance of the TargetInfo class.
     /// </summary>
-    /// <remarks>
-    /// A target contains zero or more LUNs.
-    /// </remarks>
-    public class TargetInfo
+    /// <param name="name">The name of the Target.</param>
+    /// <param name="addresses">The network addresses of the Target.</param>
+    public TargetInfo(string name, TargetAddress[] addresses)
     {
-        private readonly TargetAddress[] _addresses;
+        Name = name;
+        _addresses = addresses;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the TargetInfo class.
-        /// </summary>
-        /// <param name="name">The name of the Target.</param>
-        /// <param name="addresses">The network addresses of the Target.</param>
-        public TargetInfo(string name, TargetAddress[] addresses)
-        {
-            Name = name;
-            _addresses = addresses;
-        }
+    /// <summary>
+    /// Gets the network addresses of the Target.
+    /// </summary>
+    public IList<TargetAddress> Addresses
+    {
+        get { return _addresses; }
+    }
 
-        /// <summary>
-        /// Gets the network addresses of the Target.
-        /// </summary>
-        public IList<TargetAddress> Addresses
-        {
-            get { return _addresses; }
-        }
+    /// <summary>
+    /// Gets the name of the Target.
+    /// </summary>
+    public string Name { get; }
 
-        /// <summary>
-        /// Gets the name of the Target.
-        /// </summary>
-        public string Name { get; }
-
-        /// <summary>
-        /// Gets the primary address of the Target as a string.
-        /// </summary>
-        /// <returns>String of the form host[:port][,group]/name.</returns>
-        public override string ToString()
-        {
-            return _addresses[0] + "/" + Name;
-        }
+    /// <summary>
+    /// Gets the primary address of the Target as a string.
+    /// </summary>
+    /// <returns>String of the form host[:port][,group]/name.</returns>
+    public override string ToString()
+    {
+        return _addresses[0] + "/" + Name;
     }
 }

@@ -20,15 +20,14 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+internal class CommonSparseExtentHeader
 {
-    internal class CommonSparseExtentHeader
-    {
-        public long Capacity;
-        public long GdOffset;
-        public long GrainSize;
-        public uint MagicNumber;
-        public uint NumGTEsPerGT;
-        public uint Version;
-    }
+    public long Capacity;
+    public long GdOffset;
+    public long GrainSize;
+    public uint MagicNumber;
+    public uint NumGTEsPerGT;
+    public uint Version;
 }

@@ -25,62 +25,58 @@ using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.OpticalDisk
+namespace DiscUtils.OpticalDisk;
+
+[VirtualDiskFactory("Optical", ".iso,.bin")]
+internal sealed class DiscFactory : VirtualDiskFactory
 {
-    [VirtualDiskFactory("Optical", ".iso,.bin")]
-    internal sealed class DiscFactory : VirtualDiskFactory
+    public override string[] Variants => Array.Empty<string>();
+
+    public override VirtualDiskTypeInfo GetDiskTypeInformation(string variant)
     {
-        public override string[] Variants
-        {
-            get { return new string[] { }; }
-        }
+        return MakeDiskTypeInfo();
+    }
 
-        public override VirtualDiskTypeInfo GetDiskTypeInformation(string variant)
-        {
-            return MakeDiskTypeInfo();
-        }
+    public override DiskImageBuilder GetImageBuilder(string variant)
+    {
+        throw new NotSupportedException();
+    }
 
-        public override DiskImageBuilder GetImageBuilder(string variant)
-        {
-            throw new NotSupportedException();
-        }
+    public override VirtualDisk CreateDisk(FileLocator locator, string variant, string path,
+                                           VirtualDiskParameters diskParameters)
+    {
+        throw new NotSupportedException();
+    }
 
-        public override VirtualDisk CreateDisk(FileLocator locator, string variant, string path,
-                                               VirtualDiskParameters diskParameters)
-        {
-            throw new NotSupportedException();
-        }
+    public override VirtualDisk OpenDisk(string path, FileAccess access)
+    {
+        return new Disc(path, access);
+    }
 
-        public override VirtualDisk OpenDisk(string path, FileAccess access)
-        {
-            return new Disc(path, access);
-        }
+    public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)
+    {
+        var format = path.EndsWith(".bin", StringComparison.OrdinalIgnoreCase)
+            ? OpticalFormat.Mode2
+            : OpticalFormat.Mode1;
+        var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
+        return new Disc(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose, format);
+    }
 
-        public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)
-        {
-            OpticalFormat format = path.EndsWith(".bin", StringComparison.OrdinalIgnoreCase)
-                ? OpticalFormat.Mode2
-                : OpticalFormat.Mode1;
-            FileShare share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
-            return new Disc(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose, format);
-        }
+    public override VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access)
+    {
+        return null;
+    }
 
-        public override VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access)
+    internal static VirtualDiskTypeInfo MakeDiskTypeInfo()
+    {
+        return new VirtualDiskTypeInfo
         {
-            return null;
-        }
-
-        internal static VirtualDiskTypeInfo MakeDiskTypeInfo()
-        {
-            return new VirtualDiskTypeInfo
-            {
-                Name = "Optical",
-                Variant = string.Empty,
-                CanBeHardDisk = false,
-                DeterministicGeometry = true,
-                PreservesBiosGeometry = false,
-                CalcGeometry = c => new Geometry(1, 1, 1, 2048)
-            };
-        }
+            Name = "Optical",
+            Variant = string.Empty,
+            CanBeHardDisk = false,
+            DeterministicGeometry = true,
+            PreservesBiosGeometry = false,
+            CalcGeometry = c => new Geometry(1, 1, 1, 2048)
+        };
     }
 }

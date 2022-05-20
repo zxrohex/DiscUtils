@@ -22,37 +22,36 @@
 
 using System;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Flags controlling which details are discovered for a particular DNS-SD service.
+/// </summary>
+[Flags]
+public enum ServiceInstanceFields
 {
     /// <summary>
-    /// Flags controlling which details are discovered for a particular DNS-SD service.
+    /// Resolves the display name for the service.
     /// </summary>
-    [Flags]
-    public enum ServiceInstanceFields
-    {
-        /// <summary>
-        /// Resolves the display name for the service.
-        /// </summary>
-        DisplayName = 0x01,
+    DisplayName = 0x01,
 
-        /// <summary>
-        /// Resolves the parameters for the service (held in TXT records).
-        /// </summary>
-        Parameters = 0x02,
+    /// <summary>
+    /// Resolves the parameters for the service (held in TXT records).
+    /// </summary>
+    Parameters = 0x02,
 
-        /// <summary>
-        /// Resolves the DNS address for the service (held in SRV records).
-        /// </summary>
-        DnsAddresses = 0x04,
+    /// <summary>
+    /// Resolves the DNS address for the service (held in SRV records).
+    /// </summary>
+    DnsAddresses = 0x04,
 
-        /// <summary>
-        /// Resolves the IP address(es) for the service.
-        /// </summary>
-        IPAddresses = 0x08,
+    /// <summary>
+    /// Resolves the IP address(es) for the service.
+    /// </summary>
+    IPAddresses = 0x08,
 
-        /// <summary>
-        /// Resolves all fields.
-        /// </summary>
-        All = 0x0F
-    }
+    /// <summary>
+    /// Resolves all fields.
+    /// </summary>
+    All = 0x0F
 }

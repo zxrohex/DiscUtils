@@ -20,17 +20,16 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.PowerShell.VirtualDiskProvider
+namespace DiscUtils.PowerShell.VirtualDiskProvider;
+
+public enum ContentEncoding
 {
-    public enum ContentEncoding
-    {
-        Unknown,
-        String,
-        Unicode,
-        Byte,
-        BigEndianUnicode,
-        UTF8,
-        UTF7,
-        Ascii
-    }
+    Unknown,
+    String,
+    Unicode,
+    Byte,
+    BigEndianUnicode,
+    UTF8,
+    UTF7,
+    Ascii
 }

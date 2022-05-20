@@ -20,31 +20,30 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+/// <summary>
+/// The known types of VHDX disks.
+/// </summary>
+public enum DiskType
 {
     /// <summary>
-    /// The known types of VHDX disks.
+    /// Unknown type.
     /// </summary>
-    public enum DiskType
-    {
-        /// <summary>
-        /// Unknown type.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// Fixed-size disk, with space allocated up-front.
-        /// </summary>
-        Fixed = 2,
+    /// <summary>
+    /// Fixed-size disk, with space allocated up-front.
+    /// </summary>
+    Fixed = 2,
 
-        /// <summary>
-        /// Dynamic disk, allocates space as needed.
-        /// </summary>
-        Dynamic = 3,
+    /// <summary>
+    /// Dynamic disk, allocates space as needed.
+    /// </summary>
+    Dynamic = 3,
 
-        /// <summary>
-        /// Differencing disk, form of dynamic disk that stores changes relative to another disk.
-        /// </summary>
-        Differencing = 4
-    }
+    /// <summary>
+    /// Differencing disk, form of dynamic disk that stores changes relative to another disk.
+    /// </summary>
+    Differencing = 4
 }

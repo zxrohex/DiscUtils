@@ -22,40 +22,39 @@
 
 using System.Collections.Generic;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal sealed class LogSequence : List<LogEntry>
 {
-    internal sealed class LogSequence : List<LogEntry>
+    public LogEntry Head
     {
-        public LogEntry Head
+        get { return Count > 0 ? this[Count - 1] : null; }
+    }
+
+    public LogEntry Tail
+    {
+        get { return Count > 0 ? this[0] : null; }
+    }
+
+    public bool Contains(long position)
+    {
+        if (Count <= 0)
         {
-            get { return Count > 0 ? this[Count - 1] : null; }
+            return false;
         }
 
-        public LogEntry Tail
+        if (Head.Position >= Tail.Position)
         {
-            get { return Count > 0 ? this[0] : null; }
+            return position >= Tail.Position && position < Head.Position + LogEntry.LogSectorSize;
         }
+        return position >= Tail.Position || position < Head.Position + LogEntry.LogSectorSize;
+    }
 
-        public bool Contains(long position)
-        {
-            if (Count <= 0)
-            {
-                return false;
-            }
+    internal bool HigherSequenceThan(LogSequence otherSequence)
+    {
+        var other = otherSequence.Count > 0 ? otherSequence.Head.SequenceNumber : 0;
+        var self = Count > 0 ? Head.SequenceNumber : 0;
 
-            if (Head.Position >= Tail.Position)
-            {
-                return position >= Tail.Position && position < Head.Position + LogEntry.LogSectorSize;
-            }
-            return position >= Tail.Position || position < Head.Position + LogEntry.LogSectorSize;
-        }
-
-        internal bool HigherSequenceThan(LogSequence otherSequence)
-        {
-            ulong other = otherSequence.Count > 0 ? otherSequence.Head.SequenceNumber : 0;
-            ulong self = Count > 0 ? Head.SequenceNumber : 0;
-
-            return self > other;
-        }
+        return self > other;
     }
 }

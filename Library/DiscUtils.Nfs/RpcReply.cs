@@ -20,11 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+internal class RpcReply
 {
-    internal class RpcReply
-    {
-        public XdrDataReader BodyReader { get; set; }
-        public RpcMessageHeader Header { get; set; }
-    }
+    public XdrDataReader BodyReader { get; set; }
+    public RpcMessageHeader Header { get; set; }
 }

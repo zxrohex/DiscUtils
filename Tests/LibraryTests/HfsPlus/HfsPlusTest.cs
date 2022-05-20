@@ -58,34 +58,28 @@ namespace LibraryTests.HfsPlus
         [MacOSOnlyTheory]
         public void ReadFilesystemTest(string path)
         {
-            using (Stream developerDiskImageStream = File.OpenRead(path))
-            using (var disk = new Disk(developerDiskImageStream, Ownership.None))
+            using Stream developerDiskImageStream = File.OpenRead(path);
+            using var disk = new Disk(developerDiskImageStream, Ownership.None);
+            // Find the first (and supposedly, only, HFS partition)
+            var volumes = VolumeManager.GetPhysicalVolumes(disk);
+            foreach (var volume in volumes)
             {
-                // Find the first (and supposedly, only, HFS partition)
-                var volumes = VolumeManager.GetPhysicalVolumes(disk);
-                foreach (var volume in volumes)
-                {
-                    var fileSystems = FileSystemManager.DetectFileSystems(volume);
+                var fileSystems = FileSystemManager.DetectFileSystems(volume);
 
-                    var fileSystem = Assert.Single(fileSystems);
-                    Assert.Equal("HFS+", fileSystem.Name);
+                var fileSystem = Assert.Single(fileSystems);
+                Assert.Equal("HFS+", fileSystem.Name);
 
-                    using (HfsPlusFileSystem hfs = (HfsPlusFileSystem)fileSystem.Open(volume))
-                    {
-                        Assert.True(hfs.FileExists(SystemVersionPath));
+                using var hfs = (HfsPlusFileSystem)fileSystem.Open(volume);
+                Assert.True(hfs.FileExists(SystemVersionPath));
 
-                        using (Stream systemVersionStream = hfs.OpenFile(SystemVersionPath, FileMode.Open, FileAccess.Read))
-                        using (MemoryStream copyStream = new MemoryStream())
-                        {
-                            Assert.NotEqual(0, systemVersionStream.Length);
-                            systemVersionStream.CopyTo(copyStream);
-                            Assert.Equal(systemVersionStream.Length, copyStream.Length);
+                using Stream systemVersionStream = hfs.OpenFile(SystemVersionPath, FileMode.Open, FileAccess.Read);
+                using var copyStream = new MemoryStream();
+                Assert.NotEqual(0, systemVersionStream.Length);
+                systemVersionStream.CopyTo(copyStream);
+                Assert.Equal(systemVersionStream.Length, copyStream.Length);
 
-                            copyStream.Seek(0, SeekOrigin.Begin);
-                            Plist.Parse(copyStream);
-                        }
-                    }
-                }
+                copyStream.Seek(0, SeekOrigin.Begin);
+                Plist.Parse(copyStream);
             }
         }
 #endif

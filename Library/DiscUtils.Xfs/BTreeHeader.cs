@@ -21,73 +21,72 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+
+internal abstract class BtreeHeader : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
+    public uint Magic { get; private set; }
 
-    internal abstract class BtreeHeader : IByteArraySerializable
+    public ushort Level { get; private set; }
+
+    public ushort NumberOfRecords { get; private set; }
+
+    public int LeftSibling { get; private set; }
+
+    public int RightSibling { get; private set; }
+
+    /// <summary>
+    /// location on disk
+    /// </summary>
+    public ulong Bno { get; private set; }
+
+    /// <summary>
+    /// last write sequence
+    /// </summary>
+    public ulong Lsn { get; private set; }
+
+    public Guid UniqueId { get; private set; }
+
+    public uint Owner { get; private set; }
+
+    public uint Crc { get; private set; }
+
+    public virtual int Size { get; }
+
+    protected uint SbVersion { get; }
+
+    public BtreeHeader(uint superBlockVersion)
     {
-        public uint Magic { get; private set; }
-
-        public ushort Level { get; private set; }
-
-        public ushort NumberOfRecords { get; private set; }
-
-        public int LeftSibling { get; private set; }
-
-        public int RightSibling { get; private set; }
-
-        /// <summary>
-        /// location on disk
-        /// </summary>
-        public ulong Bno { get; private set; }
-
-        /// <summary>
-        /// last write sequence
-        /// </summary>
-        public ulong Lsn { get; private set; }
-
-        public Guid UniqueId { get; private set; }
-
-        public uint Owner { get; private set; }
-
-        public uint Crc { get; private set; }
-
-        public virtual int Size { get; }
-
-        protected uint SbVersion { get; }
-
-        public BtreeHeader(uint superBlockVersion)
-        {
-            SbVersion = superBlockVersion;
-            Size = SbVersion >= 5 ? 56 : 16;
-        }
-
-        public virtual int ReadFrom(byte[] buffer, int offset)
-        {
-            Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            Level = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x4);
-            NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x6);
-            LeftSibling = EndianUtilities.ToInt32BigEndian(buffer, offset + 0x8);
-            RightSibling = EndianUtilities.ToInt32BigEndian(buffer, offset + 0xC);
-            if (SbVersion >= 5)
-            {
-                Bno = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x10);
-                Lsn = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x18);
-                UniqueId = EndianUtilities.ToGuidBigEndian(buffer, offset + 0x20);
-                Owner = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x30);
-                Crc = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x34);
-            }
-            
-            return Size;
-        }
-
-        public virtual void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public abstract void LoadBtree(AllocationGroup ag);
+        SbVersion = superBlockVersion;
+        Size = SbVersion >= 5 ? 56 : 16;
     }
+
+    public virtual int ReadFrom(byte[] buffer, int offset)
+    {
+        Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        Level = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x4);
+        NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x6);
+        LeftSibling = EndianUtilities.ToInt32BigEndian(buffer, offset + 0x8);
+        RightSibling = EndianUtilities.ToInt32BigEndian(buffer, offset + 0xC);
+        if (SbVersion >= 5)
+        {
+            Bno = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x10);
+            Lsn = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x18);
+            UniqueId = EndianUtilities.ToGuidBigEndian(buffer, offset + 0x20);
+            Owner = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x30);
+            Crc = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x34);
+        }
+        
+        return Size;
+    }
+
+    public virtual void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public abstract void LoadBtree(AllocationGroup ag);
 }

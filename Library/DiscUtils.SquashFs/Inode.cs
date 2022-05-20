@@ -21,62 +21,65 @@
 //
 
 using System;
+using System.Buffers;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal abstract class Inode : IByteArraySerializable
 {
-    internal abstract class Inode : IByteArraySerializable
+    public ushort GidKey;
+    public uint InodeNumber;
+    public ushort Mode;
+    public DateTime ModificationTime;
+    public int NumLinks;
+    public InodeType Type;
+    public ushort UidKey;
+
+    public virtual long FileSize
     {
-        public ushort GidKey;
-        public uint InodeNumber;
-        public ushort Mode;
-        public DateTime ModificationTime;
-        public int NumLinks;
-        public InodeType Type;
-        public ushort UidKey;
+        get { return 0; }
+        set { throw new NotImplementedException(); }
+    }
 
-        public virtual long FileSize
+    public abstract int Size { get; }
+
+    public virtual int ReadFrom(byte[] buffer, int offset)
+    {
+        Type = (InodeType)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0);
+        Mode = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
+        UidKey = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
+        GidKey = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
+        ModificationTime = ((long) EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8)).FromUnixTimeSeconds().DateTime;
+        InodeNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
+        return 16;
+    }
+
+    public virtual void WriteTo(byte[] buffer, int offset)
+    {
+        EndianUtilities.WriteBytesLittleEndian((ushort)Type, buffer, offset + 0);
+        EndianUtilities.WriteBytesLittleEndian(Mode, buffer, offset + 2);
+        EndianUtilities.WriteBytesLittleEndian(UidKey, buffer, offset + 4);
+        EndianUtilities.WriteBytesLittleEndian(GidKey, buffer, offset + 6);
+        EndianUtilities.WriteBytesLittleEndian(Convert.ToUInt32((new DateTimeOffset(ModificationTime)).ToUnixTimeSeconds()), buffer, offset + 8);
+        EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer, offset + 12);
+    }
+
+    public static Inode Read(MetablockReader inodeReader)
+    {
+        Span<byte> typeData = stackalloc byte[2];
+        if (inodeReader.Read(typeData) != 2)
         {
-            get { return 0; }
-            set { throw new NotImplementedException(); }
+            throw new IOException("Unable to read Inode type");
         }
 
-        public abstract int Size { get; }
+        var type = (InodeType)EndianUtilities.ToUInt16LittleEndian(typeData);
+        var inode = InstantiateType(type);
 
-        public virtual int ReadFrom(byte[] buffer, int offset)
+        var inodeData = ArrayPool<byte>.Shared.Rent(inode.Size);
+        try
         {
-            Type = (InodeType)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0);
-            Mode = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
-            UidKey = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-            GidKey = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
-            ModificationTime = ((long) EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8)).FromUnixTimeSeconds().DateTime;
-            InodeNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
-            return 16;
-        }
-
-        public virtual void WriteTo(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian((ushort)Type, buffer, offset + 0);
-            EndianUtilities.WriteBytesLittleEndian(Mode, buffer, offset + 2);
-            EndianUtilities.WriteBytesLittleEndian(UidKey, buffer, offset + 4);
-            EndianUtilities.WriteBytesLittleEndian(GidKey, buffer, offset + 6);
-            EndianUtilities.WriteBytesLittleEndian(Convert.ToUInt32((new DateTimeOffset(ModificationTime)).ToUnixTimeSeconds()), buffer, offset + 8);
-            EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer, offset + 12);
-        }
-
-        public static Inode Read(MetablockReader inodeReader)
-        {
-            byte[] typeData = new byte[2];
-            if (inodeReader.Read(typeData, 0, 2) != 2)
-            {
-                throw new IOException("Unable to read Inode type");
-            }
-
-            InodeType type = (InodeType)EndianUtilities.ToUInt16LittleEndian(typeData, 0);
-            Inode inode = InstantiateType(type);
-
-            byte[] inodeData = new byte[inode.Size];
             inodeData[0] = typeData[0];
             inodeData[1] = typeData[1];
 
@@ -86,28 +89,25 @@ namespace DiscUtils.SquashFs
             }
 
             inode.ReadFrom(inodeData, 0);
-
-            return inode;
         }
-
-        private static Inode InstantiateType(InodeType type)
+        finally
         {
-            switch (type)
-            {
-                case InodeType.Directory:
-                    return new DirectoryInode();
-                case InodeType.ExtendedDirectory:
-                    return new ExtendedDirectoryInode();
-                case InodeType.File:
-                    return new RegularInode();
-                case InodeType.Symlink:
-                    return new SymlinkInode();
-                case InodeType.CharacterDevice:
-                case InodeType.BlockDevice:
-                    return new DeviceInode();
-                default:
-                    throw new NotImplementedException("Inode type not implemented: " + type);
-            }
+            ArrayPool<byte>.Shared.Return(inodeData);
         }
+
+        return inode;
+    }
+
+    private static Inode InstantiateType(InodeType type)
+    {
+        return type switch
+        {
+            InodeType.Directory => new DirectoryInode(),
+            InodeType.ExtendedDirectory => new ExtendedDirectoryInode(),
+            InodeType.File => new RegularInode(),
+            InodeType.Symlink => new SymlinkInode(),
+            InodeType.CharacterDevice or InodeType.BlockDevice => new DeviceInode(),
+            _ => throw new NotImplementedException("Inode type not implemented: " + type),
+        };
     }
 }

@@ -21,31 +21,35 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal class Directory : File, IVfsDirectory<DirEntry, File>
 {
-    internal class Directory : File, IVfsDirectory<DirEntry, File>
+    public Directory(Context context, uint inodeNum, Inode inode)
+        : base(context, inodeNum, inode) {}
+
+    List<DirEntry> dirEntries;
+
+    public IReadOnlyCollection<DirEntry> AllEntries
     {
-        public Directory(Context context, uint inodeNum, Inode inode)
-            : base(context, inodeNum, inode) {}
-
-        List<DirEntry> dirEntries;
-
-        public ICollection<DirEntry> AllEntries
+        get
         {
-            get
+            if (dirEntries == null)
             {
-                if (dirEntries == null)
+                dirEntries = new List<DirEntry>();
+
+                var content = FileContent;
+                var blockSize = Context.SuperBlock.BlockSize;
+
+                var blockData = ArrayPool<byte>.Shared.Rent((int)blockSize);
+                try
                 {
-                    dirEntries = new List<DirEntry>();
-
-                    IBuffer content = FileContent;
-                    uint blockSize = Context.SuperBlock.BlockSize;
-
-                    byte[] blockData = new byte[blockSize];
                     uint relBlock = 0;
 
                     long pos = 0;
@@ -53,11 +57,11 @@ namespace DiscUtils.Ext
                     {
                         StreamUtilities.ReadMaximum(content, blockSize * (long)relBlock, blockData, 0, (int)blockSize);
 
-                        int blockPos = 0;
+                        var blockPos = 0;
                         while (blockPos < blockSize)
                         {
-                            DirectoryRecord r = new DirectoryRecord(Context.Options.FileNameEncoding);
-                            int numRead = r.ReadFrom(blockData, blockPos);
+                            var r = new DirectoryRecord(Context.Options.FileNameEncoding);
+                            var numRead = r.ReadFrom(blockData, blockPos);
 
                             if (r.Inode != 0 && r.Name != "." && r.Name != "..")
                             {
@@ -71,35 +75,39 @@ namespace DiscUtils.Ext
                         pos += blockSize;
                     }
                 }
-
-                return dirEntries;
-            }
-        }
-
-        public DirEntry Self
-        {
-            get { return null; }
-        }
-
-        public DirEntry GetEntryByName(string name)
-        {
-            foreach (DirEntry entry in AllEntries)
-            {
-                if (entry.FileName == name)
+                finally
                 {
-                    return entry;
+                    ArrayPool<byte>.Shared.Return(blockData);
                 }
             }
 
-            return null;
+            return dirEntries;
         }
+    }
 
-        public DirEntry CreateNewFile(string name)
+    public DirEntry Self
+    {
+        get { return null; }
+    }
+
+    public DirEntry GetEntryByName(string name)
+    {
+        foreach (var entry in AllEntries)
         {
-            // Clear cache
-            dirEntries = null;
-
-            throw new NotImplementedException();
+            if (entry.FileName == name)
+            {
+                return entry;
+            }
         }
+
+        return null;
+    }
+
+    public DirEntry CreateNewFile(string name)
+    {
+        // Clear cache
+        dirEntries = null;
+
+        throw new NotImplementedException();
     }
 }

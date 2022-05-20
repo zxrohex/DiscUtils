@@ -27,462 +27,461 @@ using System.Threading.Tasks;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal class FileBuffer : Buffer, IFileBuffer
 {
-    internal class FileBuffer : Buffer, IFileBuffer
+    private readonly Context _context;
+    private readonly Inode _inode;
+
+    public FileBuffer(Context context, Inode inode)
     {
-        private readonly Context _context;
-        private readonly Inode _inode;
+        _context = context;
+        _inode = inode;
+    }
 
-        public FileBuffer(Context context, Inode inode)
+    public override bool CanRead
+    {
+        get { return true; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
+
+    public override long Capacity
+    {
+        get { return _inode.FileSize; }
+    }
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+    {
+        var pos = 0;
+
+        if (pos >= _inode.FileSize)
         {
-            _context = context;
-            _inode = inode;
+            yield break;
         }
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
+        var blockSize = _context.SuperBlock.BlockSize;
 
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
+        var count = _inode.FileSize;
+        var totalRead = 0;
+        var totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
 
-        public override long Capacity
+        while (totalBytesRemaining > 0)
         {
-            get { return _inode.FileSize; }
-        }
+            var logicalBlock = (uint)((pos + totalRead) / blockSize);
+            var blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
 
-        public IEnumerable<StreamExtent> EnumerateAllocationExtents()
-        {
-            var pos = 0;
-
-            if (pos >= _inode.FileSize)
+            uint physicalBlock = 0;
+            if (logicalBlock < 12)
             {
-                yield break;
+                physicalBlock = _inode.DirectBlocks[logicalBlock];
             }
-
-            uint blockSize = _context.SuperBlock.BlockSize;
-
-            var count = _inode.FileSize;
-            int totalRead = 0;
-            int totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
-
-            while (totalBytesRemaining > 0)
+            else
             {
-                uint logicalBlock = (uint)((pos + totalRead) / blockSize);
-                int blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
-
-                uint physicalBlock = 0;
-                if (logicalBlock < 12)
+                logicalBlock -= 12;
+                if (logicalBlock < blockSize / 4)
                 {
-                    physicalBlock = _inode.DirectBlocks[logicalBlock];
+                    if (_inode.IndirectBlock != 0)
+                    {
+                        _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
+                        var indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
+                        physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                    }
                 }
                 else
                 {
-                    logicalBlock -= 12;
-                    if (logicalBlock < blockSize / 4)
+                    logicalBlock -= blockSize / 4;
+                    if (logicalBlock < blockSize / 4 * (blockSize / 4))
                     {
-                        if (_inode.IndirectBlock != 0)
+                        if (_inode.DoubleIndirectBlock != 0)
                         {
-                            _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
-                            byte[] indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
-                            physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
+                                                          logicalBlock / (blockSize / 4) * 4;
+                            var indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
+                            var indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+
+                            if (indirectBlock != 0)
+                            {
+                                _context.RawStream.Position = indirectBlock * (long)blockSize +
+                                                              logicalBlock % (blockSize / 4) * 4;
+                                StreamUtilities.ReadExact(_context.RawStream, indirectData, 0, 4);
+                                physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            }
                         }
                     }
                     else
                     {
-                        logicalBlock -= blockSize / 4;
-                        if (logicalBlock < blockSize / 4 * (blockSize / 4))
-                        {
-                            if (_inode.DoubleIndirectBlock != 0)
-                            {
-                                _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
-                                                              logicalBlock / (blockSize / 4) * 4;
-                                byte[] indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
-                                uint indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-
-                                if (indirectBlock != 0)
-                                {
-                                    _context.RawStream.Position = indirectBlock * (long)blockSize +
-                                                                  logicalBlock % (blockSize / 4) * 4;
-                                    StreamUtilities.ReadExact(_context.RawStream, indirectData, 0, 4);
-                                    physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            throw new NotSupportedException("Triple indirection");
-                        }
+                        throw new NotSupportedException("Triple indirection");
                     }
                 }
-
-                int toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
-                if (physicalBlock != 0)
-                {
-                    yield return new(physicalBlock * (long)blockSize + blockOffset, toRead);
-                }
-
-                totalBytesRemaining -= toRead;
-                totalRead += toRead;
             }
+
+            var toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
+            if (physicalBlock != 0)
+            {
+                yield return new(physicalBlock * (long)blockSize + blockOffset, toRead);
+            }
+
+            totalBytesRemaining -= toRead;
+            totalRead += toRead;
+        }
+    }
+
+    public override int Read(long pos, byte[] buffer, int offset, int count)
+    {
+        if (pos > _inode.FileSize)
+        {
+            return 0;
         }
 
-        public override int Read(long pos, byte[] buffer, int offset, int count)
+        var blockSize = _context.SuperBlock.BlockSize;
+
+        var totalRead = 0;
+        var totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
+
+        while (totalBytesRemaining > 0)
         {
-            if (pos > _inode.FileSize)
+            var logicalBlock = (uint)((pos + totalRead) / blockSize);
+            var blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
+
+            uint physicalBlock = 0;
+            if (logicalBlock < 12)
             {
-                return 0;
+                physicalBlock = _inode.DirectBlocks[logicalBlock];
             }
-
-            uint blockSize = _context.SuperBlock.BlockSize;
-
-            int totalRead = 0;
-            int totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
-
-            while (totalBytesRemaining > 0)
+            else
             {
-                uint logicalBlock = (uint)((pos + totalRead) / blockSize);
-                int blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
-
-                uint physicalBlock = 0;
-                if (logicalBlock < 12)
+                logicalBlock -= 12;
+                if (logicalBlock < blockSize / 4)
                 {
-                    physicalBlock = _inode.DirectBlocks[logicalBlock];
+                    if (_inode.IndirectBlock != 0)
+                    {
+                        _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
+                        var indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
+                        physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                    }
                 }
                 else
                 {
-                    logicalBlock -= 12;
-                    if (logicalBlock < blockSize / 4)
+                    logicalBlock -= blockSize / 4;
+                    if (logicalBlock < blockSize / 4 * (blockSize / 4))
                     {
-                        if (_inode.IndirectBlock != 0)
+                        if (_inode.DoubleIndirectBlock != 0)
                         {
-                            _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
-                            byte[] indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
-                            physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
+                                                          logicalBlock / (blockSize / 4) * 4;
+                            var indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
+                            var indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+
+                            if (indirectBlock != 0)
+                            {
+                                _context.RawStream.Position = indirectBlock * (long)blockSize +
+                                                              logicalBlock % (blockSize / 4) * 4;
+                                StreamUtilities.ReadExact(_context.RawStream, indirectData, 0, 4);
+                                physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            }
                         }
                     }
                     else
                     {
-                        logicalBlock -= blockSize / 4;
-                        if (logicalBlock < blockSize / 4 * (blockSize / 4))
-                        {
-                            if (_inode.DoubleIndirectBlock != 0)
-                            {
-                                _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
-                                                              logicalBlock / (blockSize / 4) * 4;
-                                byte[] indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
-                                uint indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-
-                                if (indirectBlock != 0)
-                                {
-                                    _context.RawStream.Position = indirectBlock * (long)blockSize +
-                                                                  logicalBlock % (blockSize / 4) * 4;
-                                    StreamUtilities.ReadExact(_context.RawStream, indirectData, 0, 4);
-                                    physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            throw new NotSupportedException("Triple indirection");
-                        }
+                        throw new NotSupportedException("Triple indirection");
                     }
                 }
-
-                int toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
-                int numRead;
-                if (physicalBlock == 0)
-                {
-                    Array.Clear(buffer, offset + totalRead, toRead);
-                    numRead = toRead;
-                }
-                else
-                {
-                    _context.RawStream.Position = physicalBlock * (long)blockSize + blockOffset;
-                    numRead = _context.RawStream.Read(buffer, offset + totalRead, toRead);
-                }
-
-                totalBytesRemaining -= numRead;
-                totalRead += numRead;
             }
 
-            return totalRead;
+            var toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
+            int numRead;
+            if (physicalBlock == 0)
+            {
+                Array.Clear(buffer, offset + totalRead, toRead);
+                numRead = toRead;
+            }
+            else
+            {
+                _context.RawStream.Position = physicalBlock * (long)blockSize + blockOffset;
+                numRead = _context.RawStream.Read(buffer, offset + totalRead, toRead);
+            }
+
+            totalBytesRemaining -= numRead;
+            totalRead += numRead;
         }
+
+        return totalRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (pos > _inode.FileSize)
         {
-            if (pos > _inode.FileSize)
+            return 0;
+        }
+
+        var blockSize = _context.SuperBlock.BlockSize;
+
+        var totalRead = 0;
+        var totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
+
+        while (totalBytesRemaining > 0)
+        {
+            var logicalBlock = (uint)((pos + totalRead) / blockSize);
+            var blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
+
+            uint physicalBlock = 0;
+            if (logicalBlock < 12)
             {
-                return 0;
+                physicalBlock = _inode.DirectBlocks[logicalBlock];
             }
-
-            uint blockSize = _context.SuperBlock.BlockSize;
-
-            int totalRead = 0;
-            int totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
-
-            while (totalBytesRemaining > 0)
+            else
             {
-                uint logicalBlock = (uint)((pos + totalRead) / blockSize);
-                int blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
-
-                uint physicalBlock = 0;
-                if (logicalBlock < 12)
+                logicalBlock -= 12;
+                if (logicalBlock < blockSize / 4)
                 {
-                    physicalBlock = _inode.DirectBlocks[logicalBlock];
+                    if (_inode.IndirectBlock != 0)
+                    {
+                        _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
+                        var indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
+                        physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                    }
                 }
                 else
                 {
-                    logicalBlock -= 12;
-                    if (logicalBlock < blockSize / 4)
+                    logicalBlock -= blockSize / 4;
+                    if (logicalBlock < blockSize / 4 * (blockSize / 4))
                     {
-                        if (_inode.IndirectBlock != 0)
+                        if (_inode.DoubleIndirectBlock != 0)
                         {
-                            _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
-                            byte[] indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
-                            physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
+                                                          logicalBlock / (blockSize / 4) * 4;
+                            var indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
+                            var indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+
+                            if (indirectBlock != 0)
+                            {
+                                _context.RawStream.Position = indirectBlock * (long)blockSize +
+                                                              logicalBlock % (blockSize / 4) * 4;
+                                await StreamUtilities.ReadExactAsync(_context.RawStream, indirectData, 0, 4, cancellationToken).ConfigureAwait(false);
+                                physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            }
                         }
                     }
                     else
                     {
-                        logicalBlock -= blockSize / 4;
-                        if (logicalBlock < blockSize / 4 * (blockSize / 4))
-                        {
-                            if (_inode.DoubleIndirectBlock != 0)
-                            {
-                                _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
-                                                              logicalBlock / (blockSize / 4) * 4;
-                                byte[] indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
-                                uint indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-
-                                if (indirectBlock != 0)
-                                {
-                                    _context.RawStream.Position = indirectBlock * (long)blockSize +
-                                                                  logicalBlock % (blockSize / 4) * 4;
-                                    await StreamUtilities.ReadExactAsync(_context.RawStream, indirectData, 0, 4, cancellationToken).ConfigureAwait(false);
-                                    physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            throw new NotSupportedException("Triple indirection");
-                        }
+                        throw new NotSupportedException("Triple indirection");
                     }
                 }
-
-                int toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
-                int numRead;
-                if (physicalBlock == 0)
-                {
-                    Array.Clear(buffer, offset + totalRead, toRead);
-                    numRead = toRead;
-                }
-                else
-                {
-                    _context.RawStream.Position = physicalBlock * (long)blockSize + blockOffset;
-                    numRead = await _context.RawStream.ReadAsync(buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
-                }
-
-                totalBytesRemaining -= numRead;
-                totalRead += numRead;
             }
 
-            return totalRead;
+            var toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
+            int numRead;
+            if (physicalBlock == 0)
+            {
+                Array.Clear(buffer, offset + totalRead, toRead);
+                numRead = toRead;
+            }
+            else
+            {
+                _context.RawStream.Position = physicalBlock * (long)blockSize + blockOffset;
+                numRead = await _context.RawStream.ReadAsync(buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
+            }
+
+            totalBytesRemaining -= numRead;
+            totalRead += numRead;
         }
+
+        return totalRead;
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (pos > _inode.FileSize)
         {
-            if (pos > _inode.FileSize)
+            return 0;
+        }
+
+        var blockSize = _context.SuperBlock.BlockSize;
+
+        var totalRead = 0;
+        var totalBytesRemaining = (int)Math.Min(buffer.Length, _inode.FileSize - pos);
+
+        while (totalBytesRemaining > 0)
+        {
+            var logicalBlock = (uint)((pos + totalRead) / blockSize);
+            var blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
+
+            uint physicalBlock = 0;
+            if (logicalBlock < 12)
             {
-                return 0;
+                physicalBlock = _inode.DirectBlocks[logicalBlock];
             }
-
-            uint blockSize = _context.SuperBlock.BlockSize;
-
-            int totalRead = 0;
-            int totalBytesRemaining = (int)Math.Min(buffer.Length, _inode.FileSize - pos);
-
-            while (totalBytesRemaining > 0)
+            else
             {
-                uint logicalBlock = (uint)((pos + totalRead) / blockSize);
-                int blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
-
-                uint physicalBlock = 0;
-                if (logicalBlock < 12)
+                logicalBlock -= 12;
+                if (logicalBlock < blockSize / 4)
                 {
-                    physicalBlock = _inode.DirectBlocks[logicalBlock];
+                    if (_inode.IndirectBlock != 0)
+                    {
+                        _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
+                        var indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
+                        physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                    }
                 }
                 else
                 {
-                    logicalBlock -= 12;
-                    if (logicalBlock < blockSize / 4)
+                    logicalBlock -= blockSize / 4;
+                    if (logicalBlock < blockSize / 4 * (blockSize / 4))
                     {
-                        if (_inode.IndirectBlock != 0)
+                        if (_inode.DoubleIndirectBlock != 0)
                         {
-                            _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
-                            byte[] indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
-                            physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
+                                                          logicalBlock / (blockSize / 4) * 4;
+                            var indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
+                            var indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+
+                            if (indirectBlock != 0)
+                            {
+                                _context.RawStream.Position = indirectBlock * (long)blockSize +
+                                                              logicalBlock % (blockSize / 4) * 4;
+                                await StreamUtilities.ReadExactAsync(_context.RawStream, indirectData, 0, 4, cancellationToken).ConfigureAwait(false);
+                                physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            }
                         }
                     }
                     else
                     {
-                        logicalBlock -= blockSize / 4;
-                        if (logicalBlock < blockSize / 4 * (blockSize / 4))
-                        {
-                            if (_inode.DoubleIndirectBlock != 0)
-                            {
-                                _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
-                                                              logicalBlock / (blockSize / 4) * 4;
-                                byte[] indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
-                                uint indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-
-                                if (indirectBlock != 0)
-                                {
-                                    _context.RawStream.Position = indirectBlock * (long)blockSize +
-                                                                  logicalBlock % (blockSize / 4) * 4;
-                                    await StreamUtilities.ReadExactAsync(_context.RawStream, indirectData, 0, 4, cancellationToken).ConfigureAwait(false);
-                                    physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            throw new NotSupportedException("Triple indirection");
-                        }
+                        throw new NotSupportedException("Triple indirection");
                     }
                 }
-
-                int toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
-                int numRead;
-                if (physicalBlock == 0)
-                {
-                    buffer.Span.Slice(totalRead, toRead).Clear();
-                    numRead = toRead;
-                }
-                else
-                {
-                    _context.RawStream.Position = physicalBlock * (long)blockSize + blockOffset;
-                    numRead = await _context.RawStream.ReadAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
-                }
-
-                totalBytesRemaining -= numRead;
-                totalRead += numRead;
             }
 
-            return totalRead;
+            var toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
+            int numRead;
+            if (physicalBlock == 0)
+            {
+                buffer.Span.Slice(totalRead, toRead).Clear();
+                numRead = toRead;
+            }
+            else
+            {
+                _context.RawStream.Position = physicalBlock * (long)blockSize + blockOffset;
+                numRead = await _context.RawStream.ReadAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+            }
+
+            totalBytesRemaining -= numRead;
+            totalRead += numRead;
         }
 
-        public override int Read(long pos, Span<byte> buffer)
+        return totalRead;
+    }
+
+    public override int Read(long pos, Span<byte> buffer)
+    {
+        if (pos > _inode.FileSize)
         {
-            if (pos > _inode.FileSize)
+            return 0;
+        }
+
+        var blockSize = _context.SuperBlock.BlockSize;
+
+        var totalRead = 0;
+        var totalBytesRemaining = (int)Math.Min(buffer.Length, _inode.FileSize - pos);
+
+        while (totalBytesRemaining > 0)
+        {
+            var logicalBlock = (uint)((pos + totalRead) / blockSize);
+            var blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
+
+            uint physicalBlock = 0;
+            if (logicalBlock < 12)
             {
-                return 0;
+                physicalBlock = _inode.DirectBlocks[logicalBlock];
             }
-
-            uint blockSize = _context.SuperBlock.BlockSize;
-
-            int totalRead = 0;
-            int totalBytesRemaining = (int)Math.Min(buffer.Length, _inode.FileSize - pos);
-
-            while (totalBytesRemaining > 0)
+            else
             {
-                uint logicalBlock = (uint)((pos + totalRead) / blockSize);
-                int blockOffset = (int)(pos + totalRead - logicalBlock * (long)blockSize);
-
-                uint physicalBlock = 0;
-                if (logicalBlock < 12)
+                logicalBlock -= 12;
+                if (logicalBlock < blockSize / 4)
                 {
-                    physicalBlock = _inode.DirectBlocks[logicalBlock];
+                    if (_inode.IndirectBlock != 0)
+                    {
+                        _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
+                        var indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
+                        physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                    }
                 }
                 else
                 {
-                    logicalBlock -= 12;
-                    if (logicalBlock < blockSize / 4)
+                    logicalBlock -= blockSize / 4;
+                    if (logicalBlock < blockSize / 4 * (blockSize / 4))
                     {
-                        if (_inode.IndirectBlock != 0)
+                        if (_inode.DoubleIndirectBlock != 0)
                         {
-                            _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
-                            byte[] indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
-                            physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
+                                                          logicalBlock / (blockSize / 4) * 4;
+                            var indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
+                            var indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+
+                            if (indirectBlock != 0)
+                            {
+                                _context.RawStream.Position = indirectBlock * (long)blockSize +
+                                                              logicalBlock % (blockSize / 4) * 4;
+                                StreamUtilities.ReadExact(_context.RawStream, indirectData, 0, 4);
+                                physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            }
                         }
                     }
                     else
                     {
-                        logicalBlock -= blockSize / 4;
-                        if (logicalBlock < blockSize / 4 * (blockSize / 4))
-                        {
-                            if (_inode.DoubleIndirectBlock != 0)
-                            {
-                                _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
-                                                              logicalBlock / (blockSize / 4) * 4;
-                                byte[] indirectData = StreamUtilities.ReadExact(_context.RawStream, 4);
-                                uint indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-
-                                if (indirectBlock != 0)
-                                {
-                                    _context.RawStream.Position = indirectBlock * (long)blockSize +
-                                                                  logicalBlock % (blockSize / 4) * 4;
-                                    StreamUtilities.ReadExact(_context.RawStream, indirectData, 0, 4);
-                                    physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            throw new NotSupportedException("Triple indirection");
-                        }
+                        throw new NotSupportedException("Triple indirection");
                     }
                 }
-
-                int toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
-                int numRead;
-                if (physicalBlock == 0)
-                {
-                    buffer.Slice(totalRead, toRead).Clear();
-                    numRead = toRead;
-                }
-                else
-                {
-                    _context.RawStream.Position = physicalBlock * (long)blockSize + blockOffset;
-                    numRead = _context.RawStream.Read(buffer.Slice(totalRead, toRead));
-                }
-
-                totalBytesRemaining -= numRead;
-                totalRead += numRead;
             }
 
-            return totalRead;
+            var toRead = (int)Math.Min(totalBytesRemaining, blockSize - blockOffset);
+            int numRead;
+            if (physicalBlock == 0)
+            {
+                buffer.Slice(totalRead, toRead).Clear();
+                numRead = toRead;
+            }
+            else
+            {
+                _context.RawStream.Position = physicalBlock * (long)blockSize + blockOffset;
+                numRead = _context.RawStream.Read(buffer.Slice(totalRead, toRead));
+            }
+
+            totalBytesRemaining -= numRead;
+            totalRead += numRead;
         }
+
+        return totalRead;
+    }
 #endif
 
-        public override void Write(long pos, byte[] buffer, int offset, int count)
-        {
-            throw new NotImplementedException();
-        }
+    public override void Write(long pos, byte[] buffer, int offset, int count)
+    {
+        throw new NotImplementedException();
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
-            throw new NotImplementedException();
+    public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+        throw new NotImplementedException();
 #endif
 
-        public override void SetCapacity(long value)
-        {
-            throw new NotImplementedException();
-        }
+    public override void SetCapacity(long value)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override IEnumerable<Streams.StreamExtent> GetExtentsInRange(long start, long count)
-        {
-            return Streams.StreamExtent.Intersect(
-                new[] { new Streams.StreamExtent(0, Capacity) },
-                new Streams.StreamExtent(start, count));
-        }
+    public override IEnumerable<Streams.StreamExtent> GetExtentsInRange(long start, long count)
+    {
+        return Streams.StreamExtent.Intersect(
+            new[] { new Streams.StreamExtent(0, Capacity) },
+            new Streams.StreamExtent(start, count));
     }
 }

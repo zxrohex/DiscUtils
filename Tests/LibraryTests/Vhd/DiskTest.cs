@@ -35,8 +35,8 @@ namespace LibraryTests.Vhd
         [Fact]
         public void InitializeFixed()
         {
-            MemoryStream ms = new MemoryStream();
-            using (Disk disk = Disk.InitializeFixed(ms, Ownership.None, 8 * 1024 * 1024))
+            var ms = new MemoryStream();
+            using (var disk = Disk.InitializeFixed(ms, Ownership.None, 8 * 1024 * 1024))
             {
                 Assert.NotNull(disk);
                 Assert.True(disk.Geometry.Capacity > 7.5 * 1024 * 1024 && disk.Geometry.Capacity <= 8 * 1024 * 1024);
@@ -50,8 +50,8 @@ namespace LibraryTests.Vhd
         [Fact]
         public void InitializeFixedOwnStream()
         {
-            MemoryStream ms = new MemoryStream();
-            using (Disk disk = Disk.InitializeFixed(ms, Ownership.Dispose, 8 * 1024 * 1024))
+            var ms = new MemoryStream();
+            using (var disk = Disk.InitializeFixed(ms, Ownership.Dispose, 8 * 1024 * 1024))
             {
             }
 
@@ -61,8 +61,8 @@ namespace LibraryTests.Vhd
         [Fact]
         public void InitializeDynamic()
         {
-            MemoryStream ms = new MemoryStream();
-            using (Disk disk = Disk.InitializeDynamic(ms, Ownership.None, 16 * 1024L * 1024 * 1024))
+            var ms = new MemoryStream();
+            using (var disk = Disk.InitializeDynamic(ms, Ownership.None, 16 * 1024L * 1024 * 1024))
             {
                 Assert.NotNull(disk);
                 Assert.True(disk.Geometry.Capacity > 15.8 * 1024L * 1024 * 1024 && disk.Geometry.Capacity <= 16 * 1024L * 1024 * 1024);
@@ -70,7 +70,7 @@ namespace LibraryTests.Vhd
 
             Assert.True(1 * 1024 * 1024 > ms.Length);
 
-            using (Disk disk = new Disk(ms, Ownership.Dispose))
+            using (var disk = new Disk(ms, Ownership.Dispose))
             {
                 Assert.True(disk.Geometry.Capacity > 15.8 * 1024L * 1024 * 1024 && disk.Geometry.Capacity <= 16 * 1024L * 1024 * 1024);
             }
@@ -79,10 +79,10 @@ namespace LibraryTests.Vhd
         [Fact]
         public void InitializeDifferencing()
         {
-            MemoryStream baseStream = new MemoryStream();
-            MemoryStream diffStream = new MemoryStream();
-            DiskImageFile baseFile = DiskImageFile.InitializeDynamic(baseStream, Ownership.Dispose, 16 * 1024L * 1024 * 1024);
-            using (Disk disk = Disk.InitializeDifferencing(diffStream, Ownership.None, baseFile, Ownership.Dispose, @"C:\TEMP\Base.vhd", @".\Base.vhd", DateTime.UtcNow))
+            var baseStream = new MemoryStream();
+            var diffStream = new MemoryStream();
+            var baseFile = DiskImageFile.InitializeDynamic(baseStream, Ownership.Dispose, 16 * 1024L * 1024 * 1024);
+            using (var disk = Disk.InitializeDifferencing(diffStream, Ownership.None, baseFile, Ownership.Dispose, @"C:\TEMP\Base.vhd", @".\Base.vhd", DateTime.UtcNow))
             {
                 Assert.NotNull(disk);
                 Assert.True(disk.Geometry.Capacity > 15.8 * 1024L * 1024 * 1024 && disk.Geometry.Capacity <= 16 * 1024L * 1024 * 1024);
@@ -97,17 +97,17 @@ namespace LibraryTests.Vhd
         public void ConstructorDynamic()
         {
             Geometry geometry;
-            MemoryStream ms = new MemoryStream();
-            using (Disk disk = Disk.InitializeDynamic(ms, Ownership.None, 16 * 1024L * 1024 * 1024))
+            var ms = new MemoryStream();
+            using (var disk = Disk.InitializeDynamic(ms, Ownership.None, 16 * 1024L * 1024 * 1024))
             {
                 geometry = disk.Geometry;
             }
-            using (Disk disk = new Disk(ms, Ownership.None))
+            using (var disk = new Disk(ms, Ownership.None))
             {
                 Assert.Equal(geometry, disk.Geometry);
                 Assert.NotNull(disk.Content);
             }
-            using (Disk disk = new Disk(ms, Ownership.Dispose))
+            using (var disk = new Disk(ms, Ownership.Dispose))
             {
                 Assert.Equal(geometry, disk.Geometry);
                 Assert.NotNull(disk.Content);
@@ -117,33 +117,31 @@ namespace LibraryTests.Vhd
         [Fact]
         public void ConstructorFromFiles()
         {
-            MemoryStream baseStream = new MemoryStream();
-            DiskImageFile baseFile = DiskImageFile.InitializeDynamic(baseStream, Ownership.Dispose, 16 * 1024L * 1024 * 1024);
+            var baseStream = new MemoryStream();
+            var baseFile = DiskImageFile.InitializeDynamic(baseStream, Ownership.Dispose, 16 * 1024L * 1024 * 1024);
 
-            MemoryStream childStream = new MemoryStream();
-            DiskImageFile childFile = DiskImageFile.InitializeDifferencing(childStream, Ownership.Dispose, baseFile, @"C:\temp\foo.vhd", @".\foo.vhd", DateTime.Now);
+            var childStream = new MemoryStream();
+            var childFile = DiskImageFile.InitializeDifferencing(childStream, Ownership.Dispose, baseFile, @"C:\temp\foo.vhd", @".\foo.vhd", DateTime.Now);
 
-            MemoryStream grandChildStream = new MemoryStream();
-            DiskImageFile grandChildFile = DiskImageFile.InitializeDifferencing(grandChildStream, Ownership.Dispose, childFile, @"C:\temp\child1.vhd", @".\child1.vhd", DateTime.Now);
+            var grandChildStream = new MemoryStream();
+            var grandChildFile = DiskImageFile.InitializeDifferencing(grandChildStream, Ownership.Dispose, childFile, @"C:\temp\child1.vhd", @".\child1.vhd", DateTime.Now);
 
-            using (Disk disk = new Disk(new DiskImageFile[] { grandChildFile, childFile, baseFile }, Ownership.Dispose))
-            {
-                Assert.NotNull(disk.Content);
-            }
+            using var disk = new Disk(new DiskImageFile[] { grandChildFile, childFile, baseFile }, Ownership.Dispose);
+            Assert.NotNull(disk.Content);
         }
 
         [Fact]
         public void UndisposedChangedDynamic()
         {
-            byte[] firstSector = new byte[512];
-            byte[] lastSector = new byte[512];
+            var firstSector = new byte[512];
+            var lastSector = new byte[512];
 
-            MemoryStream ms = new MemoryStream();
-            using (Disk newDisk = Disk.InitializeDynamic(ms, Ownership.None, 16 * 1024L * 1024 * 1024))
+            var ms = new MemoryStream();
+            using (var newDisk = Disk.InitializeDynamic(ms, Ownership.None, 16 * 1024L * 1024 * 1024))
             {
             }
 
-            using (Disk disk = new Disk(ms, Ownership.None))
+            using (var disk = new Disk(ms, Ownership.None))
             {
                 disk.Content.Write(new byte[1024], 0, 1024);
 
@@ -155,7 +153,7 @@ namespace LibraryTests.Vhd
             }
 
             // Check disabling AutoCommit really doesn't do the commit
-            using (Disk disk = new Disk(ms, Ownership.None))
+            using (var disk = new Disk(ms, Ownership.None))
             {
                 disk.AutoCommitFooter = false;
                 disk.Content.Position = 10 * 1024 * 1024;
@@ -177,7 +175,7 @@ namespace LibraryTests.Vhd
 
 
             // Finally, check default value for AutoCommit lines up with behaviour
-            using (Disk disk = new Disk(ms, Ownership.None))
+            using (var disk = new Disk(ms, Ownership.None))
             {
                 Assert.True(disk.AutoCommitFooter);
             }

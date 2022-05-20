@@ -8,20 +8,18 @@ namespace LibraryTests.Utilities
     {
         public static Stream ReadFileFromZip(Stream zip, string name = null)
         {
-            using (ZipArchive zipArchive = new ZipArchive(zip, ZipArchiveMode.Read, true))
-            {
-                ZipArchiveEntry entry;
-                if (name == null)
-                    entry = zipArchive.Entries.First();
-                else
-                    entry = zipArchive.GetEntry(name);
+            using var zipArchive = new ZipArchive(zip, ZipArchiveMode.Read, true);
+            ZipArchiveEntry entry;
+            if (name == null)
+                entry = zipArchive.Entries.First();
+            else
+                entry = zipArchive.GetEntry(name);
 
-                MemoryStream ms = new MemoryStream();
-                using (Stream zipFile = entry.Open())
-                    zipFile.CopyTo(ms);
+            var ms = new MemoryStream();
+            using (var zipFile = entry.Open())
+                zipFile.CopyTo(ms);
 
-                return ms;
-            }
+            return ms;
         }
     }
 }

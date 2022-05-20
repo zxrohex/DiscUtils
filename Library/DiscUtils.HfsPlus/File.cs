@@ -28,197 +28,194 @@ using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal class File : IVfsFileWithStreams
 {
-    internal class File : IVfsFileWithStreams
+    private const string CompressionAttributeName = "com.apple.decmpfs";
+    private readonly CommonCatalogFileInfo _catalogInfo;
+    private readonly bool _hasCompressionAttribute;
+
+    public File(Context context, CatalogNodeId nodeId, CommonCatalogFileInfo catalogInfo)
     {
-        private const string CompressionAttributeName = "com.apple.decmpfs";
-        private readonly CommonCatalogFileInfo _catalogInfo;
-        private readonly bool _hasCompressionAttribute;
+        Context = context;
+        NodeId = nodeId;
+        _catalogInfo = catalogInfo;
+        _hasCompressionAttribute =
+            Context.Attributes.Find(new AttributeKey(NodeId, CompressionAttributeName)) != null;
+    }
 
-        public File(Context context, CatalogNodeId nodeId, CommonCatalogFileInfo catalogInfo)
+    protected Context Context { get; }
+
+    protected CatalogNodeId NodeId { get; }
+
+    public DateTime LastAccessTimeUtc
+    {
+        get { return _catalogInfo.AccessTime; }
+
+        set { throw new NotSupportedException(); }
+    }
+
+    public DateTime LastWriteTimeUtc
+    {
+        get { return _catalogInfo.ContentModifyTime; }
+
+        set { throw new NotSupportedException(); }
+    }
+
+    public DateTime CreationTimeUtc
+    {
+        get { return _catalogInfo.CreateTime; }
+
+        set { throw new NotSupportedException(); }
+    }
+
+    public FileAttributes FileAttributes
+    {
+        get { return Utilities.FileAttributesFromUnixFileType(_catalogInfo.FileSystemInfo.FileType); }
+
+        set { throw new NotSupportedException(); }
+    }
+
+    public long FileLength
+    {
+        get
         {
-            Context = context;
-            NodeId = nodeId;
-            _catalogInfo = catalogInfo;
-            _hasCompressionAttribute =
-                Context.Attributes.Find(new AttributeKey(NodeId, CompressionAttributeName)) != null;
-        }
-
-        protected Context Context { get; }
-
-        protected CatalogNodeId NodeId { get; }
-
-        public DateTime LastAccessTimeUtc
-        {
-            get { return _catalogInfo.AccessTime; }
-
-            set { throw new NotSupportedException(); }
-        }
-
-        public DateTime LastWriteTimeUtc
-        {
-            get { return _catalogInfo.ContentModifyTime; }
-
-            set { throw new NotSupportedException(); }
-        }
-
-        public DateTime CreationTimeUtc
-        {
-            get { return _catalogInfo.CreateTime; }
-
-            set { throw new NotSupportedException(); }
-        }
-
-        public FileAttributes FileAttributes
-        {
-            get { return Utilities.FileAttributesFromUnixFileType(_catalogInfo.FileSystemInfo.FileType); }
-
-            set { throw new NotSupportedException(); }
-        }
-
-        public long FileLength
-        {
-            get
+            if (_catalogInfo is not CatalogFileInfo fileInfo)
             {
-                CatalogFileInfo fileInfo = _catalogInfo as CatalogFileInfo;
-                if (fileInfo == null)
-                {
-                    throw new InvalidOperationException();
-                }
-
-                return (long)fileInfo.DataFork.LogicalSize;
+                throw new InvalidOperationException();
             }
+
+            return (long)fileInfo.DataFork.LogicalSize;
         }
+    }
 
-        public IBuffer FileContent
+    public IBuffer FileContent
+    {
+        get
         {
-            get
+            if (_catalogInfo is not CatalogFileInfo fileInfo)
             {
-                CatalogFileInfo fileInfo = _catalogInfo as CatalogFileInfo;
-                if (fileInfo == null)
+                throw new InvalidOperationException();
+            }
+
+            if (_hasCompressionAttribute)
+            {
+                // Open the compression attribute
+                var compressionAttributeData =
+                    Context.Attributes.Find(new AttributeKey(_catalogInfo.FileId, "com.apple.decmpfs"));
+                var compressionAttribute = new CompressionAttribute();
+                compressionAttribute.ReadFrom(compressionAttributeData, 0);
+
+                // There are multiple possibilities, not all of which are supported by DiscUtils.HfsPlus.
+                // See FileCompressionType for a full description of all possibilities.
+                switch (compressionAttribute.CompressionType)
                 {
-                    throw new InvalidOperationException();
-                }
-
-                if (_hasCompressionAttribute)
-                {
-                    // Open the compression attribute
-                    byte[] compressionAttributeData =
-                        Context.Attributes.Find(new AttributeKey(_catalogInfo.FileId, "com.apple.decmpfs"));
-                    CompressionAttribute compressionAttribute = new CompressionAttribute();
-                    compressionAttribute.ReadFrom(compressionAttributeData, 0);
-
-                    // There are multiple possibilities, not all of which are supported by DiscUtils.HfsPlus.
-                    // See FileCompressionType for a full description of all possibilities.
-                    switch (compressionAttribute.CompressionType)
-                    {
-                        case FileCompressionType.ZlibAttribute:
-                            if (compressionAttribute.UncompressedSize == compressionAttribute.AttrSize - 0x11)
-                            {
-                                // Inline, no compression, very small file
-                                MemoryStream stream = new MemoryStream(
-                                    compressionAttributeData,
-                                    CompressionAttribute.Size + 1,
-                                    (int)compressionAttribute.UncompressedSize,
-                                    false);
-
-                                return new StreamBuffer(stream, Ownership.Dispose);
-                            }
-                            else
-                            {
-                                // Inline, but we must decompress
-                                MemoryStream stream = new MemoryStream(
-                                    compressionAttributeData,
-                                    CompressionAttribute.Size,
-                                    compressionAttributeData.Length - CompressionAttribute.Size,
-                                    false);
-
-                                // The usage upstream will want to seek or set the position, the ZlibBuffer
-                                // wraps around a zlibstream and allows for this (in a limited fashion).
-                                ZlibStream compressedStream = new ZlibStream(stream, CompressionMode.Decompress, false);
-                                return new ZlibBuffer(compressedStream, Ownership.Dispose);
-                            }
-
-                        case FileCompressionType.ZlibResource:
-                            // The data is stored in the resource fork.
-                            FileBuffer buffer = new FileBuffer(Context, fileInfo.ResourceFork, fileInfo.FileId);
-                            CompressionResourceHeader compressionFork = new CompressionResourceHeader();
-                            byte[] compressionForkData = new byte[CompressionResourceHeader.Size];
-                            buffer.Read(0, compressionForkData, 0, CompressionResourceHeader.Size);
-                            compressionFork.ReadFrom(compressionForkData, 0);
-
-                            // The data is compressed in a number of blocks. Each block originally accounted for
-                            // 0x10000 bytes (that's 64 KB) of data. The compressed size may vary.
-                            // The data in each block can be read using a SparseStream. The first block contains
-                            // the zlib header but the others don't, so we read them directly as deflate streams.
-                            // For each block, we create a separate stream which we later aggregate.
-                            CompressionResourceBlockHead blockHeader = new CompressionResourceBlockHead();
-                            byte[] blockHeaderData = new byte[CompressionResourceBlockHead.Size];
-                            buffer.Read(compressionFork.HeaderSize, blockHeaderData, 0, CompressionResourceBlockHead.Size);
-                            blockHeader.ReadFrom(blockHeaderData, 0);
-
-                            uint blockCount = blockHeader.NumBlocks;
-                            CompressionResourceBlock[] blocks = new CompressionResourceBlock[blockCount];
-                            SparseStream[] streams = new SparseStream[blockCount];
-
-                            for (int i = 0; i < blockCount; i++)
-                            {
-                                // Read the block data, first into a buffer and the into the class.
-                                blocks[i] = new CompressionResourceBlock();
-                                byte[] blockData = new byte[CompressionResourceBlock.Size];
-                                buffer.Read(
-                                    compressionFork.HeaderSize + CompressionResourceBlockHead.Size +
-                                    i * CompressionResourceBlock.Size,
-                                    blockData,
-                                    0,
-                                    blockData.Length);
-                                blocks[i].ReadFrom(blockData, 0);
-
-                                // Create a SubBuffer which points to the data window that corresponds to the block.
-                                SubBuffer subBuffer = new SubBuffer(
-                                    buffer,
-                                    compressionFork.HeaderSize + blocks[i].Offset + 6, blocks[i].DataSize);
-
-                                // ... convert it to a stream
-                                BufferStream stream = new BufferStream(subBuffer, FileAccess.Read);
-
-                                // ... and create a deflate stream. Because we will concatenate the streams, the streams
-                                // must report on their size. We know the size (0x10000) so we pass it as a parameter.
-                                DeflateStream s = new SizedDeflateStream(stream, CompressionMode.Decompress, false, 0x10000);
-                                streams[i] = SparseStream.FromStream(s, Ownership.Dispose);
-                            }
-
-                            // Finally, concatenate the streams together and that's about it.
-                            ConcatStream concatStream = new ConcatStream(Ownership.Dispose, streams);
-                            return new ZlibBuffer(concatStream, Ownership.Dispose);
-
-                        case FileCompressionType.RawAttribute:
+                    case FileCompressionType.ZlibAttribute:
+                        if (compressionAttribute.UncompressedSize == compressionAttribute.AttrSize - 0x11)
+                        {
                             // Inline, no compression, very small file
-                            return new StreamBuffer(
-                                new MemoryStream(
-                                    compressionAttributeData,
-                                    CompressionAttribute.Size + 1,
-                                    (int)compressionAttribute.UncompressedSize,
-                                    false),
-                                Ownership.Dispose);
+                            var stream = new MemoryStream(
+                                compressionAttributeData,
+                                CompressionAttribute.Size + 1,
+                                (int)compressionAttribute.UncompressedSize,
+                                false);
 
-                        default:
-                            throw new NotSupportedException($"The HfsPlus compression type {compressionAttribute.CompressionType} is not supported by DiscUtils.HfsPlus");
-                    }
+                            return new StreamBuffer(stream, Ownership.Dispose);
+                        }
+                        else
+                        {
+                            // Inline, but we must decompress
+                            var stream = new MemoryStream(
+                                compressionAttributeData,
+                                CompressionAttribute.Size,
+                                compressionAttributeData.Length - CompressionAttribute.Size,
+                                false);
+
+                            // The usage upstream will want to seek or set the position, the ZlibBuffer
+                            // wraps around a zlibstream and allows for this (in a limited fashion).
+                            var compressedStream = new ZlibStream(stream, CompressionMode.Decompress, false);
+                            return new ZlibBuffer(compressedStream, Ownership.Dispose);
+                        }
+
+                    case FileCompressionType.ZlibResource:
+                        // The data is stored in the resource fork.
+                        var buffer = new FileBuffer(Context, fileInfo.ResourceFork, fileInfo.FileId);
+                        var compressionFork = new CompressionResourceHeader();
+                        var compressionForkData = new byte[CompressionResourceHeader.Size];
+                        buffer.Read(0, compressionForkData, 0, CompressionResourceHeader.Size);
+                        compressionFork.ReadFrom(compressionForkData, 0);
+
+                        // The data is compressed in a number of blocks. Each block originally accounted for
+                        // 0x10000 bytes (that's 64 KB) of data. The compressed size may vary.
+                        // The data in each block can be read using a SparseStream. The first block contains
+                        // the zlib header but the others don't, so we read them directly as deflate streams.
+                        // For each block, we create a separate stream which we later aggregate.
+                        var blockHeader = new CompressionResourceBlockHead();
+                        var blockHeaderData = new byte[CompressionResourceBlockHead.Size];
+                        buffer.Read(compressionFork.HeaderSize, blockHeaderData, 0, CompressionResourceBlockHead.Size);
+                        blockHeader.ReadFrom(blockHeaderData, 0);
+
+                        var blockCount = blockHeader.NumBlocks;
+                        var blocks = new CompressionResourceBlock[blockCount];
+                        var streams = new SparseStream[blockCount];
+
+                        for (var i = 0; i < blockCount; i++)
+                        {
+                            // Read the block data, first into a buffer and the into the class.
+                            blocks[i] = new CompressionResourceBlock();
+                            var blockData = new byte[CompressionResourceBlock.Size];
+                            buffer.Read(
+                                compressionFork.HeaderSize + CompressionResourceBlockHead.Size +
+                                i * CompressionResourceBlock.Size,
+                                blockData,
+                                0,
+                                blockData.Length);
+                            blocks[i].ReadFrom(blockData, 0);
+
+                            // Create a SubBuffer which points to the data window that corresponds to the block.
+                            var subBuffer = new SubBuffer(
+                                buffer,
+                                compressionFork.HeaderSize + blocks[i].Offset + 6, blocks[i].DataSize);
+
+                            // ... convert it to a stream
+                            var stream = new BufferStream(subBuffer, FileAccess.Read);
+
+                            // ... and create a deflate stream. Because we will concatenate the streams, the streams
+                            // must report on their size. We know the size (0x10000) so we pass it as a parameter.
+                            DeflateStream s = new SizedDeflateStream(stream, CompressionMode.Decompress, false, 0x10000);
+                            streams[i] = SparseStream.FromStream(s, Ownership.Dispose);
+                        }
+
+                        // Finally, concatenate the streams together and that's about it.
+                        var concatStream = new ConcatStream(Ownership.Dispose, streams);
+                        return new ZlibBuffer(concatStream, Ownership.Dispose);
+
+                    case FileCompressionType.RawAttribute:
+                        // Inline, no compression, very small file
+                        return new StreamBuffer(
+                            new MemoryStream(
+                                compressionAttributeData,
+                                CompressionAttribute.Size + 1,
+                                (int)compressionAttribute.UncompressedSize,
+                                false),
+                            Ownership.Dispose);
+
+                    default:
+                        throw new NotSupportedException($"The HfsPlus compression type {compressionAttribute.CompressionType} is not supported by DiscUtils.HfsPlus");
                 }
-                return new FileBuffer(Context, fileInfo.DataFork, fileInfo.FileId);
             }
+            return new FileBuffer(Context, fileInfo.DataFork, fileInfo.FileId);
         }
+    }
 
-        public SparseStream CreateStream(string name)
-        {
-            throw new NotSupportedException();
-        }
+    public SparseStream CreateStream(string name)
+    {
+        throw new NotSupportedException();
+    }
 
-        public SparseStream OpenExistingStream(string name)
-        {
-            throw new NotImplementedException();
-        }
+    public SparseStream OpenExistingStream(string name)
+    {
+        throw new NotImplementedException();
     }
 }

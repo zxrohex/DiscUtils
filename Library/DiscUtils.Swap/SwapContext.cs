@@ -22,10 +22,9 @@
 
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Swap
+namespace DiscUtils.Swap;
+
+public class SwapContext:VfsContext
 {
-    public class SwapContext:VfsContext
-    {
-        public SwapHeader Header { get; set; }
-    }
+    public SwapHeader Header { get; set; }
 }

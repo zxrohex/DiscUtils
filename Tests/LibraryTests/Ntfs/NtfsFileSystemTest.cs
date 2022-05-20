@@ -36,14 +36,14 @@ namespace LibraryTests.Ntfs
         [Fact]//(Skip = "Issue #14")]
         public void AclInheritance()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
-            RawSecurityDescriptor sd = new RawSecurityDescriptor("O:BAG:BAD:(A;OICINP;GA;;;BA)");
+            var sd = new RawSecurityDescriptor("O:BAG:BAD:(A;OICINP;GA;;;BA)");
             ntfs.CreateDirectory("dir");
             ntfs.SetSecurity("dir", sd);
 
             ntfs.CreateDirectory(@"dir\subdir");
-            RawSecurityDescriptor inheritedSd = ntfs.GetSecurity(@"dir\subdir");
+            var inheritedSd = ntfs.GetSecurity(@"dir\subdir");
 
             Assert.NotNull(inheritedSd);
             Assert.Equal("O:BAG:BAD:(A;ID;GA;;;BA)", inheritedSd.GetSddlForm(AccessControlSections.All));
@@ -57,12 +57,12 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void ReparsePoints_Empty()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             ntfs.CreateDirectory("dir");
             ntfs.SetReparsePoint("dir", new ReparsePoint(12345, new byte[0]));
 
-            ReparsePoint rp = ntfs.GetReparsePoint("dir");
+            var rp = ntfs.GetReparsePoint("dir");
 
             Assert.Equal(12345, rp.Tag);
             Assert.NotNull(rp.Content);
@@ -72,12 +72,12 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void ReparsePoints_NonEmpty()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             ntfs.CreateDirectory("dir");
             ntfs.SetReparsePoint("dir", new ReparsePoint(123, new byte[] { 4, 5, 6 }));
 
-            ReparsePoint rp = ntfs.GetReparsePoint("dir");
+            var rp = ntfs.GetReparsePoint("dir");
 
             Assert.Equal(123, rp.Tag);
             Assert.NotNull(rp.Content);
@@ -88,22 +88,22 @@ namespace LibraryTests.Ntfs
         public void Format_SmallDisk()
         {
             long size = 8 * 1024 * 1024;
-            SparseMemoryStream partStream = new SparseMemoryStream();
+            var partStream = new SparseMemoryStream();
             //VirtualDisk disk = Vhd.Disk.InitializeDynamic(partStream, Ownership.Dispose, size);
             NtfsFileSystem.Format(partStream, "New Partition", Geometry.FromCapacity(size), 0, size / 512);
 
-            NtfsFileSystem ntfs = new NtfsFileSystem(partStream);
+            var ntfs = new NtfsFileSystem(partStream);
             ntfs.Dump(TextWriter.Null, "");
         }
 
         [Fact]//(Skip = "Issue #14")]
         public void Format_LargeDisk()
         {
-            long size = 1024L * 1024 * 1024L * 1024; // 1 TB
-            SparseMemoryStream partStream = new SparseMemoryStream();
+            var size = 1024L * 1024 * 1024L * 1024; // 1 TB
+            var partStream = new SparseMemoryStream();
             NtfsFileSystem.Format(partStream, "New Partition", Geometry.FromCapacity(size), 0, size / 512);
 
-            NtfsFileSystem ntfs = new NtfsFileSystem(partStream);
+            var ntfs = new NtfsFileSystem(partStream);
             ntfs.Dump(TextWriter.Null, "");
         }
 
@@ -111,7 +111,7 @@ namespace LibraryTests.Ntfs
         public void ClusterInfo()
         {
             // 'Big' files have clusters
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
             using (Stream s = ntfs.OpenFile(@"file", FileMode.Create, FileAccess.ReadWrite))
             {
                 s.Write(new byte[(int)ntfs.ClusterSize], 0, (int)ntfs.ClusterSize);
@@ -134,62 +134,60 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void ExtentInfo()
         {
-            using (SparseMemoryStream ms = new SparseMemoryStream())
+            using var ms = new SparseMemoryStream();
+            var diskGeometry = Geometry.FromCapacity(30 * 1024 * 1024);
+            var ntfs = NtfsFileSystem.Format(ms, "", diskGeometry, 0, diskGeometry.TotalSectorsLong);
+
+            // Check non-resident attribute
+            using (Stream s = ntfs.OpenFile(@"file", FileMode.Create, FileAccess.ReadWrite))
             {
-                Geometry diskGeometry = Geometry.FromCapacity(30 * 1024 * 1024);
-                NtfsFileSystem ntfs = NtfsFileSystem.Format(ms, "", diskGeometry, 0, diskGeometry.TotalSectorsLong);
-
-                // Check non-resident attribute
-                using (Stream s = ntfs.OpenFile(@"file", FileMode.Create, FileAccess.ReadWrite))
-                {
-                    byte[] data = new byte[(int)ntfs.ClusterSize];
-                    data[0] = 0xAE;
-                    data[1] = 0x3F;
-                    data[2] = 0x8D;
-                    s.Write(data, 0, (int)ntfs.ClusterSize);
-                }
-
-                var extents = ntfs.PathToExtents("file");
-                Assert.Single(extents);
-                Assert.Equal(ntfs.ClusterSize, extents[0].Length);
-
-                ms.Position = extents[0].Start;
-                Assert.Equal(0xAE, ms.ReadByte());
-                Assert.Equal(0x3F, ms.ReadByte());
-                Assert.Equal(0x8D, ms.ReadByte());
-
-
-                // Check resident attribute
-                using (Stream s = ntfs.OpenFile(@"file2", FileMode.Create, FileAccess.ReadWrite))
-                {
-                    s.WriteByte(0xBA);
-                    s.WriteByte(0x82);
-                    s.WriteByte(0x2C);
-                }
-                extents = ntfs.PathToExtents("file2");
-                Assert.Single(extents);
-                Assert.Equal(3, extents[0].Length);
-
-                byte[] read = new byte[100];
-                ms.Position = extents[0].Start;
-                ms.Read(read, 0, 100);
-
-                Assert.Equal(0xBA, read[0]);
-                Assert.Equal(0x82, read[1]);
-                Assert.Equal(0x2C, read[2]);
+                var data = new byte[(int)ntfs.ClusterSize];
+                data[0] = 0xAE;
+                data[1] = 0x3F;
+                data[2] = 0x8D;
+                s.Write(data, 0, (int)ntfs.ClusterSize);
             }
+
+            var extents = ntfs.PathToExtents("file");
+            Assert.Single(extents);
+            Assert.Equal(ntfs.ClusterSize, extents[0].Length);
+
+            ms.Position = extents[0].Start;
+            Assert.Equal(0xAE, ms.ReadByte());
+            Assert.Equal(0x3F, ms.ReadByte());
+            Assert.Equal(0x8D, ms.ReadByte());
+
+
+            // Check resident attribute
+            using (Stream s = ntfs.OpenFile(@"file2", FileMode.Create, FileAccess.ReadWrite))
+            {
+                s.WriteByte(0xBA);
+                s.WriteByte(0x82);
+                s.WriteByte(0x2C);
+            }
+            extents = ntfs.PathToExtents("file2");
+            Assert.Single(extents);
+            Assert.Equal(3, extents[0].Length);
+
+            var read = new byte[100];
+            ms.Position = extents[0].Start;
+            ms.Read(read, 0, 100);
+
+            Assert.Equal(0xBA, read[0]);
+            Assert.Equal(0x82, read[1]);
+            Assert.Equal(0x2C, read[2]);
         }
 
         [Fact]
         public void ManyAttributes()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
             using (Stream s = ntfs.OpenFile(@"file", FileMode.Create, FileAccess.ReadWrite))
             {
                 s.WriteByte(32);
             }
 
-            for (int i = 0; i < 50; ++i)
+            for (var i = 0; i < 50; ++i)
             {
                 ntfs.CreateHardLink("file", "hl" + i);
             }
@@ -206,7 +204,7 @@ namespace LibraryTests.Ntfs
                 Assert.Equal(12, s.ReadByte());
             }
 
-            for (int i = 0; i < 50; ++i)
+            for (var i = 0; i < 50; ++i)
             {
                 ntfs.DeleteFile("hl" + i);
             }
@@ -221,7 +219,7 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void ShortNames()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             // Check we can find a short name in the same directory
             using (Stream s = ntfs.OpenFile("ALongFileName.txt", FileMode.CreateNew)) {}
@@ -251,7 +249,7 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void HardLinkCount()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             using (Stream s = ntfs.OpenFile("ALongFileName.txt", FileMode.CreateNew)) { }
             Assert.Equal(1, ntfs.GetHardLinkCount("ALongFileName.txt"));
@@ -271,7 +269,7 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void HasHardLink()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             using (Stream s = ntfs.OpenFile("ALongFileName.txt", FileMode.CreateNew)) { }
             Assert.False(ntfs.HasHardLinks("ALongFileName.txt"));
@@ -289,7 +287,7 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void MoveLongName()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             using (Stream s = ntfs.OpenFile("ALongFileName.txt", FileMode.CreateNew)) { }
 
@@ -311,7 +309,7 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void OpenRawStream()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
 #pragma warning disable 618
             Assert.Null(ntfs.OpenRawStream(@"$Extend\$ObjId", AttributeType.Data, null, FileAccess.Read));
@@ -321,7 +319,7 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void GetAlternateDataStreams()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             ntfs.OpenFile("AFILE.TXT", FileMode.Create).Dispose();
             Assert.Empty(ntfs.GetAlternateDataStreams("AFILE.TXT"));
@@ -334,7 +332,7 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void DeleteAlternateDataStreams()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             ntfs.OpenFile("AFILE.TXT", FileMode.Create).Dispose();
             ntfs.OpenFile("AFILE.TXT:ALTSTREAM", FileMode.Create).Dispose();
@@ -348,7 +346,7 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void DeleteShortNameDir()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             ntfs.CreateDirectory(@"\TestLongName1\TestLongName2");
             ntfs.SetShortName(@"\TestLongName1\TestLongName2", "TESTLO~1");
@@ -364,7 +362,7 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void GetFileLength()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             ntfs.OpenFile(@"AFILE.TXT", FileMode.Create).Dispose();
             Assert.Equal(0, ntfs.GetFileLength("AFILE.TXT"));
@@ -401,13 +399,13 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void Fragmented()
         {
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
             ntfs.CreateDirectory(@"DIR");
 
-            byte[] buffer = new byte[4096];
+            var buffer = new byte[4096];
 
-            for(int i = 0; i < 2500; ++i)
+            for(var i = 0; i < 2500; ++i)
             {
                 using(var stream = ntfs.OpenFile(@"DIR\file" + i + ".bin", FileMode.Create, FileAccess.ReadWrite))
                 {
@@ -420,7 +418,7 @@ namespace LibraryTests.Ntfs
                 }
             }
 
-            for (int i = 0; i < 2500; ++i)
+            for (var i = 0; i < 2500; ++i)
             {
                 ntfs.DeleteFile(@"DIR\file" + i + ".bin");
             }
@@ -428,15 +426,15 @@ namespace LibraryTests.Ntfs
             // Create fragmented file (lots of small writes)
             using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.Create, FileAccess.ReadWrite))
             {
-                for (int i = 0; i < 2500; ++i)
+                for (var i = 0; i < 2500; ++i)
                 {
                     stream.Write(buffer, 0, buffer.Length);
                 }
             }
 
             // Try a large write
-            byte[] largeWriteBuffer = new byte[200 * 1024];
-            for (int i = 0; i < largeWriteBuffer.Length / 4096; ++i)
+            var largeWriteBuffer = new byte[200 * 1024];
+            for (var i = 0; i < largeWriteBuffer.Length / 4096; ++i)
             {
                 largeWriteBuffer[i * 4096] = (byte)i;
             }
@@ -447,7 +445,7 @@ namespace LibraryTests.Ntfs
             }
 
             // And a large read
-            byte[] largeReadBuffer = new byte[largeWriteBuffer.Length];
+            var largeReadBuffer = new byte[largeWriteBuffer.Length];
             using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
             {
                 stream.Position = stream.Length - largeReadBuffer.Length;
@@ -460,17 +458,17 @@ namespace LibraryTests.Ntfs
         [Fact]
         public void Sparse()
         {
-            int fileSize = 1 * 1024 * 1024;
+            var fileSize = 1 * 1024 * 1024;
 
-            NtfsFileSystem ntfs = FileSystemSource.NtfsFileSystem();
+            var ntfs = FileSystemSource.NtfsFileSystem();
 
-            byte[] data = new byte[fileSize];
-            for (int i = 0; i < fileSize; i++)
+            var data = new byte[fileSize];
+            for (var i = 0; i < fileSize; i++)
             {
                 data[i] = (byte)i;
             }
 
-            using (SparseStream s = ntfs.OpenFile("file.bin", FileMode.CreateNew))
+            using (var s = ntfs.OpenFile("file.bin", FileMode.CreateNew))
             {
                 s.Write(data, 0, fileSize);
 
@@ -482,11 +480,11 @@ namespace LibraryTests.Ntfs
                 s.Clear(128 * 1024);
             }
 
-            using (SparseStream s = ntfs.OpenFile("file.bin", FileMode.Open))
+            using (var s = ntfs.OpenFile("file.bin", FileMode.Open))
             {
                 Assert.Equal(fileSize + 64 * 1024, s.Length);
 
-                List<StreamExtent> extents = new List<StreamExtent>(s.Extents);
+                var extents = new List<StreamExtent>(s.Extents);
 
                 Assert.Equal(2, extents.Count);
                 Assert.Equal(0, extents[0].Start);
@@ -498,15 +496,15 @@ namespace LibraryTests.Ntfs
                 s.Position = 72 * 1024;
                 s.WriteByte(99);
 
-                byte[] readBuffer = new byte[fileSize];
+                var readBuffer = new byte[fileSize];
                 s.Position = 0;
                 s.Read(readBuffer, 0, fileSize);
 
-                for (int i = 64 * 1024; i < (128 + 64) * 1024; ++i)
+                for (var i = 64 * 1024; i < (128 + 64) * 1024; ++i)
                 {
                     data[i] = 0;
                 }
-                for (int i = fileSize - (64 * 1024); i < fileSize; ++i)
+                for (var i = fileSize - (64 * 1024); i < fileSize; ++i)
                 {
                     data[i] = 0;
                 }

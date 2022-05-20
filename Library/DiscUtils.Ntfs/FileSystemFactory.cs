@@ -24,22 +24,21 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Ntfs
-{
-    [VfsFileSystemFactory]
-    internal class FileSystemFactory : VfsFileSystemFactory
-    {
-        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
-        {
-            if (NtfsFileSystem.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("NTFS", "Microsoft NTFS", Open);
-            }
-        }
+namespace DiscUtils.Ntfs;
 
-        private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+[VfsFileSystemFactory]
+internal class FileSystemFactory : VfsFileSystemFactory
+{
+    public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+    {
+        if (NtfsFileSystem.Detect(stream))
         {
-            return new NtfsFileSystem(stream);
+            yield return new VfsFileSystemInfo("NTFS", "Microsoft NTFS", Open);
         }
+    }
+
+    private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new NtfsFileSystem(stream);
     }
 }

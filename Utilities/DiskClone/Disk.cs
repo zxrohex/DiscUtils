@@ -26,114 +26,113 @@ using DiscUtils;
 using DiscUtils.Streams;
 using Microsoft.Win32.SafeHandles;
 
-namespace DiskClone
+namespace DiskClone;
+
+class Disk : VirtualDisk
 {
-    class Disk : VirtualDisk
+    private string _path;
+    private SafeFileHandle _handle;
+    private SparseStream _stream;
+
+    public Disk(uint number)
     {
-        private string _path;
-        private SafeFileHandle _handle;
-        private SparseStream _stream;
+        _path = @"\\.\PhysicalDrive" + number;
+        _handle = Win32Wrapper.OpenFileHandle(_path);
+    }
 
-        public Disk(uint number)
+    /// <summary>
+    /// Gets a value indicating whether the layer data is opened for writing.
+    /// </summary>
+    public override bool CanWrite => false;
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
         {
-            _path = @"\\.\PhysicalDrive" + number;
-            _handle = Win32Wrapper.OpenFileHandle(_path);
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether the layer data is opened for writing.
-        /// </summary>
-        public override bool CanWrite => false;
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
+            if (_stream != null)
             {
-                if (_stream != null)
-                {
-                    _stream.Dispose();
-                    _stream = null;
-                }
+                _stream.Dispose();
+                _stream = null;
             }
+        }
 
-            if (!_handle.IsClosed)
+        if (!_handle.IsClosed)
+        {
+            _handle.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+
+    public override SparseStream Content
+    {
+        get
+        {
+            if (_stream == null)
             {
-                _handle.Dispose();
+                _stream = new DiskStream(_handle);
             }
-
-            base.Dispose(disposing);
+            return _stream;
         }
+    }
 
-        public override SparseStream Content
+    public override Geometry Geometry
+    {
+        get
         {
-            get
+            return Geometry.FromCapacity(Capacity);
+        }
+    }
+
+    public override Geometry BiosGeometry
+    {
+        get
+        {
+            var diskGeometry = Win32Wrapper.GetDiskGeometry(_handle);
+            return new Geometry((int)diskGeometry.Cylinders, diskGeometry.TracksPerCylinder, diskGeometry.SectorsPerTrack, diskGeometry.BytesPerSector);
+        }
+    }
+
+    public override VirtualDiskClass DiskClass
+    {
+        get { return VirtualDiskClass.HardDisk; }
+    }
+
+    public override long Capacity
+    {
+        get
+        {
+            return Win32Wrapper.GetDiskCapacity(_handle);
+        }
+    }
+
+    public override IEnumerable<VirtualDiskLayer> Layers
+    {
+        get { throw new NotImplementedException(); }
+    }
+
+    public override VirtualDiskTypeInfo DiskTypeInfo
+    {
+        get {
+            return new VirtualDiskTypeInfo()
             {
-                if (_stream == null)
-                {
-                    _stream = new DiskStream(_handle);
-                }
-                return _stream;
-            }
+                Name="Physical",
+                Variant = "",
+                CanBeHardDisk = true,
+                DeterministicGeometry = false,
+                PreservesBiosGeometry = false,
+                CalcGeometry = Geometry.FromCapacity,
+            };
         }
+    }
 
-        public override Geometry Geometry
-        {
-            get
-            {
-                return Geometry.FromCapacity(Capacity);
-            }
-        }
+    public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override Geometry BiosGeometry
-        {
-            get
-            {
-                NativeMethods.DiskGeometry diskGeometry = Win32Wrapper.GetDiskGeometry(_handle);
-                return new Geometry((int)diskGeometry.Cylinders, diskGeometry.TracksPerCylinder, diskGeometry.SectorsPerTrack, diskGeometry.BytesPerSector);
-            }
-        }
-
-        public override VirtualDiskClass DiskClass
-        {
-            get { return VirtualDiskClass.HardDisk; }
-        }
-
-        public override long Capacity
-        {
-            get
-            {
-                return Win32Wrapper.GetDiskCapacity(_handle);
-            }
-        }
-
-        public override IEnumerable<VirtualDiskLayer> Layers
-        {
-            get { throw new NotImplementedException(); }
-        }
-
-        public override VirtualDiskTypeInfo DiskTypeInfo
-        {
-            get {
-                return new VirtualDiskTypeInfo()
-                {
-                    Name="Physical",
-                    Variant = "",
-                    CanBeHardDisk = true,
-                    DeterministicGeometry = false,
-                    PreservesBiosGeometry = false,
-                    CalcGeometry = Geometry.FromCapacity,
-                };
-            }
-        }
-
-        public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override VirtualDisk CreateDifferencingDisk(string path)
-        {
-            throw new NotImplementedException();
-        }
+    public override VirtualDisk CreateDifferencingDisk(string path)
+    {
+        throw new NotImplementedException();
     }
 }

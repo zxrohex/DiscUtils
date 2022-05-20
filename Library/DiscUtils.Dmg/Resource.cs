@@ -25,64 +25,59 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 
-namespace DiscUtils.Dmg
+namespace DiscUtils.Dmg;
+
+internal abstract class Resource
 {
-    internal abstract class Resource
+    protected Resource(string type, Dictionary<string, object> parts)
     {
-        protected Resource(string type, Dictionary<string, object> parts)
+        Type = type;
+        Name = parts["Name"] as string;
+
+        var idStr = parts["ID"] as string;
+        if (!string.IsNullOrEmpty(idStr))
         {
-            Type = type;
-            Name = parts["Name"] as string;
-
-            string idStr = parts["ID"] as string;
-            if (!string.IsNullOrEmpty(idStr))
+            if (!int.TryParse(idStr, out var id))
             {
-                int id;
-                if (!int.TryParse(idStr, out id))
-                {
-                    throw new InvalidDataException("Invalid ID field");
-                }
-
-                Id = id;
+                throw new InvalidDataException("Invalid ID field");
             }
 
-            string attrString = parts["Attributes"] as string;
-            if (!string.IsNullOrEmpty(attrString))
-            {
-                NumberStyles style = NumberStyles.Integer;
-                if (attrString.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-                {
-                    style = NumberStyles.HexNumber;
-                    attrString = attrString.Substring(2);
-                }
-
-                uint attributes;
-                if (!uint.TryParse(attrString, style, CultureInfo.InvariantCulture, out attributes))
-                {
-                    throw new InvalidDataException("Invalid Attributes field");
-                }
-
-                Attributes = attributes;
-            }
+            Id = id;
         }
 
-        public uint Attributes { get; set; }
-
-        public int Id { get; set; }
-
-        public string Name { get; set; }
-
-        public string Type { get; }
-
-        internal static Resource FromPlist(string type, Dictionary<string, object> parts)
+        var attrString = parts["Attributes"] as string;
+        if (!string.IsNullOrEmpty(attrString))
         {
-            switch (type)
+            var style = NumberStyles.Integer;
+            if (attrString.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
-                case "blkx":
-                    return new BlkxResource(parts);
-                default:
-                    return new GenericResource(type, parts);
+                style = NumberStyles.HexNumber;
+                attrString = attrString.Substring(2);
             }
+
+            if (!uint.TryParse(attrString, style, CultureInfo.InvariantCulture, out var attributes))
+            {
+                throw new InvalidDataException("Invalid Attributes field");
+            }
+
+            Attributes = attributes;
         }
+    }
+
+    public uint Attributes { get; set; }
+
+    public int Id { get; set; }
+
+    public string Name { get; set; }
+
+    public string Type { get; }
+
+    internal static Resource FromPlist(string type, Dictionary<string, object> parts)
+    {
+        return type switch
+        {
+            "blkx" => new BlkxResource(parts),
+            _ => new GenericResource(type, parts),
+        };
     }
 }

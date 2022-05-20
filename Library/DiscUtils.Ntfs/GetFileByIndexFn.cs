@@ -1,4 +1,3 @@
-namespace DiscUtils.Ntfs
-{
-    internal delegate File GetFileByIndexFn(long index);
-}
+namespace DiscUtils.Ntfs;
+
+internal delegate File GetFileByIndexFn(long index);

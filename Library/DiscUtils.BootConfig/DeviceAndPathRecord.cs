@@ -23,36 +23,35 @@
 using System;
 using System.Text;
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class DeviceAndPathRecord : DeviceRecord
 {
-    internal class DeviceAndPathRecord : DeviceRecord
+    private DeviceRecord _container;
+    private string _path;
+
+    public override int Size
     {
-        private DeviceRecord _container;
-        private string _path;
+        get { throw new NotImplementedException(); }
+    }
 
-        public override int Size
-        {
-            get { throw new NotImplementedException(); }
-        }
+    public override void GetBytes(byte[] data, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override void GetBytes(byte[] data, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public override string ToString()
+    {
+        return _container + ":" + _path;
+    }
 
-        public override string ToString()
-        {
-            return _container + ":" + _path;
-        }
+    protected override void DoParse(byte[] data, int offset)
+    {
+        base.DoParse(data, offset);
 
-        protected override void DoParse(byte[] data, int offset)
-        {
-            base.DoParse(data, offset);
+        _container = Parse(data, offset + 0x34);
 
-            _container = Parse(data, offset + 0x34);
-
-            int pathStart = 0x34 + _container.Size;
-            _path = Encoding.Unicode.GetString(data, offset + pathStart, Length - pathStart);
-        }
+        var pathStart = 0x34 + _container.Size;
+        _path = Encoding.Unicode.GetString(data, offset + pathStart, Length - pathStart);
     }
 }

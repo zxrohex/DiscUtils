@@ -20,19 +20,18 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public class Block
 {
-    public class Block
+    public int Available { get; set; }
+
+    public byte[] Data { get; set; }
+
+    public long Position { get; set; }
+
+    public bool Equals(Block other)
     {
-        public int Available { get; set; }
-
-        public byte[] Data { get; set; }
-
-        public long Position { get; set; }
-
-        public bool Equals(Block other)
-        {
-            return Position == other.Position;
-        }
+        return Position == other.Position;
     }
 }

@@ -22,25 +22,24 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal class SymlinkInode : Inode
 {
-    internal class SymlinkInode : Inode
+    public uint SymlinkSize;
+
+    public override int Size
     {
-        public uint SymlinkSize;
+        get { return 24; }
+    }
 
-        public override int Size
-        {
-            get { return 24; }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        base.ReadFrom(buffer, offset);
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            base.ReadFrom(buffer, offset);
+        NumLinks = EndianUtilities.ToInt32LittleEndian(buffer, offset + 16);
+        SymlinkSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
 
-            NumLinks = EndianUtilities.ToInt32LittleEndian(buffer, offset + 16);
-            SymlinkSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
-
-            return 24;
-        }
+        return 24;
     }
 }

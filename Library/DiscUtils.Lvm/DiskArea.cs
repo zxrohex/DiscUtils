@@ -20,31 +20,30 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using DiscUtils.Streams;
+using System;
+
+internal class DiskArea : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
+    public ulong Offset;
+    public ulong Length;
+    
+    /// <inheritdoc />
+    public int Size { get { return 16; } }
 
-    internal class DiskArea : IByteArraySerializable
+    /// <inheritdoc />
+    public int ReadFrom(byte[] buffer, int offset)
     {
-        public ulong Offset;
-        public ulong Length;
-        
-        /// <inheritdoc />
-        public int Size { get { return 16; } }
+        Offset = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+        Length = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
+        return Size;
+    }
 
-        /// <inheritdoc />
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Offset = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-            Length = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-            return Size;
-        }
-
-        /// <inheritdoc />
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    /// <inheritdoc />
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -23,43 +23,44 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class DataOutPacket
 {
-    internal class DataOutPacket
+    private readonly Connection _connection;
+
+    private readonly ulong _lun;
+
+    public DataOutPacket(Connection connection, ulong lun)
     {
-        private readonly Connection _connection;
+        _connection = connection;
+        _lun = lun;
+    }
 
-        private readonly ulong _lun;
-
-        public DataOutPacket(Connection connection, ulong lun)
+    public byte[] GetBytes(byte[] data, int offset, int count, bool isFinalData, int dataSeqNumber,
+                           uint bufferOffset, uint targetTransferTag)
+    {
+        var _basicHeader = new BasicHeaderSegment
         {
-            _connection = connection;
-            _lun = lun;
-        }
+            Immediate = false,
+            OpCode = OpCode.ScsiDataOut,
+            FinalPdu = isFinalData,
+            TotalAhsLength = 0,
+            DataSegmentLength = count,
+            InitiatorTaskTag = _connection.Session.CurrentTaskTag
+        };
 
-        public byte[] GetBytes(byte[] data, int offset, int count, bool isFinalData, int dataSeqNumber,
-                               uint bufferOffset, uint targetTransferTag)
-        {
-            BasicHeaderSegment _basicHeader = new BasicHeaderSegment();
-            _basicHeader.Immediate = false;
-            _basicHeader.OpCode = OpCode.ScsiDataOut;
-            _basicHeader.FinalPdu = isFinalData;
-            _basicHeader.TotalAhsLength = 0;
-            _basicHeader.DataSegmentLength = count;
-            _basicHeader.InitiatorTaskTag = _connection.Session.CurrentTaskTag;
+        var buffer = new byte[48 + MathUtilities.RoundUp(count, 4)];
+        _basicHeader.WriteTo(buffer, 0);
+        buffer[1] = (byte)(isFinalData ? 0x80 : 0x00);
+        EndianUtilities.WriteBytesBigEndian(_lun, buffer, 8);
+        EndianUtilities.WriteBytesBigEndian(targetTransferTag, buffer, 20);
+        EndianUtilities.WriteBytesBigEndian(_connection.ExpectedStatusSequenceNumber, buffer, 28);
+        EndianUtilities.WriteBytesBigEndian(dataSeqNumber, buffer, 36);
+        EndianUtilities.WriteBytesBigEndian(bufferOffset, buffer, 40);
 
-            byte[] buffer = new byte[48 + MathUtilities.RoundUp(count, 4)];
-            _basicHeader.WriteTo(buffer, 0);
-            buffer[1] = (byte)(isFinalData ? 0x80 : 0x00);
-            EndianUtilities.WriteBytesBigEndian(_lun, buffer, 8);
-            EndianUtilities.WriteBytesBigEndian(targetTransferTag, buffer, 20);
-            EndianUtilities.WriteBytesBigEndian(_connection.ExpectedStatusSequenceNumber, buffer, 28);
-            EndianUtilities.WriteBytesBigEndian(dataSeqNumber, buffer, 36);
-            EndianUtilities.WriteBytesBigEndian(bufferOffset, buffer, 40);
+        Array.Copy(data, offset, buffer, 48, count);
 
-            Array.Copy(data, offset, buffer, 48, count);
-
-            return buffer;
-        }
+        return buffer;
     }
 }

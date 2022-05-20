@@ -32,11 +32,11 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void FriendlyName()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.LibraryApplicationPath, ElementValue.ForString(@"a\path\to\nowhere"));
+            var el = obj.AddElement(WellKnownElement.LibraryApplicationPath, ElementValue.ForString(@"a\path\to\nowhere"));
             Assert.Equal("{path}", el.FriendlyName);
         }
     }

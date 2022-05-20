@@ -25,87 +25,86 @@ using System.Collections.Generic;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Partitions
+namespace DiscUtils.Partitions;
+
+internal class GptEntry : IComparable<GptEntry>
 {
-    internal class GptEntry : IComparable<GptEntry>
+    public ulong Attributes;
+    public long FirstUsedLogicalBlock;
+    public Guid Identity;
+    public long LastUsedLogicalBlock;
+    public string Name;
+    public Guid PartitionType;
+
+    public GptEntry()
     {
-        public ulong Attributes;
-        public long FirstUsedLogicalBlock;
-        public Guid Identity;
-        public long LastUsedLogicalBlock;
-        public string Name;
-        public Guid PartitionType;
+        PartitionType = Guid.Empty;
+        Identity = Guid.Empty;
+        Name = string.Empty;
+    }
 
-        public GptEntry()
-        {
-            PartitionType = Guid.Empty;
-            Identity = Guid.Empty;
-            Name = string.Empty;
-        }
+    public string FriendlyPartitionType => GetFriendlyPartitionType(PartitionType);
 
-        public string FriendlyPartitionType => GetFriendlyPartitionType(PartitionType);
+    private readonly static Dictionary<Guid, string> _friendlyPartitionTypeNames = new Dictionary<Guid, string>
+    {
+        { new Guid("00000000-0000-0000-0000-000000000000"), "Unused" },
+        { new Guid("024DEE41-33E7-11D3-9D69-0008C781F39F"), "MBR Partition Scheme" },
+        { new Guid("C12A7328-F81F-11D2-BA4B-00A0C93EC93B"), "EFI System" },
+        { new Guid("21686148-6449-6E6F-744E-656564454649"), "BIOS Boot" },
+        { new Guid("E3C9E316-0B5C-4DB8-817D-F92DF00215AE"), "Microsoft Reserved" },
+        { new Guid("EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"), "Windows Basic Data" },
+        { new Guid("5808C8AA-7E8F-42E0-85D2-E1E90434CFB3"), "Windows Logical Disk Manager Metadata" },
+        { new Guid("AF9B60A0-1431-4F62-BC68-3311714A69AD"), "Windows Logical Disk Manager Data" },
+        { new Guid("75894C1E-3AEB-11D3-B7C1-7B03A0000000"), "HP-UX Data" },
+        { new Guid("E2A1E728-32E3-11D6-A682-7B03A0000000"), "HP-UX Service" },
+        { new Guid("A19D880F-05FC-4D3B-A006-743F0F84911E"), "Linux RAID" },
+        { new Guid("0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"), "Linux Swap" },
+        { new Guid("E6D6D379-F507-44C2-A23C-238F2A3DF928"), "Linux Logical Volume Manager" },
+        { new Guid("83BD6B9D-7F41-11DC-BE0B-001560B84F0F"), "FreeBSD Boot" },
+        { new Guid("516E7CB4-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD Data" },
+        { new Guid("516E7CB5-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD Swap" },
+        { new Guid("516E7CB6-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD Unix File System" },
+        { new Guid("516E7CB8-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD Vinum volume manager" },
+        { new Guid("516E7CBA-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD ZFS" },
+        { new Guid("48465300-0000-11AA-AA11-00306543ECAC"), "Mac OS X HFS+" },
+        { new Guid("55465300-0000-11AA-AA11-00306543ECAC"), "Mac OS X UFS" },
+        { new Guid("6A898CC3-1DD2-11B2-99A6-080020736631"), "Mac OS X ZFS" },
+        { new Guid("52414944-0000-11AA-AA11-00306543ECAC"), "Mac OS X RAID" },
+        { new Guid("52414944-5F4F-11AA-AA11-00306543ECAC"), "Mac OS X RAID, Offline" },
+        { new Guid("426F6F74-0000-11AA-AA11-00306543ECAC"), "Mac OS X Boot" },
+        { new Guid("4C616265-6C00-11AA-AA11-00306543ECAC"), "Mac OS X Label" },
+        { new Guid("49F48D32-B10E-11DC-B99B-0019D1879648"), "NetBSD Swap" },
+        { new Guid("49F48D5A-B10E-11DC-B99B-0019D1879648"), "NetBSD Fast File System" },
+        { new Guid("49F48D82-B10E-11DC-B99B-0019D1879648"), "NetBSD Log-Structed File System" },
+        { new Guid("49F48DAA-B10E-11DC-B99B-0019D1879648"), "NetBSD RAID" },
+        { new Guid("2DB519C4-B10F-11DC-B99B-0019D1879648"), "NetBSD Concatenated" },
+        { new Guid("2DB519EC-B10F-11DC-B99B-0019D1879648"), "NetBSD Encrypted" }
+    };
 
-        private readonly static Dictionary<Guid, string> _friendlyPartitionTypeNames = new Dictionary<Guid, string>
-        {
-            { new Guid("00000000-0000-0000-0000-000000000000"), "Unused" },
-            { new Guid("024DEE41-33E7-11D3-9D69-0008C781F39F"), "MBR Partition Scheme" },
-            { new Guid("C12A7328-F81F-11D2-BA4B-00A0C93EC93B"), "EFI System" },
-            { new Guid("21686148-6449-6E6F-744E-656564454649"), "BIOS Boot" },
-            { new Guid("E3C9E316-0B5C-4DB8-817D-F92DF00215AE"), "Microsoft Reserved" },
-            { new Guid("EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"), "Windows Basic Data" },
-            { new Guid("5808C8AA-7E8F-42E0-85D2-E1E90434CFB3"), "Windows Logical Disk Manager Metadata" },
-            { new Guid("AF9B60A0-1431-4F62-BC68-3311714A69AD"), "Windows Logical Disk Manager Data" },
-            { new Guid("75894C1E-3AEB-11D3-B7C1-7B03A0000000"), "HP-UX Data" },
-            { new Guid("E2A1E728-32E3-11D6-A682-7B03A0000000"), "HP-UX Service" },
-            { new Guid("A19D880F-05FC-4D3B-A006-743F0F84911E"), "Linux RAID" },
-            { new Guid("0657FD6D-A4AB-43C4-84E5-0933C84B4F4F"), "Linux Swap" },
-            { new Guid("E6D6D379-F507-44C2-A23C-238F2A3DF928"), "Linux Logical Volume Manager" },
-            { new Guid("83BD6B9D-7F41-11DC-BE0B-001560B84F0F"), "FreeBSD Boot" },
-            { new Guid("516E7CB4-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD Data" },
-            { new Guid("516E7CB5-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD Swap" },
-            { new Guid("516E7CB6-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD Unix File System" },
-            { new Guid("516E7CB8-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD Vinum volume manager" },
-            { new Guid("516E7CBA-6ECF-11D6-8FF8-00022D09712B"), "FreeBSD ZFS" },
-            { new Guid("48465300-0000-11AA-AA11-00306543ECAC"), "Mac OS X HFS+" },
-            { new Guid("55465300-0000-11AA-AA11-00306543ECAC"), "Mac OS X UFS" },
-            { new Guid("6A898CC3-1DD2-11B2-99A6-080020736631"), "Mac OS X ZFS" },
-            { new Guid("52414944-0000-11AA-AA11-00306543ECAC"), "Mac OS X RAID" },
-            { new Guid("52414944-5F4F-11AA-AA11-00306543ECAC"), "Mac OS X RAID, Offline" },
-            { new Guid("426F6F74-0000-11AA-AA11-00306543ECAC"), "Mac OS X Boot" },
-            { new Guid("4C616265-6C00-11AA-AA11-00306543ECAC"), "Mac OS X Label" },
-            { new Guid("49F48D32-B10E-11DC-B99B-0019D1879648"), "NetBSD Swap" },
-            { new Guid("49F48D5A-B10E-11DC-B99B-0019D1879648"), "NetBSD Fast File System" },
-            { new Guid("49F48D82-B10E-11DC-B99B-0019D1879648"), "NetBSD Log-Structed File System" },
-            { new Guid("49F48DAA-B10E-11DC-B99B-0019D1879648"), "NetBSD RAID" },
-            { new Guid("2DB519C4-B10F-11DC-B99B-0019D1879648"), "NetBSD Concatenated" },
-            { new Guid("2DB519EC-B10F-11DC-B99B-0019D1879648"), "NetBSD Encrypted" }
-        };
+    public static string GetFriendlyPartitionType(Guid type) => _friendlyPartitionTypeNames.TryGetValue(type, out var name) ? name : type.ToString().ToUpperInvariant();
 
-        public static string GetFriendlyPartitionType(Guid type) => _friendlyPartitionTypeNames.TryGetValue(type, out var name) ? name : type.ToString().ToUpperInvariant();
+    public int CompareTo(GptEntry other)
+    {
+        return FirstUsedLogicalBlock.CompareTo(other.FirstUsedLogicalBlock);
+    }
 
-        public int CompareTo(GptEntry other)
-        {
-            return FirstUsedLogicalBlock.CompareTo(other.FirstUsedLogicalBlock);
-        }
+    public void ReadFrom(byte[] buffer, int offset)
+    {
+        PartitionType = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0);
+        Identity = EndianUtilities.ToGuidLittleEndian(buffer, offset + 16);
+        FirstUsedLogicalBlock = EndianUtilities.ToInt64LittleEndian(buffer, offset + 32);
+        LastUsedLogicalBlock = EndianUtilities.ToInt64LittleEndian(buffer, offset + 40);
+        Attributes = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 48);
+        Name = Encoding.Unicode.GetString(buffer, offset + 56, 72).TrimEnd('\0');
+    }
 
-        public void ReadFrom(byte[] buffer, int offset)
-        {
-            PartitionType = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0);
-            Identity = EndianUtilities.ToGuidLittleEndian(buffer, offset + 16);
-            FirstUsedLogicalBlock = EndianUtilities.ToInt64LittleEndian(buffer, offset + 32);
-            LastUsedLogicalBlock = EndianUtilities.ToInt64LittleEndian(buffer, offset + 40);
-            Attributes = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 48);
-            Name = Encoding.Unicode.GetString(buffer, offset + 56, 72).TrimEnd('\0');
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian(PartitionType, buffer, offset + 0);
-            EndianUtilities.WriteBytesLittleEndian(Identity, buffer, offset + 16);
-            EndianUtilities.WriteBytesLittleEndian(FirstUsedLogicalBlock, buffer, offset + 32);
-            EndianUtilities.WriteBytesLittleEndian(LastUsedLogicalBlock, buffer, offset + 40);
-            EndianUtilities.WriteBytesLittleEndian(Attributes, buffer, offset + 48);
-            Encoding.Unicode.GetBytes(Name + new string('\0', 36), 0, 36, buffer, offset + 56);
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        EndianUtilities.WriteBytesLittleEndian(PartitionType, buffer, offset + 0);
+        EndianUtilities.WriteBytesLittleEndian(Identity, buffer, offset + 16);
+        EndianUtilities.WriteBytesLittleEndian(FirstUsedLogicalBlock, buffer, offset + 32);
+        EndianUtilities.WriteBytesLittleEndian(LastUsedLogicalBlock, buffer, offset + 40);
+        EndianUtilities.WriteBytesLittleEndian(Attributes, buffer, offset + 48);
+        Encoding.Unicode.GetBytes(Name + new string('\0', 36), 0, 36, buffer, offset + 56);
     }
 }

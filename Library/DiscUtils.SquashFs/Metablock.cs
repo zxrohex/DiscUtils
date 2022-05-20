@@ -22,10 +22,9 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal sealed class Metablock : Block
 {
-    internal sealed class Metablock : Block
-    {
-        public long NextBlockStart { get; set; }
-    }
+    public long NextBlockStart { get; set; }
 }

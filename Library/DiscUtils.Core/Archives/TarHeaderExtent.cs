@@ -20,54 +20,53 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Archives
+namespace DiscUtils.Archives;
+
+using Internal;
+using Streams;
+using System;
+
+internal sealed class TarHeaderExtent : BuilderBufferExtent
 {
-    using Internal;
-    using Streams;
-    using System;
+    private string _fileName;
+    private long _fileLength;
+    private UnixFilePermissions _mode;
+    private int _ownerId;
+    private int _groupId;
+    private DateTime _modificationTime;
 
-    internal sealed class TarHeaderExtent : BuilderBufferExtent
+    public TarHeaderExtent(long start, string fileName, long fileLength, UnixFilePermissions mode, int ownerId, int groupId, DateTime modificationTime)
+        : base(start, 512)
     {
-        private string _fileName;
-        private long _fileLength;
-        private UnixFilePermissions _mode;
-        private int _ownerId;
-        private int _groupId;
-        private DateTime _modificationTime;
-
-        public TarHeaderExtent(long start, string fileName, long fileLength, UnixFilePermissions mode, int ownerId, int groupId, DateTime modificationTime)
-            : base(start, 512)
-        {
-            _fileName = fileName;
-            _fileLength = fileLength;
-            _mode = mode;
-            _ownerId = ownerId;
-            _groupId = groupId;
-            _modificationTime = modificationTime;
-        }
-
-        public TarHeaderExtent(long start, string fileName, long fileLength)
-            : this(start, fileName, fileLength, 0, 0, 0, DateTimeOffsetExtensions.UnixEpoch)
-        {
-        }
-
-        protected override byte[] GetBuffer()
-        {
-            byte[] buffer = new byte[TarHeader.Length];
-
-            TarHeader header = new TarHeader(
-                fileName: _fileName,
-                fileLength: _fileLength,
-                fileMode: _mode,
-                ownerId: _ownerId,
-                groupId: _groupId,
-                modificationTime: _modificationTime);
-
-            header.WriteTo(buffer, 0);
-
-            return buffer;
-        }
-
-        public override string ToString() => _fileName;
+        _fileName = fileName;
+        _fileLength = fileLength;
+        _mode = mode;
+        _ownerId = ownerId;
+        _groupId = groupId;
+        _modificationTime = modificationTime;
     }
+
+    public TarHeaderExtent(long start, string fileName, long fileLength)
+        : this(start, fileName, fileLength, 0, 0, 0, DateTimeOffsetExtensions.UnixEpoch)
+    {
+    }
+
+    protected override byte[] GetBuffer()
+    {
+        var buffer = new byte[TarHeader.Length];
+
+        var header = new TarHeader(
+            fileName: _fileName,
+            fileLength: _fileLength,
+            fileMode: _mode,
+            ownerId: _ownerId,
+            groupId: _groupId,
+            modificationTime: _modificationTime);
+
+        header.WriteTo(buffer, 0);
+
+        return buffer;
+    }
+
+    public override string ToString() => _fileName;
 }

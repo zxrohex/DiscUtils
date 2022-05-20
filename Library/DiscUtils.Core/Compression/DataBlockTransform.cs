@@ -21,50 +21,52 @@
 //
 
 using System;
+using System.Buffers;
 using System.Globalization;
 
-namespace DiscUtils.Compression
+namespace DiscUtils.Compression;
+
+internal abstract class DataBlockTransform
 {
-    internal abstract class DataBlockTransform
+    protected abstract bool BuffersMustNotOverlap { get; }
+
+    public int Process(byte[] input, int inputOffset, int inputCount, byte[] output, int outputOffset)
     {
-        protected abstract bool BuffersMustNotOverlap { get; }
-
-        public int Process(byte[] input, int inputOffset, int inputCount, byte[] output, int outputOffset)
+        if (output.Length < outputOffset + (long)MinOutputCount(inputCount))
         {
-            if (output.Length < outputOffset + (long)MinOutputCount(inputCount))
-            {
-                throw new ArgumentException(
-                    string.Format(
-                        CultureInfo.InvariantCulture,
-                        "Output buffer to small, must be at least {0} bytes may need to be {1} bytes",
-                        MinOutputCount(inputCount),
-                        MaxOutputCount(inputCount)));
-            }
+            throw new ArgumentException(
+                $"Output buffer to small, must be at least {MinOutputCount(inputCount)} bytes may need to be {MaxOutputCount(inputCount)} bytes");
+        }
 
-            if (BuffersMustNotOverlap)
-            {
-                int maxOut = MaxOutputCount(inputCount);
+        if (BuffersMustNotOverlap)
+        {
+            var maxOut = MaxOutputCount(inputCount);
 
-                if (input == output
-                    && (inputOffset + (long)inputCount > outputOffset)
-                    && (inputOffset <= outputOffset + (long)maxOut))
+            if (input == output
+                && (inputOffset + (long)inputCount > outputOffset)
+                && (inputOffset <= outputOffset + (long)maxOut))
+            {
+                var tempBuffer = ArrayPool<byte>.Shared.Rent(maxOut);
+                try
                 {
-                    byte[] tempBuffer = new byte[maxOut];
-
-                    int outCount = DoProcess(input, inputOffset, inputCount, tempBuffer, 0);
+                    var outCount = DoProcess(input, inputOffset, inputCount, tempBuffer, 0);
                     Array.Copy(tempBuffer, 0, output, outputOffset, outCount);
 
                     return outCount;
                 }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(tempBuffer);
+                }
             }
-
-            return DoProcess(input, inputOffset, inputCount, output, outputOffset);
         }
 
-        protected abstract int DoProcess(byte[] input, int inputOffset, int inputCount, byte[] output, int outputOffset);
-
-        protected abstract int MaxOutputCount(int inputCount);
-
-        protected abstract int MinOutputCount(int inputCount);
+        return DoProcess(input, inputOffset, inputCount, output, outputOffset);
     }
+
+    protected abstract int DoProcess(byte[] input, int inputOffset, int inputCount, byte[] output, int outputOffset);
+
+    protected abstract int MaxOutputCount(int inputCount);
+
+    protected abstract int MinOutputCount(int inputCount);
 }

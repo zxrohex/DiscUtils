@@ -24,270 +24,269 @@ using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class FileContentBuffer : Streams.Buffer
 {
-    internal class FileContentBuffer : Streams.Buffer
+    private readonly uint _blockSize;
+    private readonly UdfContext _context;
+    private List<CookedExtent> _extents;
+    private readonly FileEntry _fileEntry;
+    private readonly Partition _partition;
+
+    public FileContentBuffer(UdfContext context, Partition partition, FileEntry fileEntry, uint blockSize)
     {
-        private readonly uint _blockSize;
-        private readonly UdfContext _context;
-        private List<CookedExtent> _extents;
-        private readonly FileEntry _fileEntry;
-        private readonly Partition _partition;
+        _context = context;
+        _partition = partition;
+        _fileEntry = fileEntry;
+        _blockSize = blockSize;
+        LoadExtents();
+    }
 
-        public FileContentBuffer(UdfContext context, Partition partition, FileEntry fileEntry, uint blockSize)
-        {
-            _context = context;
-            _partition = partition;
-            _fileEntry = fileEntry;
-            _blockSize = blockSize;
-            LoadExtents();
-        }
+    public override bool CanRead
+    {
+        get { return true; }
+    }
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
 
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
+    public override long Capacity
+    {
+        get { return (long)_fileEntry.InformationLength; }
+    }
 
-        public override long Capacity
-        {
-            get { return (long)_fileEntry.InformationLength; }
-        }
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get { throw new NotImplementedException(); }
+    }
 
-        public override IEnumerable<StreamExtent> Extents
+    public override int Read(long pos, byte[] buffer, int offset, int count)
+    {
+        if (_fileEntry.InformationControlBlock.AllocationType == AllocationType.Embedded)
         {
-            get { throw new NotImplementedException(); }
-        }
-
-        public override int Read(long pos, byte[] buffer, int offset, int count)
-        {
-            if (_fileEntry.InformationControlBlock.AllocationType == AllocationType.Embedded)
+            var srcBuffer = _fileEntry.AllocationDescriptors;
+            if (pos > srcBuffer.Length)
             {
-                byte[] srcBuffer = _fileEntry.AllocationDescriptors;
-                if (pos > srcBuffer.Length)
-                {
-                    return 0;
-                }
-
-                int toCopy = (int)Math.Min(srcBuffer.Length - pos, count);
-                Array.Copy(srcBuffer, (int)pos, buffer, offset, toCopy);
-                return toCopy;
+                return 0;
             }
-            return ReadFromExtents(pos, buffer, offset, count);
-        }
 
-        public override void Write(long pos, byte[] buffer, int offset, int count)
-        {
-            throw new NotImplementedException();
+            var toCopy = (int)Math.Min(srcBuffer.Length - pos, count);
+            Array.Copy(srcBuffer, (int)pos, buffer, offset, toCopy);
+            return toCopy;
         }
+        return ReadFromExtents(pos, buffer, offset, count);
+    }
+
+    public override void Write(long pos, byte[] buffer, int offset, int count)
+    {
+        throw new NotImplementedException();
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override int Read(long pos, Span<byte> buffer)
+    public override int Read(long pos, Span<byte> buffer)
+    {
+        if (_fileEntry.InformationControlBlock.AllocationType == AllocationType.Embedded)
         {
-            if (_fileEntry.InformationControlBlock.AllocationType == AllocationType.Embedded)
+            var srcBuffer = _fileEntry.AllocationDescriptors;
+            if (pos > srcBuffer.Length)
             {
-                byte[] srcBuffer = _fileEntry.AllocationDescriptors;
-                if (pos > srcBuffer.Length)
-                {
-                    return 0;
-                }
-
-                int toCopy = (int)Math.Min(srcBuffer.Length - pos, buffer.Length);
-                srcBuffer.AsSpan((int)pos, toCopy).CopyTo(buffer);
-                return toCopy;
+                return 0;
             }
-            return ReadFromExtents(pos, buffer);
-        }
 
-        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
-            throw new NotImplementedException();
+            var toCopy = (int)Math.Min(srcBuffer.Length - pos, buffer.Length);
+            srcBuffer.AsSpan((int)pos, toCopy).CopyTo(buffer);
+            return toCopy;
+        }
+        return ReadFromExtents(pos, buffer);
+    }
+
+    public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+        throw new NotImplementedException();
 #endif
 
-        public override void Clear(long pos, int count)
+    public override void Clear(long pos, int count)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override void Flush() {}
+
+    public override void SetCapacity(long value)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void LoadExtents()
+    {
+        _extents = new List<CookedExtent>();
+        var activeBuffer = _fileEntry.AllocationDescriptors;
+
+        var allocType = _fileEntry.InformationControlBlock.AllocationType;
+        if (allocType == AllocationType.ShortDescriptors)
         {
-            throw new NotSupportedException();
-        }
+            long filePos = 0;
 
-        public override void Flush() {}
-
-        public override void SetCapacity(long value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
-        {
-            throw new NotImplementedException();
-        }
-
-        private void LoadExtents()
-        {
-            _extents = new List<CookedExtent>();
-            byte[] activeBuffer = _fileEntry.AllocationDescriptors;
-
-            AllocationType allocType = _fileEntry.InformationControlBlock.AllocationType;
-            if (allocType == AllocationType.ShortDescriptors)
+            var i = 0;
+            while (i < activeBuffer.Length)
             {
-                long filePos = 0;
-
-                int i = 0;
-                while (i < activeBuffer.Length)
+                var sad = EndianUtilities.ToStruct<ShortAllocationDescriptor>(activeBuffer, i);
+                if (sad.ExtentLength == 0)
                 {
-                    ShortAllocationDescriptor sad = EndianUtilities.ToStruct<ShortAllocationDescriptor>(activeBuffer, i);
-                    if (sad.ExtentLength == 0)
-                    {
-                        break;
-                    }
-
-                    if (sad.Flags != ShortAllocationFlags.RecordedAndAllocated)
-                    {
-                        throw new NotImplementedException(
-                            "Extents that are not 'recorded and allocated' not implemented");
-                    }
-
-                    CookedExtent newExtent = new CookedExtent
-                    {
-                        FileContentOffset = filePos,
-                        Partition = int.MaxValue,
-                        StartPos = sad.ExtentLocation * (long)_blockSize,
-                        Length = sad.ExtentLength
-                    };
-                    _extents.Add(newExtent);
-
-                    filePos += sad.ExtentLength;
-                    i += sad.Size;
+                    break;
                 }
-            }
-            else if (allocType == AllocationType.Embedded)
-            {
-                // do nothing
-            }
-            else if (allocType == AllocationType.LongDescriptors)
-            {
-                long filePos = 0;
 
-                int i = 0;
-                while (i < activeBuffer.Length)
+                if (sad.Flags != ShortAllocationFlags.RecordedAndAllocated)
                 {
-                    LongAllocationDescriptor lad = EndianUtilities.ToStruct<LongAllocationDescriptor>(activeBuffer, i);
-                    if (lad.ExtentLength == 0)
-                    {
-                        break;
-                    }
-
-                    CookedExtent newExtent = new CookedExtent
-                    {
-                        FileContentOffset = filePos,
-                        Partition = lad.ExtentLocation.Partition,
-                        StartPos = lad.ExtentLocation.LogicalBlock * (long)_blockSize,
-                        Length = lad.ExtentLength
-                    };
-                    _extents.Add(newExtent);
-
-                    filePos += lad.ExtentLength;
-                    i += lad.Size;
+                    throw new NotImplementedException(
+                        "Extents that are not 'recorded and allocated' not implemented");
                 }
+
+                var newExtent = new CookedExtent
+                {
+                    FileContentOffset = filePos,
+                    Partition = int.MaxValue,
+                    StartPos = sad.ExtentLocation * (long)_blockSize,
+                    Length = sad.ExtentLength
+                };
+                _extents.Add(newExtent);
+
+                filePos += sad.ExtentLength;
+                i += sad.Size;
+            }
+        }
+        else if (allocType == AllocationType.Embedded)
+        {
+            // do nothing
+        }
+        else if (allocType == AllocationType.LongDescriptors)
+        {
+            long filePos = 0;
+
+            var i = 0;
+            while (i < activeBuffer.Length)
+            {
+                var lad = EndianUtilities.ToStruct<LongAllocationDescriptor>(activeBuffer, i);
+                if (lad.ExtentLength == 0)
+                {
+                    break;
+                }
+
+                var newExtent = new CookedExtent
+                {
+                    FileContentOffset = filePos,
+                    Partition = lad.ExtentLocation.Partition,
+                    StartPos = lad.ExtentLocation.LogicalBlock * (long)_blockSize,
+                    Length = lad.ExtentLength
+                };
+                _extents.Add(newExtent);
+
+                filePos += lad.ExtentLength;
+                i += lad.Size;
+            }
+        }
+        else
+        {
+            throw new NotImplementedException("Allocation Type: " +
+                                              _fileEntry.InformationControlBlock.AllocationType);
+        }
+    }
+
+    private int ReadFromExtents(long pos, byte[] buffer, int offset, int count)
+    {
+        var totalToRead = (int)Math.Min(Capacity - pos, count);
+        var totalRead = 0;
+
+        while (totalRead < totalToRead)
+        {
+            var extent = FindExtent(pos + totalRead);
+
+            var extentOffset = pos + totalRead - extent.FileContentOffset;
+            var toRead = (int)Math.Min(totalToRead - totalRead, extent.Length - extentOffset);
+
+            Partition part;
+            if (extent.Partition != int.MaxValue)
+            {
+                part = _context.LogicalPartitions[extent.Partition];
             }
             else
             {
-                throw new NotImplementedException("Allocation Type: " +
-                                                  _fileEntry.InformationControlBlock.AllocationType);
+                part = _partition;
             }
-        }
 
-        private int ReadFromExtents(long pos, byte[] buffer, int offset, int count)
-        {
-            int totalToRead = (int)Math.Min(Capacity - pos, count);
-            int totalRead = 0;
-
-            while (totalRead < totalToRead)
+            var numRead = part.Content.Read(extent.StartPos + extentOffset, buffer, offset + totalRead, toRead);
+            if (numRead == 0)
             {
-                CookedExtent extent = FindExtent(pos + totalRead);
-
-                long extentOffset = pos + totalRead - extent.FileContentOffset;
-                int toRead = (int)Math.Min(totalToRead - totalRead, extent.Length - extentOffset);
-
-                Partition part;
-                if (extent.Partition != int.MaxValue)
-                {
-                    part = _context.LogicalPartitions[extent.Partition];
-                }
-                else
-                {
-                    part = _partition;
-                }
-
-                int numRead = part.Content.Read(extent.StartPos + extentOffset, buffer, offset + totalRead, toRead);
-                if (numRead == 0)
-                {
-                    return totalRead;
-                }
-
-                totalRead += numRead;
+                return totalRead;
             }
 
-            return totalRead;
+            totalRead += numRead;
         }
+
+        return totalRead;
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        private int ReadFromExtents(long pos, Span<byte> buffer)
+    private int ReadFromExtents(long pos, Span<byte> buffer)
+    {
+        var totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
+        var totalRead = 0;
+
+        while (totalRead < totalToRead)
         {
-            int totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
-            int totalRead = 0;
+            var extent = FindExtent(pos + totalRead);
 
-            while (totalRead < totalToRead)
+            var extentOffset = pos + totalRead - extent.FileContentOffset;
+            var toRead = (int)Math.Min(totalToRead - totalRead, extent.Length - extentOffset);
+
+            Partition part;
+            if (extent.Partition != int.MaxValue)
             {
-                CookedExtent extent = FindExtent(pos + totalRead);
-
-                long extentOffset = pos + totalRead - extent.FileContentOffset;
-                int toRead = (int)Math.Min(totalToRead - totalRead, extent.Length - extentOffset);
-
-                Partition part;
-                if (extent.Partition != int.MaxValue)
-                {
-                    part = _context.LogicalPartitions[extent.Partition];
-                }
-                else
-                {
-                    part = _partition;
-                }
-
-                int numRead = part.Content.Read(extent.StartPos + extentOffset, buffer.Slice(totalRead, toRead));
-                if (numRead == 0)
-                {
-                    return totalRead;
-                }
-
-                totalRead += numRead;
+                part = _context.LogicalPartitions[extent.Partition];
+            }
+            else
+            {
+                part = _partition;
             }
 
-            return totalRead;
+            var numRead = part.Content.Read(extent.StartPos + extentOffset, buffer.Slice(totalRead, toRead));
+            if (numRead == 0)
+            {
+                return totalRead;
+            }
+
+            totalRead += numRead;
         }
+
+        return totalRead;
+    }
 #endif
 
-        private CookedExtent FindExtent(long pos)
+    private CookedExtent FindExtent(long pos)
+    {
+        foreach (var extent in _extents)
         {
-            foreach (CookedExtent extent in _extents)
+            if (extent.FileContentOffset + extent.Length > pos)
             {
-                if (extent.FileContentOffset + extent.Length > pos)
-                {
-                    return extent;
-                }
+                return extent;
             }
-
-            return null;
         }
 
-        private class CookedExtent
-        {
-            public long FileContentOffset;
-            public long Length;
-            public int Partition;
-            public long StartPos;
-        }
+        return null;
+    }
+
+    private class CookedExtent
+    {
+        public long FileContentOffset;
+        public long Length;
+        public int Partition;
+        public long StartPos;
     }
 }

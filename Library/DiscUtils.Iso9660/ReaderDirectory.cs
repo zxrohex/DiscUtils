@@ -28,101 +28,99 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal class ReaderDirectory : File, IVfsDirectory<ReaderDirEntry, File>
 {
-    internal class ReaderDirectory : File, IVfsDirectory<ReaderDirEntry, File>
+    private readonly List<ReaderDirEntry> _records;
+
+    public ReaderDirectory(IsoContext context, ReaderDirEntry dirEntry)
+        : base(context, dirEntry)
     {
-        private readonly List<ReaderDirEntry> _records;
+        var buffer = new byte[IsoUtilities.SectorSize];
+        Stream extent = new ExtentStream(_context.DataStream, dirEntry.Record.LocationOfExtent, uint.MaxValue, 0, 0);
 
-        public ReaderDirectory(IsoContext context, ReaderDirEntry dirEntry)
-            : base(context, dirEntry)
+        _records = new List<ReaderDirEntry>();
+
+        var totalLength = dirEntry.Record.DataLength;
+        uint totalRead = 0;
+        while (totalRead < totalLength)
         {
-            byte[] buffer = new byte[IsoUtilities.SectorSize];
-            Stream extent = new ExtentStream(_context.DataStream, dirEntry.Record.LocationOfExtent, uint.MaxValue, 0, 0);
+            var bytesRead = (int)Math.Min(buffer.Length, totalLength - totalRead);
 
-            _records = new List<ReaderDirEntry>();
+            StreamUtilities.ReadExact(extent, buffer, 0, bytesRead);
+            totalRead += (uint)bytesRead;
 
-            uint totalLength = dirEntry.Record.DataLength;
-            uint totalRead = 0;
-            while (totalRead < totalLength)
+            uint pos = 0;
+            while (pos < bytesRead && buffer[pos] != 0)
             {
-                int bytesRead = (int)Math.Min(buffer.Length, totalLength - totalRead);
+                var length = (uint)DirectoryRecord.ReadFrom(buffer, (int)pos, context.VolumeDescriptor.CharacterEncoding, out var dr);
 
-                StreamUtilities.ReadExact(extent, buffer, 0, bytesRead);
-                totalRead += (uint)bytesRead;
-
-                uint pos = 0;
-                while (pos < bytesRead && buffer[pos] != 0)
+                if (!IsoUtilities.IsSpecialDirectory(dr))
                 {
-                    DirectoryRecord dr;
-                    uint length = (uint)DirectoryRecord.ReadFrom(buffer, (int)pos, context.VolumeDescriptor.CharacterEncoding, out dr);
+                    var childDirEntry = new ReaderDirEntry(_context, dr);
 
-                    if (!IsoUtilities.IsSpecialDirectory(dr))
+                    if (context.SuspDetected && !string.IsNullOrEmpty(context.RockRidgeIdentifier))
                     {
-                        ReaderDirEntry childDirEntry = new ReaderDirEntry(_context, dr);
-
-                        if (context.SuspDetected && !string.IsNullOrEmpty(context.RockRidgeIdentifier))
-                        {
-                            if (childDirEntry.SuspRecords == null || !childDirEntry.SuspRecords.HasEntry(context.RockRidgeIdentifier, "RE"))
-                            {
-                                _records.Add(childDirEntry);
-                            }
-                        }
-                        else
+                        if (childDirEntry.SuspRecords == null || !childDirEntry.SuspRecords.HasEntry(context.RockRidgeIdentifier, "RE"))
                         {
                             _records.Add(childDirEntry);
                         }
                     }
-                    else if (dr.FileIdentifier == "\0")
+                    else
                     {
-                        Self = new ReaderDirEntry(_context, dr);
+                        _records.Add(childDirEntry);
                     }
-
-                    pos += length;
                 }
-            }
-        }
-
-        public override byte[] SystemUseData
-        {
-            get { return Self.Record.SystemUseData; }
-        }
-
-        public ICollection<ReaderDirEntry> AllEntries
-        {
-            get { return _records; }
-        }
-
-        public ReaderDirEntry Self { get; }
-
-        public ReaderDirEntry GetEntryByName(string name)
-        {
-            bool anyVerMatch = name.IndexOf(';') < 0;
-            string normName = IsoUtilities.NormalizeFileName(name).ToUpper(CultureInfo.InvariantCulture);
-            if (anyVerMatch)
-            {
-                normName = normName.Substring(0, normName.LastIndexOf(';') + 1);
-            }
-
-            foreach (ReaderDirEntry r in _records)
-            {
-                string toComp = IsoUtilities.NormalizeFileName(r.FileName).ToUpper(CultureInfo.InvariantCulture);
-                if (!anyVerMatch && toComp == normName)
+                else if (dr.FileIdentifier == "\0")
                 {
-                    return r;
+                    Self = new ReaderDirEntry(_context, dr);
                 }
-                if (anyVerMatch && toComp.StartsWith(normName, StringComparison.Ordinal))
-                {
-                    return r;
-                }
+
+                pos += length;
             }
-
-            return null;
         }
+    }
 
-        public ReaderDirEntry CreateNewFile(string name)
+    public override byte[] SystemUseData
+    {
+        get { return Self.Record.SystemUseData; }
+    }
+
+    public IReadOnlyCollection<ReaderDirEntry> AllEntries
+    {
+        get { return _records; }
+    }
+
+    public ReaderDirEntry Self { get; }
+
+    public ReaderDirEntry GetEntryByName(string name)
+    {
+        var anyVerMatch = name.IndexOf(';') < 0;
+        var normName = IsoUtilities.NormalizeFileName(name).ToUpper(CultureInfo.InvariantCulture);
+        if (anyVerMatch)
         {
-            throw new NotSupportedException();
+            normName = normName.Substring(0, normName.LastIndexOf(';') + 1);
         }
+
+        foreach (var r in _records)
+        {
+            var toComp = IsoUtilities.NormalizeFileName(r.FileName).ToUpper(CultureInfo.InvariantCulture);
+            if (!anyVerMatch && toComp == normName)
+            {
+                return r;
+            }
+            if (anyVerMatch && toComp.StartsWith(normName, StringComparison.Ordinal))
+            {
+                return r;
+            }
+        }
+
+        return null;
+    }
+
+    public ReaderDirEntry CreateNewFile(string name)
+    {
+        throw new NotSupportedException();
     }
 }

@@ -24,47 +24,46 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.LogicalDiskManager
+namespace DiscUtils.LogicalDiskManager;
+
+internal class DynamicVolume
 {
-    internal class DynamicVolume
+    private readonly DynamicDiskGroup _group;
+
+    internal DynamicVolume(DynamicDiskGroup group, Guid volumeId)
     {
-        private readonly DynamicDiskGroup _group;
+        _group = group;
+        Identity = volumeId;
+    }
 
-        internal DynamicVolume(DynamicDiskGroup group, Guid volumeId)
+    public byte BiosType
+    {
+        get { return Record.BiosType; }
+    }
+
+    public Guid Identity { get; }
+
+    public long Length
+    {
+        get { return Record.Size * Sizes.Sector; }
+    }
+
+    private VolumeRecord Record
+    {
+        get { return _group.GetVolume(Identity); }
+    }
+
+    public LogicalVolumeStatus Status
+    {
+        get { return _group.GetVolumeStatus(Record.Id); }
+    }
+
+    public SparseStream Open()
+    {
+        if (Status == LogicalVolumeStatus.Failed)
         {
-            _group = group;
-            Identity = volumeId;
+            throw new IOException("Attempt to open 'failed' volume");
         }
-
-        public byte BiosType
-        {
-            get { return Record.BiosType; }
-        }
-
-        public Guid Identity { get; }
-
-        public long Length
-        {
-            get { return Record.Size * Sizes.Sector; }
-        }
-
-        private VolumeRecord Record
-        {
-            get { return _group.GetVolume(Identity); }
-        }
-
-        public LogicalVolumeStatus Status
-        {
-            get { return _group.GetVolumeStatus(Record.Id); }
-        }
-
-        public SparseStream Open()
-        {
-            if (Status == LogicalVolumeStatus.Failed)
-            {
-                throw new IOException("Attempt to open 'failed' volume");
-            }
-            return _group.OpenVolume(Record.Id);
-        }
+        return _group.OpenVolume(Record.Id);
     }
 }

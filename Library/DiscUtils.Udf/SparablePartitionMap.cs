@@ -22,36 +22,35 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal sealed class SparablePartitionMap : PartitionMap
 {
-    internal sealed class SparablePartitionMap : PartitionMap
+    public uint[] LocationsOfSparingTables;
+    public byte NumSparingTables;
+    public ushort PacketLength;
+    public ushort PartitionNumber;
+    public uint SparingTableSize;
+    public ushort VolumeSequenceNumber;
+
+    public override int Size
     {
-        public uint[] LocationsOfSparingTables;
-        public byte NumSparingTables;
-        public ushort PacketLength;
-        public ushort PartitionNumber;
-        public uint SparingTableSize;
-        public ushort VolumeSequenceNumber;
+        get { return 64; }
+    }
 
-        public override int Size
+    protected override int Parse(byte[] buffer, int offset)
+    {
+        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
+        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 38);
+        PacketLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 40);
+        NumSparingTables = buffer[offset + 42];
+        SparingTableSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
+        LocationsOfSparingTables = new uint[NumSparingTables];
+        for (var i = 0; i < NumSparingTables; ++i)
         {
-            get { return 64; }
+            LocationsOfSparingTables[i] = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 48 + 4 * i);
         }
 
-        protected override int Parse(byte[] buffer, int offset)
-        {
-            VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
-            PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 38);
-            PacketLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 40);
-            NumSparingTables = buffer[offset + 42];
-            SparingTableSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
-            LocationsOfSparingTables = new uint[NumSparingTables];
-            for (int i = 0; i < NumSparingTables; ++i)
-            {
-                LocationsOfSparingTables[i] = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 48 + 4 * i);
-            }
-
-            return 64;
-        }
+        return 64;
     }
 }

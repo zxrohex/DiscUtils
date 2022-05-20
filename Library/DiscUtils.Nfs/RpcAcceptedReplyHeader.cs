@@ -23,58 +23,57 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public class RpcAcceptedReplyHeader
 {
-    public class RpcAcceptedReplyHeader
+    public RpcAcceptStatus AcceptStatus;
+    public RpcMismatchInfo MismatchInfo;
+    public RpcAuthentication Verifier;
+
+    public RpcAcceptedReplyHeader()
     {
-        public RpcAcceptStatus AcceptStatus;
-        public RpcMismatchInfo MismatchInfo;
-        public RpcAuthentication Verifier;
+    }
 
-        public RpcAcceptedReplyHeader()
+    public RpcAcceptedReplyHeader(XdrDataReader reader)
+    {
+        Verifier = new RpcAuthentication(reader);
+        AcceptStatus = (RpcAcceptStatus)reader.ReadInt32();
+        if (AcceptStatus == RpcAcceptStatus.ProgramVersionMismatch)
         {
+            MismatchInfo = new RpcMismatchInfo(reader);
+        }
+    }
+
+    public void Write(XdrDataWriter writer)
+    {
+        Verifier.Write(writer);
+        writer.Write((int)AcceptStatus);
+        if (AcceptStatus == RpcAcceptStatus.ProgramVersionMismatch)
+        {
+            MismatchInfo.Write(writer);
+        }
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as RpcAcceptedReplyHeader);
+    }
+
+    public bool Equals(RpcAcceptedReplyHeader other)
+    {
+        if (other == null)
+        {
+            return false;
         }
 
-        public RpcAcceptedReplyHeader(XdrDataReader reader)
-        {
-            Verifier = new RpcAuthentication(reader);
-            AcceptStatus = (RpcAcceptStatus)reader.ReadInt32();
-            if (AcceptStatus == RpcAcceptStatus.ProgramVersionMismatch)
-            {
-                MismatchInfo = new RpcMismatchInfo(reader);
-            }
-        }
+        return object.Equals(other.Verifier, Verifier)
+            && other.AcceptStatus == AcceptStatus
+            && object.Equals(other.MismatchInfo, MismatchInfo);
+    }
 
-        public void Write(XdrDataWriter writer)
-        {
-            Verifier.Write(writer);
-            writer.Write((int)AcceptStatus);
-            if (AcceptStatus == RpcAcceptStatus.ProgramVersionMismatch)
-            {
-                MismatchInfo.Write(writer);
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as RpcAcceptedReplyHeader);
-        }
-
-        public bool Equals(RpcAcceptedReplyHeader other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return object.Equals(other.Verifier, Verifier)
-                && other.AcceptStatus == AcceptStatus
-                && object.Equals(other.MismatchInfo, MismatchInfo);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Verifier, AcceptStatus, MismatchInfo);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Verifier, AcceptStatus, MismatchInfo);
     }
 }

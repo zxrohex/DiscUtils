@@ -24,22 +24,21 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Btrfs
-{
-    [VfsFileSystemFactory]
-    internal class FileSystemFactory : VfsFileSystemFactory
-    {
-        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
-        {
-            if (BtrfsFileSystem.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("btrfs", "Btrfs filesystem", Open);
-            }
-        }
+namespace DiscUtils.Btrfs;
 
-        private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+[VfsFileSystemFactory]
+internal class FileSystemFactory : VfsFileSystemFactory
+{
+    public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+    {
+        if (BtrfsFileSystem.Detect(stream))
         {
-            return new BtrfsFileSystem(stream);
+            yield return new VfsFileSystemInfo("btrfs", "Btrfs filesystem", Open);
         }
+    }
+
+    private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new BtrfsFileSystem(stream);
     }
 }

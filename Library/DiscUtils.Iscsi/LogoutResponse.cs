@@ -22,36 +22,35 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class LogoutResponse : BaseResponse
 {
-    internal class LogoutResponse : BaseResponse
+    public LogoutResponseCode Response;
+    public ushort Time2Retain;
+    public ushort Time2Wait;
+
+    public override void Parse(ProtocolDataUnit pdu)
     {
-        public LogoutResponseCode Response;
-        public ushort Time2Retain;
-        public ushort Time2Wait;
+        Parse(pdu.HeaderData, 0);
+    }
 
-        public override void Parse(ProtocolDataUnit pdu)
+    public void Parse(byte[] headerData, int headerOffset)
+    {
+        var _headerSegment = new BasicHeaderSegment();
+        _headerSegment.ReadFrom(headerData, headerOffset);
+
+        if (_headerSegment.OpCode != OpCode.LogoutResponse)
         {
-            Parse(pdu.HeaderData, 0);
+            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.LogoutResponse +
+                                               " was " + _headerSegment.OpCode);
         }
 
-        public void Parse(byte[] headerData, int headerOffset)
-        {
-            BasicHeaderSegment _headerSegment = new BasicHeaderSegment();
-            _headerSegment.ReadFrom(headerData, headerOffset);
-
-            if (_headerSegment.OpCode != OpCode.LogoutResponse)
-            {
-                throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.LogoutResponse +
-                                                   " was " + _headerSegment.OpCode);
-            }
-
-            Response = (LogoutResponseCode)headerData[headerOffset + 2];
-            StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-            ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-            MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-            Time2Wait = EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 40);
-            Time2Retain = EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 42);
-        }
+        Response = (LogoutResponseCode)headerData[headerOffset + 2];
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
+        Time2Wait = EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 40);
+        Time2Retain = EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 42);
     }
 }

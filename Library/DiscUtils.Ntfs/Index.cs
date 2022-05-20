@@ -26,459 +26,449 @@ using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal class Index : IDisposable
 {
-    internal class Index : IDisposable
+    private readonly ObjectCache<long, IndexBlock> _blockCache;
+    protected BiosParameterBlock _bpb;
+
+    private readonly IComparer<byte[]> _comparer;
+    protected File _file;
+    private Bitmap _indexBitmap;
+    protected string _name;
+
+    private readonly IndexRoot _root;
+    private readonly IndexNode _rootNode;
+
+    public Index(File file, string name, BiosParameterBlock bpb, UpperCase upCase)
     {
-        private readonly ObjectCache<long, IndexBlock> _blockCache;
-        protected BiosParameterBlock _bpb;
+        _file = file;
+        _name = name;
+        _bpb = bpb;
+        IsFileIndex = name == "$I30";
 
-        private readonly IComparer<byte[]> _comparer;
-        protected File _file;
-        private Bitmap _indexBitmap;
-        protected string _name;
+        _blockCache = new ObjectCache<long, IndexBlock>();
 
-        private readonly IndexRoot _root;
-        private readonly IndexNode _rootNode;
+        _root = _file.GetStream(AttributeType.IndexRoot, _name).Value.GetContent<IndexRoot>();
+        _comparer = _root.GetCollator(upCase);
 
-        public Index(File file, string name, BiosParameterBlock bpb, UpperCase upCase)
+        using (Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Read))
         {
-            _file = file;
-            _name = name;
-            _bpb = bpb;
-            IsFileIndex = name == "$I30";
+            var buffer = StreamUtilities.ReadExact(s, (int)s.Length);
+            _rootNode = new IndexNode(WriteRootNodeToDisk, 0, this, true, buffer, IndexRoot.HeaderOffset);
 
-            _blockCache = new ObjectCache<long, IndexBlock>();
-
-            _root = _file.GetStream(AttributeType.IndexRoot, _name).Value.GetContent<IndexRoot>();
-            _comparer = _root.GetCollator(upCase);
-
-            using (Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Read))
-            {
-                byte[] buffer = StreamUtilities.ReadExact(s, (int)s.Length);
-                _rootNode = new IndexNode(WriteRootNodeToDisk, 0, this, true, buffer, IndexRoot.HeaderOffset);
-
-                // Give the attribute some room to breathe, so long as it doesn't squeeze others out
-                // BROKEN, BROKEN, BROKEN - how to figure this out?  Query at the point of adding entries to the root node?
-                _rootNode.TotalSpaceAvailable += _file.MftRecordFreeSpace(AttributeType.IndexRoot, _name) - 100;
-            }
-
-            if (_file.StreamExists(AttributeType.IndexAllocation, _name))
-            {
-                AllocationStream = _file.OpenStream(AttributeType.IndexAllocation, _name, FileAccess.ReadWrite);
-            }
-
-            if (_file.StreamExists(AttributeType.Bitmap, _name))
-            {
-                _indexBitmap = new Bitmap(_file.OpenStream(AttributeType.Bitmap, _name, FileAccess.ReadWrite),
-                    long.MaxValue);
-            }
+            // Give the attribute some room to breathe, so long as it doesn't squeeze others out
+            // BROKEN, BROKEN, BROKEN - how to figure this out?  Query at the point of adding entries to the root node?
+            _rootNode.TotalSpaceAvailable += _file.MftRecordFreeSpace(AttributeType.IndexRoot, _name) - 100;
         }
 
-        private Index(AttributeType attrType, AttributeCollationRule collationRule, File file, string name,
-                      BiosParameterBlock bpb, UpperCase upCase)
+        if (_file.StreamExists(AttributeType.IndexAllocation, _name))
         {
-            _file = file;
-            _name = name;
-            _bpb = bpb;
-            IsFileIndex = name == "$I30";
-
-            _blockCache = new ObjectCache<long, IndexBlock>();
-
-            _file.CreateStream(AttributeType.IndexRoot, _name);
-
-            _root = new IndexRoot
-            {
-                AttributeType = (uint)attrType,
-                CollationRule = collationRule,
-                IndexAllocationSize = (uint)bpb.IndexBufferSize,
-                RawClustersPerIndexRecord = bpb.RawIndexBufferSize
-            };
-
-            _comparer = _root.GetCollator(upCase);
-
-            _rootNode = new IndexNode(WriteRootNodeToDisk, 0, this, true, 32);
+            AllocationStream = _file.OpenStream(AttributeType.IndexAllocation, _name, FileAccess.ReadWrite);
         }
 
-        internal Stream AllocationStream { get; private set; }
-
-        public int Count
+        if (_file.StreamExists(AttributeType.Bitmap, _name))
         {
-            get
-            {
-                int i = 0;
-                foreach (KeyValuePair<byte[], byte[]> entry in Entries)
-                {
-                    ++i;
-                }
-
-                return i;
-            }
+            _indexBitmap = new Bitmap(_file.OpenStream(AttributeType.Bitmap, _name, FileAccess.ReadWrite),
+                long.MaxValue);
         }
+    }
 
-        public IEnumerable<KeyValuePair<byte[], byte[]>> Entries
+    private Index(AttributeType attrType, AttributeCollationRule collationRule, File file, string name,
+                  BiosParameterBlock bpb, UpperCase upCase)
+    {
+        _file = file;
+        _name = name;
+        _bpb = bpb;
+        IsFileIndex = name == "$I30";
+
+        _blockCache = new ObjectCache<long, IndexBlock>();
+
+        _file.CreateStream(AttributeType.IndexRoot, _name);
+
+        _root = new IndexRoot
         {
-            get
+            AttributeType = (uint)attrType,
+            CollationRule = collationRule,
+            IndexAllocationSize = (uint)bpb.IndexBufferSize,
+            RawClustersPerIndexRecord = bpb.RawIndexBufferSize
+        };
+
+        _comparer = _root.GetCollator(upCase);
+
+        _rootNode = new IndexNode(WriteRootNodeToDisk, 0, this, true, 32);
+    }
+
+    internal Stream AllocationStream { get; private set; }
+
+    public int Count
+    {
+        get
+        {
+            var i = 0;
+            foreach (var entry in Entries)
             {
-                foreach (IndexEntry entry in Enumerate(_rootNode))
-                {
-                    yield return new KeyValuePair<byte[], byte[]>(entry.KeyBuffer, entry.DataBuffer);
-                }
-            }
-        }
-
-        internal uint IndexBufferSize
-        {
-            get { return _root.IndexAllocationSize; }
-        }
-
-        internal bool IsFileIndex { get; }
-
-        public byte[] this[byte[] key]
-        {
-            get
-            {
-                byte[] value;
-                if (TryGetValue(key, out value))
-                {
-                    return value;
-                }
-                throw new KeyNotFoundException();
+                ++i;
             }
 
-            set
-            {
-                IndexEntry oldEntry;
-                IndexNode node;
-                _rootNode.TotalSpaceAvailable = _rootNode.CalcSize() +
-                                                _file.MftRecordFreeSpace(AttributeType.IndexRoot, _name);
-                if (_rootNode.TryFindEntry(key, out oldEntry, out node))
-                {
-                    node.UpdateEntry(key, value);
-                }
-                else
-                {
-                    _rootNode.AddEntry(key, value);
-                }
-            }
+            return i;
         }
+    }
 
-        public void Dispose()
+    public IEnumerable<KeyValuePair<byte[], byte[]>> Entries
+    {
+        get
         {
-            if (_indexBitmap != null)
-            {
-                _indexBitmap.Dispose();
-                _indexBitmap = null;
-            }
-        }
-
-        public static void Create(AttributeType attrType, AttributeCollationRule collationRule, File file, string name)
-        {
-            Index idx = new Index(attrType, collationRule, file, name, file.Context.BiosParameterBlock,
-                file.Context.UpperCase);
-
-            idx.WriteRootNodeToDisk();
-        }
-
-        public IEnumerable<KeyValuePair<byte[], byte[]>> FindAll(IComparable<byte[]> query)
-        {
-            foreach (IndexEntry entry in FindAllIn(query, _rootNode))
+            foreach (var entry in Enumerate(_rootNode))
             {
                 yield return new KeyValuePair<byte[], byte[]>(entry.KeyBuffer, entry.DataBuffer);
             }
         }
+    }
 
-        public bool ContainsKey(byte[] key)
+    internal uint IndexBufferSize
+    {
+        get { return _root.IndexAllocationSize; }
+    }
+
+    internal bool IsFileIndex { get; }
+
+    public byte[] this[byte[] key]
+    {
+        get
         {
-            byte[] value;
-            return TryGetValue(key, out value);
+            if (TryGetValue(key, out var value))
+            {
+                return value;
+            }
+            throw new KeyNotFoundException();
         }
 
-        public bool Remove(byte[] key)
+        set
         {
             _rootNode.TotalSpaceAvailable = _rootNode.CalcSize() +
                                             _file.MftRecordFreeSpace(AttributeType.IndexRoot, _name);
-
-            IndexEntry overflowEntry;
-            bool found = _rootNode.RemoveEntry(key, out overflowEntry);
-            if (overflowEntry != null)
+            if (_rootNode.TryFindEntry(key, out var oldEntry, out var node))
             {
-                throw new IOException("Error removing entry, root overflowed");
+                node.UpdateEntry(key, value);
             }
+            else
+            {
+                _rootNode.AddEntry(key, value);
+            }
+        }
+    }
 
-            return found;
+    public void Dispose()
+    {
+        if (_indexBitmap != null)
+        {
+            _indexBitmap.Dispose();
+            _indexBitmap = null;
+        }
+    }
+
+    public static void Create(AttributeType attrType, AttributeCollationRule collationRule, File file, string name)
+    {
+        var idx = new Index(attrType, collationRule, file, name, file.Context.BiosParameterBlock,
+            file.Context.UpperCase);
+
+        idx.WriteRootNodeToDisk();
+    }
+
+    public IEnumerable<KeyValuePair<byte[], byte[]>> FindAll(IComparable<byte[]> query)
+    {
+        foreach (var entry in FindAllIn(query, _rootNode))
+        {
+            yield return new KeyValuePair<byte[], byte[]>(entry.KeyBuffer, entry.DataBuffer);
+        }
+    }
+
+    public bool ContainsKey(byte[] key)
+    {
+        return TryGetValue(key, out var value);
+    }
+
+    public bool Remove(byte[] key)
+    {
+        _rootNode.TotalSpaceAvailable = _rootNode.CalcSize() +
+                                        _file.MftRecordFreeSpace(AttributeType.IndexRoot, _name);
+
+        var found = _rootNode.RemoveEntry(key, out var overflowEntry);
+        if (overflowEntry != null)
+        {
+            throw new IOException("Error removing entry, root overflowed");
         }
 
-        public bool TryGetValue(byte[] key, out byte[] value)
+        return found;
+    }
+
+    public bool TryGetValue(byte[] key, out byte[] value)
+    {
+
+        if (_rootNode.TryFindEntry(key, out var entry, out var node))
         {
-            IndexEntry entry;
-            IndexNode node;
-
-            if (_rootNode.TryFindEntry(key, out entry, out node))
-            {
-                value = entry.DataBuffer;
-                return true;
-            }
-
-            value = default(byte[]);
-            return false;
+            value = entry.DataBuffer;
+            return true;
         }
 
-        internal static string EntryAsString(IndexEntry entry, string fileName, string indexName)
+        value = default(byte[]);
+        return false;
+    }
+
+    internal static string EntryAsString(IndexEntry entry, string fileName, string indexName)
+    {
+        IByteArraySerializable keyValue = null;
+        IByteArraySerializable dataValue = null;
+
+        // Try to guess the type of data in the key and data fields from the filename and index name
+        if (indexName == "$I30")
         {
-            IByteArraySerializable keyValue = null;
-            IByteArraySerializable dataValue = null;
-
-            // Try to guess the type of data in the key and data fields from the filename and index name
-            if (indexName == "$I30")
+            keyValue = new FileNameRecord();
+            dataValue = new FileRecordReference();
+        }
+        else if (fileName == "$ObjId" && indexName == "$O")
+        {
+            keyValue = new ObjectIds.IndexKey();
+            dataValue = new ObjectIdRecord();
+        }
+        else if (fileName == "$Reparse" && indexName == "$R")
+        {
+            keyValue = new ReparsePoints.Key();
+            dataValue = new ReparsePoints.Data();
+        }
+        else if (fileName == "$Quota")
+        {
+            if (indexName == "$O")
             {
-                keyValue = new FileNameRecord();
-                dataValue = new FileRecordReference();
+                keyValue = new Quotas.OwnerKey();
+                dataValue = new Quotas.OwnerRecord();
             }
-            else if (fileName == "$ObjId" && indexName == "$O")
+            else if (indexName == "$Q")
             {
-                keyValue = new ObjectIds.IndexKey();
-                dataValue = new ObjectIdRecord();
+                keyValue = new Quotas.OwnerRecord();
+                dataValue = new Quotas.QuotaRecord();
             }
-            else if (fileName == "$Reparse" && indexName == "$R")
+        }
+        else if (fileName == "$Secure")
+        {
+            if (indexName == "$SII")
             {
-                keyValue = new ReparsePoints.Key();
-                dataValue = new ReparsePoints.Data();
+                keyValue = new SecurityDescriptors.IdIndexKey();
+                dataValue = new SecurityDescriptors.IdIndexData();
             }
-            else if (fileName == "$Quota")
+            else if (indexName == "$SDH")
             {
-                if (indexName == "$O")
-                {
-                    keyValue = new Quotas.OwnerKey();
-                    dataValue = new Quotas.OwnerRecord();
-                }
-                else if (indexName == "$Q")
-                {
-                    keyValue = new Quotas.OwnerRecord();
-                    dataValue = new Quotas.QuotaRecord();
-                }
+                keyValue = new SecurityDescriptors.HashIndexKey();
+                dataValue = new SecurityDescriptors.IdIndexData();
             }
-            else if (fileName == "$Secure")
-            {
-                if (indexName == "$SII")
-                {
-                    keyValue = new SecurityDescriptors.IdIndexKey();
-                    dataValue = new SecurityDescriptors.IdIndexData();
-                }
-                else if (indexName == "$SDH")
-                {
-                    keyValue = new SecurityDescriptors.HashIndexKey();
-                    dataValue = new SecurityDescriptors.IdIndexData();
-                }
-            }
-
-            try
-            {
-                if (keyValue != null && dataValue != null)
-                {
-                    keyValue.ReadFrom(entry.KeyBuffer, 0);
-                    dataValue.ReadFrom(entry.DataBuffer, 0);
-                    return "{" + keyValue + "-->" + dataValue + "}";
-                }
-            }
-            catch
-            {
-                return "{Parsing-Error}";
-            }
-
-            return "{Unknown-Index-Type}";
         }
 
-        internal long IndexBlockVcnToPosition(long vcn)
+        try
         {
-            if (vcn % _root.RawClustersPerIndexRecord != 0)
+            if (keyValue != null && dataValue != null)
             {
-                throw new NotSupportedException("Unexpected vcn (not a multiple of clusters-per-index-record): vcn=" +
-                                                vcn + " rcpir=" + _root.RawClustersPerIndexRecord);
+                keyValue.ReadFrom(entry.KeyBuffer, 0);
+                dataValue.ReadFrom(entry.DataBuffer, 0);
+                return "{" + keyValue + "-->" + dataValue + "}";
             }
-
-            if (_bpb.BytesPerCluster <= _root.IndexAllocationSize)
-            {
-                return vcn * _bpb.BytesPerCluster;
-            }
-            if (_root.RawClustersPerIndexRecord != 8)
-            {
-                throw new NotSupportedException(
-                    "Unexpected RawClustersPerIndexRecord (multiple index blocks per cluster): " +
-                    _root.RawClustersPerIndexRecord);
-            }
-
-            return vcn / _root.RawClustersPerIndexRecord * _root.IndexAllocationSize;
+        }
+        catch
+        {
+            return "{Parsing-Error}";
         }
 
-        internal bool ShrinkRoot()
-        {
-            if (_rootNode.Depose())
-            {
-                WriteRootNodeToDisk();
-                _rootNode.TotalSpaceAvailable = _rootNode.CalcSize() +
-                                                _file.MftRecordFreeSpace(AttributeType.IndexRoot, _name);
-                return true;
-            }
+        return "{Unknown-Index-Type}";
+    }
 
-            return false;
+    internal long IndexBlockVcnToPosition(long vcn)
+    {
+        if (vcn % _root.RawClustersPerIndexRecord != 0)
+        {
+            throw new NotSupportedException("Unexpected vcn (not a multiple of clusters-per-index-record): vcn=" +
+                                            vcn + " rcpir=" + _root.RawClustersPerIndexRecord);
         }
 
-        internal IndexBlock GetSubBlock(IndexEntry parentEntry)
+        if (_bpb.BytesPerCluster <= _root.IndexAllocationSize)
         {
-            IndexBlock block = _blockCache[parentEntry.ChildrenVirtualCluster];
-            if (block == null)
-            {
-                block = new IndexBlock(this, false, parentEntry, _bpb);
-                _blockCache[parentEntry.ChildrenVirtualCluster] = block;
-            }
-
-            return block;
+            return vcn * _bpb.BytesPerCluster;
+        }
+        if (_root.RawClustersPerIndexRecord != 8)
+        {
+            throw new NotSupportedException(
+                "Unexpected RawClustersPerIndexRecord (multiple index blocks per cluster): " +
+                _root.RawClustersPerIndexRecord);
         }
 
-        internal IndexBlock AllocateBlock(IndexEntry parentEntry)
+        return vcn / _root.RawClustersPerIndexRecord * _root.IndexAllocationSize;
+    }
+
+    internal bool ShrinkRoot()
+    {
+        if (_rootNode.Depose())
         {
-            if (AllocationStream == null)
-            {
-                _file.CreateStream(AttributeType.IndexAllocation, _name);
-                AllocationStream = _file.OpenStream(AttributeType.IndexAllocation, _name, FileAccess.ReadWrite);
-            }
+            WriteRootNodeToDisk();
+            _rootNode.TotalSpaceAvailable = _rootNode.CalcSize() +
+                                            _file.MftRecordFreeSpace(AttributeType.IndexRoot, _name);
+            return true;
+        }
 
-            if (_indexBitmap == null)
-            {
-                _file.CreateStream(AttributeType.Bitmap, _name);
-                _indexBitmap = new Bitmap(_file.OpenStream(AttributeType.Bitmap, _name, FileAccess.ReadWrite),
-                    long.MaxValue);
-            }
+        return false;
+    }
 
-            long idx = _indexBitmap.AllocateFirstAvailable(0);
-
-            parentEntry.ChildrenVirtualCluster = idx *
-                                                 MathUtilities.Ceil(_bpb.IndexBufferSize,
-                                                     _bpb.SectorsPerCluster * _bpb.BytesPerSector);
-            parentEntry.Flags |= IndexEntryFlags.Node;
-
-            IndexBlock block = IndexBlock.Initialize(this, false, parentEntry, _bpb);
+    internal IndexBlock GetSubBlock(IndexEntry parentEntry)
+    {
+        var block = _blockCache[parentEntry.ChildrenVirtualCluster];
+        if (block == null)
+        {
+            block = new IndexBlock(this, false, parentEntry, _bpb);
             _blockCache[parentEntry.ChildrenVirtualCluster] = block;
-            return block;
         }
 
-        internal void FreeBlock(long vcn)
+        return block;
+    }
+
+    internal IndexBlock AllocateBlock(IndexEntry parentEntry)
+    {
+        if (AllocationStream == null)
         {
-            long idx = vcn / MathUtilities.Ceil(_bpb.IndexBufferSize, _bpb.SectorsPerCluster * _bpb.BytesPerSector);
-            _indexBitmap.MarkAbsent(idx);
-            _blockCache.Remove(vcn);
+            _file.CreateStream(AttributeType.IndexAllocation, _name);
+            AllocationStream = _file.OpenStream(AttributeType.IndexAllocation, _name, FileAccess.ReadWrite);
         }
 
-        internal int Compare(byte[] x, byte[] y)
+        if (_indexBitmap == null)
         {
-            return _comparer.Compare(x, y);
+            _file.CreateStream(AttributeType.Bitmap, _name);
+            _indexBitmap = new Bitmap(_file.OpenStream(AttributeType.Bitmap, _name, FileAccess.ReadWrite),
+                long.MaxValue);
         }
 
-        internal void Dump(TextWriter writer, string prefix)
-        {
-            NodeAsString(writer, prefix, _rootNode, "R");
-        }
+        var idx = _indexBitmap.AllocateFirstAvailable(0);
 
-        protected IEnumerable<IndexEntry> Enumerate(IndexNode node)
+        parentEntry.ChildrenVirtualCluster = idx *
+                                             MathUtilities.Ceil(_bpb.IndexBufferSize,
+                                                 _bpb.SectorsPerCluster * _bpb.BytesPerSector);
+        parentEntry.Flags |= IndexEntryFlags.Node;
+
+        var block = IndexBlock.Initialize(this, false, parentEntry, _bpb);
+        _blockCache[parentEntry.ChildrenVirtualCluster] = block;
+        return block;
+    }
+
+    internal void FreeBlock(long vcn)
+    {
+        var idx = vcn / MathUtilities.Ceil(_bpb.IndexBufferSize, _bpb.SectorsPerCluster * _bpb.BytesPerSector);
+        _indexBitmap.MarkAbsent(idx);
+        _blockCache.Remove(vcn);
+    }
+
+    internal int Compare(byte[] x, byte[] y)
+    {
+        return _comparer.Compare(x, y);
+    }
+
+    internal void Dump(TextWriter writer, string prefix)
+    {
+        NodeAsString(writer, prefix, _rootNode, "R");
+    }
+
+    protected IEnumerable<IndexEntry> Enumerate(IndexNode node)
+    {
+        foreach (var focus in node.Entries)
         {
-            foreach (IndexEntry focus in node.Entries)
+            if ((focus.Flags & IndexEntryFlags.Node) != 0)
             {
-                if ((focus.Flags & IndexEntryFlags.Node) != 0)
+                var block = GetSubBlock(focus);
+                foreach (var subEntry in Enumerate(block.Node))
                 {
-                    IndexBlock block = GetSubBlock(focus);
-                    foreach (IndexEntry subEntry in Enumerate(block.Node))
-                    {
-                        yield return subEntry;
-                    }
-                }
-
-                if ((focus.Flags & IndexEntryFlags.End) == 0)
-                {
-                    yield return focus;
+                    yield return subEntry;
                 }
             }
-        }
 
-        private IEnumerable<IndexEntry> FindAllIn(IComparable<byte[]> query, IndexNode node)
-        {
-            foreach (IndexEntry focus in node.Entries)
+            if ((focus.Flags & IndexEntryFlags.End) == 0)
             {
-                bool searchChildren = true;
-                bool matches = false;
-                bool keepIterating = true;
-
-                if ((focus.Flags & IndexEntryFlags.End) == 0)
-                {
-                    int compVal = query.CompareTo(focus.KeyBuffer);
-                    if (compVal == 0)
-                    {
-                        matches = true;
-                    }
-                    else if (compVal > 0)
-                    {
-                        searchChildren = false;
-                    }
-                    else if (compVal < 0)
-                    {
-                        keepIterating = false;
-                    }
-                }
-
-                if (searchChildren && (focus.Flags & IndexEntryFlags.Node) != 0)
-                {
-                    IndexBlock block = GetSubBlock(focus);
-                    foreach (IndexEntry entry in FindAllIn(query, block.Node))
-                    {
-                        yield return entry;
-                    }
-                }
-
-                if (matches)
-                {
-                    yield return focus;
-                }
-
-                if (!keepIterating)
-                {
-                    yield break;
-                }
+                yield return focus;
             }
         }
+    }
 
-        private void WriteRootNodeToDisk()
+    private IEnumerable<IndexEntry> FindAllIn(IComparable<byte[]> query, IndexNode node)
+    {
+        foreach (var focus in node.Entries)
         {
-            _rootNode.Header.AllocatedSizeOfEntries = (uint)_rootNode.CalcSize();
-            byte[] buffer = new byte[_rootNode.Header.AllocatedSizeOfEntries + _root.Size];
-            _root.WriteTo(buffer, 0);
-            _rootNode.WriteTo(buffer, _root.Size);
-            using (Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Write))
+            var searchChildren = true;
+            var matches = false;
+            var keepIterating = true;
+
+            if ((focus.Flags & IndexEntryFlags.End) == 0)
             {
-                s.Position = 0;
-                s.Write(buffer, 0, buffer.Length);
-                s.SetLength(s.Position);
+                var compVal = query.CompareTo(focus.KeyBuffer);
+                if (compVal == 0)
+                {
+                    matches = true;
+                }
+                else if (compVal > 0)
+                {
+                    searchChildren = false;
+                }
+                else if (compVal < 0)
+                {
+                    keepIterating = false;
+                }
+            }
+
+            if (searchChildren && (focus.Flags & IndexEntryFlags.Node) != 0)
+            {
+                var block = GetSubBlock(focus);
+                foreach (var entry in FindAllIn(query, block.Node))
+                {
+                    yield return entry;
+                }
+            }
+
+            if (matches)
+            {
+                yield return focus;
+            }
+
+            if (!keepIterating)
+            {
+                yield break;
             }
         }
+    }
 
-        private void NodeAsString(TextWriter writer, string prefix, IndexNode node, string id)
+    private void WriteRootNodeToDisk()
+    {
+        _rootNode.Header.AllocatedSizeOfEntries = (uint)_rootNode.CalcSize();
+        var buffer = new byte[_rootNode.Header.AllocatedSizeOfEntries + _root.Size];
+        _root.WriteTo(buffer, 0);
+        _rootNode.WriteTo(buffer, _root.Size);
+        using Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Write);
+        s.Position = 0;
+        s.Write(buffer, 0, buffer.Length);
+        s.SetLength(s.Position);
+    }
+
+    private void NodeAsString(TextWriter writer, string prefix, IndexNode node, string id)
+    {
+        writer.WriteLine(prefix + id + ":");
+        foreach (var entry in node.Entries)
         {
-            writer.WriteLine(prefix + id + ":");
-            foreach (IndexEntry entry in node.Entries)
+            if ((entry.Flags & IndexEntryFlags.End) != 0)
             {
-                if ((entry.Flags & IndexEntryFlags.End) != 0)
-                {
-                    writer.WriteLine(prefix + "      E");
-                }
-                else
-                {
-                    writer.WriteLine(prefix + "      " + EntryAsString(entry, _file.BestName, _name));
-                }
+                writer.WriteLine(prefix + "      E");
+            }
+            else
+            {
+                writer.WriteLine(prefix + "      " + EntryAsString(entry, _file.BestName, _name));
+            }
 
-                if ((entry.Flags & IndexEntryFlags.Node) != 0)
-                {
-                    NodeAsString(writer, prefix + "        ", GetSubBlock(entry).Node,
-                        ":i" + entry.ChildrenVirtualCluster);
-                }
+            if ((entry.Flags & IndexEntryFlags.Node) != 0)
+            {
+                NodeAsString(writer, prefix + "        ", GetSubBlock(entry).Node,
+                    ":i" + entry.ChildrenVirtualCluster);
             }
         }
     }

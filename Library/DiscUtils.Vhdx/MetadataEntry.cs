@@ -23,39 +23,38 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal sealed class MetadataEntry : IByteArraySerializable
 {
-    internal sealed class MetadataEntry : IByteArraySerializable
+    public MetadataEntryFlags Flags;
+    public Guid ItemId;
+    public uint Length;
+    public uint Offset;
+    public uint Reserved;
+
+    public int Size
     {
-        public MetadataEntryFlags Flags;
-        public Guid ItemId;
-        public uint Length;
-        public uint Offset;
-        public uint Reserved;
+        get { return 32; }
+    }
 
-        public int Size
-        {
-            get { return 32; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        ItemId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0);
+        Offset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
+        Length = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
+        Flags = (MetadataEntryFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 24);
+        Reserved = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 28);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            ItemId = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0);
-            Offset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-            Length = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
-            Flags = (MetadataEntryFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 24);
-            Reserved = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 28);
+        return 32;
+    }
 
-            return 32;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian(ItemId, buffer, offset + 0);
-            EndianUtilities.WriteBytesLittleEndian(Offset, buffer, offset + 16);
-            EndianUtilities.WriteBytesLittleEndian(Length, buffer, offset + 20);
-            EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer, offset + 24);
-            EndianUtilities.WriteBytesLittleEndian(Reserved, buffer, offset + 28);
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        EndianUtilities.WriteBytesLittleEndian(ItemId, buffer, offset + 0);
+        EndianUtilities.WriteBytesLittleEndian(Offset, buffer, offset + 16);
+        EndianUtilities.WriteBytesLittleEndian(Length, buffer, offset + 20);
+        EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer, offset + 24);
+        EndianUtilities.WriteBytesLittleEndian(Reserved, buffer, offset + 28);
     }
 }

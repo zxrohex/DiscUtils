@@ -23,381 +23,347 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal class NtfsAttribute : IDiagnosticTraceable
 {
-    internal class NtfsAttribute : IDiagnosticTraceable
+    private Buffer _cachedRawBuffer;
+    protected FileRecordReference _containingFile;
+    protected Dictionary<AttributeReference, AttributeRecord> _extents;
+    protected File _file;
+    protected AttributeRecord _primaryRecord;
+
+    protected NtfsAttribute(File file, FileRecordReference containingFile, AttributeRecord record)
     {
-        private Buffer _cachedRawBuffer;
-        protected FileRecordReference _containingFile;
-        protected Dictionary<AttributeReference, AttributeRecord> _extents;
-        protected File _file;
-        protected AttributeRecord _primaryRecord;
+        _file = file;
+        _containingFile = containingFile;
+        _primaryRecord = record;
+        _extents = new Dictionary<AttributeReference, AttributeRecord>();
+        _extents.Add(new AttributeReference(containingFile, record.AttributeId), _primaryRecord);
+    }
 
-        protected NtfsAttribute(File file, FileRecordReference containingFile, AttributeRecord record)
+    protected string AttributeTypeName
+    {
+        get
         {
-            _file = file;
-            _containingFile = containingFile;
+            return _primaryRecord.AttributeType switch
+            {
+                AttributeType.StandardInformation => "STANDARD INFORMATION",
+                AttributeType.FileName => "FILE NAME",
+                AttributeType.SecurityDescriptor => "SECURITY DESCRIPTOR",
+                AttributeType.Data => "DATA",
+                AttributeType.Bitmap => "BITMAP",
+                AttributeType.VolumeName => "VOLUME NAME",
+                AttributeType.VolumeInformation => "VOLUME INFORMATION",
+                AttributeType.IndexRoot => "INDEX ROOT",
+                AttributeType.IndexAllocation => "INDEX ALLOCATION",
+                AttributeType.ObjectId => "OBJECT ID",
+                AttributeType.ReparsePoint => "REPARSE POINT",
+                AttributeType.AttributeList => "ATTRIBUTE LIST",
+                _ => "UNKNOWN",
+            };
+        }
+    }
+
+    public long CompressedDataSize
+    {
+        get
+        {
+            if (FirstExtent is not NonResidentAttributeRecord firstExtent)
+            {
+                return FirstExtent.AllocatedLength;
+            }
+            return firstExtent.CompressedDataSize;
+        }
+
+        set
+        {
+            if (FirstExtent is NonResidentAttributeRecord firstExtent)
+            {
+                firstExtent.CompressedDataSize = value;
+            }
+        }
+    }
+
+    public int CompressionUnitSize
+    {
+        get
+        {
+            if (FirstExtent is not NonResidentAttributeRecord firstExtent)
+            {
+                return 0;
+            }
+            return firstExtent.CompressionUnitSize;
+        }
+
+        set
+        {
+            if (FirstExtent is NonResidentAttributeRecord firstExtent)
+            {
+                firstExtent.CompressionUnitSize = value;
+            }
+        }
+    }
+
+    public IDictionary<AttributeReference, AttributeRecord> Extents
+    {
+        get { return _extents; }
+    }
+
+    public AttributeRecord FirstExtent
+    {
+        get
+        {
+            if (_extents != null)
+            {
+                foreach (var extent in _extents)
+                {
+                    if (extent.Value is not NonResidentAttributeRecord nonResident)
+                    {
+                        // Resident attribute, so there can only be one...
+                        return extent.Value;
+                    }
+                    if (nonResident.StartVcn == 0)
+                    {
+                        return extent.Value;
+                    }
+                }
+            }
+
+            throw new InvalidDataException("Attribute with no initial extent");
+        }
+    }
+
+    public AttributeFlags Flags
+    {
+        get { return _primaryRecord.Flags; }
+
+        set
+        {
+            _primaryRecord.Flags = value;
+            _cachedRawBuffer = null;
+        }
+    }
+
+    public ushort Id
+    {
+        get { return _primaryRecord.AttributeId; }
+    }
+
+    public bool IsNonResident
+    {
+        get { return _primaryRecord.IsNonResident; }
+    }
+
+    public AttributeRecord LastExtent
+    {
+        get
+        {
+            AttributeRecord last = null;
+
+            if (_extents != null)
+            {
+                long lastVcn = 0;
+                foreach (var extent in _extents)
+                {
+                    if (extent.Value is not NonResidentAttributeRecord nonResident)
+                    {
+                        // Resident attribute, so there can only be one...
+                        return extent.Value;
+                    }
+
+                    if (nonResident.LastVcn >= lastVcn)
+                    {
+                        last = extent.Value;
+                        lastVcn = nonResident.LastVcn;
+                    }
+                }
+            }
+
+            return last;
+        }
+    }
+
+    public long Length
+    {
+        get { return _primaryRecord.DataLength; }
+    }
+
+    public string Name
+    {
+        get { return _primaryRecord.Name; }
+    }
+
+    public AttributeRecord PrimaryRecord
+    {
+        get { return _primaryRecord; }
+    }
+
+    public Buffer RawBuffer
+    {
+        get
+        {
+            if (_cachedRawBuffer == null)
+            {
+                if (_primaryRecord.IsNonResident)
+                {
+                    _cachedRawBuffer = new NonResidentAttributeBuffer(_file, this);
+                }
+                else
+                {
+                    _cachedRawBuffer = ((ResidentAttributeRecord)_primaryRecord).DataBuffer;
+                }
+            }
+
+            return _cachedRawBuffer;
+        }
+    }
+
+    public List<AttributeRecord> Records
+    {
+        get
+        {
+            var records = new List<AttributeRecord>(_extents.Values);
+            records.Sort(AttributeRecord.CompareStartVcns);
+            return records;
+        }
+    }
+
+    public AttributeReference Reference
+    {
+        get { return new AttributeReference(_containingFile, _primaryRecord.AttributeId); }
+    }
+
+    public AttributeType Type
+    {
+        get { return _primaryRecord.AttributeType; }
+    }
+
+    public virtual void Dump(TextWriter writer, string indent)
+    {
+        writer.WriteLine($"{indent}{AttributeTypeName} ATTRIBUTE ({(Name == null ? "No Name" : Name)})");
+
+        writer.WriteLine($"{indent}  Length: {_primaryRecord.DataLength} bytes");
+        if (_primaryRecord.DataLength == 0)
+        {
+            writer.WriteLine($"{indent}    Data: <none>");
+        }
+        else
+        {
+            try
+            {
+                using Stream s = Open(FileAccess.Read);
+                var hex = string.Empty;
+                System.Span<byte> buffer = stackalloc byte[32];
+                var numBytes = s.Read(buffer);
+                for (var i = 0; i < numBytes; ++i)
+                {
+                    hex = hex + $" {buffer[i]:X2}";
+                }
+
+                writer.WriteLine($"{indent}    Data: {hex}{(numBytes < s.Length ? "..." : string.Empty)}");
+            }
+            catch
+            {
+                writer.WriteLine($"{indent}    Data: <can't read>");
+            }
+        }
+
+        _primaryRecord.Dump(writer, $"{indent}  ");
+    }
+
+    public static NtfsAttribute FromRecord(File file, FileRecordReference recordFile, AttributeRecord record)
+    {
+        return record.AttributeType switch
+        {
+            AttributeType.StandardInformation => new StructuredNtfsAttribute<StandardInformation>(file, recordFile, record),
+            AttributeType.FileName => new StructuredNtfsAttribute<FileNameRecord>(file, recordFile, record),
+            AttributeType.SecurityDescriptor => new StructuredNtfsAttribute<SecurityDescriptor>(file, recordFile, record),
+            AttributeType.Data => new NtfsAttribute(file, recordFile, record),
+            AttributeType.Bitmap => new NtfsAttribute(file, recordFile, record),
+            AttributeType.VolumeName => new StructuredNtfsAttribute<VolumeName>(file, recordFile, record),
+            AttributeType.VolumeInformation => new StructuredNtfsAttribute<VolumeInformation>(file, recordFile, record),
+            AttributeType.IndexRoot => new NtfsAttribute(file, recordFile, record),
+            AttributeType.IndexAllocation => new NtfsAttribute(file, recordFile, record),
+            AttributeType.ObjectId => new StructuredNtfsAttribute<ObjectId>(file, recordFile, record),
+            AttributeType.ReparsePoint => new StructuredNtfsAttribute<ReparsePointRecord>(file, recordFile, record),
+            AttributeType.AttributeList => new StructuredNtfsAttribute<AttributeList>(file, recordFile, record),
+            _ => new NtfsAttribute(file, recordFile, record),
+        };
+    }
+
+    public void SetExtent(FileRecordReference containingFile, AttributeRecord record)
+    {
+        _cachedRawBuffer = null;
+        _containingFile = containingFile;
+        _primaryRecord = record;
+        _extents.Clear();
+        _extents.Add(new AttributeReference(containingFile, record.AttributeId), record);
+    }
+
+    public void AddExtent(FileRecordReference containingFile, AttributeRecord record)
+    {
+        _cachedRawBuffer = null;
+        _extents.Add(new AttributeReference(containingFile, record.AttributeId), record);
+    }
+
+    public void RemoveExtentCacheSafe(AttributeReference reference)
+    {
+        _extents.Remove(reference);
+    }
+
+    public bool ReplaceExtent(AttributeReference oldRef, AttributeReference newRef, AttributeRecord record)
+    {
+        _cachedRawBuffer = null;
+
+        if (!_extents.Remove(oldRef))
+        {
+            return false;
+        }
+        if (oldRef.Equals(Reference) || _extents.Count == 0)
+        {
             _primaryRecord = record;
-            _extents = new Dictionary<AttributeReference, AttributeRecord>();
-            _extents.Add(new AttributeReference(containingFile, record.AttributeId), _primaryRecord);
+            _containingFile = newRef.File;
         }
 
-        protected string AttributeTypeName
+        _extents.Add(newRef, record);
+        return true;
+    }
+
+    public IEnumerable<CookedDataRuns> GetCookedDataRuns()
+    {
+        foreach (var extent in _extents)
         {
-            get
+            yield return extent.Value.GetCookedDataRuns();
+        }
+    }
+
+    public IEnumerable<Range<long, long>> GetClusters()
+    {
+        foreach (var extent in _extents)
+        {
+            foreach (var cluster in extent.Value.GetClusters())
             {
-                switch (_primaryRecord.AttributeType)
-                {
-                    case AttributeType.StandardInformation:
-                        return "STANDARD INFORMATION";
-                    case AttributeType.FileName:
-                        return "FILE NAME";
-                    case AttributeType.SecurityDescriptor:
-                        return "SECURITY DESCRIPTOR";
-                    case AttributeType.Data:
-                        return "DATA";
-                    case AttributeType.Bitmap:
-                        return "BITMAP";
-                    case AttributeType.VolumeName:
-                        return "VOLUME NAME";
-                    case AttributeType.VolumeInformation:
-                        return "VOLUME INFORMATION";
-                    case AttributeType.IndexRoot:
-                        return "INDEX ROOT";
-                    case AttributeType.IndexAllocation:
-                        return "INDEX ALLOCATION";
-                    case AttributeType.ObjectId:
-                        return "OBJECT ID";
-                    case AttributeType.ReparsePoint:
-                        return "REPARSE POINT";
-                    case AttributeType.AttributeList:
-                        return "ATTRIBUTE LIST";
-                    default:
-                        return "UNKNOWN";
-                }
+                yield return cluster;
             }
         }
+    }
 
-        public long CompressedDataSize
-        {
-            get
-            {
-                NonResidentAttributeRecord firstExtent = FirstExtent as NonResidentAttributeRecord;
-                if (firstExtent == null)
-                {
-                    return FirstExtent.AllocatedLength;
-                }
-                return firstExtent.CompressedDataSize;
-            }
+    internal SparseStream Open(FileAccess access)
+    {
+        return new BufferStream(GetDataBuffer(), access);
+    }
 
-            set
-            {
-                NonResidentAttributeRecord firstExtent = FirstExtent as NonResidentAttributeRecord;
-                if (firstExtent != null)
-                {
-                    firstExtent.CompressedDataSize = value;
-                }
-            }
-        }
+    internal IMappedBuffer GetDataBuffer()
+    {
+        return new NtfsAttributeBuffer(_file, this);
+    }
 
-        public int CompressionUnitSize
-        {
-            get
-            {
-                NonResidentAttributeRecord firstExtent = FirstExtent as NonResidentAttributeRecord;
-                if (firstExtent == null)
-                {
-                    return 0;
-                }
-                return firstExtent.CompressionUnitSize;
-            }
-
-            set
-            {
-                NonResidentAttributeRecord firstExtent = FirstExtent as NonResidentAttributeRecord;
-                if (firstExtent != null)
-                {
-                    firstExtent.CompressionUnitSize = value;
-                }
-            }
-        }
-
-        public IDictionary<AttributeReference, AttributeRecord> Extents
-        {
-            get { return _extents; }
-        }
-
-        public AttributeRecord FirstExtent
-        {
-            get
-            {
-                if (_extents != null)
-                {
-                    foreach (KeyValuePair<AttributeReference, AttributeRecord> extent in _extents)
-                    {
-                        NonResidentAttributeRecord nonResident = extent.Value as NonResidentAttributeRecord;
-                        if (nonResident == null)
-                        {
-                            // Resident attribute, so there can only be one...
-                            return extent.Value;
-                        }
-                        if (nonResident.StartVcn == 0)
-                        {
-                            return extent.Value;
-                        }
-                    }
-                }
-
-                throw new InvalidDataException("Attribute with no initial extent");
-            }
-        }
-
-        public AttributeFlags Flags
-        {
-            get { return _primaryRecord.Flags; }
-
-            set
-            {
-                _primaryRecord.Flags = value;
-                _cachedRawBuffer = null;
-            }
-        }
-
-        public ushort Id
-        {
-            get { return _primaryRecord.AttributeId; }
-        }
-
-        public bool IsNonResident
-        {
-            get { return _primaryRecord.IsNonResident; }
-        }
-
-        public AttributeRecord LastExtent
-        {
-            get
-            {
-                AttributeRecord last = null;
-
-                if (_extents != null)
-                {
-                    long lastVcn = 0;
-                    foreach (KeyValuePair<AttributeReference, AttributeRecord> extent in _extents)
-                    {
-                        NonResidentAttributeRecord nonResident = extent.Value as NonResidentAttributeRecord;
-                        if (nonResident == null)
-                        {
-                            // Resident attribute, so there can only be one...
-                            return extent.Value;
-                        }
-
-                        if (nonResident.LastVcn >= lastVcn)
-                        {
-                            last = extent.Value;
-                            lastVcn = nonResident.LastVcn;
-                        }
-                    }
-                }
-
-                return last;
-            }
-        }
-
-        public long Length
-        {
-            get { return _primaryRecord.DataLength; }
-        }
-
-        public string Name
-        {
-            get { return _primaryRecord.Name; }
-        }
-
-        public AttributeRecord PrimaryRecord
-        {
-            get { return _primaryRecord; }
-        }
-
-        public Buffer RawBuffer
-        {
-            get
-            {
-                if (_cachedRawBuffer == null)
-                {
-                    if (_primaryRecord.IsNonResident)
-                    {
-                        _cachedRawBuffer = new NonResidentAttributeBuffer(_file, this);
-                    }
-                    else
-                    {
-                        _cachedRawBuffer = ((ResidentAttributeRecord)_primaryRecord).DataBuffer;
-                    }
-                }
-
-                return _cachedRawBuffer;
-            }
-        }
-
-        public List<AttributeRecord> Records
-        {
-            get
-            {
-                List<AttributeRecord> records = new List<AttributeRecord>(_extents.Values);
-                records.Sort(AttributeRecord.CompareStartVcns);
-                return records;
-            }
-        }
-
-        public AttributeReference Reference
-        {
-            get { return new AttributeReference(_containingFile, _primaryRecord.AttributeId); }
-        }
-
-        public AttributeType Type
-        {
-            get { return _primaryRecord.AttributeType; }
-        }
-
-        public virtual void Dump(TextWriter writer, string indent)
-        {
-            writer.WriteLine($"{indent}{AttributeTypeName} ATTRIBUTE ({(Name == null ? "No Name" : Name)})");
-
-            writer.WriteLine($"{indent}  Length: {_primaryRecord.DataLength} bytes");
-            if (_primaryRecord.DataLength == 0)
-            {
-                writer.WriteLine($"{indent}    Data: <none>");
-            }
-            else
-            {
-                try
-                {
-                    using (Stream s = Open(FileAccess.Read))
-                    {
-                        string hex = string.Empty;
-                        byte[] buffer = new byte[32];
-                        int numBytes = s.Read(buffer, 0, buffer.Length);
-                        for (int i = 0; i < numBytes; ++i)
-                        {
-                            hex = hex + string.Format(CultureInfo.InvariantCulture, " {0:X2}", buffer[i]);
-                        }
-
-                        writer.WriteLine($"{indent}    Data: {hex}{(numBytes < s.Length ? "..." : string.Empty)}");
-                    }
-                }
-                catch
-                {
-                    writer.WriteLine($"{indent}    Data: <can't read>");
-                }
-            }
-
-            _primaryRecord.Dump(writer, $"{indent}  ");
-        }
-
-        public static NtfsAttribute FromRecord(File file, FileRecordReference recordFile, AttributeRecord record)
-        {
-            switch (record.AttributeType)
-            {
-                case AttributeType.StandardInformation:
-                    return new StructuredNtfsAttribute<StandardInformation>(file, recordFile, record);
-                case AttributeType.FileName:
-                    return new StructuredNtfsAttribute<FileNameRecord>(file, recordFile, record);
-                case AttributeType.SecurityDescriptor:
-                    return new StructuredNtfsAttribute<SecurityDescriptor>(file, recordFile, record);
-                case AttributeType.Data:
-                    return new NtfsAttribute(file, recordFile, record);
-                case AttributeType.Bitmap:
-                    return new NtfsAttribute(file, recordFile, record);
-                case AttributeType.VolumeName:
-                    return new StructuredNtfsAttribute<VolumeName>(file, recordFile, record);
-                case AttributeType.VolumeInformation:
-                    return new StructuredNtfsAttribute<VolumeInformation>(file, recordFile, record);
-                case AttributeType.IndexRoot:
-                    return new NtfsAttribute(file, recordFile, record);
-                case AttributeType.IndexAllocation:
-                    return new NtfsAttribute(file, recordFile, record);
-                case AttributeType.ObjectId:
-                    return new StructuredNtfsAttribute<ObjectId>(file, recordFile, record);
-                case AttributeType.ReparsePoint:
-                    return new StructuredNtfsAttribute<ReparsePointRecord>(file, recordFile, record);
-                case AttributeType.AttributeList:
-                    return new StructuredNtfsAttribute<AttributeList>(file, recordFile, record);
-                default:
-                    return new NtfsAttribute(file, recordFile, record);
-            }
-        }
-
-        public void SetExtent(FileRecordReference containingFile, AttributeRecord record)
-        {
-            _cachedRawBuffer = null;
-            _containingFile = containingFile;
-            _primaryRecord = record;
-            _extents.Clear();
-            _extents.Add(new AttributeReference(containingFile, record.AttributeId), record);
-        }
-
-        public void AddExtent(FileRecordReference containingFile, AttributeRecord record)
-        {
-            _cachedRawBuffer = null;
-            _extents.Add(new AttributeReference(containingFile, record.AttributeId), record);
-        }
-
-        public void RemoveExtentCacheSafe(AttributeReference reference)
-        {
-            _extents.Remove(reference);
-        }
-
-        public bool ReplaceExtent(AttributeReference oldRef, AttributeReference newRef, AttributeRecord record)
-        {
-            _cachedRawBuffer = null;
-
-            if (!_extents.Remove(oldRef))
-            {
-                return false;
-            }
-            if (oldRef.Equals(Reference) || _extents.Count == 0)
-            {
-                _primaryRecord = record;
-                _containingFile = newRef.File;
-            }
-
-            _extents.Add(newRef, record);
-            return true;
-        }
-
-        public IEnumerable<CookedDataRuns> GetCookedDataRuns()
-        {
-            foreach (KeyValuePair<AttributeReference, AttributeRecord> extent in _extents)
-            {
-                yield return extent.Value.GetCookedDataRuns();
-            }
-        }
-
-        public IEnumerable<Range<long, long>> GetClusters()
-        {
-            foreach (KeyValuePair<AttributeReference, AttributeRecord> extent in _extents)
-            {
-                foreach (var cluster in extent.Value.GetClusters())
-                {
-                    yield return cluster;
-                }
-            }
-        }
-
-        internal SparseStream Open(FileAccess access)
-        {
-            return new BufferStream(GetDataBuffer(), access);
-        }
-
-        internal IMappedBuffer GetDataBuffer()
-        {
-            return new NtfsAttributeBuffer(_file, this);
-        }
-
-        internal long OffsetToAbsolutePos(long offset)
-        {
-            return GetDataBuffer().MapPosition(offset);
-        }
+    internal long OffsetToAbsolutePos(long offset)
+    {
+        return GetDataBuffer().MapPosition(offset);
     }
 }

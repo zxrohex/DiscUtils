@@ -22,35 +22,34 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class RejectPacket : BaseResponse
 {
-    internal class RejectPacket : BaseResponse
+    public uint DataSequenceNumber;
+    public BasicHeaderSegment Header;
+    public RejectReason Reason;
+
+    public override void Parse(ProtocolDataUnit pdu)
     {
-        public uint DataSequenceNumber;
-        public BasicHeaderSegment Header;
-        public RejectReason Reason;
+        Parse(pdu.HeaderData, 0);
+    }
 
-        public override void Parse(ProtocolDataUnit pdu)
+    public void Parse(byte[] headerData, int headerOffset)
+    {
+        Header = new BasicHeaderSegment();
+        Header.ReadFrom(headerData, headerOffset);
+
+        if (Header.OpCode != OpCode.Reject)
         {
-            Parse(pdu.HeaderData, 0);
+            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.Reject + " was " +
+                                               Header.OpCode);
         }
 
-        public void Parse(byte[] headerData, int headerOffset)
-        {
-            Header = new BasicHeaderSegment();
-            Header.ReadFrom(headerData, headerOffset);
-
-            if (Header.OpCode != OpCode.Reject)
-            {
-                throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.Reject + " was " +
-                                                   Header.OpCode);
-            }
-
-            Reason = (RejectReason)headerData[headerOffset + 2];
-            StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-            ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-            MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-            DataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
-        }
+        Reason = (RejectReason)headerData[headerOffset + 2];
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
+        DataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
     }
 }

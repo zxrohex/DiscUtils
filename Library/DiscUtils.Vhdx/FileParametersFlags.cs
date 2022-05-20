@@ -22,13 +22,12 @@
 
 using System;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+[Flags]
+internal enum FileParametersFlags : uint
 {
-    [Flags]
-    internal enum FileParametersFlags : uint
-    {
-        None = 0x00,
-        LeaveBlocksAllocated = 0x01,
-        HasParent = 0x02
-    }
+    None = 0x00,
+    LeaveBlocksAllocated = 0x01,
+    HasParent = 0x02
 }

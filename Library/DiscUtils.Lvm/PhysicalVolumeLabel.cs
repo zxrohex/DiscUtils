@@ -20,42 +20,41 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using DiscUtils.Streams;
+using System;
+
+internal class PhysicalVolumeLabel : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
+    public const string LABEL_ID = "LABELONE";
+    public const string LVM2_LABEL = "LVM2 001";
 
-    internal class PhysicalVolumeLabel : IByteArraySerializable
+    public string Label;
+    public ulong Sector;
+    public ulong Crc;
+    public ulong CalculatedCrc;
+    public ulong Offset;
+    public string Label2;
+    
+    /// <inheritdoc />
+    public int Size { get { return PhysicalVolume.SECTOR_SIZE; } }
+
+    /// <inheritdoc />
+    public int ReadFrom(byte[] buffer, int offset)
     {
-        public const string LABEL_ID = "LABELONE";
-        public const string LVM2_LABEL = "LVM2 001";
+        Label = EndianUtilities.BytesToString(buffer, offset, 0x8);
+        Sector = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
+        Crc = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x10);
+        CalculatedCrc = PhysicalVolume.CalcCrc(buffer, offset + 0x14, PhysicalVolume.SECTOR_SIZE - 0x14);
+        Offset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x14);
+        Label2 = EndianUtilities.BytesToString(buffer, offset + 0x18, 0x8);
+        return Size;
+    }
 
-        public string Label;
-        public ulong Sector;
-        public ulong Crc;
-        public ulong CalculatedCrc;
-        public ulong Offset;
-        public string Label2;
-        
-        /// <inheritdoc />
-        public int Size { get { return PhysicalVolume.SECTOR_SIZE; } }
-
-        /// <inheritdoc />
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Label = EndianUtilities.BytesToString(buffer, offset, 0x8);
-            Sector = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-            Crc = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x10);
-            CalculatedCrc = PhysicalVolume.CalcCrc(buffer, offset + 0x14, PhysicalVolume.SECTOR_SIZE - 0x14);
-            Offset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x14);
-            Label2 = EndianUtilities.BytesToString(buffer, offset + 0x18, 0x8);
-            return Size;
-        }
-
-        /// <inheritdoc />
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    /// <inheritdoc />
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

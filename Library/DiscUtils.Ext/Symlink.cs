@@ -24,21 +24,20 @@ using DiscUtils.Streams;
 using DiscUtils.Vfs;
 using System.IO;
 
-namespace DiscUtils.Ext
-{
-    internal class Symlink : File, IVfsSymlink<DirEntry, File>
-    {
-        public Symlink(Context context, uint inodeNum, Inode inode)
-            : base(context, inodeNum, inode) {}
+namespace DiscUtils.Ext;
 
-        public string TargetPath
+internal class Symlink : File, IVfsSymlink<DirEntry, File>
+{
+    public Symlink(Context context, uint inodeNum, Inode inode)
+        : base(context, inodeNum, inode) {}
+
+    public string TargetPath
+    {
+        get
         {
-            get
-            {
-                IBuffer content = FileContent;
-                byte[] data = StreamUtilities.ReadExact(content, 0, (int)content.Capacity);
-                return EndianUtilities.BytesToZString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
-            }
+            var content = FileContent;
+            var data = StreamUtilities.ReadExact(content, 0, (int)content.Capacity);
+            return EndianUtilities.BytesToZString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
         }
     }
 }

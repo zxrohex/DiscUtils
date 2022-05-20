@@ -1,4 +1,3 @@
-namespace DiscUtils.Fat
-{
-    internal delegate void FirstClusterChangedDelegate(uint cluster);
-}
+namespace DiscUtils.Fat;
+
+internal delegate void FirstClusterChangedDelegate(uint cluster);

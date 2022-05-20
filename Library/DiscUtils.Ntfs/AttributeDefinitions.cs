@@ -21,151 +21,161 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+public sealed class AttributeDefinitions
 {
-    public sealed class AttributeDefinitions
+    private readonly Dictionary<AttributeType, AttributeDefinitionRecord> _attrDefs;
+
+    internal AttributeDefinitions()
     {
-        private readonly Dictionary<AttributeType, AttributeDefinitionRecord> _attrDefs;
+        _attrDefs = new Dictionary<AttributeType, AttributeDefinitionRecord>();
 
-        internal AttributeDefinitions()
+        Add(AttributeType.StandardInformation, "$STANDARD_INFORMATION", AttributeTypeFlags.MustBeResident, 0x30,
+            0x48);
+        Add(AttributeType.AttributeList, "$ATTRIBUTE_LIST", AttributeTypeFlags.CanBeNonResident, 0, -1);
+        Add(AttributeType.FileName, "$FILE_NAME", AttributeTypeFlags.Indexed | AttributeTypeFlags.MustBeResident,
+            0x44, 0x242);
+        Add(AttributeType.ObjectId, "$OBJECT_ID", AttributeTypeFlags.MustBeResident, 0, 0x100);
+        Add(AttributeType.SecurityDescriptor, "$SECURITY_DESCRIPTOR", AttributeTypeFlags.CanBeNonResident, 0x0, -1);
+        Add(AttributeType.VolumeName, "$VOLUME_NAME", AttributeTypeFlags.MustBeResident, 0x2, 0x100);
+        Add(AttributeType.VolumeInformation, "$VOLUME_INFORMATION", AttributeTypeFlags.MustBeResident, 0xC, 0xC);
+        Add(AttributeType.Data, "$DATA", AttributeTypeFlags.None, 0, -1);
+        Add(AttributeType.IndexRoot, "$INDEX_ROOT", AttributeTypeFlags.MustBeResident, 0, -1);
+        Add(AttributeType.IndexAllocation, "$INDEX_ALLOCATION", AttributeTypeFlags.CanBeNonResident, 0, -1);
+        Add(AttributeType.Bitmap, "$BITMAP", AttributeTypeFlags.CanBeNonResident, 0, -1);
+        Add(AttributeType.ReparsePoint, "$REPARSE_POINT", AttributeTypeFlags.CanBeNonResident, 0, 0x4000);
+        Add(AttributeType.ExtendedAttributesInformation, "$EA_INFORMATION", AttributeTypeFlags.MustBeResident, 0x8,
+            0x8);
+        Add(AttributeType.ExtendedAttributes, "$EA", AttributeTypeFlags.None, 0, 0x10000);
+        Add(AttributeType.LoggedUtilityStream, "$LOGGED_UTILITY_STREAM", AttributeTypeFlags.CanBeNonResident, 0,
+            0x10000);
+    }
+
+    internal AttributeDefinitions(File file)
+    {
+        _attrDefs = new Dictionary<AttributeType, AttributeDefinitionRecord>();
+
+        var buffer = ArrayPool<byte>.Shared.Rent(AttributeDefinitionRecord.Size);
+        try
         {
-            _attrDefs = new Dictionary<AttributeType, AttributeDefinitionRecord>();
-
-            Add(AttributeType.StandardInformation, "$STANDARD_INFORMATION", AttributeTypeFlags.MustBeResident, 0x30,
-                0x48);
-            Add(AttributeType.AttributeList, "$ATTRIBUTE_LIST", AttributeTypeFlags.CanBeNonResident, 0, -1);
-            Add(AttributeType.FileName, "$FILE_NAME", AttributeTypeFlags.Indexed | AttributeTypeFlags.MustBeResident,
-                0x44, 0x242);
-            Add(AttributeType.ObjectId, "$OBJECT_ID", AttributeTypeFlags.MustBeResident, 0, 0x100);
-            Add(AttributeType.SecurityDescriptor, "$SECURITY_DESCRIPTOR", AttributeTypeFlags.CanBeNonResident, 0x0, -1);
-            Add(AttributeType.VolumeName, "$VOLUME_NAME", AttributeTypeFlags.MustBeResident, 0x2, 0x100);
-            Add(AttributeType.VolumeInformation, "$VOLUME_INFORMATION", AttributeTypeFlags.MustBeResident, 0xC, 0xC);
-            Add(AttributeType.Data, "$DATA", AttributeTypeFlags.None, 0, -1);
-            Add(AttributeType.IndexRoot, "$INDEX_ROOT", AttributeTypeFlags.MustBeResident, 0, -1);
-            Add(AttributeType.IndexAllocation, "$INDEX_ALLOCATION", AttributeTypeFlags.CanBeNonResident, 0, -1);
-            Add(AttributeType.Bitmap, "$BITMAP", AttributeTypeFlags.CanBeNonResident, 0, -1);
-            Add(AttributeType.ReparsePoint, "$REPARSE_POINT", AttributeTypeFlags.CanBeNonResident, 0, 0x4000);
-            Add(AttributeType.ExtendedAttributesInformation, "$EA_INFORMATION", AttributeTypeFlags.MustBeResident, 0x8,
-                0x8);
-            Add(AttributeType.ExtendedAttributes, "$EA", AttributeTypeFlags.None, 0, 0x10000);
-            Add(AttributeType.LoggedUtilityStream, "$LOGGED_UTILITY_STREAM", AttributeTypeFlags.CanBeNonResident, 0,
-                0x10000);
-        }
-
-        internal AttributeDefinitions(File file)
-        {
-            _attrDefs = new Dictionary<AttributeType, AttributeDefinitionRecord>();
-
-            byte[] buffer = new byte[AttributeDefinitionRecord.Size];
-            using (Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.Read))
+            using Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.Read);
+            while (StreamUtilities.ReadMaximum(s, buffer, 0, AttributeDefinitionRecord.Size) == AttributeDefinitionRecord.Size)
             {
-                while (StreamUtilities.ReadMaximum(s, buffer, 0, buffer.Length) == buffer.Length)
-                {
-                    AttributeDefinitionRecord record = new AttributeDefinitionRecord();
-                    record.Read(buffer, 0);
+                var record = new AttributeDefinitionRecord();
+                record.Read(buffer, 0);
 
-                    // NULL terminator record
-                    if (record.Type != AttributeType.None)
-                    {
-                        _attrDefs.Add(record.Type, record);
-                    }
+                // NULL terminator record
+                if (record.Type != AttributeType.None)
+                {
+                    _attrDefs.Add(record.Type, record);
                 }
             }
         }
-
-        internal void WriteTo(File file)
+        finally
         {
-            List<AttributeType> attribs = new List<AttributeType>(_attrDefs.Keys);
-            attribs.Sort();
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
 
-            using (Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite))
+    internal void WriteTo(File file)
+    {
+        var attribs = new List<AttributeType>(_attrDefs.Keys);
+        attribs.Sort();
+
+        using Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite);
+        var buffer = ArrayPool<byte>.Shared.Rent(AttributeDefinitionRecord.Size);
+        try
+        {
+            for (var i = 0; i < attribs.Count; ++i)
             {
-                byte[] buffer;
-                for (int i = 0; i < attribs.Count; ++i)
-                {
-                    buffer = new byte[AttributeDefinitionRecord.Size];
-                    AttributeDefinitionRecord attrDef = _attrDefs[attribs[i]];
-                    attrDef.Write(buffer, 0);
+                Array.Clear(buffer, 0, AttributeDefinitionRecord.Size);
+                var attrDef = _attrDefs[attribs[i]];
+                attrDef.Write(buffer, 0);
 
-                    s.Write(buffer, 0, buffer.Length);
-                }
+                s.Write(buffer, 0, AttributeDefinitionRecord.Size);
+            }
 
-                buffer = new byte[AttributeDefinitionRecord.Size];
-                s.Write(buffer, 0, buffer.Length);
+            Array.Clear(buffer, 0, AttributeDefinitionRecord.Size);
+            s.Write(buffer, 0, AttributeDefinitionRecord.Size);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    internal AttributeDefinitionRecord Lookup(string name)
+    {
+        foreach (var record in _attrDefs.Values)
+        {
+            if (string.Compare(name, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                return record;
             }
         }
 
-        internal AttributeDefinitionRecord Lookup(string name)
+        return null;
+    }
+
+    public AttributeType? FromString(string name)
+    {
+        foreach (var record in _attrDefs.Values)
         {
-            foreach (AttributeDefinitionRecord record in _attrDefs.Values)
+            if (string.Compare(name, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
             {
-                if (string.Compare(name, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    return record;
-                }
+                return record.Type;
             }
-
-            return null;
         }
 
-        public AttributeType? FromString(string name)
+        return null;
+    }
+
+    public bool MustBeResident(AttributeType attributeType)
+    {
+        if (_attrDefs.TryGetValue(attributeType, out var record))
         {
-            foreach (AttributeDefinitionRecord record in _attrDefs.Values)
-            {
-                if (string.Compare(name, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    return record.Type;
-                }
-            }
-
-            return null;
+            return (record.Flags & AttributeTypeFlags.MustBeResident) != 0;
         }
 
-        public bool MustBeResident(AttributeType attributeType)
+        return false;
+    }
+
+    public bool IsIndexed(AttributeType attributeType)
+    {
+        if (_attrDefs.TryGetValue(attributeType, out var record))
         {
-            AttributeDefinitionRecord record;
-            if (_attrDefs.TryGetValue(attributeType, out record))
-            {
-                return (record.Flags & AttributeTypeFlags.MustBeResident) != 0;
-            }
-
-            return false;
+            return (record.Flags & AttributeTypeFlags.Indexed) != 0;
         }
 
-        public bool IsIndexed(AttributeType attributeType)
+        return false;
+    }
+
+    private void Add(AttributeType attributeType, string name, AttributeTypeFlags attributeTypeFlags, int minSize,
+                     int maxSize)
+    {
+        var adr = new AttributeDefinitionRecord
         {
-            AttributeDefinitionRecord record;
-            if (_attrDefs.TryGetValue(attributeType, out record))
-            {
-                return (record.Flags & AttributeTypeFlags.Indexed) != 0;
-            }
+            Type = attributeType,
+            Name = name,
+            Flags = attributeTypeFlags,
+            MinSize = minSize,
+            MaxSize = maxSize
+        };
+        _attrDefs.Add(attributeType, adr);
+    }
 
-            return false;
-        }
-
-        private void Add(AttributeType attributeType, string name, AttributeTypeFlags attributeTypeFlags, int minSize,
-                         int maxSize)
+    public string ToString(AttributeType attributeType)
+    {
+        if (_attrDefs.TryGetValue(attributeType, out var record))
         {
-            AttributeDefinitionRecord adr = new AttributeDefinitionRecord();
-            adr.Type = attributeType;
-            adr.Name = name;
-            adr.Flags = attributeTypeFlags;
-            adr.MinSize = minSize;
-            adr.MaxSize = maxSize;
-            _attrDefs.Add(attributeType, adr);
+            return record.Name;
         }
-
-        public string ToString(AttributeType attributeType)
-        {
-            if (_attrDefs.TryGetValue(attributeType, out var record))
-            {
-                return record.Name;
-            }
-            return attributeType.ToString();
-        }
+        return attributeType.ToString();
     }
 }

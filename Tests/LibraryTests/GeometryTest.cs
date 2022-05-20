@@ -30,7 +30,7 @@ namespace LibraryTests
         [Fact]
         public void Create()
         {
-            Geometry g = new Geometry(100, 16, 63);
+            var g = new Geometry(100, 16, 63);
             Assert.Equal(100, g.Cylinders);
             Assert.Equal(16, g.HeadsPerCylinder);
             Assert.Equal(63, g.SectorsPerTrack);
@@ -39,14 +39,14 @@ namespace LibraryTests
         [Fact]
         public void LBARoundTrip()
         {
-            Geometry g = new Geometry(100, 16, 63);
+            var g = new Geometry(100, 16, 63);
 
             const int TestCylinder = 54;
             const int TestHead = 15;
             const int TestSector = 63;
 
-            long lba = g.ToLogicalBlockAddress(TestCylinder, TestHead, TestSector);
-            ChsAddress chs = g.ToChsAddress(lba);
+            var lba = g.ToLogicalBlockAddress(TestCylinder, TestHead, TestSector);
+            var chs = g.ToChsAddress(lba);
 
             Assert.Equal(TestCylinder, chs.Cylinder);
             Assert.Equal(TestHead, chs.Head);
@@ -56,14 +56,14 @@ namespace LibraryTests
         [Fact]
         public void TotalSectors()
         {
-            Geometry g = new Geometry(333, 22, 11);
+            var g = new Geometry(333, 22, 11);
             Assert.Equal(333 * 22 * 11, g.TotalSectorsLong);
         }
 
         [Fact]
         public void Capacity()
         {
-            Geometry g = new Geometry(333, 22, 11);
+            var g = new Geometry(333, 22, 11);
             Assert.Equal(333 * 22 * 11 * 512, g.Capacity);
         }
 
@@ -72,13 +72,13 @@ namespace LibraryTests
         {
             // Check the capacity calculated is no greater than requested, and off by no more than 10%
             const long ThreeTwentyMB = 1024 * 1024 * 320;
-            Geometry g = Geometry.FromCapacity(ThreeTwentyMB);
+            var g = Geometry.FromCapacity(ThreeTwentyMB);
             Assert.True(g.Capacity <= ThreeTwentyMB && g.Capacity > ThreeTwentyMB * 0.9);
 
             // Check exact sizes are maintained - do one pass to allow for finding a geometry that matches
             // the algorithm - then expect identical results each time.
-            Geometry startGeometry = new Geometry(333,22,11);
-            Geometry trip1 = Geometry.FromCapacity(startGeometry.Capacity);
+            var startGeometry = new Geometry(333,22,11);
+            var trip1 = Geometry.FromCapacity(startGeometry.Capacity);
             Assert.Equal(trip1, Geometry.FromCapacity(trip1.Capacity));
         }
 

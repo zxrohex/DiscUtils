@@ -23,40 +23,39 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class ForkData : IByteArraySerializable
 {
-    internal sealed class ForkData : IByteArraySerializable
+    public const int StructSize = 80;
+    public uint ClumpSize;
+    public ExtentDescriptor[] Extents;
+
+    public ulong LogicalSize;
+    public uint TotalBlocks;
+
+    public int Size
     {
-        public const int StructSize = 80;
-        public uint ClumpSize;
-        public ExtentDescriptor[] Extents;
+        get { return StructSize; }
+    }
 
-        public ulong LogicalSize;
-        public uint TotalBlocks;
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        LogicalSize = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0);
+        ClumpSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
+        TotalBlocks = EndianUtilities.ToUInt32BigEndian(buffer, offset + 12);
 
-        public int Size
+        Extents = new ExtentDescriptor[8];
+        for (var i = 0; i < 8; ++i)
         {
-            get { return StructSize; }
+            Extents[i] = EndianUtilities.ToStruct<ExtentDescriptor>(buffer, offset + 16 + i * 8);
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            LogicalSize = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0);
-            ClumpSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-            TotalBlocks = EndianUtilities.ToUInt32BigEndian(buffer, offset + 12);
+        return StructSize;
+    }
 
-            Extents = new ExtentDescriptor[8];
-            for (int i = 0; i < 8; ++i)
-            {
-                Extents[i] = EndianUtilities.ToStruct<ExtentDescriptor>(buffer, offset + 16 + i * 8);
-            }
-
-            return StructSize;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

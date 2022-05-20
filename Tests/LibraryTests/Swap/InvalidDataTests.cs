@@ -10,7 +10,7 @@ namespace LibraryTests.Swap
         public void InvalidSwapHeader()
         {
             var buffer = new byte[SwapHeader.PageSize];
-            for (int i = 0; i < 16; i++)
+            for (var i = 0; i < 16; i++)
             {
                 buffer[0x41c + i] = 1;
             }

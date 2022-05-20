@@ -25,92 +25,93 @@ using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Swap
+namespace DiscUtils.Swap;
+
+/// <summary>
+/// Class for accessing Swap file systems.
+/// </summary>
+public sealed class SwapFileSystem : VfsReadOnlyFileSystem<VfsDirEntry, IVfsFile, IVfsDirectory<VfsDirEntry, IVfsFile>, SwapContext>
 {
     /// <summary>
-    /// Class for accessing Swap file systems.
+    /// Initializes a new instance of the SwapFileSystem class.
     /// </summary>
-    public sealed class SwapFileSystem : VfsReadOnlyFileSystem<VfsDirEntry, IVfsFile, IVfsDirectory<VfsDirEntry, IVfsFile>, SwapContext>
+    /// <param name="stream">The stream containing the file system.</param>
+    public SwapFileSystem(Stream stream):base(new DiscFileSystemOptions())
     {
-        /// <summary>
-        /// Initializes a new instance of the SwapFileSystem class.
-        /// </summary>
-        /// <param name="stream">The stream containing the file system.</param>
-        public SwapFileSystem(Stream stream):base(new DiscFileSystemOptions())
+        Context = new SwapContext
         {
-            Context = new SwapContext();
-            Context.Header = ReadSwapHeader(stream);
-            if (Context.Header == null) throw new IOException("Swap Header missing");
-            if (Context.Header.Magic != SwapHeader.Magic1 && Context.Header.Magic != SwapHeader.Magic2)
-                throw new IOException("Invalid Swap header");
-        }
-        
-        /// <summary>
-        /// Gets the friendly name for the file system.
-        /// </summary>
-        public override string FriendlyName
+            Header = ReadSwapHeader(stream)
+        };
+        if (Context.Header == null) throw new IOException("Swap Header missing");
+        if (Context.Header.Magic != SwapHeader.Magic1 && Context.Header.Magic != SwapHeader.Magic2)
+            throw new IOException("Invalid Swap header");
+    }
+    
+    /// <summary>
+    /// Gets the friendly name for the file system.
+    /// </summary>
+    public override string FriendlyName
+    {
+        get
         {
-            get
-            {
-                return "Swap";
-            }
+            return "Swap";
         }
+    }
 
-        /// <summary>
-        /// Gets the volume label.
-        /// </summary>
-        public override string VolumeLabel
-        {
-            get { return Context.Header.Volume; }
-        }
-        
-        /// <summary>
-        /// Detects if a stream contains a Swap file system.
-        /// </summary>
-        /// <param name="stream">The stream to inspect.</param>
-        /// <returns><c>true</c> if the stream appears to be a Swap file system, else <c>false</c>.</returns>
-        public static bool Detect(Stream stream)
-        {
-            SwapHeader header = ReadSwapHeader(stream);
-            return header != null && (header.Magic == SwapHeader.Magic1 || header.Magic == SwapHeader.Magic2);
-        }
+    /// <summary>
+    /// Gets the volume label.
+    /// </summary>
+    public override string VolumeLabel
+    {
+        get { return Context.Header.Volume; }
+    }
+    
+    /// <summary>
+    /// Detects if a stream contains a Swap file system.
+    /// </summary>
+    /// <param name="stream">The stream to inspect.</param>
+    /// <returns><c>true</c> if the stream appears to be a Swap file system, else <c>false</c>.</returns>
+    public static bool Detect(Stream stream)
+    {
+        var header = ReadSwapHeader(stream);
+        return header != null && (header.Magic == SwapHeader.Magic1 || header.Magic == SwapHeader.Magic2);
+    }
 
-        private static SwapHeader ReadSwapHeader(Stream stream)
+    private static SwapHeader ReadSwapHeader(Stream stream)
+    {
+        if (stream.Length < SwapHeader.PageSize)
         {
-            if (stream.Length < SwapHeader.PageSize)
-            {
-                return null;
-            }
-            stream.Position = 0;
-            byte[] headerData = StreamUtilities.ReadExact(stream, SwapHeader.PageSize);
-            SwapHeader header = new SwapHeader();
-            header.ReadFrom(headerData, 0);
-            return header;
+            return null;
         }
+        stream.Position = 0;
+        var headerData = StreamUtilities.ReadExact(stream, SwapHeader.PageSize);
+        var header = new SwapHeader();
+        header.ReadFrom(headerData, 0);
+        return header;
+    }
 
-        /// <summary>
-        /// Size of the Filesystem in bytes
-        /// </summary>
-        public override long Size
-        {
-            get { return Context.Header.LastPage * SwapHeader.PageSize; }
-        }
+    /// <summary>
+    /// Size of the Filesystem in bytes
+    /// </summary>
+    public override long Size
+    {
+        get { return Context.Header.LastPage * SwapHeader.PageSize; }
+    }
 
-        /// <summary>
-        /// Used space of the Filesystem in bytes
-        /// </summary>
-        public override long UsedSpace {
-            get { return Size; }
-        }
+    /// <summary>
+    /// Used space of the Filesystem in bytes
+    /// </summary>
+    public override long UsedSpace {
+        get { return Size; }
+    }
 
-        /// <summary>
-        /// Available space of the Filesystem in bytes
-        /// </summary>
-        public override long AvailableSpace { get { return 0; } }
+    /// <summary>
+    /// Available space of the Filesystem in bytes
+    /// </summary>
+    public override long AvailableSpace { get { return 0; } }
 
-        protected override IVfsFile ConvertDirEntryToFile(VfsDirEntry dirEntry)
-        {
-            throw new NotImplementedException();
-        }
+    protected override IVfsFile ConvertDirEntryToFile(VfsDirEntry dirEntry)
+    {
+        throw new NotImplementedException();
     }
 }

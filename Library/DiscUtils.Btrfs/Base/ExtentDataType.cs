@@ -20,12 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal enum ExtentDataType : byte
 {
-    internal enum ExtentDataType : byte
-    {
-        Inline = 0,
-        Regular = 1,
-        PreAlloc = 2,
-    }
+    Inline = 0,
+    Regular = 1,
+    PreAlloc = 2,
 }

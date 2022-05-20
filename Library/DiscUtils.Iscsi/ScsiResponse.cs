@@ -20,13 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iscsi
-{
-    internal abstract class ScsiResponse
-    {
-        public abstract uint NeededDataLength { get; }
-        public abstract bool Truncated { get; }
+namespace DiscUtils.Iscsi;
 
-        public abstract void ReadFrom(byte[] buffer, int offset, int count);
-    }
+internal abstract class ScsiResponse
+{
+    public abstract uint NeededDataLength { get; }
+    public abstract bool Truncated { get; }
+
+    public abstract void ReadFrom(byte[] buffer, int offset, int count);
 }

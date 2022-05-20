@@ -25,117 +25,116 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal class AttributeList : IByteArraySerializable, IDiagnosticTraceable, ICollection<AttributeListRecord>
 {
-    internal class AttributeList : IByteArraySerializable, IDiagnosticTraceable, ICollection<AttributeListRecord>
+    private readonly List<AttributeListRecord> _records;
+
+    public AttributeList()
     {
-        private readonly List<AttributeListRecord> _records;
+        _records = new List<AttributeListRecord>();
+    }
 
-        public AttributeList()
+    public int Size
+    {
+        get
         {
-            _records = new List<AttributeListRecord>();
-        }
-
-        public int Size
-        {
-            get
+            var total = 0;
+            foreach (var record in _records)
             {
-                int total = 0;
-                foreach (AttributeListRecord record in _records)
-                {
-                    total += record.Size;
-                }
-
-                return total;
-            }
-        }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            _records.Clear();
-
-            int pos = 0;
-            while (pos < buffer.Length)
-            {
-                AttributeListRecord r = new AttributeListRecord();
-                pos += r.ReadFrom(buffer, offset + pos);
-                _records.Add(r);
+                total += record.Size;
             }
 
-            return pos;
+            return total;
+        }
+    }
+
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        _records.Clear();
+
+        var pos = 0;
+        while (pos < buffer.Length)
+        {
+            var r = new AttributeListRecord();
+            pos += r.ReadFrom(buffer, offset + pos);
+            _records.Add(r);
         }
 
-        public void WriteTo(byte[] buffer, int offset)
+        return pos;
+    }
+
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        var pos = offset;
+        foreach (var record in _records)
         {
-            int pos = offset;
-            foreach (AttributeListRecord record in _records)
-            {
-                record.WriteTo(buffer, offset + pos);
-                pos += record.Size;
-            }
+            record.WriteTo(buffer, offset + pos);
+            pos += record.Size;
         }
+    }
 
-        public int Count
+    public int Count
+    {
+        get { return _records.Count; }
+    }
+
+    public bool IsReadOnly
+    {
+        get { return false; }
+    }
+
+    public void Add(AttributeListRecord item)
+    {
+        _records.Add(item);
+        _records.Sort();
+    }
+
+    public void Clear()
+    {
+        _records.Clear();
+    }
+
+    public bool Contains(AttributeListRecord item)
+    {
+        return _records.Contains(item);
+    }
+
+    public void CopyTo(AttributeListRecord[] array, int arrayIndex)
+    {
+        _records.CopyTo(array, arrayIndex);
+    }
+
+    public bool Remove(AttributeListRecord item)
+    {
+        return _records.Remove(item);
+    }
+
+    #region IEnumerable<AttributeListRecord> Members
+
+    public IEnumerator<AttributeListRecord> GetEnumerator()
+    {
+        return _records.GetEnumerator();
+    }
+
+    #endregion
+
+    #region IEnumerable Members
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return _records.GetEnumerator();
+    }
+
+    #endregion
+
+    public void Dump(TextWriter writer, string indent)
+    {
+        writer.WriteLine(indent + "ATTRIBUTE LIST RECORDS");
+        foreach (var r in _records)
         {
-            get { return _records.Count; }
-        }
-
-        public bool IsReadOnly
-        {
-            get { return false; }
-        }
-
-        public void Add(AttributeListRecord item)
-        {
-            _records.Add(item);
-            _records.Sort();
-        }
-
-        public void Clear()
-        {
-            _records.Clear();
-        }
-
-        public bool Contains(AttributeListRecord item)
-        {
-            return _records.Contains(item);
-        }
-
-        public void CopyTo(AttributeListRecord[] array, int arrayIndex)
-        {
-            _records.CopyTo(array, arrayIndex);
-        }
-
-        public bool Remove(AttributeListRecord item)
-        {
-            return _records.Remove(item);
-        }
-
-        #region IEnumerable<AttributeListRecord> Members
-
-        public IEnumerator<AttributeListRecord> GetEnumerator()
-        {
-            return _records.GetEnumerator();
-        }
-
-        #endregion
-
-        #region IEnumerable Members
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return _records.GetEnumerator();
-        }
-
-        #endregion
-
-        public void Dump(TextWriter writer, string indent)
-        {
-            writer.WriteLine(indent + "ATTRIBUTE LIST RECORDS");
-            foreach (AttributeListRecord r in _records)
-            {
-                r.Dump(writer, indent + "  ");
-            }
+            r.Dump(writer, indent + "  ");
         }
     }
 }

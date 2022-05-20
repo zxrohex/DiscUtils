@@ -23,64 +23,62 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+// For more information, see
+// https://www.ietf.org/rfc/rfc1813.txt Appendix I: Mount Protocol
+internal sealed class Nfs3Mount : RpcProgram
 {
-    // For more information, see
-    // https://www.ietf.org/rfc/rfc1813.txt Appendix I: Mount Protocol
-    internal sealed class Nfs3Mount : RpcProgram
+    public const int ProgramIdentifier = RpcIdentifiers.Nfs3MountProgramIdentifier;
+    public const int ProgramVersion = RpcIdentifiers.Nfs3MountProgramVersion;
+
+    public const int MaxPathLength = 1024;
+    public const int MaxNameLength = 255;
+    public const int MaxFileHandleSize = 64;
+
+    public Nfs3Mount(IRpcClient client)
+        : base(client) { }
+
+    public override int Identifier
     {
-        public const int ProgramIdentifier = RpcIdentifiers.Nfs3MountProgramIdentifier;
-        public const int ProgramVersion = RpcIdentifiers.Nfs3MountProgramVersion;
+        get { return ProgramIdentifier; }
+    }
 
-        public const int MaxPathLength = 1024;
-        public const int MaxNameLength = 255;
-        public const int MaxFileHandleSize = 64;
+    public override int Version
+    {
+        get { return ProgramVersion; }
+    }
 
-        public Nfs3Mount(IRpcClient client)
-            : base(client) { }
+    public IEnumerable<Nfs3Export> Exports()
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, null, MountProc3.Export);
 
-        public override int Identifier
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
         {
-            get { return ProgramIdentifier; }
-        }
-
-        public override int Version
-        {
-            get { return ProgramVersion; }
-        }
-
-        public List<Nfs3Export> Exports()
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, null, MountProc3.Export);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
+            while (reply.BodyReader.ReadBool())
             {
-                List<Nfs3Export> exports = new List<Nfs3Export>();
-                while (reply.BodyReader.ReadBool())
-                {
-                    exports.Add(new Nfs3Export(reply.BodyReader));
-                }
-
-                return exports;
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3MountResult Mount(string dirPath)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, MountProc3.Mnt);
-            writer.Write(dirPath);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3MountResult(reply.BodyReader);
+                yield return new Nfs3Export(reply.BodyReader);
             }
 
-            throw new RpcException(reply.Header.ReplyHeader);
+            yield break;
         }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3MountResult Mount(string dirPath)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, MountProc3.Mnt);
+        writer.Write(dirPath);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3MountResult(reply.BodyReader);
+        }
+
+        throw new RpcException(reply.Header.ReplyHeader);
     }
 }

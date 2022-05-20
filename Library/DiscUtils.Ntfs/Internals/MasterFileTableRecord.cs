@@ -20,48 +20,47 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Ntfs.Internals
+namespace DiscUtils.Ntfs.Internals;
+
+public sealed class MasterFileTableRecord
 {
-    public sealed class MasterFileTableRecord
+    private readonly FileRecord _fileRecord;
+
+    internal MasterFileTableRecord(FileRecord fileRecord)
     {
-        private readonly FileRecord _fileRecord;
+        _fileRecord = fileRecord;
+    }
 
-        internal MasterFileTableRecord(FileRecord fileRecord)
-        {
-            _fileRecord = fileRecord;
-        }
+    public MasterFileTableReference BaseRecordReference
+    {
+        get { return new MasterFileTableReference(_fileRecord.BaseFile); }
+    }
 
-        public MasterFileTableReference BaseRecordReference
-        {
-            get { return new MasterFileTableReference(_fileRecord.BaseFile); }
-        }
+    public MasterFileTableRecordFlags Flags
+    {
+        get { return (MasterFileTableRecordFlags)_fileRecord.Flags; }
+    }
 
-        public MasterFileTableRecordFlags Flags
-        {
-            get { return (MasterFileTableRecordFlags)_fileRecord.Flags; }
-        }
+    public int HardLinkCount
+    {
+        get { return _fileRecord.HardLinkCount; }
+    }
 
-        public int HardLinkCount
-        {
-            get { return _fileRecord.HardLinkCount; }
-        }
+    /// <summary>
+    /// Changes each time the file is modified by Windows, relates to the NTFS journal.
+    /// </summary>
+    public long JournalSequenceNumber
+    {
+        get { return (long)_fileRecord.LogFileSequenceNumber; }
+    }
 
-        /// <summary>
-        /// Changes each time the file is modified by Windows, relates to the NTFS journal.
-        /// </summary>
-        public long JournalSequenceNumber
-        {
-            get { return (long)_fileRecord.LogFileSequenceNumber; }
-        }
+    public int NextAttributeId
+    {
+        get { return _fileRecord.NextAttributeId; }
+    }
 
-        public int NextAttributeId
-        {
-            get { return _fileRecord.NextAttributeId; }
-        }
-
-        public int SequenceNumber
-        {
-            get { return _fileRecord.SequenceNumber; }
-        }
+    public int SequenceNumber
+    {
+        get { return _fileRecord.SequenceNumber; }
     }
 }

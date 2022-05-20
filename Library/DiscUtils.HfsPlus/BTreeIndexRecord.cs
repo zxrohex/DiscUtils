@@ -23,50 +23,49 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class BTreeIndexRecord<TKey> : BTreeNodeRecord
+    where TKey : BTreeKey, new()
 {
-    internal sealed class BTreeIndexRecord<TKey> : BTreeNodeRecord
-        where TKey : BTreeKey, new()
+    private readonly int _size;
+
+    public BTreeIndexRecord(int size)
     {
-        private readonly int _size;
+        _size = size;
+    }
 
-        public BTreeIndexRecord(int size)
+    public uint ChildId { get; private set; }
+
+    public TKey Key { get; private set; }
+
+    public override int Size
+    {
+        get { return _size; }
+    }
+
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        Key = new TKey();
+        var keySize = Key.ReadFrom(buffer, offset);
+
+        if ((keySize & 1) != 0)
         {
-            _size = size;
+            ++keySize;
         }
 
-        public uint ChildId { get; private set; }
+        ChildId = EndianUtilities.ToUInt32BigEndian(buffer, offset + keySize);
 
-        public TKey Key { get; private set; }
+        return _size;
+    }
 
-        public override int Size
-        {
-            get { return _size; }
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            Key = new TKey();
-            int keySize = Key.ReadFrom(buffer, offset);
-
-            if ((keySize & 1) != 0)
-            {
-                ++keySize;
-            }
-
-            ChildId = EndianUtilities.ToUInt32BigEndian(buffer, offset + keySize);
-
-            return _size;
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string ToString()
-        {
-            return Key + ":" + ChildId;
-        }
+    public override string ToString()
+    {
+        return Key + ":" + ChildId;
     }
 }

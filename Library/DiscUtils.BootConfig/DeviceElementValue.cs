@@ -24,90 +24,92 @@ using System;
 using System.Globalization;
 using DiscUtils.Streams;
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class DeviceElementValue : ElementValue
 {
-    internal class DeviceElementValue : ElementValue
+    private readonly Guid _parentObject;
+    private readonly DeviceRecord _record;
+
+    public DeviceElementValue()
     {
-        private readonly Guid _parentObject;
-        private readonly DeviceRecord _record;
+        _parentObject = Guid.Empty;
 
-        public DeviceElementValue()
+        var record = new PartitionRecord
         {
-            _parentObject = Guid.Empty;
+            Type = 5
+        };
+        _record = record;
+    }
 
-            PartitionRecord record = new PartitionRecord();
-            record.Type = 5;
-            _record = record;
+    public DeviceElementValue(Guid parentObject, PhysicalVolumeInfo pvi)
+    {
+        _parentObject = parentObject;
+
+        var record = new PartitionRecord
+        {
+            Type = 6
+        };
+        if (pvi.VolumeType == PhysicalVolumeType.BiosPartition)
+        {
+            record.PartitionType = 1;
+            record.DiskIdentity = new byte[4];
+            EndianUtilities.WriteBytesLittleEndian(pvi.DiskSignature, record.DiskIdentity, 0);
+            record.PartitionIdentity = new byte[8];
+            EndianUtilities.WriteBytesLittleEndian(pvi.PhysicalStartSector * 512, record.PartitionIdentity, 0);
+        }
+        else if (pvi.VolumeType == PhysicalVolumeType.GptPartition)
+        {
+            record.PartitionType = 0;
+            record.DiskIdentity = new byte[16];
+            EndianUtilities.WriteBytesLittleEndian(pvi.DiskIdentity, record.DiskIdentity, 0);
+            record.PartitionIdentity = new byte[16];
+            EndianUtilities.WriteBytesLittleEndian(pvi.PartitionIdentity, record.PartitionIdentity, 0);
+        }
+        else
+        {
+            throw new NotImplementedException($"Unknown how to convert volume type {pvi.VolumeType} to a Device element");
         }
 
-        public DeviceElementValue(Guid parentObject, PhysicalVolumeInfo pvi)
+        _record = record;
+    }
+
+    public DeviceElementValue(byte[] value)
+    {
+        _parentObject = EndianUtilities.ToGuidLittleEndian(value, 0x00);
+        _record = DeviceRecord.Parse(value, 0x10);
+    }
+
+    public override ElementFormat Format
+    {
+        get { return ElementFormat.Device; }
+    }
+
+    public override Guid ParentObject
+    {
+        get { return _parentObject; }
+    }
+
+    public override string ToString()
+    {
+        if (_parentObject != Guid.Empty)
         {
-            _parentObject = parentObject;
-
-            PartitionRecord record = new PartitionRecord();
-            record.Type = 6;
-            if (pvi.VolumeType == PhysicalVolumeType.BiosPartition)
-            {
-                record.PartitionType = 1;
-                record.DiskIdentity = new byte[4];
-                EndianUtilities.WriteBytesLittleEndian(pvi.DiskSignature, record.DiskIdentity, 0);
-                record.PartitionIdentity = new byte[8];
-                EndianUtilities.WriteBytesLittleEndian(pvi.PhysicalStartSector * 512, record.PartitionIdentity, 0);
-            }
-            else if (pvi.VolumeType == PhysicalVolumeType.GptPartition)
-            {
-                record.PartitionType = 0;
-                record.DiskIdentity = new byte[16];
-                EndianUtilities.WriteBytesLittleEndian(pvi.DiskIdentity, record.DiskIdentity, 0);
-                record.PartitionIdentity = new byte[16];
-                EndianUtilities.WriteBytesLittleEndian(pvi.PartitionIdentity, record.PartitionIdentity, 0);
-            }
-            else
-            {
-                throw new NotImplementedException(string.Format(CultureInfo.InvariantCulture,
-                    "Unknown how to convert volume type {0} to a Device element", pvi.VolumeType));
-            }
-
-            _record = record;
+            return _parentObject + ":" + _record;
         }
-
-        public DeviceElementValue(byte[] value)
+        if (_record != null)
         {
-            _parentObject = EndianUtilities.ToGuidLittleEndian(value, 0x00);
-            _record = DeviceRecord.Parse(value, 0x10);
+            return _record.ToString();
         }
+        return "<unknown>";
+    }
 
-        public override ElementFormat Format
-        {
-            get { return ElementFormat.Device; }
-        }
+    internal byte[] GetBytes()
+    {
+        var buffer = new byte[_record.Size + 0x10];
 
-        public override Guid ParentObject
-        {
-            get { return _parentObject; }
-        }
+        EndianUtilities.WriteBytesLittleEndian(_parentObject, buffer, 0);
+        _record.GetBytes(buffer, 0x10);
 
-        public override string ToString()
-        {
-            if (_parentObject != Guid.Empty)
-            {
-                return _parentObject + ":" + _record;
-            }
-            if (_record != null)
-            {
-                return _record.ToString();
-            }
-            return "<unknown>";
-        }
-
-        internal byte[] GetBytes()
-        {
-            byte[] buffer = new byte[_record.Size + 0x10];
-
-            EndianUtilities.WriteBytesLittleEndian(_parentObject, buffer, 0);
-            _record.GetBytes(buffer, 0x10);
-
-            return buffer;
-        }
+        return buffer;
     }
 }

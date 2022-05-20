@@ -22,24 +22,23 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+internal class BlockDirectoryDataUnused : BlockDirectoryData
 {
-    internal class BlockDirectoryDataUnused : BlockDirectoryData
+    public ushort Freetag { get; private set; }
+
+    public ushort Length { get; private set; }
+
+    public ushort Tag { get; private set; }
+
+    public override int Size { get { return Length; } }
+
+    public override int ReadFrom(byte[] buffer, int offset)
     {
-        public ushort Freetag { get; private set; }
-
-        public ushort Length { get; private set; }
-
-        public ushort Tag { get; private set; }
-
-        public override int Size { get { return Length; } }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            Freetag = EndianUtilities.ToUInt16BigEndian(buffer, offset);
-            Length = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
-            Tag = EndianUtilities.ToUInt16BigEndian(buffer, offset + Length - 0x2);
-            return Size;
-        }
+        Freetag = EndianUtilities.ToUInt16BigEndian(buffer, offset);
+        Length = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
+        Tag = EndianUtilities.ToUInt16BigEndian(buffer, offset + Length - 0x2);
+        return Size;
     }
 }

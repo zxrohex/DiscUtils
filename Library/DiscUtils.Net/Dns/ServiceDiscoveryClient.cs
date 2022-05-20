@@ -22,259 +22,254 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Provides access to DNS-SD functionality.
+/// </summary>
+public sealed class ServiceDiscoveryClient : IDisposable
 {
+    private readonly UnicastDnsClient _dnsClient;
+    private MulticastDnsClient _mDnsClient;
+
     /// <summary>
-    /// Provides access to DNS-SD functionality.
+    /// Initializes a new instance of the ServiceDiscoveryClient class.
     /// </summary>
-    public sealed class ServiceDiscoveryClient : IDisposable
+    public ServiceDiscoveryClient()
     {
-        private readonly UnicastDnsClient _dnsClient;
-        private MulticastDnsClient _mDnsClient;
+        _mDnsClient = new MulticastDnsClient();
+        _dnsClient = new UnicastDnsClient();
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the ServiceDiscoveryClient class.
-        /// </summary>
-        public ServiceDiscoveryClient()
+    /// <summary>
+    /// Disposes of this instance.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_mDnsClient != null)
         {
-            _mDnsClient = new MulticastDnsClient();
-            _dnsClient = new UnicastDnsClient();
+            _mDnsClient.Dispose();
+            _mDnsClient = null;
+        }
+    }
+
+    /// <summary>
+    /// Flushes any cached data.
+    /// </summary>
+    public void FlushCache()
+    {
+        _mDnsClient.FlushCache();
+        _dnsClient.FlushCache();
+    }
+
+    /// <summary>
+    /// Queries for all the different types of service available on the local network.
+    /// </summary>
+    /// <returns>An array of service types, for example "_http._tcp".</returns>
+    public IEnumerable<string> LookupServiceTypes()
+    {
+        return LookupServiceTypes("local.");
+    }
+
+    /// <summary>
+    /// Queries for all the different types of service available in a domain.
+    /// </summary>
+    /// <param name="domain">The domain to query.</param>
+    /// <returns>An array of service types, for example "_http._tcp".</returns>
+    public IEnumerable<string> LookupServiceTypes(string domain)
+    {
+        var records = DoLookup("_services._dns-sd._udp" + "." + domain, RecordType.Pointer);
+
+        foreach (PointerRecord record in records)
+        {
+            yield return record.TargetName.Substring(0, record.TargetName.Length - (domain.Length + 1));
+        }
+    }
+
+    /// <summary>
+    /// Queries for all instances of a particular service on the local network, retrieving all details.
+    /// </summary>
+    /// <param name="service">The service to query, for example "_http._tcp".</param>
+    /// <returns>An array of service instances.</returns>
+    public IEnumerable<ServiceInstance> LookupInstances(string service)
+    {
+        return LookupInstances(service, "local.", ServiceInstanceFields.All);
+    }
+
+    /// <summary>
+    /// Queries for all instances of a particular service on the local network.
+    /// </summary>
+    /// <param name="service">The service to query, for example "_http._tcp".</param>
+    /// <param name="fields">The details to query.</param>
+    /// <returns>An array of service instances.</returns>
+    /// <remarks>Excluding some fields (for example the IP address) may reduce the time taken.</remarks>
+    public IEnumerable<ServiceInstance> LookupInstances(string service, ServiceInstanceFields fields)
+    {
+        return LookupInstances(service, "local.", fields);
+    }
+
+    /// <summary>
+    /// Queries for all instances of a particular service on the local network.
+    /// </summary>
+    /// <param name="service">The service to query, for example "_http._tcp".</param>
+    /// <param name="domain">The domain to query.</param>
+    /// <param name="fields">The details to query.</param>
+    /// <returns>An array of service instances.</returns>
+    /// <remarks>Excluding some fields (for example the IP address) may reduce the time taken.</remarks>
+    public IEnumerable<ServiceInstance> LookupInstances(string service, string domain, ServiceInstanceFields fields)
+    {
+        var records = DoLookup(service + "." + domain, RecordType.Pointer);
+
+        foreach (PointerRecord record in records)
+        {
+            yield return LookupInstance(EncodeName(record.TargetName, record.Name), fields);
+        }
+    }
+
+    /// <summary>
+    /// Queries for all instances of a particular service on the local network.
+    /// </summary>
+    /// <param name="name">The instance to query, for example "My WebServer._http._tcp".</param>
+    /// <param name="fields">The details to query.</param>
+    /// <returns>The service instance.</returns>
+    /// <remarks>Excluding some fields (for example the IP address) may reduce the time taken.</remarks>
+    public ServiceInstance LookupInstance(string name, ServiceInstanceFields fields)
+    {
+        var instance = new ServiceInstance(name);
+
+        if ((fields & ServiceInstanceFields.DisplayName) != 0)
+        {
+            instance.DisplayName = DecodeDisplayName(name);
         }
 
-        /// <summary>
-        /// Disposes of this instance.
-        /// </summary>
-        public void Dispose()
+        if ((fields & ServiceInstanceFields.Parameters) != 0)
         {
-            if (_mDnsClient != null)
+            instance.Parameters = LookupInstanceDetails(name);
+        }
+
+        if ((fields & ServiceInstanceFields.DnsAddresses) != 0
+            || (fields & ServiceInstanceFields.IPAddresses) != 0)
+        {
+            instance.EndPoints = LookupInstanceEndpoints(name, fields).ToArray();
+        }
+
+        return instance;
+    }
+
+    private static string EncodeName(string fullName, string suffix)
+    {
+        var instanceName = fullName.Substring(0, fullName.Length - (suffix.Length + 1));
+
+        var sb = new StringBuilder();
+        foreach (var ch in instanceName)
+        {
+            if (ch == '.' || ch == '\\')
             {
-                _mDnsClient.Dispose();
-                _mDnsClient = null;
+                sb.Append('\\');
             }
+
+            sb.Append(ch);
         }
 
-        /// <summary>
-        /// Flushes any cached data.
-        /// </summary>
-        public void FlushCache()
-        {
-            _mDnsClient.FlushCache();
-            _dnsClient.FlushCache();
-        }
+        return sb + "." + suffix;
+    }
 
-        /// <summary>
-        /// Queries for all the different types of service available on the local network.
-        /// </summary>
-        /// <returns>An array of service types, for example "_http._tcp".</returns>
-        public IEnumerable<string> LookupServiceTypes()
-        {
-            return LookupServiceTypes("local.");
-        }
+    private static string DecodeDisplayName(string fullName)
+    {
+        var sb = new StringBuilder();
 
-        /// <summary>
-        /// Queries for all the different types of service available in a domain.
-        /// </summary>
-        /// <param name="domain">The domain to query.</param>
-        /// <returns>An array of service types, for example "_http._tcp".</returns>
-        public IEnumerable<string> LookupServiceTypes(string domain)
+        var i = 0;
+        while (i < fullName.Length)
         {
-            var records = DoLookup("_services._dns-sd._udp" + "." + domain, RecordType.Pointer);
+            var ch = fullName[i++];
 
-            foreach (PointerRecord record in records)
+            if (ch == '.')
             {
-                yield return record.TargetName.Substring(0, record.TargetName.Length - (domain.Length + 1));
+                return sb.ToString();
             }
-        }
-
-        /// <summary>
-        /// Queries for all instances of a particular service on the local network, retrieving all details.
-        /// </summary>
-        /// <param name="service">The service to query, for example "_http._tcp".</param>
-        /// <returns>An array of service instances.</returns>
-        public IEnumerable<ServiceInstance> LookupInstances(string service)
-        {
-            return LookupInstances(service, "local.", ServiceInstanceFields.All);
-        }
-
-        /// <summary>
-        /// Queries for all instances of a particular service on the local network.
-        /// </summary>
-        /// <param name="service">The service to query, for example "_http._tcp".</param>
-        /// <param name="fields">The details to query.</param>
-        /// <returns>An array of service instances.</returns>
-        /// <remarks>Excluding some fields (for example the IP address) may reduce the time taken.</remarks>
-        public IEnumerable<ServiceInstance> LookupInstances(string service, ServiceInstanceFields fields)
-        {
-            return LookupInstances(service, "local.", fields);
-        }
-
-        /// <summary>
-        /// Queries for all instances of a particular service on the local network.
-        /// </summary>
-        /// <param name="service">The service to query, for example "_http._tcp".</param>
-        /// <param name="domain">The domain to query.</param>
-        /// <param name="fields">The details to query.</param>
-        /// <returns>An array of service instances.</returns>
-        /// <remarks>Excluding some fields (for example the IP address) may reduce the time taken.</remarks>
-        public IEnumerable<ServiceInstance> LookupInstances(string service, string domain, ServiceInstanceFields fields)
-        {
-            var records = DoLookup(service + "." + domain, RecordType.Pointer);
-
-            foreach (PointerRecord record in records)
+            if (ch == '\\')
             {
-                yield return LookupInstance(EncodeName(record.TargetName, record.Name), fields);
-            }
-        }
-
-        /// <summary>
-        /// Queries for all instances of a particular service on the local network.
-        /// </summary>
-        /// <param name="name">The instance to query, for example "My WebServer._http._tcp".</param>
-        /// <param name="fields">The details to query.</param>
-        /// <returns>The service instance.</returns>
-        /// <remarks>Excluding some fields (for example the IP address) may reduce the time taken.</remarks>
-        public ServiceInstance LookupInstance(string name, ServiceInstanceFields fields)
-        {
-            ServiceInstance instance = new ServiceInstance(name);
-
-            if ((fields & ServiceInstanceFields.DisplayName) != 0)
-            {
-                instance.DisplayName = DecodeDisplayName(name);
+                ch = fullName[i++];
             }
 
-            if ((fields & ServiceInstanceFields.Parameters) != 0)
-            {
-                instance.Parameters = LookupInstanceDetails(name);
-            }
-
-            if ((fields & ServiceInstanceFields.DnsAddresses) != 0
-                || (fields & ServiceInstanceFields.IPAddresses) != 0)
-            {
-                instance.EndPoints = LookupInstanceEndpoints(name, fields);
-            }
-
-            return instance;
+            sb.Append(ch);
         }
 
-        private static string EncodeName(string fullName, string suffix)
-        {
-            string instanceName = fullName.Substring(0, fullName.Length - (suffix.Length + 1));
+        return sb.ToString();
+    }
 
-            StringBuilder sb = new StringBuilder();
-            foreach (char ch in instanceName)
+    private IEnumerable<ServiceInstanceEndPoint> LookupInstanceEndpoints(string name, ServiceInstanceFields fields)
+    {
+        var records = DoLookup(name, RecordType.Service);
+
+        foreach (ServiceRecord record in records)
+        {
+            var ipEndPoints = new List<IPEndPoint>();
+
+            if ((fields & ServiceInstanceFields.IPAddresses) != 0)
             {
-                if (ch == '.' || ch == '\\')
+                var ipRecords = DoLookup(record.Target, RecordType.Address);
+
+                foreach (IP4AddressRecord ipRecord in ipRecords)
                 {
-                    sb.Append('\\');
+                    ipEndPoints.Add(new IPEndPoint(ipRecord.Address, record.Port));
                 }
 
-                sb.Append(ch);
+                // var ip6Records = DoLookup(record.Target, RecordType.IP6Address);
+
+                // foreach (Ip6AddressRecord ipRecord in ipRecords)
+                // {
+                //     ipEndPoints.Add(new IPEndPoint(ipRecord.Address, record.Port));
+                // }
             }
 
-            return sb + "." + suffix;
+            yield return new ServiceInstanceEndPoint(record.Priority, record.Weight, record.Port, record.Target, ipEndPoints);
+        }
+    }
+
+    private Dictionary<string, byte[]> LookupInstanceDetails(string name)
+    {
+        var records = DoLookup(name, RecordType.Text);
+
+        var details = new Dictionary<string, byte[]>();
+
+        foreach (TextRecord record in records)
+        {
+            foreach (var value in record.Values)
+            {
+                details.Add(value.Key, value.Value);
+            }
         }
 
-        private static string DecodeDisplayName(string fullName)
+        return details;
+    }
+
+    private IEnumerable<ResourceRecord> DoLookup(string name, RecordType recordType)
+    {
+        var fullName = DnsClient.NormalizeDomainName(name);
+
+        DnsClient dnsClient;
+
+        if (fullName.EndsWith(".local.", StringComparison.OrdinalIgnoreCase))
         {
-            StringBuilder sb = new StringBuilder();
-
-            int i = 0;
-            while (i < fullName.Length)
-            {
-                char ch = fullName[i++];
-
-                if (ch == '.')
-                {
-                    return sb.ToString();
-                }
-                if (ch == '\\')
-                {
-                    ch = fullName[i++];
-                }
-
-                sb.Append(ch);
-            }
-
-            return sb.ToString();
+            dnsClient = _mDnsClient;
+        }
+        else
+        {
+            dnsClient = _dnsClient;
         }
 
-        private List<ServiceInstanceEndPoint> LookupInstanceEndpoints(string name, ServiceInstanceFields fields)
+        var records = dnsClient.Lookup(fullName, recordType);
+
+        foreach (var record in records)
         {
-            var records = DoLookup(name, RecordType.Service);
-
-            List<ServiceInstanceEndPoint> endpoints = new List<ServiceInstanceEndPoint>();
-
-            foreach (ServiceRecord record in records)
+            if (record.RecordType == recordType && string.Compare(fullName, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
             {
-                List<IPEndPoint> ipEndPoints = null;
-                if ((fields & ServiceInstanceFields.IPAddresses) != 0)
-                {
-                    ipEndPoints = new List<IPEndPoint>();
-
-                    var ipRecords = DoLookup(record.Target, RecordType.Address);
-
-                    foreach (IP4AddressRecord ipRecord in ipRecords)
-                    {
-                        ipEndPoints.Add(new IPEndPoint(ipRecord.Address, record.Port));
-                    }
-
-                    // var ip6Records = DoLookup(record.Target, RecordType.IP6Address);
-
-                    // foreach (Ip6AddressRecord ipRecord in ipRecords)
-                    // {
-                    //     ipEndPoints.Add(new IPEndPoint(ipRecord.Address, record.Port));
-                    // }
-                }
-
-                endpoints.Add(new ServiceInstanceEndPoint(record.Priority, record.Weight, record.Port, record.Target, ipEndPoints.ToArray()));
-            }
-
-            return endpoints;
-        }
-
-        private Dictionary<string, byte[]> LookupInstanceDetails(string name)
-        {
-            var records = DoLookup(name, RecordType.Text);
-
-            Dictionary<string, byte[]> details = new Dictionary<string, byte[]>();
-
-            foreach (TextRecord record in records)
-            {
-                foreach (KeyValuePair<string, byte[]> value in record.Values)
-                {
-                    details.Add(value.Key, value.Value);
-                }
-            }
-
-            return details;
-        }
-
-        private IEnumerable<ResourceRecord> DoLookup(string name, RecordType recordType)
-        {
-            string fullName = DnsClient.NormalizeDomainName(name);
-
-            DnsClient dnsClient;
-
-            if (fullName.EndsWith(".local.", StringComparison.OrdinalIgnoreCase))
-            {
-                dnsClient = _mDnsClient;
-            }
-            else
-            {
-                dnsClient = _dnsClient;
-            }
-
-            var records = dnsClient.Lookup(fullName, recordType);
-
-            foreach (ResourceRecord record in records)
-            {
-                if (record.RecordType == recordType && string.Compare(fullName, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    yield return record;
-                }
+                yield return record;
             }
         }
     }

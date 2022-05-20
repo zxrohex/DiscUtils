@@ -20,26 +20,25 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.OpticalDiscSharing
+namespace DiscUtils.OpticalDiscSharing;
+
+/// <summary>
+/// Information about a shared Optical Disc.
+/// </summary>
+public sealed class DiscInfo
 {
     /// <summary>
-    /// Information about a shared Optical Disc.
+    /// Gets or sets the name of the disc (unique within an instance of OpticalDiscService).
     /// </summary>
-    public sealed class DiscInfo
-    {
-        /// <summary>
-        /// Gets or sets the name of the disc (unique within an instance of OpticalDiscService).
-        /// </summary>
-        public string Name { get; set; }
+    public string Name { get; set; }
 
-        /// <summary>
-        /// Gets or sets the displayable volume label for the disc.
-        /// </summary>
-        public string VolumeLabel { get; set; }
+    /// <summary>
+    /// Gets or sets the displayable volume label for the disc.
+    /// </summary>
+    public string VolumeLabel { get; set; }
 
-        /// <summary>
-        /// Gets or sets the volume type of the disc.
-        /// </summary>
-        public string VolumeType { get; set; }
-    }
+    /// <summary>
+    /// Gets or sets the volume type of the disc.
+    /// </summary>
+    public string VolumeType { get; set; }
 }

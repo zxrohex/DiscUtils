@@ -24,52 +24,51 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal class ExtentBlock : IByteArraySerializable
 {
-    internal class ExtentBlock : IByteArraySerializable
+    public Extent[] Extents;
+    public ExtentHeader Header;
+    public ExtentIndex[] Index;
+
+    public int Size
     {
-        public Extent[] Extents;
-        public ExtentHeader Header;
-        public ExtentIndex[] Index;
+        get { return 12 + Header.MaxEntries * 12; }
+    }
 
-        public int Size
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Header = EndianUtilities.ToStruct<ExtentHeader>(buffer, offset + 0);
+        if (Header.Magic != ExtentHeader.HeaderMagic)
         {
-            get { return 12 + Header.MaxEntries * 12; }
+            throw new IOException("Invalid extent header reading inode");
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
+        if (Header.Depth == 0)
         {
-            Header = EndianUtilities.ToStruct<ExtentHeader>(buffer, offset + 0);
-            if (Header.Magic != ExtentHeader.HeaderMagic)
+            Index = null;
+            Extents = new Extent[Header.Entries];
+            for (var i = 0; i < Extents.Length; ++i)
             {
-                throw new IOException("Invalid extent header reading inode");
+                Extents[i] = EndianUtilities.ToStruct<Extent>(buffer, offset + 12 + i * 12);
             }
-
-            if (Header.Depth == 0)
+        }
+        else
+        {
+            Extents = null;
+            Index = new ExtentIndex[Header.Entries];
+            for (var i = 0; i < Index.Length; ++i)
             {
-                Index = null;
-                Extents = new Extent[Header.Entries];
-                for (int i = 0; i < Extents.Length; ++i)
-                {
-                    Extents[i] = EndianUtilities.ToStruct<Extent>(buffer, offset + 12 + i * 12);
-                }
+                Index[i] = EndianUtilities.ToStruct<ExtentIndex>(buffer, offset + 12 + i * 12);
             }
-            else
-            {
-                Extents = null;
-                Index = new ExtentIndex[Header.Entries];
-                for (int i = 0; i < Index.Length; ++i)
-                {
-                    Index[i] = EndianUtilities.ToStruct<ExtentIndex>(buffer, offset + 12 + i * 12);
-                }
-            }
-
-            return 12 + Header.MaxEntries * 12;
         }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+        return 12 + Header.MaxEntries * 12;
+    }
+
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

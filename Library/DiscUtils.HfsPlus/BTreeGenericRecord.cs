@@ -22,33 +22,32 @@
 
 using System;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal class BTreeGenericRecord : BTreeNodeRecord
 {
-    internal class BTreeGenericRecord : BTreeNodeRecord
+    private byte[] _data;
+    private readonly int _size;
+
+    public BTreeGenericRecord(int size)
     {
-        private byte[] _data;
-        private readonly int _size;
+        _size = size;
+    }
 
-        public BTreeGenericRecord(int size)
-        {
-            _size = size;
-        }
+    public override int Size
+    {
+        get { return _size; }
+    }
 
-        public override int Size
-        {
-            get { return _size; }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        _data = new byte[_size];
+        Array.Copy(buffer, offset, _data, 0, _size);
+        return _size;
+    }
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            _data = new byte[_size];
-            Array.Copy(buffer, offset, _data, 0, _size);
-            return _size;
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

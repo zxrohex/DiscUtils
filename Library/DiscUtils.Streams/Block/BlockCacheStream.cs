@@ -26,1028 +26,1025 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+/// <summary>
+/// A stream implementing a block-oriented read cache.
+/// </summary>
+public sealed class BlockCacheStream : SparseStream
 {
+    private bool _atEof;
+    private readonly int _blocksInReadBuffer;
+
+    private readonly BlockCache<Block> _cache;
+    private readonly Ownership _ownWrapped;
+
+    private long _position;
+    private readonly byte[] _readBuffer;
+    private readonly BlockCacheSettings _settings;
+    private readonly BlockCacheStatistics _stats;
+    private SparseStream _wrappedStream;
+
     /// <summary>
-    /// A stream implementing a block-oriented read cache.
+    /// Initializes a new instance of the BlockCacheStream class.
     /// </summary>
-    public sealed class BlockCacheStream : SparseStream
+    /// <param name="toWrap">The stream to wrap.</param>
+    /// <param name="ownership">Whether to assume ownership of <c>toWrap</c>.</param>
+    public BlockCacheStream(SparseStream toWrap, Ownership ownership)
+        : this(toWrap, ownership, new BlockCacheSettings()) {}
+
+    /// <summary>
+    /// Initializes a new instance of the BlockCacheStream class.
+    /// </summary>
+    /// <param name="toWrap">The stream to wrap.</param>
+    /// <param name="ownership">Whether to assume ownership of <c>toWrap</c>.</param>
+    /// <param name="settings">The cache settings.</param>
+    public BlockCacheStream(SparseStream toWrap, Ownership ownership, BlockCacheSettings settings)
     {
-        private bool _atEof;
-        private readonly int _blocksInReadBuffer;
-
-        private readonly BlockCache<Block> _cache;
-        private readonly Ownership _ownWrapped;
-
-        private long _position;
-        private readonly byte[] _readBuffer;
-        private readonly BlockCacheSettings _settings;
-        private readonly BlockCacheStatistics _stats;
-        private SparseStream _wrappedStream;
-
-        /// <summary>
-        /// Initializes a new instance of the BlockCacheStream class.
-        /// </summary>
-        /// <param name="toWrap">The stream to wrap.</param>
-        /// <param name="ownership">Whether to assume ownership of <c>toWrap</c>.</param>
-        public BlockCacheStream(SparseStream toWrap, Ownership ownership)
-            : this(toWrap, ownership, new BlockCacheSettings()) {}
-
-        /// <summary>
-        /// Initializes a new instance of the BlockCacheStream class.
-        /// </summary>
-        /// <param name="toWrap">The stream to wrap.</param>
-        /// <param name="ownership">Whether to assume ownership of <c>toWrap</c>.</param>
-        /// <param name="settings">The cache settings.</param>
-        public BlockCacheStream(SparseStream toWrap, Ownership ownership, BlockCacheSettings settings)
+        if (!toWrap.CanRead)
         {
-            if (!toWrap.CanRead)
-            {
-                throw new ArgumentException("The wrapped stream does not support reading", nameof(toWrap));
-            }
-
-            if (!toWrap.CanSeek)
-            {
-                throw new ArgumentException("The wrapped stream does not support seeking", nameof(toWrap));
-            }
-
-            _wrappedStream = toWrap;
-            _ownWrapped = ownership;
-            _settings = new BlockCacheSettings(settings);
-
-            if (_settings.OptimumReadSize % _settings.BlockSize != 0)
-            {
-                throw new ArgumentException("Invalid settings, OptimumReadSize must be a multiple of BlockSize",
-                    nameof(settings));
-            }
-
-            _readBuffer = new byte[_settings.OptimumReadSize];
-            _blocksInReadBuffer = _settings.OptimumReadSize / _settings.BlockSize;
-
-            int totalBlocks = (int)(_settings.ReadCacheSize / _settings.BlockSize);
-
-            _cache = new BlockCache<Block>(_settings.BlockSize, totalBlocks);
-            _stats = new BlockCacheStatistics();
-            _stats.FreeReadBlocks = totalBlocks;
+            throw new ArgumentException("The wrapped stream does not support reading", nameof(toWrap));
         }
 
-        /// <summary>
-        /// Gets an indication as to whether the stream can be read.
-        /// </summary>
-        public override bool CanRead
+        if (!toWrap.CanSeek)
         {
-            get { return true; }
+            throw new ArgumentException("The wrapped stream does not support seeking", nameof(toWrap));
         }
 
-        /// <summary>
-        /// Gets an indication as to whether the stream position can be changed.
-        /// </summary>
-        public override bool CanSeek
+        _wrappedStream = toWrap;
+        _ownWrapped = ownership;
+        _settings = new BlockCacheSettings(settings);
+
+        if (_settings.OptimumReadSize % _settings.BlockSize != 0)
         {
-            get { return true; }
+            throw new ArgumentException("Invalid settings, OptimumReadSize must be a multiple of BlockSize",
+                nameof(settings));
         }
 
-        /// <summary>
-        /// Gets an indication as to whether the stream can be written to.
-        /// </summary>
-        public override bool CanWrite
+        _readBuffer = new byte[_settings.OptimumReadSize];
+        _blocksInReadBuffer = _settings.OptimumReadSize / _settings.BlockSize;
+
+        var totalBlocks = (int)(_settings.ReadCacheSize / _settings.BlockSize);
+
+        _cache = new BlockCache<Block>(_settings.BlockSize, totalBlocks);
+        _stats = new BlockCacheStatistics
         {
-            get { return _wrappedStream.CanWrite; }
-        }
+            FreeReadBlocks = totalBlocks
+        };
+    }
 
-        /// <summary>
-        /// Gets the parts of the stream that are stored.
-        /// </summary>
-        /// <remarks>This may be an empty enumeration if all bytes are zero.</remarks>
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get
-            {
-                CheckDisposed();
-                return _wrappedStream.Extents;
-            }
-        }
+    /// <summary>
+    /// Gets an indication as to whether the stream can be read.
+    /// </summary>
+    public override bool CanRead
+    {
+        get { return true; }
+    }
 
-        /// <summary>
-        /// Gets the length of the stream.
-        /// </summary>
-        public override long Length
-        {
-            get
-            {
-                CheckDisposed();
-                return _wrappedStream.Length;
-            }
-        }
+    /// <summary>
+    /// Gets an indication as to whether the stream position can be changed.
+    /// </summary>
+    public override bool CanSeek
+    {
+        get { return true; }
+    }
 
-        /// <summary>
-        /// Gets and sets the current stream position.
-        /// </summary>
-        public override long Position
-        {
-            get
-            {
-                CheckDisposed();
-                return _position;
-            }
+    /// <summary>
+    /// Gets an indication as to whether the stream can be written to.
+    /// </summary>
+    public override bool CanWrite
+    {
+        get { return _wrappedStream.CanWrite; }
+    }
 
-            set
-            {
-                CheckDisposed();
-                _position = value;
-            }
-        }
-
-        /// <summary>
-        /// Gets the performance statistics for this instance.
-        /// </summary>
-        public BlockCacheStatistics Statistics
-        {
-            get
-            {
-                _stats.FreeReadBlocks = _cache.FreeBlockCount;
-                return _stats;
-            }
-        }
-
-        /// <summary>
-        /// Gets the parts of a stream that are stored, within a specified range.
-        /// </summary>
-        /// <param name="start">The offset of the first byte of interest.</param>
-        /// <param name="count">The number of bytes of interest.</param>
-        /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
-        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    /// <summary>
+    /// Gets the parts of the stream that are stored.
+    /// </summary>
+    /// <remarks>This may be an empty enumeration if all bytes are zero.</remarks>
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get
         {
             CheckDisposed();
-            return _wrappedStream.GetExtentsInRange(start, count);
+            return _wrappedStream.Extents;
         }
-        
-        /// <summary>
-        /// Reads data from the stream.
-        /// </summary>
-        /// <param name="buffer">The buffer to fill.</param>
-        /// <param name="offset">The buffer offset to start from.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The number of bytes read.</returns>
-        public override int Read(byte[] buffer, int offset, int count)
+    }
+
+    /// <summary>
+    /// Gets the length of the stream.
+    /// </summary>
+    public override long Length
+    {
+        get
         {
             CheckDisposed();
-
-            if (_position >= Length)
-            {
-                if (_atEof)
-                {
-                    throw new IOException("Attempt to read beyond end of stream");
-                }
-                _atEof = true;
-                return 0;
-            }
-
-            _stats.TotalReadsIn++;
-
-            if (count > _settings.LargeReadSize)
-            {
-                _stats.LargeReadsIn++;
-                _stats.TotalReadsOut++;
-                _wrappedStream.Position = _position;
-                int numRead = _wrappedStream.Read(buffer, offset, count);
-                _position = _wrappedStream.Position;
-
-                if (_position >= Length)
-                {
-                    _atEof = true;
-                }
-
-                return numRead;
-            }
-
-            int totalBytesRead = 0;
-            bool servicedFromCache = false;
-            bool servicedOutsideCache = false;
-            int blockSize = _settings.BlockSize;
-
-            long firstBlock = _position / blockSize;
-            int offsetInNextBlock = (int)(_position % blockSize);
-            long endBlock = MathUtilities.Ceil(Math.Min(_position + count, Length), blockSize);
-            int numBlocks = (int)(endBlock - firstBlock);
-
-            if (offsetInNextBlock != 0)
-            {
-                _stats.UnalignedReadsIn++;
-            }
-
-            int blocksRead = 0;
-            while (blocksRead < numBlocks)
-            {
-                Block block;
-
-                // Read from the cache as much as possible
-                while (blocksRead < numBlocks && _cache.TryGetBlock(firstBlock + blocksRead, out block))
-                {
-                    int bytesToRead = Math.Min(count - totalBytesRead, block.Available - offsetInNextBlock);
-
-                    Array.Copy(block.Data, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToRead);
-                    offsetInNextBlock = 0;
-                    totalBytesRead += bytesToRead;
-                    _position += bytesToRead;
-                    blocksRead++;
-
-                    servicedFromCache = true;
-                }
-
-                // Now handle a sequence of (one or more) blocks that are not cached
-                if (blocksRead < numBlocks && !_cache.ContainsBlock(firstBlock + blocksRead))
-                {
-                    servicedOutsideCache = true;
-
-                    // Figure out how many blocks to read from the wrapped stream
-                    int blocksToRead = 0;
-                    while (blocksRead + blocksToRead < numBlocks
-                           && blocksToRead < _blocksInReadBuffer
-                           && !_cache.ContainsBlock(firstBlock + blocksRead + blocksToRead))
-                    {
-                        ++blocksToRead;
-                    }
-
-                    // Allow for the end of the stream not being block-aligned
-                    long readPosition = (firstBlock + blocksRead) * blockSize;
-                    int bytesRead = (int)Math.Min(blocksToRead * (long)blockSize, Length - readPosition);
-
-                    // Do the read
-                    _stats.TotalReadsOut++;
-                    _wrappedStream.Position = readPosition;
-                    StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
-
-                    // Cache the read blocks
-                    for (int i = 0; i < blocksToRead; ++i)
-                    {
-                        int copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
-                        block = _cache.GetBlock(firstBlock + blocksRead + i);
-                        Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
-                        block.Available = copyBytes;
-
-                        if (copyBytes < blockSize)
-                        {
-                            Array.Clear(_readBuffer, i * blockSize + copyBytes, blockSize - copyBytes);
-                        }
-                    }
-
-                    blocksRead += blocksToRead;
-
-                    // Propogate the data onto the caller
-                    int bytesToCopy = Math.Min(count - totalBytesRead, bytesRead - offsetInNextBlock);
-                    Array.Copy(_readBuffer, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToCopy);
-                    totalBytesRead += bytesToCopy;
-                    _position += bytesToCopy;
-                    offsetInNextBlock = 0;
-                }
-            }
-
-            if (_position >= Length && totalBytesRead == 0)
-            {
-                _atEof = true;
-            }
-
-            if (servicedFromCache)
-            {
-                _stats.ReadCacheHits++;
-            }
-
-            if (servicedOutsideCache)
-            {
-                _stats.ReadCacheMisses++;
-            }
-
-            return totalBytesRead;
+            return _wrappedStream.Length;
         }
+    }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        /// <summary>
-        /// Reads data from the stream.
-        /// </summary>
-        /// <param name="buffer">The buffer to fill.</param>
-        /// <param name="offset">The buffer offset to start from.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The number of bytes read.</returns>
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    /// <summary>
+    /// Gets and sets the current stream position.
+    /// </summary>
+    public override long Position
+    {
+        get
         {
             CheckDisposed();
-
-            if (_position >= Length)
-            {
-                if (_atEof)
-                {
-                    throw new IOException("Attempt to read beyond end of stream");
-                }
-                _atEof = true;
-                return 0;
-            }
-
-            _stats.TotalReadsIn++;
-
-            if (count > _settings.LargeReadSize)
-            {
-                _stats.LargeReadsIn++;
-                _stats.TotalReadsOut++;
-                _wrappedStream.Position = _position;
-                int numRead = await _wrappedStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-                _position = _wrappedStream.Position;
-
-                if (_position >= Length)
-                {
-                    _atEof = true;
-                }
-
-                return numRead;
-            }
-
-            int totalBytesRead = 0;
-            bool servicedFromCache = false;
-            bool servicedOutsideCache = false;
-            int blockSize = _settings.BlockSize;
-
-            long firstBlock = _position / blockSize;
-            int offsetInNextBlock = (int)(_position % blockSize);
-            long endBlock = MathUtilities.Ceil(Math.Min(_position + count, Length), blockSize);
-            int numBlocks = (int)(endBlock - firstBlock);
-
-            if (offsetInNextBlock != 0)
-            {
-                _stats.UnalignedReadsIn++;
-            }
-
-            int blocksRead = 0;
-            while (blocksRead < numBlocks)
-            {
-                Block block;
-
-                // Read from the cache as much as possible
-                while (blocksRead < numBlocks && _cache.TryGetBlock(firstBlock + blocksRead, out block))
-                {
-                    int bytesToRead = Math.Min(count - totalBytesRead, block.Available - offsetInNextBlock);
-
-                    Array.Copy(block.Data, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToRead);
-                    offsetInNextBlock = 0;
-                    totalBytesRead += bytesToRead;
-                    _position += bytesToRead;
-                    blocksRead++;
-
-                    servicedFromCache = true;
-                }
-
-                // Now handle a sequence of (one or more) blocks that are not cached
-                if (blocksRead < numBlocks && !_cache.ContainsBlock(firstBlock + blocksRead))
-                {
-                    servicedOutsideCache = true;
-
-                    // Figure out how many blocks to read from the wrapped stream
-                    int blocksToRead = 0;
-                    while (blocksRead + blocksToRead < numBlocks
-                           && blocksToRead < _blocksInReadBuffer
-                           && !_cache.ContainsBlock(firstBlock + blocksRead + blocksToRead))
-                    {
-                        ++blocksToRead;
-                    }
-
-                    // Allow for the end of the stream not being block-aligned
-                    long readPosition = (firstBlock + blocksRead) * blockSize;
-                    int bytesRead = (int)Math.Min(blocksToRead * (long)blockSize, Length - readPosition);
-
-                    // Do the read
-                    _stats.TotalReadsOut++;
-                    _wrappedStream.Position = readPosition;
-                    StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
-
-                    // Cache the read blocks
-                    for (int i = 0; i < blocksToRead; ++i)
-                    {
-                        int copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
-                        block = _cache.GetBlock(firstBlock + blocksRead + i);
-                        Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
-                        block.Available = copyBytes;
-
-                        if (copyBytes < blockSize)
-                        {
-                            Array.Clear(_readBuffer, i * blockSize + copyBytes, blockSize - copyBytes);
-                        }
-                    }
-
-                    blocksRead += blocksToRead;
-
-                    // Propogate the data onto the caller
-                    int bytesToCopy = Math.Min(count - totalBytesRead, bytesRead - offsetInNextBlock);
-                    Array.Copy(_readBuffer, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToCopy);
-                    totalBytesRead += bytesToCopy;
-                    _position += bytesToCopy;
-                    offsetInNextBlock = 0;
-                }
-            }
-
-            if (_position >= Length && totalBytesRead == 0)
-            {
-                _atEof = true;
-            }
-
-            if (servicedFromCache)
-            {
-                _stats.ReadCacheHits++;
-            }
-
-            if (servicedOutsideCache)
-            {
-                _stats.ReadCacheMisses++;
-            }
-
-            return totalBytesRead;
-        }
-#endif
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        /// <summary>
-        /// Reads data from the stream.
-        /// </summary>
-        /// <param name="buffer">The buffer to fill.</param>
-        /// <param name="offset">The buffer offset to start from.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The number of bytes read.</returns>
-        public override int Read(Span<byte> buffer)
-        {
-            CheckDisposed();
-
-            if (_position >= Length)
-            {
-                if (_atEof)
-                {
-                    throw new IOException("Attempt to read beyond end of stream");
-                }
-                _atEof = true;
-                return 0;
-            }
-
-            _stats.TotalReadsIn++;
-
-            if (buffer.Length > _settings.LargeReadSize)
-            {
-                _stats.LargeReadsIn++;
-                _stats.TotalReadsOut++;
-                _wrappedStream.Position = _position;
-                int numRead = _wrappedStream.Read(buffer);
-                _position = _wrappedStream.Position;
-
-                if (_position >= Length)
-                {
-                    _atEof = true;
-                }
-
-                return numRead;
-            }
-
-            int totalBytesRead = 0;
-            bool servicedFromCache = false;
-            bool servicedOutsideCache = false;
-            int blockSize = _settings.BlockSize;
-
-            long firstBlock = _position / blockSize;
-            int offsetInNextBlock = (int)(_position % blockSize);
-            long endBlock = MathUtilities.Ceil(Math.Min(_position + buffer.Length, Length), blockSize);
-            int numBlocks = (int)(endBlock - firstBlock);
-
-            if (offsetInNextBlock != 0)
-            {
-                _stats.UnalignedReadsIn++;
-            }
-
-            int blocksRead = 0;
-            while (blocksRead < numBlocks)
-            {
-                Block block;
-
-                // Read from the cache as much as possible
-                while (blocksRead < numBlocks && _cache.TryGetBlock(firstBlock + blocksRead, out block))
-                {
-                    int bytesToRead = Math.Min(buffer.Length - totalBytesRead, block.Available - offsetInNextBlock);
-
-                    block.Data.AsSpan(offsetInNextBlock, bytesToRead).CopyTo(buffer[totalBytesRead..]);
-                    offsetInNextBlock = 0;
-                    totalBytesRead += bytesToRead;
-                    _position += bytesToRead;
-                    blocksRead++;
-
-                    servicedFromCache = true;
-                }
-
-                // Now handle a sequence of (one or more) blocks that are not cached
-                if (blocksRead < numBlocks && !_cache.ContainsBlock(firstBlock + blocksRead))
-                {
-                    servicedOutsideCache = true;
-
-                    // Figure out how many blocks to read from the wrapped stream
-                    int blocksToRead = 0;
-                    while (blocksRead + blocksToRead < numBlocks
-                           && blocksToRead < _blocksInReadBuffer
-                           && !_cache.ContainsBlock(firstBlock + blocksRead + blocksToRead))
-                    {
-                        ++blocksToRead;
-                    }
-
-                    // Allow for the end of the stream not being block-aligned
-                    long readPosition = (firstBlock + blocksRead) * blockSize;
-                    int bytesRead = (int)Math.Min(blocksToRead * (long)blockSize, Length - readPosition);
-
-                    // Do the read
-                    _stats.TotalReadsOut++;
-                    _wrappedStream.Position = readPosition;
-                    StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
-
-                    // Cache the read blocks
-                    for (int i = 0; i < blocksToRead; ++i)
-                    {
-                        int copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
-                        block = _cache.GetBlock(firstBlock + blocksRead + i);
-                        Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
-                        block.Available = copyBytes;
-
-                        if (copyBytes < blockSize)
-                        {
-                            Array.Clear(_readBuffer, i * blockSize + copyBytes, blockSize - copyBytes);
-                        }
-                    }
-
-                    blocksRead += blocksToRead;
-
-                    // Propogate the data onto the caller
-                    int bytesToCopy = Math.Min(buffer.Length - totalBytesRead, bytesRead - offsetInNextBlock);
-                    _readBuffer.AsSpan(offsetInNextBlock, bytesToCopy).CopyTo(buffer[totalBytesRead..]);
-                    totalBytesRead += bytesToCopy;
-                    _position += bytesToCopy;
-                    offsetInNextBlock = 0;
-                }
-            }
-
-            if (_position >= Length && totalBytesRead == 0)
-            {
-                _atEof = true;
-            }
-
-            if (servicedFromCache)
-            {
-                _stats.ReadCacheHits++;
-            }
-
-            if (servicedOutsideCache)
-            {
-                _stats.ReadCacheMisses++;
-            }
-
-            return totalBytesRead;
-        }
-
-        /// <summary>
-        /// Reads data from the stream.
-        /// </summary>
-        /// <param name="buffer">The buffer to fill.</param>
-        /// <param name="offset">The buffer offset to start from.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The number of bytes read.</returns>
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-        {
-            CheckDisposed();
-
-            if (_position >= Length)
-            {
-                if (_atEof)
-                {
-                    throw new IOException("Attempt to read beyond end of stream");
-                }
-                _atEof = true;
-                return 0;
-            }
-
-            _stats.TotalReadsIn++;
-
-            if (buffer.Length > _settings.LargeReadSize)
-            {
-                _stats.LargeReadsIn++;
-                _stats.TotalReadsOut++;
-                _wrappedStream.Position = _position;
-                int numRead = await _wrappedStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                _position = _wrappedStream.Position;
-
-                if (_position >= Length)
-                {
-                    _atEof = true;
-                }
-
-                return numRead;
-            }
-
-            int totalBytesRead = 0;
-            bool servicedFromCache = false;
-            bool servicedOutsideCache = false;
-            int blockSize = _settings.BlockSize;
-
-            long firstBlock = _position / blockSize;
-            int offsetInNextBlock = (int)(_position % blockSize);
-            long endBlock = MathUtilities.Ceil(Math.Min(_position + buffer.Length, Length), blockSize);
-            int numBlocks = (int)(endBlock - firstBlock);
-
-            if (offsetInNextBlock != 0)
-            {
-                _stats.UnalignedReadsIn++;
-            }
-
-            int blocksRead = 0;
-            while (blocksRead < numBlocks)
-            {
-                Block block;
-
-                // Read from the cache as much as possible
-                while (blocksRead < numBlocks && _cache.TryGetBlock(firstBlock + blocksRead, out block))
-                {
-                    int bytesToRead = Math.Min(buffer.Length - totalBytesRead, block.Available - offsetInNextBlock);
-
-                    block.Data.AsMemory(offsetInNextBlock, bytesToRead).CopyTo(buffer[totalBytesRead..]);
-                    offsetInNextBlock = 0;
-                    totalBytesRead += bytesToRead;
-                    _position += bytesToRead;
-                    blocksRead++;
-
-                    servicedFromCache = true;
-                }
-
-                // Now handle a sequence of (one or more) blocks that are not cached
-                if (blocksRead < numBlocks && !_cache.ContainsBlock(firstBlock + blocksRead))
-                {
-                    servicedOutsideCache = true;
-
-                    // Figure out how many blocks to read from the wrapped stream
-                    int blocksToRead = 0;
-                    while (blocksRead + blocksToRead < numBlocks
-                           && blocksToRead < _blocksInReadBuffer
-                           && !_cache.ContainsBlock(firstBlock + blocksRead + blocksToRead))
-                    {
-                        ++blocksToRead;
-                    }
-
-                    // Allow for the end of the stream not being block-aligned
-                    long readPosition = (firstBlock + blocksRead) * blockSize;
-                    int bytesRead = (int)Math.Min(blocksToRead * (long)blockSize, Length - readPosition);
-
-                    // Do the read
-                    _stats.TotalReadsOut++;
-                    _wrappedStream.Position = readPosition;
-                    StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
-
-                    // Cache the read blocks
-                    for (int i = 0; i < blocksToRead; ++i)
-                    {
-                        int copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
-                        block = _cache.GetBlock(firstBlock + blocksRead + i);
-                        Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
-                        block.Available = copyBytes;
-
-                        if (copyBytes < blockSize)
-                        {
-                            Array.Clear(_readBuffer, i * blockSize + copyBytes, blockSize - copyBytes);
-                        }
-                    }
-
-                    blocksRead += blocksToRead;
-
-                    // Propogate the data onto the caller
-                    int bytesToCopy = Math.Min(buffer.Length - totalBytesRead, bytesRead - offsetInNextBlock);
-                    _readBuffer.AsMemory(offsetInNextBlock, bytesToCopy).CopyTo(buffer[totalBytesRead..]);
-                    totalBytesRead += bytesToCopy;
-                    _position += bytesToCopy;
-                    offsetInNextBlock = 0;
-                }
-            }
-
-            if (_position >= Length && totalBytesRead == 0)
-            {
-                _atEof = true;
-            }
-
-            if (servicedFromCache)
-            {
-                _stats.ReadCacheHits++;
-            }
-
-            if (servicedOutsideCache)
-            {
-                _stats.ReadCacheMisses++;
-            }
-
-            return totalBytesRead;
-        }
-#endif
-
-        /// <summary>
-        /// Flushes the stream.
-        /// </summary>
-        public override void Flush()
-        {
-            CheckDisposed();
-            _wrappedStream.Flush();
-        }
-
-        /// <summary>
-        /// Moves the stream position.
-        /// </summary>
-        /// <param name="offset">The origin-relative location.</param>
-        /// <param name="origin">The base location.</param>
-        /// <returns>The new absolute stream position.</returns>
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            CheckDisposed();
-
-            long effectiveOffset = offset;
-            if (origin == SeekOrigin.Current)
-            {
-                effectiveOffset += _position;
-            }
-            else if (origin == SeekOrigin.End)
-            {
-                effectiveOffset += Length;
-            }
-
-            _atEof = false;
-
-            if (effectiveOffset < 0)
-            {
-                throw new IOException("Attempt to move before beginning of disk");
-            }
-            _position = effectiveOffset;
             return _position;
         }
 
-        /// <summary>
-        /// Sets the length of the stream.
-        /// </summary>
-        /// <param name="value">The new length.</param>
-        public override void SetLength(long value)
+        set
         {
             CheckDisposed();
-            _wrappedStream.SetLength(value);
+            _position = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets the performance statistics for this instance.
+    /// </summary>
+    public BlockCacheStatistics Statistics
+    {
+        get
+        {
+            _stats.FreeReadBlocks = _cache.FreeBlockCount;
+            return _stats;
+        }
+    }
+
+    /// <summary>
+    /// Gets the parts of a stream that are stored, within a specified range.
+    /// </summary>
+    /// <param name="start">The offset of the first byte of interest.</param>
+    /// <param name="count">The number of bytes of interest.</param>
+    /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
+    public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    {
+        CheckDisposed();
+        return _wrappedStream.GetExtentsInRange(start, count);
+    }
+    
+    /// <summary>
+    /// Reads data from the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to fill.</param>
+    /// <param name="offset">The buffer offset to start from.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The number of bytes read.</returns>
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        CheckDisposed();
+
+        if (_position >= Length)
+        {
+            if (_atEof)
+            {
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+            _atEof = true;
+            return 0;
         }
 
-        /// <summary>
-        /// Writes data to the stream at the current location.
-        /// </summary>
-        /// <param name="buffer">The data to write.</param>
-        /// <param name="offset">The first byte to write from buffer.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override void Write(byte[] buffer, int offset, int count)
+        _stats.TotalReadsIn++;
+
+        if (count > _settings.LargeReadSize)
         {
-            CheckDisposed();
+            _stats.LargeReadsIn++;
+            _stats.TotalReadsOut++;
+            _wrappedStream.Position = _position;
+            var numRead = _wrappedStream.Read(buffer, offset, count);
+            _position = _wrappedStream.Position;
 
-            _stats.TotalWritesIn++;
-
-            int blockSize = _settings.BlockSize;
-            long firstBlock = _position / blockSize;
-            long endBlock = MathUtilities.Ceil(Math.Min(_position + count, Length), blockSize);
-            int numBlocks = (int)(endBlock - firstBlock);
-
-            try
+            if (_position >= Length)
             {
-                _wrappedStream.Position = _position;
-                _wrappedStream.Write(buffer, offset, count);
-            }
-            catch
-            {
-                InvalidateBlocks(firstBlock, numBlocks);
-                throw;
+                _atEof = true;
             }
 
-            int offsetInNextBlock = (int)(_position % blockSize);
-            if (offsetInNextBlock != 0)
+            return numRead;
+        }
+
+        var totalBytesRead = 0;
+        var servicedFromCache = false;
+        var servicedOutsideCache = false;
+        var blockSize = _settings.BlockSize;
+
+        var firstBlock = _position / blockSize;
+        var offsetInNextBlock = (int)(_position % blockSize);
+        var endBlock = MathUtilities.Ceil(Math.Min(_position + count, Length), blockSize);
+        var numBlocks = (int)(endBlock - firstBlock);
+
+        if (offsetInNextBlock != 0)
+        {
+            _stats.UnalignedReadsIn++;
+        }
+
+        var blocksRead = 0;
+        while (blocksRead < numBlocks)
+        {
+            Block block;
+
+            // Read from the cache as much as possible
+            while (blocksRead < numBlocks && _cache.TryGetBlock(firstBlock + blocksRead, out block))
             {
-                _stats.UnalignedWritesIn++;
+                var bytesToRead = Math.Min(count - totalBytesRead, block.Available - offsetInNextBlock);
+
+                Array.Copy(block.Data, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToRead);
+                offsetInNextBlock = 0;
+                totalBytesRead += bytesToRead;
+                _position += bytesToRead;
+                blocksRead++;
+
+                servicedFromCache = true;
             }
 
-            // For each block touched, if it's cached, update it
-            int bytesProcessed = 0;
-            for (int i = 0; i < numBlocks; ++i)
+            // Now handle a sequence of (one or more) blocks that are not cached
+            if (blocksRead < numBlocks && !_cache.ContainsBlock(firstBlock + blocksRead))
             {
-                int bufferPos = offset + bytesProcessed;
-                int bytesThisBlock = Math.Min(count - bytesProcessed, blockSize - offsetInNextBlock);
+                servicedOutsideCache = true;
 
-                Block block;
-                if (_cache.TryGetBlock(firstBlock + i, out block))
+                // Figure out how many blocks to read from the wrapped stream
+                var blocksToRead = 0;
+                while (blocksRead + blocksToRead < numBlocks
+                       && blocksToRead < _blocksInReadBuffer
+                       && !_cache.ContainsBlock(firstBlock + blocksRead + blocksToRead))
                 {
-                    Array.Copy(buffer, bufferPos, block.Data, offsetInNextBlock, bytesThisBlock);
-                    block.Available = Math.Max(block.Available, offsetInNextBlock + bytesThisBlock);
+                    ++blocksToRead;
                 }
 
-                offsetInNextBlock = 0;
-                bytesProcessed += bytesThisBlock;
-            }
+                // Allow for the end of the stream not being block-aligned
+                var readPosition = (firstBlock + blocksRead) * blockSize;
+                var bytesRead = (int)Math.Min(blocksToRead * (long)blockSize, Length - readPosition);
 
-            _position += count;
+                // Do the read
+                _stats.TotalReadsOut++;
+                _wrappedStream.Position = readPosition;
+                StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
+
+                // Cache the read blocks
+                for (var i = 0; i < blocksToRead; ++i)
+                {
+                    var copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
+                    block = _cache.GetBlock(firstBlock + blocksRead + i);
+                    Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
+                    block.Available = copyBytes;
+
+                    if (copyBytes < blockSize)
+                    {
+                        Array.Clear(_readBuffer, i * blockSize + copyBytes, blockSize - copyBytes);
+                    }
+                }
+
+                blocksRead += blocksToRead;
+
+                // Propogate the data onto the caller
+                var bytesToCopy = Math.Min(count - totalBytesRead, bytesRead - offsetInNextBlock);
+                Array.Copy(_readBuffer, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToCopy);
+                totalBytesRead += bytesToCopy;
+                _position += bytesToCopy;
+                offsetInNextBlock = 0;
+            }
         }
+
+        if (_position >= Length && totalBytesRead == 0)
+        {
+            _atEof = true;
+        }
+
+        if (servicedFromCache)
+        {
+            _stats.ReadCacheHits++;
+        }
+
+        if (servicedOutsideCache)
+        {
+            _stats.ReadCacheMisses++;
+        }
+
+        return totalBytesRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        /// <summary>
-        /// Writes data to the stream at the current location.
-        /// </summary>
-        /// <param name="buffer">The data to write.</param>
-        /// <param name="offset">The first byte to write from buffer.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    /// <summary>
+    /// Reads data from the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to fill.</param>
+    /// <param name="offset">The buffer offset to start from.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The number of bytes read.</returns>
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        CheckDisposed();
+
+        if (_position >= Length)
         {
-            CheckDisposed();
-
-            _stats.TotalWritesIn++;
-
-            int blockSize = _settings.BlockSize;
-            long firstBlock = _position / blockSize;
-            long endBlock = MathUtilities.Ceil(Math.Min(_position + count, Length), blockSize);
-            int numBlocks = (int)(endBlock - firstBlock);
-
-            try
+            if (_atEof)
             {
-                _wrappedStream.Position = _position;
-                await _wrappedStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+                throw new IOException("Attempt to read beyond end of stream");
             }
-            catch
-            {
-                InvalidateBlocks(firstBlock, numBlocks);
-                throw;
-            }
+            _atEof = true;
+            return 0;
+        }
 
-            int offsetInNextBlock = (int)(_position % blockSize);
-            if (offsetInNextBlock != 0)
+        _stats.TotalReadsIn++;
+
+        if (count > _settings.LargeReadSize)
+        {
+            _stats.LargeReadsIn++;
+            _stats.TotalReadsOut++;
+            _wrappedStream.Position = _position;
+            var numRead = await _wrappedStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            _position = _wrappedStream.Position;
+
+            if (_position >= Length)
             {
-                _stats.UnalignedWritesIn++;
+                _atEof = true;
             }
 
-            // For each block touched, if it's cached, update it
-            int bytesProcessed = 0;
-            for (int i = 0; i < numBlocks; ++i)
-            {
-                int bufferPos = offset + bytesProcessed;
-                int bytesThisBlock = Math.Min(count - bytesProcessed, blockSize - offsetInNextBlock);
+            return numRead;
+        }
 
-                Block block;
-                if (_cache.TryGetBlock(firstBlock + i, out block))
+        var totalBytesRead = 0;
+        var servicedFromCache = false;
+        var servicedOutsideCache = false;
+        var blockSize = _settings.BlockSize;
+
+        var firstBlock = _position / blockSize;
+        var offsetInNextBlock = (int)(_position % blockSize);
+        var endBlock = MathUtilities.Ceil(Math.Min(_position + count, Length), blockSize);
+        var numBlocks = (int)(endBlock - firstBlock);
+
+        if (offsetInNextBlock != 0)
+        {
+            _stats.UnalignedReadsIn++;
+        }
+
+        var blocksRead = 0;
+        while (blocksRead < numBlocks)
+        {
+            Block block;
+
+            // Read from the cache as much as possible
+            while (blocksRead < numBlocks && _cache.TryGetBlock(firstBlock + blocksRead, out block))
+            {
+                var bytesToRead = Math.Min(count - totalBytesRead, block.Available - offsetInNextBlock);
+
+                Array.Copy(block.Data, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToRead);
+                offsetInNextBlock = 0;
+                totalBytesRead += bytesToRead;
+                _position += bytesToRead;
+                blocksRead++;
+
+                servicedFromCache = true;
+            }
+
+            // Now handle a sequence of (one or more) blocks that are not cached
+            if (blocksRead < numBlocks && !_cache.ContainsBlock(firstBlock + blocksRead))
+            {
+                servicedOutsideCache = true;
+
+                // Figure out how many blocks to read from the wrapped stream
+                var blocksToRead = 0;
+                while (blocksRead + blocksToRead < numBlocks
+                       && blocksToRead < _blocksInReadBuffer
+                       && !_cache.ContainsBlock(firstBlock + blocksRead + blocksToRead))
                 {
-                    Array.Copy(buffer, bufferPos, block.Data, offsetInNextBlock, bytesThisBlock);
-                    block.Available = Math.Max(block.Available, offsetInNextBlock + bytesThisBlock);
+                    ++blocksToRead;
                 }
 
-                offsetInNextBlock = 0;
-                bytesProcessed += bytesThisBlock;
-            }
+                // Allow for the end of the stream not being block-aligned
+                var readPosition = (firstBlock + blocksRead) * blockSize;
+                var bytesRead = (int)Math.Min(blocksToRead * (long)blockSize, Length - readPosition);
 
-            _position += count;
+                // Do the read
+                _stats.TotalReadsOut++;
+                _wrappedStream.Position = readPosition;
+                StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
+
+                // Cache the read blocks
+                for (var i = 0; i < blocksToRead; ++i)
+                {
+                    var copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
+                    block = _cache.GetBlock(firstBlock + blocksRead + i);
+                    Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
+                    block.Available = copyBytes;
+
+                    if (copyBytes < blockSize)
+                    {
+                        Array.Clear(_readBuffer, i * blockSize + copyBytes, blockSize - copyBytes);
+                    }
+                }
+
+                blocksRead += blocksToRead;
+
+                // Propogate the data onto the caller
+                var bytesToCopy = Math.Min(count - totalBytesRead, bytesRead - offsetInNextBlock);
+                Array.Copy(_readBuffer, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToCopy);
+                totalBytesRead += bytesToCopy;
+                _position += bytesToCopy;
+                offsetInNextBlock = 0;
+            }
         }
+
+        if (_position >= Length && totalBytesRead == 0)
+        {
+            _atEof = true;
+        }
+
+        if (servicedFromCache)
+        {
+            _stats.ReadCacheHits++;
+        }
+
+        if (servicedOutsideCache)
+        {
+            _stats.ReadCacheMisses++;
+        }
+
+        return totalBytesRead;
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        /// <summary>
-        /// Writes data to the stream at the current location.
-        /// </summary>
-        /// <param name="buffer">The data to write.</param>
-        /// <param name="offset">The first byte to write from buffer.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    /// <summary>
+    /// Reads data from the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to fill.</param>
+    /// <param name="offset">The buffer offset to start from.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The number of bytes read.</returns>
+    public override int Read(Span<byte> buffer)
+    {
+        CheckDisposed();
+
+        if (_position >= Length)
         {
-            CheckDisposed();
-
-            _stats.TotalWritesIn++;
-
-            int blockSize = _settings.BlockSize;
-            long firstBlock = _position / blockSize;
-            long endBlock = MathUtilities.Ceil(Math.Min(_position + buffer.Length, Length), blockSize);
-            int numBlocks = (int)(endBlock - firstBlock);
-
-            try
+            if (_atEof)
             {
-                _wrappedStream.Position = _position;
-                await _wrappedStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+                throw new IOException("Attempt to read beyond end of stream");
             }
-            catch
-            {
-                InvalidateBlocks(firstBlock, numBlocks);
-                throw;
-            }
-
-            int offsetInNextBlock = (int)(_position % blockSize);
-            if (offsetInNextBlock != 0)
-            {
-                _stats.UnalignedWritesIn++;
-            }
-
-            // For each block touched, if it's cached, update it
-            int bytesProcessed = 0;
-            for (int i = 0; i < numBlocks; ++i)
-            {
-                int bufferPos = bytesProcessed;
-                int bytesThisBlock = Math.Min(buffer.Length - bytesProcessed, blockSize - offsetInNextBlock);
-
-                Block block;
-                if (_cache.TryGetBlock(firstBlock + i, out block))
-                {
-                    buffer.Slice(bufferPos, bytesThisBlock).CopyTo(block.Data.AsMemory(offsetInNextBlock, bytesThisBlock));
-                    block.Available = Math.Max(block.Available, offsetInNextBlock + bytesThisBlock);
-                }
-
-                offsetInNextBlock = 0;
-                bytesProcessed += bytesThisBlock;
-            }
-
-            _position += buffer.Length;
+            _atEof = true;
+            return 0;
         }
 
-        /// <summary>
-        /// Writes data to the stream at the current location.
-        /// </summary>
-        /// <param name="buffer">The data to write.</param>
-        /// <param name="offset">The first byte to write from buffer.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override void Write(ReadOnlySpan<byte> buffer)
+        _stats.TotalReadsIn++;
+
+        if (buffer.Length > _settings.LargeReadSize)
         {
-            CheckDisposed();
+            _stats.LargeReadsIn++;
+            _stats.TotalReadsOut++;
+            _wrappedStream.Position = _position;
+            var numRead = _wrappedStream.Read(buffer);
+            _position = _wrappedStream.Position;
 
-            _stats.TotalWritesIn++;
-
-            int blockSize = _settings.BlockSize;
-            long firstBlock = _position / blockSize;
-            long endBlock = MathUtilities.Ceil(Math.Min(_position + buffer.Length, Length), blockSize);
-            int numBlocks = (int)(endBlock - firstBlock);
-
-            try
+            if (_position >= Length)
             {
-                _wrappedStream.Position = _position;
-                _wrappedStream.Write(buffer);
-            }
-            catch
-            {
-                InvalidateBlocks(firstBlock, numBlocks);
-                throw;
+                _atEof = true;
             }
 
-            int offsetInNextBlock = (int)(_position % blockSize);
-            if (offsetInNextBlock != 0)
+            return numRead;
+        }
+
+        var totalBytesRead = 0;
+        var servicedFromCache = false;
+        var servicedOutsideCache = false;
+        var blockSize = _settings.BlockSize;
+
+        var firstBlock = _position / blockSize;
+        var offsetInNextBlock = (int)(_position % blockSize);
+        var endBlock = MathUtilities.Ceil(Math.Min(_position + buffer.Length, Length), blockSize);
+        var numBlocks = (int)(endBlock - firstBlock);
+
+        if (offsetInNextBlock != 0)
+        {
+            _stats.UnalignedReadsIn++;
+        }
+
+        var blocksRead = 0;
+        while (blocksRead < numBlocks)
+        {
+            Block block;
+
+            // Read from the cache as much as possible
+            while (blocksRead < numBlocks && _cache.TryGetBlock(firstBlock + blocksRead, out block))
             {
-                _stats.UnalignedWritesIn++;
+                var bytesToRead = Math.Min(buffer.Length - totalBytesRead, block.Available - offsetInNextBlock);
+
+                block.Data.AsSpan(offsetInNextBlock, bytesToRead).CopyTo(buffer[totalBytesRead..]);
+                offsetInNextBlock = 0;
+                totalBytesRead += bytesToRead;
+                _position += bytesToRead;
+                blocksRead++;
+
+                servicedFromCache = true;
             }
 
-            // For each block touched, if it's cached, update it
-            int bytesProcessed = 0;
-            for (int i = 0; i < numBlocks; ++i)
+            // Now handle a sequence of (one or more) blocks that are not cached
+            if (blocksRead < numBlocks && !_cache.ContainsBlock(firstBlock + blocksRead))
             {
-                int bufferPos = bytesProcessed;
-                int bytesThisBlock = Math.Min(buffer.Length - bytesProcessed, blockSize - offsetInNextBlock);
+                servicedOutsideCache = true;
 
-                Block block;
-                if (_cache.TryGetBlock(firstBlock + i, out block))
+                // Figure out how many blocks to read from the wrapped stream
+                var blocksToRead = 0;
+                while (blocksRead + blocksToRead < numBlocks
+                       && blocksToRead < _blocksInReadBuffer
+                       && !_cache.ContainsBlock(firstBlock + blocksRead + blocksToRead))
                 {
-                    buffer.Slice(bufferPos, bytesThisBlock).CopyTo(block.Data.AsSpan(offsetInNextBlock, bytesThisBlock));
-                    block.Available = Math.Max(block.Available, offsetInNextBlock + bytesThisBlock);
+                    ++blocksToRead;
                 }
 
+                // Allow for the end of the stream not being block-aligned
+                var readPosition = (firstBlock + blocksRead) * blockSize;
+                var bytesRead = (int)Math.Min(blocksToRead * (long)blockSize, Length - readPosition);
+
+                // Do the read
+                _stats.TotalReadsOut++;
+                _wrappedStream.Position = readPosition;
+                StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
+
+                // Cache the read blocks
+                for (var i = 0; i < blocksToRead; ++i)
+                {
+                    var copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
+                    block = _cache.GetBlock(firstBlock + blocksRead + i);
+                    Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
+                    block.Available = copyBytes;
+
+                    if (copyBytes < blockSize)
+                    {
+                        Array.Clear(_readBuffer, i * blockSize + copyBytes, blockSize - copyBytes);
+                    }
+                }
+
+                blocksRead += blocksToRead;
+
+                // Propogate the data onto the caller
+                var bytesToCopy = Math.Min(buffer.Length - totalBytesRead, bytesRead - offsetInNextBlock);
+                _readBuffer.AsSpan(offsetInNextBlock, bytesToCopy).CopyTo(buffer[totalBytesRead..]);
+                totalBytesRead += bytesToCopy;
+                _position += bytesToCopy;
                 offsetInNextBlock = 0;
-                bytesProcessed += bytesThisBlock;
+            }
+        }
+
+        if (_position >= Length && totalBytesRead == 0)
+        {
+            _atEof = true;
+        }
+
+        if (servicedFromCache)
+        {
+            _stats.ReadCacheHits++;
+        }
+
+        if (servicedOutsideCache)
+        {
+            _stats.ReadCacheMisses++;
+        }
+
+        return totalBytesRead;
+    }
+
+    /// <summary>
+    /// Reads data from the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to fill.</param>
+    /// <param name="offset">The buffer offset to start from.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The number of bytes read.</returns>
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        CheckDisposed();
+
+        if (_position >= Length)
+        {
+            if (_atEof)
+            {
+                throw new IOException("Attempt to read beyond end of stream");
+            }
+            _atEof = true;
+            return 0;
+        }
+
+        _stats.TotalReadsIn++;
+
+        if (buffer.Length > _settings.LargeReadSize)
+        {
+            _stats.LargeReadsIn++;
+            _stats.TotalReadsOut++;
+            _wrappedStream.Position = _position;
+            var numRead = await _wrappedStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            _position = _wrappedStream.Position;
+
+            if (_position >= Length)
+            {
+                _atEof = true;
             }
 
-            _position += buffer.Length;
+            return numRead;
         }
+
+        var totalBytesRead = 0;
+        var servicedFromCache = false;
+        var servicedOutsideCache = false;
+        var blockSize = _settings.BlockSize;
+
+        var firstBlock = _position / blockSize;
+        var offsetInNextBlock = (int)(_position % blockSize);
+        var endBlock = MathUtilities.Ceil(Math.Min(_position + buffer.Length, Length), blockSize);
+        var numBlocks = (int)(endBlock - firstBlock);
+
+        if (offsetInNextBlock != 0)
+        {
+            _stats.UnalignedReadsIn++;
+        }
+
+        var blocksRead = 0;
+        while (blocksRead < numBlocks)
+        {
+            Block block;
+
+            // Read from the cache as much as possible
+            while (blocksRead < numBlocks && _cache.TryGetBlock(firstBlock + blocksRead, out block))
+            {
+                var bytesToRead = Math.Min(buffer.Length - totalBytesRead, block.Available - offsetInNextBlock);
+
+                block.Data.AsMemory(offsetInNextBlock, bytesToRead).CopyTo(buffer[totalBytesRead..]);
+                offsetInNextBlock = 0;
+                totalBytesRead += bytesToRead;
+                _position += bytesToRead;
+                blocksRead++;
+
+                servicedFromCache = true;
+            }
+
+            // Now handle a sequence of (one or more) blocks that are not cached
+            if (blocksRead < numBlocks && !_cache.ContainsBlock(firstBlock + blocksRead))
+            {
+                servicedOutsideCache = true;
+
+                // Figure out how many blocks to read from the wrapped stream
+                var blocksToRead = 0;
+                while (blocksRead + blocksToRead < numBlocks
+                       && blocksToRead < _blocksInReadBuffer
+                       && !_cache.ContainsBlock(firstBlock + blocksRead + blocksToRead))
+                {
+                    ++blocksToRead;
+                }
+
+                // Allow for the end of the stream not being block-aligned
+                var readPosition = (firstBlock + blocksRead) * blockSize;
+                var bytesRead = (int)Math.Min(blocksToRead * (long)blockSize, Length - readPosition);
+
+                // Do the read
+                _stats.TotalReadsOut++;
+                _wrappedStream.Position = readPosition;
+                StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
+
+                // Cache the read blocks
+                for (var i = 0; i < blocksToRead; ++i)
+                {
+                    var copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
+                    block = _cache.GetBlock(firstBlock + blocksRead + i);
+                    Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
+                    block.Available = copyBytes;
+
+                    if (copyBytes < blockSize)
+                    {
+                        Array.Clear(_readBuffer, i * blockSize + copyBytes, blockSize - copyBytes);
+                    }
+                }
+
+                blocksRead += blocksToRead;
+
+                // Propogate the data onto the caller
+                var bytesToCopy = Math.Min(buffer.Length - totalBytesRead, bytesRead - offsetInNextBlock);
+                _readBuffer.AsMemory(offsetInNextBlock, bytesToCopy).CopyTo(buffer[totalBytesRead..]);
+                totalBytesRead += bytesToCopy;
+                _position += bytesToCopy;
+                offsetInNextBlock = 0;
+            }
+        }
+
+        if (_position >= Length && totalBytesRead == 0)
+        {
+            _atEof = true;
+        }
+
+        if (servicedFromCache)
+        {
+            _stats.ReadCacheHits++;
+        }
+
+        if (servicedOutsideCache)
+        {
+            _stats.ReadCacheMisses++;
+        }
+
+        return totalBytesRead;
+    }
 #endif
 
-        /// <summary>
-        /// Disposes of this instance, freeing up associated resources.
-        /// </summary>
-        /// <param name="disposing"><c>true</c> if invoked from <c>Dispose</c>, else <c>false</c>.</param>
-        protected override void Dispose(bool disposing)
+    /// <summary>
+    /// Flushes the stream.
+    /// </summary>
+    public override void Flush()
+    {
+        CheckDisposed();
+        _wrappedStream.Flush();
+    }
+
+    /// <summary>
+    /// Moves the stream position.
+    /// </summary>
+    /// <param name="offset">The origin-relative location.</param>
+    /// <param name="origin">The base location.</param>
+    /// <returns>The new absolute stream position.</returns>
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        CheckDisposed();
+
+        var effectiveOffset = offset;
+        if (origin == SeekOrigin.Current)
         {
-            if (disposing)
-            {
-                if (_wrappedStream != null && _ownWrapped == Ownership.Dispose)
-                {
-                    _wrappedStream.Dispose();
-                }
-
-                _wrappedStream = null;
-            }
-
-            base.Dispose(disposing);
+            effectiveOffset += _position;
+        }
+        else if (origin == SeekOrigin.End)
+        {
+            effectiveOffset += Length;
         }
 
-        private void CheckDisposed()
+        _atEof = false;
+
+        if (effectiveOffset < 0)
         {
-            if (_wrappedStream == null)
-            {
-                throw new ObjectDisposedException("BlockCacheStream");
-            }
+            throw new IOException("Attempt to move before beginning of disk");
+        }
+        _position = effectiveOffset;
+        return _position;
+    }
+
+    /// <summary>
+    /// Sets the length of the stream.
+    /// </summary>
+    /// <param name="value">The new length.</param>
+    public override void SetLength(long value)
+    {
+        CheckDisposed();
+        _wrappedStream.SetLength(value);
+    }
+
+    /// <summary>
+    /// Writes data to the stream at the current location.
+    /// </summary>
+    /// <param name="buffer">The data to write.</param>
+    /// <param name="offset">The first byte to write from buffer.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        CheckDisposed();
+
+        _stats.TotalWritesIn++;
+
+        var blockSize = _settings.BlockSize;
+        var firstBlock = _position / blockSize;
+        var endBlock = MathUtilities.Ceil(Math.Min(_position + count, Length), blockSize);
+        var numBlocks = (int)(endBlock - firstBlock);
+
+        try
+        {
+            _wrappedStream.Position = _position;
+            _wrappedStream.Write(buffer, offset, count);
+        }
+        catch
+        {
+            InvalidateBlocks(firstBlock, numBlocks);
+            throw;
         }
 
-        private void InvalidateBlocks(long firstBlock, int numBlocks)
+        var offsetInNextBlock = (int)(_position % blockSize);
+        if (offsetInNextBlock != 0)
         {
-            for (long i = firstBlock; i < firstBlock + numBlocks; ++i)
+            _stats.UnalignedWritesIn++;
+        }
+
+        // For each block touched, if it's cached, update it
+        var bytesProcessed = 0;
+        for (var i = 0; i < numBlocks; ++i)
+        {
+            var bufferPos = offset + bytesProcessed;
+            var bytesThisBlock = Math.Min(count - bytesProcessed, blockSize - offsetInNextBlock);
+
+            if (_cache.TryGetBlock(firstBlock + i, out var block))
             {
-                _cache.ReleaseBlock(i);
+                Array.Copy(buffer, bufferPos, block.Data, offsetInNextBlock, bytesThisBlock);
+                block.Available = Math.Max(block.Available, offsetInNextBlock + bytesThisBlock);
             }
+
+            offsetInNextBlock = 0;
+            bytesProcessed += bytesThisBlock;
+        }
+
+        _position += count;
+    }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+    /// <summary>
+    /// Writes data to the stream at the current location.
+    /// </summary>
+    /// <param name="buffer">The data to write.</param>
+    /// <param name="offset">The first byte to write from buffer.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        CheckDisposed();
+
+        _stats.TotalWritesIn++;
+
+        var blockSize = _settings.BlockSize;
+        var firstBlock = _position / blockSize;
+        var endBlock = MathUtilities.Ceil(Math.Min(_position + count, Length), blockSize);
+        var numBlocks = (int)(endBlock - firstBlock);
+
+        try
+        {
+            _wrappedStream.Position = _position;
+            await _wrappedStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            InvalidateBlocks(firstBlock, numBlocks);
+            throw;
+        }
+
+        var offsetInNextBlock = (int)(_position % blockSize);
+        if (offsetInNextBlock != 0)
+        {
+            _stats.UnalignedWritesIn++;
+        }
+
+        // For each block touched, if it's cached, update it
+        var bytesProcessed = 0;
+        for (var i = 0; i < numBlocks; ++i)
+        {
+            var bufferPos = offset + bytesProcessed;
+            var bytesThisBlock = Math.Min(count - bytesProcessed, blockSize - offsetInNextBlock);
+
+            if (_cache.TryGetBlock(firstBlock + i, out var block))
+            {
+                Array.Copy(buffer, bufferPos, block.Data, offsetInNextBlock, bytesThisBlock);
+                block.Available = Math.Max(block.Available, offsetInNextBlock + bytesThisBlock);
+            }
+
+            offsetInNextBlock = 0;
+            bytesProcessed += bytesThisBlock;
+        }
+
+        _position += count;
+    }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+    /// <summary>
+    /// Writes data to the stream at the current location.
+    /// </summary>
+    /// <param name="buffer">The data to write.</param>
+    /// <param name="offset">The first byte to write from buffer.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        CheckDisposed();
+
+        _stats.TotalWritesIn++;
+
+        var blockSize = _settings.BlockSize;
+        var firstBlock = _position / blockSize;
+        var endBlock = MathUtilities.Ceil(Math.Min(_position + buffer.Length, Length), blockSize);
+        var numBlocks = (int)(endBlock - firstBlock);
+
+        try
+        {
+            _wrappedStream.Position = _position;
+            await _wrappedStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            InvalidateBlocks(firstBlock, numBlocks);
+            throw;
+        }
+
+        var offsetInNextBlock = (int)(_position % blockSize);
+        if (offsetInNextBlock != 0)
+        {
+            _stats.UnalignedWritesIn++;
+        }
+
+        // For each block touched, if it's cached, update it
+        var bytesProcessed = 0;
+        for (var i = 0; i < numBlocks; ++i)
+        {
+            var bufferPos = bytesProcessed;
+            var bytesThisBlock = Math.Min(buffer.Length - bytesProcessed, blockSize - offsetInNextBlock);
+
+            if (_cache.TryGetBlock(firstBlock + i, out var block))
+            {
+                buffer.Slice(bufferPos, bytesThisBlock).CopyTo(block.Data.AsMemory(offsetInNextBlock, bytesThisBlock));
+                block.Available = Math.Max(block.Available, offsetInNextBlock + bytesThisBlock);
+            }
+
+            offsetInNextBlock = 0;
+            bytesProcessed += bytesThisBlock;
+        }
+
+        _position += buffer.Length;
+    }
+
+    /// <summary>
+    /// Writes data to the stream at the current location.
+    /// </summary>
+    /// <param name="buffer">The data to write.</param>
+    /// <param name="offset">The first byte to write from buffer.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        CheckDisposed();
+
+        _stats.TotalWritesIn++;
+
+        var blockSize = _settings.BlockSize;
+        var firstBlock = _position / blockSize;
+        var endBlock = MathUtilities.Ceil(Math.Min(_position + buffer.Length, Length), blockSize);
+        var numBlocks = (int)(endBlock - firstBlock);
+
+        try
+        {
+            _wrappedStream.Position = _position;
+            _wrappedStream.Write(buffer);
+        }
+        catch
+        {
+            InvalidateBlocks(firstBlock, numBlocks);
+            throw;
+        }
+
+        var offsetInNextBlock = (int)(_position % blockSize);
+        if (offsetInNextBlock != 0)
+        {
+            _stats.UnalignedWritesIn++;
+        }
+
+        // For each block touched, if it's cached, update it
+        var bytesProcessed = 0;
+        for (var i = 0; i < numBlocks; ++i)
+        {
+            var bufferPos = bytesProcessed;
+            var bytesThisBlock = Math.Min(buffer.Length - bytesProcessed, blockSize - offsetInNextBlock);
+
+            if (_cache.TryGetBlock(firstBlock + i, out var block))
+            {
+                buffer.Slice(bufferPos, bytesThisBlock).CopyTo(block.Data.AsSpan(offsetInNextBlock, bytesThisBlock));
+                block.Available = Math.Max(block.Available, offsetInNextBlock + bytesThisBlock);
+            }
+
+            offsetInNextBlock = 0;
+            bytesProcessed += bytesThisBlock;
+        }
+
+        _position += buffer.Length;
+    }
+#endif
+
+    /// <summary>
+    /// Disposes of this instance, freeing up associated resources.
+    /// </summary>
+    /// <param name="disposing"><c>true</c> if invoked from <c>Dispose</c>, else <c>false</c>.</param>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            if (_wrappedStream != null && _ownWrapped == Ownership.Dispose)
+            {
+                _wrappedStream.Dispose();
+            }
+
+            _wrappedStream = null;
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private void CheckDisposed()
+    {
+        if (_wrappedStream == null)
+        {
+            throw new ObjectDisposedException("BlockCacheStream");
+        }
+    }
+
+    private void InvalidateBlocks(long firstBlock, int numBlocks)
+    {
+        for (var i = firstBlock; i < firstBlock + numBlocks; ++i)
+        {
+            _cache.ReleaseBlock(i);
         }
     }
 }

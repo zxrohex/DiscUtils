@@ -20,19 +20,18 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3RenameResult : Nfs3CallResult
 {
-    public sealed class Nfs3RenameResult : Nfs3CallResult
+    internal Nfs3RenameResult(XdrDataReader reader)
     {
-        internal Nfs3RenameResult(XdrDataReader reader)
-        {
-            Status = (Nfs3Status)reader.ReadInt32();
-            FromDirCacheConsistency = new Nfs3WeakCacheConsistency(reader);
-            ToDirCacheConsistency = new Nfs3WeakCacheConsistency(reader);
-        }
-
-        public Nfs3WeakCacheConsistency FromDirCacheConsistency { get; set; }
-
-        public Nfs3WeakCacheConsistency ToDirCacheConsistency { get; set; }
+        Status = (Nfs3Status)reader.ReadInt32();
+        FromDirCacheConsistency = new Nfs3WeakCacheConsistency(reader);
+        ToDirCacheConsistency = new Nfs3WeakCacheConsistency(reader);
     }
+
+    public Nfs3WeakCacheConsistency FromDirCacheConsistency { get; set; }
+
+    public Nfs3WeakCacheConsistency ToDirCacheConsistency { get; set; }
 }

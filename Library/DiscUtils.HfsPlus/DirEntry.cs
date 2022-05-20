@@ -26,100 +26,91 @@ using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class DirEntry : VfsDirEntry
 {
-    internal sealed class DirEntry : VfsDirEntry
+    public DirEntry(string name, byte[] dirEntryData)
     {
-        public DirEntry(string name, byte[] dirEntryData)
+        FileName = name;
+        CatalogFileInfo = ParseDirEntryData(dirEntryData);
+    }
+
+    public CommonCatalogFileInfo CatalogFileInfo { get; }
+
+    public override DateTime CreationTimeUtc
+    {
+        get { return CatalogFileInfo.CreateTime; }
+    }
+
+    public override FileAttributes FileAttributes
+    {
+        get { return Utilities.FileAttributesFromUnixFileType(CatalogFileInfo.FileSystemInfo.FileType); }
+    }
+
+    public override string FileName { get; }
+
+    public override bool HasVfsFileAttributes
+    {
+        get { return true; }
+    }
+
+    public override bool HasVfsTimeInfo
+    {
+        get { return true; }
+    }
+
+    public override bool IsDirectory
+    {
+        get { return CatalogFileInfo.RecordType == CatalogRecordType.FolderRecord; }
+    }
+
+    public override bool IsSymlink
+    {
+        get
         {
-            FileName = name;
-            CatalogFileInfo = ParseDirEntryData(dirEntryData);
+            return
+                !IsDirectory
+                && (FileTypeFlags)((CatalogFileInfo)CatalogFileInfo).FileInfo.FileType == FileTypeFlags.SymLinkFileType;
         }
+    }
 
-        public CommonCatalogFileInfo CatalogFileInfo { get; }
+    public override DateTime LastAccessTimeUtc
+    {
+        get { return CatalogFileInfo.AccessTime; }
+    }
 
-        public override DateTime CreationTimeUtc
+    public override DateTime LastWriteTimeUtc
+    {
+        get { return CatalogFileInfo.ContentModifyTime; }
+    }
+
+    public CatalogNodeId NodeId
+    {
+        get { return CatalogFileInfo.FileId; }
+    }
+
+    public override long UniqueCacheId
+    {
+        get { return CatalogFileInfo.FileId; }
+    }
+
+    internal static bool IsFileOrDirectory(byte[] dirEntryData)
+    {
+        var type = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(dirEntryData, 0);
+        return type == CatalogRecordType.FolderRecord || type == CatalogRecordType.FileRecord;
+    }
+
+    private static CommonCatalogFileInfo ParseDirEntryData(byte[] dirEntryData)
+    {
+        var type = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(dirEntryData, 0);
+        CommonCatalogFileInfo result = type switch
         {
-            get { return CatalogFileInfo.CreateTime; }
-        }
-
-        public override FileAttributes FileAttributes
-        {
-            get { return Utilities.FileAttributesFromUnixFileType(CatalogFileInfo.FileSystemInfo.FileType); }
-        }
-
-        public override string FileName { get; }
-
-        public override bool HasVfsFileAttributes
-        {
-            get { return true; }
-        }
-
-        public override bool HasVfsTimeInfo
-        {
-            get { return true; }
-        }
-
-        public override bool IsDirectory
-        {
-            get { return CatalogFileInfo.RecordType == CatalogRecordType.FolderRecord; }
-        }
-
-        public override bool IsSymlink
-        {
-            get
-            {
-                return
-                    !IsDirectory
-                    && (FileTypeFlags)((CatalogFileInfo)CatalogFileInfo).FileInfo.FileType == FileTypeFlags.SymLinkFileType;
-            }
-        }
-
-        public override DateTime LastAccessTimeUtc
-        {
-            get { return CatalogFileInfo.AccessTime; }
-        }
-
-        public override DateTime LastWriteTimeUtc
-        {
-            get { return CatalogFileInfo.ContentModifyTime; }
-        }
-
-        public CatalogNodeId NodeId
-        {
-            get { return CatalogFileInfo.FileId; }
-        }
-
-        public override long UniqueCacheId
-        {
-            get { return CatalogFileInfo.FileId; }
-        }
-
-        internal static bool IsFileOrDirectory(byte[] dirEntryData)
-        {
-            CatalogRecordType type = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(dirEntryData, 0);
-            return type == CatalogRecordType.FolderRecord || type == CatalogRecordType.FileRecord;
-        }
-
-        private static CommonCatalogFileInfo ParseDirEntryData(byte[] dirEntryData)
-        {
-            CatalogRecordType type = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(dirEntryData, 0);
-
-            CommonCatalogFileInfo result = null;
-            switch (type)
-            {
-                case CatalogRecordType.FolderRecord:
-                    result = new CatalogDirInfo();
-                    break;
-                case CatalogRecordType.FileRecord:
-                    result = new CatalogFileInfo();
-                    break;
-                default:
-                    throw new NotImplementedException("Unknown catalog record type: " + type);
-            }
-
-            result.ReadFrom(dirEntryData, 0);
-            return result;
-        }
+            CatalogRecordType.FolderRecord => new CatalogDirInfo(),
+            CatalogRecordType.FileRecord => new CatalogFileInfo(),
+            _ => throw new NotImplementedException("Unknown catalog record type: " + type),
+        };
+        result.ReadFrom(dirEntryData, 0);
+        return result;
     }
 }

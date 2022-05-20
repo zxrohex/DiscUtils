@@ -20,10 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal enum ChecksumType:ushort
 {
-    internal enum ChecksumType:ushort
-    {
-        Crc32C = 0
-    }
+    Crc32C = 0
 }

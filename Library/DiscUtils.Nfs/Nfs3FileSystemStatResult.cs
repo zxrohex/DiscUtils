@@ -22,68 +22,67 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public class Nfs3FileSystemStatResult : Nfs3CallResult
 {
-    public class Nfs3FileSystemStatResult : Nfs3CallResult
+    public Nfs3FileSystemStatResult()
     {
-        public Nfs3FileSystemStatResult()
+    }
+
+    internal Nfs3FileSystemStatResult(XdrDataReader reader)
+    {
+        Status = (Nfs3Status)reader.ReadInt32();
+        if (reader.ReadBool())
         {
+            PostOpAttributes = new Nfs3FileAttributes(reader);
         }
 
-        internal Nfs3FileSystemStatResult(XdrDataReader reader)
+        if (Status == Nfs3Status.Ok)
         {
-            Status = (Nfs3Status)reader.ReadInt32();
-            if (reader.ReadBool())
-            {
-                PostOpAttributes = new Nfs3FileAttributes(reader);
-            }
+            FileSystemStat = new Nfs3FileSystemStat(reader);
+        }
+    }
 
-            if (Status == Nfs3Status.Ok)
-            {
-                FileSystemStat = new Nfs3FileSystemStat(reader);
-            }
+    public Nfs3FileAttributes PostOpAttributes { get; set; }
+
+    public Nfs3FileSystemStat FileSystemStat { get; set; }
+
+    public override void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)Status);
+
+        writer.Write(PostOpAttributes != null);
+        if (PostOpAttributes != null)
+        {
+            PostOpAttributes.Write(writer);
         }
 
-        public Nfs3FileAttributes PostOpAttributes { get; set; }
-
-        public Nfs3FileSystemStat FileSystemStat { get; set; }
-
-        public override void Write(XdrDataWriter writer)
+        if (Status == Nfs3Status.Ok)
         {
-            writer.Write((int)Status);
+            FileSystemStat.Write(writer);
+        }
+    }
 
-            writer.Write(PostOpAttributes != null);
-            if (PostOpAttributes != null)
-            {
-                PostOpAttributes.Write(writer);
-            }
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3FileSystemStatResult);
+    }
 
-            if (Status == Nfs3Status.Ok)
-            {
-                FileSystemStat.Write(writer);
-            }
+    public bool Equals(Nfs3FileSystemStatResult other)
+    {
+        if (other == null)
+        {
+            return false;
         }
 
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Nfs3FileSystemStatResult);
-        }
+        return other.Status == Status
+            && object.Equals(other.PostOpAttributes, PostOpAttributes)
+            && object.Equals(other.FileSystemStat, FileSystemStat);
+    }
 
-        public bool Equals(Nfs3FileSystemStatResult other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other.Status == Status
-                && object.Equals(other.PostOpAttributes, PostOpAttributes)
-                && object.Equals(other.FileSystemStat, FileSystemStat);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Status, PostOpAttributes, FileSystemStat);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Status, PostOpAttributes, FileSystemStat);
     }
 }

@@ -22,58 +22,57 @@
 
 using System;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Represents a DNS SRV record.
+/// </summary>
+public sealed class ServiceRecord : ResourceRecord
 {
-    /// <summary>
-    /// Represents a DNS SRV record.
-    /// </summary>
-    public sealed class ServiceRecord : ResourceRecord
+    private readonly ushort _port;
+    private readonly ushort _priority;
+    private readonly ushort _weight;
+
+    internal ServiceRecord(string name, RecordType type, RecordClass rClass, DateTime expiry, PacketReader reader)
+        : base(name, type, rClass, expiry)
     {
-        private readonly ushort _port;
-        private readonly ushort _priority;
-        private readonly ushort _weight;
+        var dataLen = reader.ReadUShort();
+        var pos = reader.Position;
 
-        internal ServiceRecord(string name, RecordType type, RecordClass rClass, DateTime expiry, PacketReader reader)
-            : base(name, type, rClass, expiry)
-        {
-            ushort dataLen = reader.ReadUShort();
-            int pos = reader.Position;
+        _priority = reader.ReadUShort();
+        _weight = reader.ReadUShort();
+        _port = reader.ReadUShort();
+        Target = reader.ReadName();
 
-            _priority = reader.ReadUShort();
-            _weight = reader.ReadUShort();
-            _port = reader.ReadUShort();
-            Target = reader.ReadName();
+        reader.Position = pos + dataLen;
+    }
 
-            reader.Position = pos + dataLen;
-        }
+    /// <summary>
+    /// Gets the network port at which the service can be accessed.
+    /// </summary>
+    public int Port
+    {
+        get { return _port; }
+    }
 
-        /// <summary>
-        /// Gets the network port at which the service can be accessed.
-        /// </summary>
-        public int Port
-        {
-            get { return _port; }
-        }
+    /// <summary>
+    /// Gets the priority associated with this service record (lower value is higher priority).
+    /// </summary>
+    public int Priority
+    {
+        get { return _priority; }
+    }
 
-        /// <summary>
-        /// Gets the priority associated with this service record (lower value is higher priority).
-        /// </summary>
-        public int Priority
-        {
-            get { return _priority; }
-        }
+    /// <summary>
+    /// Gets the DNS name at which the service can be accessed.
+    /// </summary>
+    public string Target { get; }
 
-        /// <summary>
-        /// Gets the DNS name at which the service can be accessed.
-        /// </summary>
-        public string Target { get; }
-
-        /// <summary>
-        /// Gets the relative weight associated with this service record when randomly choosing between records of equal priority.
-        /// </summary>
-        public int Weight
-        {
-            get { return _weight; }
-        }
+    /// <summary>
+    /// Gets the relative weight associated with this service record when randomly choosing between records of equal priority.
+    /// </summary>
+    public int Weight
+    {
+        get { return _weight; }
     }
 }

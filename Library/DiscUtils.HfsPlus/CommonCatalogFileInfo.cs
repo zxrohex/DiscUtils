@@ -23,39 +23,37 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal abstract class CommonCatalogFileInfo : IByteArraySerializable
 {
-    internal abstract class CommonCatalogFileInfo : IByteArraySerializable
+    public DateTime AccessTime;
+    public DateTime AttributeModifyTime;
+    public DateTime BackupTime;
+    public DateTime ContentModifyTime;
+    public DateTime CreateTime;
+    public CatalogNodeId FileId;
+    public UnixFileSystemInfo FileSystemInfo;
+    public CatalogRecordType RecordType;
+    public uint UnixSpecialField;
+
+    public abstract int Size { get; }
+
+    public virtual int ReadFrom(byte[] buffer, int offset)
     {
-        public DateTime AccessTime;
-        public DateTime AttributeModifyTime;
-        public DateTime BackupTime;
-        public DateTime ContentModifyTime;
-        public DateTime CreateTime;
-        public CatalogNodeId FileId;
-        public UnixFileSystemInfo FileSystemInfo;
-        public CatalogRecordType RecordType;
-        public uint UnixSpecialField;
+        RecordType = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(buffer, offset + 0);
+        FileId = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
+        CreateTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 12);
+        ContentModifyTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 16);
+        AttributeModifyTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 20);
+        AccessTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 24);
+        BackupTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 28);
 
-        public abstract int Size { get; }
+        FileSystemInfo = HfsPlusUtilities.ReadBsdInfo(buffer, offset + 32, out var special);
+        UnixSpecialField = special;
 
-        public virtual int ReadFrom(byte[] buffer, int offset)
-        {
-            RecordType = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(buffer, offset + 0);
-            FileId = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-            CreateTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 12);
-            ContentModifyTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 16);
-            AttributeModifyTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 20);
-            AccessTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 24);
-            BackupTime = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 28);
-
-            uint special;
-            FileSystemInfo = HfsPlusUtilities.ReadBsdInfo(buffer, offset + 32, out special);
-            UnixSpecialField = special;
-
-            return 0;
-        }
-
-        public abstract void WriteTo(byte[] buffer, int offset);
+        return 0;
     }
+
+    public abstract void WriteTo(byte[] buffer, int offset);
 }

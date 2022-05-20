@@ -20,10 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public interface IMappedBuffer : IBuffer
 {
-    public interface IMappedBuffer : IBuffer
-    {
-        long MapPosition(long position);
-    }
+    long MapPosition(long position);
 }

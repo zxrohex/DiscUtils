@@ -1,9 +1,8 @@
-namespace DiscUtils.Iscsi
-{
-    internal enum KeyType
-    {
-        Declarative,
+namespace DiscUtils.Iscsi;
 
-        Negotiated
-    }
+internal enum KeyType
+{
+    Declarative,
+
+    Negotiated
 }

@@ -20,36 +20,35 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+/// <summary>
+/// Enumeration of known virtual disk controller (aka adapter) types.
+/// </summary>
+public enum DiskAdapterType
 {
     /// <summary>
-    /// Enumeration of known virtual disk controller (aka adapter) types.
+    /// Unknown or unspecified.
     /// </summary>
-    public enum DiskAdapterType
-    {
-        /// <summary>
-        /// Unknown or unspecified.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// IDE controller.
-        /// </summary>
-        Ide = 1,
+    /// <summary>
+    /// IDE controller.
+    /// </summary>
+    Ide = 1,
 
-        /// <summary>
-        /// Bus Logic SCSI controller.
-        /// </summary>
-        BusLogicScsi = 2,
+    /// <summary>
+    /// Bus Logic SCSI controller.
+    /// </summary>
+    BusLogicScsi = 2,
 
-        /// <summary>
-        /// LSI Logic SCSI controller.
-        /// </summary>
-        LsiLogicScsi = 3,
+    /// <summary>
+    /// LSI Logic SCSI controller.
+    /// </summary>
+    LsiLogicScsi = 3,
 
-        /// <summary>
-        /// Legacy ESX controller.
-        /// </summary>
-        LegacyEsx = 4
-    }
+    /// <summary>
+    /// Legacy ESX controller.
+    /// </summary>
+    LegacyEsx = 4
 }

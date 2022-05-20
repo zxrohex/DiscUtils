@@ -11,18 +11,16 @@ namespace LibraryTests.Helpers
     {
         public static byte[] ReadAll(this Stream stream)
         {
-            using (MemoryStream ms = new MemoryStream())
-            {
-                stream.CopyTo(ms);
-                return ms.ToArray();
-            }
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
         }
 
         public static Stream LoadDataFile(string name)
         {
-            Assembly assembly = typeof(Helpers).Assembly;
+            var assembly = typeof(Helpers).Assembly;
 
-            string formattedName = $"{assembly.GetName().Name}._Data.{name}";
+            var formattedName = $"{assembly.GetName().Name}._Data.{name}";
             if (assembly.GetManifestResourceNames().Contains(formattedName))
                 return assembly.GetManifestResourceStream(formattedName);
 
@@ -31,10 +29,10 @@ namespace LibraryTests.Helpers
 
             if (assembly.GetManifestResourceNames().Contains(formattedName))
             {
-                MemoryStream ms = new MemoryStream();
+                var ms = new MemoryStream();
 
-                using (Stream stream = assembly.GetManifestResourceStream(formattedName))
-                using (GZipStream gz = new GZipStream(stream, CompressionMode.Decompress))
+                using (var stream = assembly.GetManifestResourceStream(formattedName))
+                using (var gz = new GZipStream(stream, CompressionMode.Decompress))
                     gz.CopyTo(ms);
 
                 ms.Seek(0, SeekOrigin.Begin);

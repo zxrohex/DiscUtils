@@ -20,79 +20,78 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+
+internal class ShortformDirectory : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
+    private readonly Context _context;
+    private bool _useShortInode;
 
-    internal class ShortformDirectory : IByteArraySerializable
+    /// <summary>
+    /// Number of directory entries.
+    /// </summary>
+    public byte Count4Bytes { get; private set; }
+
+    /// <summary>
+    /// Number of directory entries requiring 64-bit entries, if any inode numbers require 64-bits. Zero otherwise.
+    /// </summary>
+    public byte Count8Bytes { get; private set; }
+
+    public ulong Parent { get; set; }
+
+    public ShortformDirectoryEntry[] Entries { get; private set; }
+
+    public ShortformDirectory(Context context)
     {
-        private readonly Context _context;
-        private bool _useShortInode;
+        _context = context;
+    }
 
-        /// <summary>
-        /// Number of directory entries.
-        /// </summary>
-        public byte Count4Bytes { get; private set; }
-
-        /// <summary>
-        /// Number of directory entries requiring 64-bit entries, if any inode numbers require 64-bits. Zero otherwise.
-        /// </summary>
-        public byte Count8Bytes { get; private set; }
-
-        public ulong Parent { get; set; }
-
-        public ShortformDirectoryEntry[] Entries { get; private set; }
-
-        public ShortformDirectory(Context context)
+    public int Size
+    {
+        get
         {
-            _context = context;
+            var result = 0x6;
+            foreach (var entry in Entries)
+            {
+                result += entry.Size;
+            }
+            return result;
         }
+    }
 
-        public int Size
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Count4Bytes = buffer[offset];
+        Count8Bytes = buffer[offset+0x1];
+        var count = Count4Bytes;
+        _useShortInode = Count8Bytes == 0;
+        offset += 0x2;
+        if (_useShortInode)
         {
-            get
-            {
-                var result = 0x6;
-                foreach (var entry in Entries)
-                {
-                    result += entry.Size;
-                }
-                return result;
-            }
+            Parent = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+            offset += 0x4;
         }
+        else
+        {
+            Parent = EndianUtilities.ToUInt64BigEndian(buffer, offset);
+            offset += 0x8;
+        }
+        Entries = new ShortformDirectoryEntry[count];
+        for (var i = 0; i < count; i++)
+        {
+            var entry = new ShortformDirectoryEntry(_useShortInode, _context);
+            entry.ReadFrom(buffer, offset);
+            offset += entry.Size;
+            Entries[i] = entry;
+        }
+        return Size;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Count4Bytes = buffer[offset];
-            Count8Bytes = buffer[offset+0x1];
-            byte count = Count4Bytes;
-            _useShortInode = Count8Bytes == 0;
-            offset += 0x2;
-            if (_useShortInode)
-            {
-                Parent = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-                offset += 0x4;
-            }
-            else
-            {
-                Parent = EndianUtilities.ToUInt64BigEndian(buffer, offset);
-                offset += 0x8;
-            }
-            Entries = new ShortformDirectoryEntry[count];
-            for (int i = 0; i < count; i++)
-            {
-                var entry = new ShortformDirectoryEntry(_useShortInode, _context);
-                entry.ReadFrom(buffer, offset);
-                offset += entry.Size;
-                Entries[i] = entry;
-            }
-            return Size;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

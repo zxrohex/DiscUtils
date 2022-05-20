@@ -24,42 +24,41 @@ using System;
 
 using System.Runtime.Serialization;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+/// <summary>
+/// Exception thrown when a low-level iSCSI failure is detected.
+/// </summary>
+[Serializable]
+public class InvalidProtocolException : IscsiException
 {
     /// <summary>
-    /// Exception thrown when a low-level iSCSI failure is detected.
+    /// Initializes a new instance of the InvalidProtocolException class.
     /// </summary>
-    [Serializable]
-    public class InvalidProtocolException : IscsiException
+    public InvalidProtocolException() {}
+
+    /// <summary>
+    /// Initializes a new instance of the InvalidProtocolException class.
+    /// </summary>
+    /// <param name="message">The reason for the exception.</param>
+    public InvalidProtocolException(string message)
+        : base(message) {}
+
+    /// <summary>
+    /// Initializes a new instance of the InvalidProtocolException class.
+    /// </summary>
+    /// <param name="message">The reason for the exception.</param>
+    /// <param name="innerException">The inner exception.</param>
+    public InvalidProtocolException(string message, Exception innerException)
+        : base(message, innerException) {}
+
+    /// <summary>
+    /// Initializes a new instance of the InvalidProtocolException class.
+    /// </summary>
+    /// <param name="info">The serialization info.</param>
+    /// <param name="context">Ther context.</param>
+    protected InvalidProtocolException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
     {
-        /// <summary>
-        /// Initializes a new instance of the InvalidProtocolException class.
-        /// </summary>
-        public InvalidProtocolException() {}
-
-        /// <summary>
-        /// Initializes a new instance of the InvalidProtocolException class.
-        /// </summary>
-        /// <param name="message">The reason for the exception.</param>
-        public InvalidProtocolException(string message)
-            : base(message) {}
-
-        /// <summary>
-        /// Initializes a new instance of the InvalidProtocolException class.
-        /// </summary>
-        /// <param name="message">The reason for the exception.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public InvalidProtocolException(string message, Exception innerException)
-            : base(message, innerException) {}
-
-        /// <summary>
-        /// Initializes a new instance of the InvalidProtocolException class.
-        /// </summary>
-        /// <param name="info">The serialization info.</param>
-        /// <param name="context">Ther context.</param>
-        protected InvalidProtocolException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
     }
 }

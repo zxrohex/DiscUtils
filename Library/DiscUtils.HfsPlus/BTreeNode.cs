@@ -24,78 +24,69 @@ using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal abstract class BTreeNode : IByteArraySerializable
 {
-    internal abstract class BTreeNode : IByteArraySerializable
+    public BTreeNode(BTree tree, BTreeNodeDescriptor descriptor)
     {
-        public BTreeNode(BTree tree, BTreeNodeDescriptor descriptor)
+        Tree = tree;
+        Descriptor = descriptor;
+    }
+
+    protected BTreeNodeDescriptor Descriptor { get; }
+
+    public IList<BTreeNodeRecord> Records { get; private set; }
+
+    protected BTree Tree { get; }
+
+    public int Size
+    {
+        get { return Tree.NodeSize; }
+    }
+
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Records = ReadRecords(buffer, offset);
+
+        return 0;
+    }
+
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public static BTreeNode ReadNode(BTree tree, byte[] buffer, int offset)
+    {
+        var descriptor =
+            EndianUtilities.ToStruct<BTreeNodeDescriptor>(buffer, offset);
+
+        return descriptor.Kind switch
         {
-            Tree = tree;
-            Descriptor = descriptor;
-        }
+            BTreeNodeKind.HeaderNode => new BTreeHeaderNode(tree, descriptor),
+            BTreeNodeKind.IndexNode or BTreeNodeKind.LeafNode => throw new NotImplementedException("Attempt to read index/leaf node without key and data types"),
+            _ => throw new NotImplementedException("Unrecognized BTree node kind: " + descriptor.Kind),
+        };
+    }
 
-        protected BTreeNodeDescriptor Descriptor { get; }
+    public static BTreeNode ReadNode<TKey>(BTree tree, byte[] buffer, int offset)
+        where TKey : BTreeKey, new()
+    {
+        var descriptor =
+            EndianUtilities.ToStruct<BTreeNodeDescriptor>(buffer, offset);
 
-        public IList<BTreeNodeRecord> Records { get; private set; }
-
-        protected BTree Tree { get; }
-
-        public int Size
+        return descriptor.Kind switch
         {
-            get { return Tree.NodeSize; }
-        }
+            BTreeNodeKind.HeaderNode => new BTreeHeaderNode(tree, descriptor),
+            BTreeNodeKind.LeafNode => new BTreeLeafNode<TKey>(tree, descriptor),
+            BTreeNodeKind.IndexNode => new BTreeIndexNode<TKey>(tree, descriptor),
+            _ => throw new NotImplementedException("Unrecognized BTree node kind: " + descriptor.Kind),
+        };
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Records = ReadRecords(buffer, offset);
-
-            return 0;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public static BTreeNode ReadNode(BTree tree, byte[] buffer, int offset)
-        {
-            BTreeNodeDescriptor descriptor =
-                EndianUtilities.ToStruct<BTreeNodeDescriptor>(buffer, offset);
-
-            switch (descriptor.Kind)
-            {
-                case BTreeNodeKind.HeaderNode:
-                    return new BTreeHeaderNode(tree, descriptor);
-                case BTreeNodeKind.IndexNode:
-                case BTreeNodeKind.LeafNode:
-                    throw new NotImplementedException("Attempt to read index/leaf node without key and data types");
-                default:
-                    throw new NotImplementedException("Unrecognized BTree node kind: " + descriptor.Kind);
-            }
-        }
-
-        public static BTreeNode ReadNode<TKey>(BTree tree, byte[] buffer, int offset)
-            where TKey : BTreeKey, new()
-        {
-            BTreeNodeDescriptor descriptor =
-                EndianUtilities.ToStruct<BTreeNodeDescriptor>(buffer, offset);
-
-            switch (descriptor.Kind)
-            {
-                case BTreeNodeKind.HeaderNode:
-                    return new BTreeHeaderNode(tree, descriptor);
-                case BTreeNodeKind.LeafNode:
-                    return new BTreeLeafNode<TKey>(tree, descriptor);
-                case BTreeNodeKind.IndexNode:
-                    return new BTreeIndexNode<TKey>(tree, descriptor);
-                default:
-                    throw new NotImplementedException("Unrecognized BTree node kind: " + descriptor.Kind);
-            }
-        }
-
-        protected virtual IList<BTreeNodeRecord> ReadRecords(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    protected virtual IList<BTreeNodeRecord> ReadRecords(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

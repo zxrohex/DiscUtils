@@ -23,29 +23,28 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class ExtentDescriptor : IByteArraySerializable
 {
-    internal class ExtentDescriptor : IByteArraySerializable
+    public uint Length;
+    public uint Location;
+
+    public int Size
     {
-        public uint Length;
-        public uint Location;
+        get { return 8; }
+    }
 
-        public int Size
-        {
-            get { return 8; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Length = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
+        Location = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Length = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-            Location = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+        return 8;
+    }
 
-            return 8;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -22,12 +22,11 @@
 
 using System.Text;
 
-namespace DiscUtils.Iso9660
-{
-    internal abstract class SuspExtension
-    {
-        public abstract string Identifier { get; }
+namespace DiscUtils.Iso9660;
 
-        public abstract SystemUseEntry Parse(string name, byte length, byte version, byte[] data, int offset, Encoding encoding);
-    }
+internal abstract class SuspExtension
+{
+    public abstract string Identifier { get; }
+
+    public abstract SystemUseEntry Parse(string name, byte length, byte version, byte[] data, int offset, Encoding encoding);
 }

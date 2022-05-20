@@ -33,7 +33,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            Nfs3FileAttributes attributes = new Nfs3FileAttributes()
+            var attributes = new Nfs3FileAttributes()
             {
                 AccessTime = new Nfs3FileTime(new DateTime(2018, 1, 1)),
                 BytesUsed = 1,
@@ -53,13 +53,13 @@ namespace LibraryTests.Nfs
 
             Nfs3FileAttributes clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 attributes.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new Nfs3FileAttributes(reader);
             }
 

@@ -22,51 +22,49 @@
 
 using System.Collections.Generic;
 
-namespace DiscUtils.Registry
+namespace DiscUtils.Registry;
+
+internal abstract class ListCell : Cell
 {
-    internal abstract class ListCell : Cell
-    {
-        public ListCell(int index)
-            : base(index) {}
+    public ListCell(int index)
+        : base(index) {}
 
-        /// <summary>
-        /// Gets the number of subkeys in this list.
-        /// </summary>
-        internal abstract int Count { get; }
+    /// <summary>
+    /// Gets the number of subkeys in this list.
+    /// </summary>
+    internal abstract int Count { get; }
 
-        /// <summary>
-        /// Searches for a key with a given name.
-        /// </summary>
-        /// <param name="name">The name to search for.</param>
-        /// <param name="cellIndex">The index of the cell, if found.</param>
-        /// <returns>The search result.</returns>
-        internal abstract int FindKey(string name, out int cellIndex);
+    /// <summary>
+    /// Searches for a key with a given name.
+    /// </summary>
+    /// <param name="name">The name to search for.</param>
+    /// <param name="cellIndex">The index of the cell, if found.</param>
+    /// <returns>The search result.</returns>
+    internal abstract int FindKey(string name, out int cellIndex);
 
-        /// <summary>
-        /// Enumerates all of the keys in the list.
-        /// </summary>
-        /// <param name="names">The list to populate.</param>
-        internal abstract void EnumerateKeys(List<string> names);
+    /// <summary>
+    /// Enumerates all of the keys in the list.
+    /// </summary>
+    internal abstract IEnumerable<string> EnumerateKeyNames();
 
-        /// <summary>
-        /// Enumerates all of the keys in the list.
-        /// </summary>
-        /// <returns>Enumeration of key cells.</returns>
-        internal abstract IEnumerable<KeyNodeCell> EnumerateKeys();
+    /// <summary>
+    /// Enumerates all of the keys in the list.
+    /// </summary>
+    /// <returns>Enumeration of key cells.</returns>
+    internal abstract IEnumerable<KeyNodeCell> EnumerateKeys();
 
-        /// <summary>
-        /// Adds a subkey to this list.
-        /// </summary>
-        /// <param name="name">The name of the subkey.</param>
-        /// <param name="cellIndex">The cell index of the subkey.</param>
-        /// <returns>The new cell index of the list, which may have changed.</returns>
-        internal abstract int LinkSubKey(string name, int cellIndex);
+    /// <summary>
+    /// Adds a subkey to this list.
+    /// </summary>
+    /// <param name="name">The name of the subkey.</param>
+    /// <param name="cellIndex">The cell index of the subkey.</param>
+    /// <returns>The new cell index of the list, which may have changed.</returns>
+    internal abstract int LinkSubKey(string name, int cellIndex);
 
-        /// <summary>
-        /// Removes a subkey from this list.
-        /// </summary>
-        /// <param name="name">The name of the subkey.</param>
-        /// <returns>The new cell index of the list, which may have changed.</returns>
-        internal abstract int UnlinkSubKey(string name);
-    }
+    /// <summary>
+    /// Removes a subkey from this list.
+    /// </summary>
+    /// <param name="name">The name of the subkey.</param>
+    /// <returns>The new cell index of the list, which may have changed.</returns>
+    internal abstract int UnlinkSubKey(string name);
 }

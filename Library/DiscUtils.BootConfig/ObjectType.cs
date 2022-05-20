@@ -20,31 +20,30 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+/// <summary>
+/// Enumeration of known object types.
+/// </summary>
+public enum ObjectType
 {
     /// <summary>
-    /// Enumeration of known object types.
+    /// An unknown type.
     /// </summary>
-    public enum ObjectType
-    {
-        /// <summary>
-        /// An unknown type.
-        /// </summary>
-        None = 0x0,
+    None = 0x0,
 
-        /// <summary>
-        /// An application object.
-        /// </summary>
-        Application = 0x1,
+    /// <summary>
+    /// An application object.
+    /// </summary>
+    Application = 0x1,
 
-        /// <summary>
-        /// Inheritable common settings.
-        /// </summary>
-        Inherit = 0x2,
+    /// <summary>
+    /// Inheritable common settings.
+    /// </summary>
+    Inherit = 0x2,
 
-        /// <summary>
-        /// Device (or partition) object.
-        /// </summary>
-        Device = 0x3
-    }
+    /// <summary>
+    /// Device (or partition) object.
+    /// </summary>
+    Device = 0x3
 }

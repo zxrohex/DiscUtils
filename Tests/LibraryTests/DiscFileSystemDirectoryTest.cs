@@ -34,9 +34,9 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Create(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo("SOMEDIR");
+            var dirInfo = fs.GetDirectoryInfo("SOMEDIR");
             dirInfo.Create();
 
             Assert.Single(fs.Root.GetDirectories());
@@ -46,11 +46,11 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreateRecursive(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             var sep = Path.DirectorySeparatorChar;
 
-            DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR");
+            var dirInfo = fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR");
             dirInfo.Create();
 
             Assert.Single(fs.Root.GetDirectories());
@@ -62,9 +62,9 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreateExisting(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo("SOMEDIR");
+            var dirInfo = fs.GetDirectoryInfo("SOMEDIR");
             dirInfo.Create();
             dirInfo.Create();
 
@@ -76,9 +76,9 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreateInvalid_Long(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo(new String('X', 256));
+            var dirInfo = fs.GetDirectoryInfo(new String('X', 256));
             Assert.Throws<IOException>(dirInfo.Create);
         }
 
@@ -87,9 +87,9 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreateInvalid_Characters(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo("SOME\0DIR");
+            var dirInfo = fs.GetDirectoryInfo("SOME\0DIR");
             Assert.Throws<IOException>(() => dirInfo.Create());
         }
 
@@ -97,9 +97,9 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Exists(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo(@"SOMEDIR\CHILDDIR");
+            var dirInfo = fs.GetDirectoryInfo(@"SOMEDIR\CHILDDIR");
             dirInfo.Create();
 
             var sep = Path.DirectorySeparatorChar;
@@ -118,7 +118,7 @@ namespace LibraryTests
         {
             var sep = Path.DirectorySeparatorChar;
 
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Equal($"{sep}", fs.Root.FullName);
             Assert.Equal($"SOMEDIR{sep}", fs.GetDirectoryInfo($"SOMEDIR").FullName);
@@ -129,7 +129,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Delete(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             fs.CreateDirectory(@"Fred");
             Assert.Single(fs.Root.GetDirectories());
@@ -142,7 +142,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void DeleteRecursive(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             var sep = Path.DirectorySeparatorChar;
 
@@ -158,7 +158,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void DeleteRoot(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Throws<IOException>(() => fs.Root.Delete());
         }
@@ -168,7 +168,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void DeleteNonEmpty_NonRecursive(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             fs.CreateDirectory(@"Fred\child");
             Assert.Throws<IOException>(() => fs.Root.GetDirectories(@"Fred").First().Delete());
@@ -179,21 +179,21 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.QuickReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreateDeleteLeakTest(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            for (int i = 0; i < 2000; ++i)
+            for (var i = 0; i < 2000; ++i)
             {
                 fs.CreateDirectory(@"Fred");
                 fs.Root.GetDirectories(@"Fred").First().Delete();
             }
 
             fs.CreateDirectory(@"SOMEDIR");
-            DiscDirectoryInfo dirInfo = fs.GetDirectoryInfo(@"SOMEDIR");
+            var dirInfo = fs.GetDirectoryInfo(@"SOMEDIR");
             Assert.NotNull(dirInfo);
 
             var sep = Path.DirectorySeparatorChar;
 
-            for (int i = 0; i < 2000; ++i)
+            for (var i = 0; i < 2000; ++i)
             {
                 fs.CreateDirectory($"SOMEDIR{sep}Fred");
                 dirInfo.GetDirectories($"Fred").First().Delete();
@@ -204,7 +204,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Move(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             var sep = Path.DirectorySeparatorChar;
 
@@ -219,7 +219,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Extension(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Equal("dir", fs.GetDirectoryInfo("fred.dir").Extension);
             Assert.Equal("", fs.GetDirectoryInfo("fred").Extension);
@@ -231,14 +231,14 @@ namespace LibraryTests
         {
             var sep = Path.DirectorySeparatorChar;
 
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             fs.CreateDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
             fs.CreateDirectory($"A.DIR");
 
             Assert.Equal(2, fs.Root.GetDirectories().Count());
 
-            DiscDirectoryInfo someDir = fs.Root.GetDirectories($"SoMeDir").First();
+            var someDir = fs.Root.GetDirectories($"SoMeDir").First();
             Assert.Single(fs.Root.GetDirectories("SOMEDIR"));
             Assert.Equal("SOMEDIR", someDir.Name);
 
@@ -260,7 +260,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void GetDirectories_BadPath(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Throws<DirectoryNotFoundException>(() => fs.GetDirectories(@"\baddir").Any());
         }
@@ -269,7 +269,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void GetFiles(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             var sep = Path.DirectorySeparatorChar;
 
@@ -295,7 +295,7 @@ namespace LibraryTests
         {
             var sep = Path.DirectorySeparatorChar;
 
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             fs.CreateDirectory($"SOMEDIR{sep}CHILD{sep}GCHILD");
             fs.CreateDirectory($"AAA.EXT");
@@ -314,7 +314,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Parent(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             fs.CreateDirectory("SOMEDIR");
 
@@ -325,7 +325,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Parent_Root(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Null(fs.Root.Parent);
         }
@@ -334,7 +334,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreationTimeUtc(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             fs.CreateDirectory("DIR");
 
@@ -346,7 +346,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreationTime(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             fs.CreateDirectory("DIR");
 
@@ -358,14 +358,14 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void LastAccessTime(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             var sep = Path.DirectorySeparatorChar;
 
             fs.CreateDirectory("DIR");
-            DiscDirectoryInfo di = fs.GetDirectoryInfo("DIR");
+            var di = fs.GetDirectoryInfo("DIR");
 
-            DateTime baseTime = DateTime.Now - TimeSpan.FromDays(2);
+            var baseTime = DateTime.Now - TimeSpan.FromDays(2);
             di.LastAccessTime = baseTime;
 
             fs.CreateDirectory($"DIR{sep}CHILD");
@@ -377,14 +377,14 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void LastWriteTime(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             var sep = Path.DirectorySeparatorChar;
 
             fs.CreateDirectory("DIR");
-            DiscDirectoryInfo di = fs.GetDirectoryInfo("DIR");
+            var di = fs.GetDirectoryInfo("DIR");
 
-            DateTime baseTime = DateTime.Now - TimeSpan.FromMinutes(10);
+            var baseTime = DateTime.Now - TimeSpan.FromMinutes(10);
             di.LastWriteTime = baseTime;
 
             fs.CreateDirectory($"DIR{sep}CHILD");
@@ -396,7 +396,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void DirectoryInfo_Equals(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Equal(fs.GetDirectoryInfo("foo"), fs.GetDirectoryInfo("foo"));
         }
@@ -405,7 +405,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void RootBehaviour(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             // Not all file systems can modify the root directory, so we just make sure 'get' and 'no-op' change work.
             fs.Root.Attributes = fs.Root.Attributes;

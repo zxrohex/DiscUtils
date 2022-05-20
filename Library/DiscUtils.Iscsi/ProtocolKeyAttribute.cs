@@ -25,112 +25,111 @@ using System.Globalization;
 using System.Reflection;
 using DiscUtils.CoreCompat;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+[AttributeUsage(AttributeTargets.Property)]
+internal sealed class ProtocolKeyAttribute : Attribute
 {
-    [AttributeUsage(AttributeTargets.Property)]
-    internal sealed class ProtocolKeyAttribute : Attribute
+    public ProtocolKeyAttribute(string name, string defaultValue, KeyUsagePhase phase, KeySender sender, KeyType type)
     {
-        public ProtocolKeyAttribute(string name, string defaultValue, KeyUsagePhase phase, KeySender sender, KeyType type)
+        Name = name;
+        DefaultValue = defaultValue;
+        Phase = phase;
+        Sender = sender;
+        Type = type;
+    }
+
+    public string DefaultValue { get; }
+
+    public bool LeadingConnectionOnly { get; set; }
+
+    public string Name { get; }
+
+    public KeyUsagePhase Phase { get; }
+
+    public KeySender Sender { get; }
+
+    public KeyType Type { get; }
+
+    public bool UsedForDiscovery { get; set; }
+
+    internal static string GetValueAsString(object value, Type valueType)
+    {
+        if (valueType == typeof(bool))
         {
-            Name = name;
-            DefaultValue = defaultValue;
-            Phase = phase;
-            Sender = sender;
-            Type = type;
+            return (bool)value ? "Yes" : "No";
         }
-
-        public string DefaultValue { get; }
-
-        public bool LeadingConnectionOnly { get; set; }
-
-        public string Name { get; }
-
-        public KeyUsagePhase Phase { get; }
-
-        public KeySender Sender { get; }
-
-        public KeyType Type { get; }
-
-        public bool UsedForDiscovery { get; set; }
-
-        internal static string GetValueAsString(object value, Type valueType)
+        if (valueType == typeof(string))
         {
-            if (valueType == typeof(bool))
-            {
-                return (bool)value ? "Yes" : "No";
-            }
-            if (valueType == typeof(string))
-            {
-                return (string)value;
-            }
-            if (valueType == typeof(int))
-            {
-                return ((int)value).ToString(CultureInfo.InvariantCulture);
-            }
-            if (valueType.IsEnum)
-            {
-                FieldInfo[] infos = valueType.GetFields();
-
-                foreach (FieldInfo info in infos)
-                {
-                    if (info.IsLiteral)
-                    {
-                        object literalValue = info.GetValue(null);
-                        if (literalValue.Equals(value))
-                        {
-                            var attr = info.GetCustomAttribute<ProtocolKeyValueAttribute>();
-                            return attr.Name;
-                        }
-                    }
-                }
-
-                throw new NotImplementedException();
-            }
-            throw new NotSupportedException("Unknown property type: " + valueType);
+            return (string)value;
         }
-
-        internal static object GetValueAsObject(string value, Type valueType)
+        if (valueType == typeof(int))
         {
-            if (valueType == typeof(bool))
+            return ((int)value).ToString(CultureInfo.InvariantCulture);
+        }
+        if (valueType.IsEnum)
+        {
+            var infos = valueType.GetFields();
+
+            foreach (var info in infos)
             {
-                return value == "Yes";
-            }
-            if (valueType == typeof(string))
-            {
-                return value;
-            }
-            if (valueType == typeof(int))
-            {
-                return int.Parse(value, CultureInfo.InvariantCulture);
-            }
-            if (valueType.IsEnum)
-            {
-                FieldInfo[] infos = valueType.GetFields();
-                foreach (FieldInfo info in infos)
+                if (info.IsLiteral)
                 {
-                    if (info.IsLiteral)
+                    var literalValue = info.GetValue(null);
+                    if (literalValue.Equals(value))
                     {
                         var attr = info.GetCustomAttribute<ProtocolKeyValueAttribute>();
-                        if (attr != null && attr.Name == value)
-                        {
-                            return info.GetValue(null);
-                        }
+                        return attr.Name;
                     }
                 }
-
-                throw new NotImplementedException();
             }
-            throw new NotSupportedException("Unknown property type: " + valueType);
-        }
 
-        internal bool ShouldTransmit(object currentValue, Type valueType, KeyUsagePhase phase, bool discoverySession)
-        {
-            return
-                (Phase & phase) != 0
-                && (discoverySession ? UsedForDiscovery : true)
-                && currentValue != null
-                && GetValueAsString(currentValue, valueType) != DefaultValue
-                && (Sender & KeySender.Initiator) != 0;
+            throw new NotImplementedException();
         }
+        throw new NotSupportedException("Unknown property type: " + valueType);
+    }
+
+    internal static object GetValueAsObject(string value, Type valueType)
+    {
+        if (valueType == typeof(bool))
+        {
+            return value == "Yes";
+        }
+        if (valueType == typeof(string))
+        {
+            return value;
+        }
+        if (valueType == typeof(int))
+        {
+            return int.Parse(value, CultureInfo.InvariantCulture);
+        }
+        if (valueType.IsEnum)
+        {
+            var infos = valueType.GetFields();
+            foreach (var info in infos)
+            {
+                if (info.IsLiteral)
+                {
+                    var attr = info.GetCustomAttribute<ProtocolKeyValueAttribute>();
+                    if (attr != null && attr.Name == value)
+                    {
+                        return info.GetValue(null);
+                    }
+                }
+            }
+
+            throw new NotImplementedException();
+        }
+        throw new NotSupportedException("Unknown property type: " + valueType);
+    }
+
+    internal bool ShouldTransmit(object currentValue, Type valueType, KeyUsagePhase phase, bool discoverySession)
+    {
+        return
+            (Phase & phase) != 0
+            && (!discoverySession || UsedForDiscovery)
+            && currentValue != null
+            && GetValueAsString(currentValue, valueType) != DefaultValue
+            && (Sender & KeySender.Initiator) != 0;
     }
 }

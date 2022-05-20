@@ -25,85 +25,75 @@ using System.Globalization;
 using System.IO;
 using DiscUtils.Internal;
 
-namespace DiscUtils.Vhd
+namespace DiscUtils.Vhd;
+
+[VirtualDiskFactory("VHD", ".vhd,.avhd")]
+internal sealed class DiskFactory : VirtualDiskFactory
 {
-    [VirtualDiskFactory("VHD", ".vhd,.avhd")]
-    internal sealed class DiskFactory : VirtualDiskFactory
+    public override string[] Variants
     {
-        public override string[] Variants
+        get { return new[] { "fixed", "dynamic" }; }
+    }
+
+    public override VirtualDiskTypeInfo GetDiskTypeInformation(string variant)
+    {
+        return MakeDiskTypeInfo(variant);
+    }
+
+    public override DiskImageBuilder GetImageBuilder(string variant)
+    {
+        var builder = new DiskBuilder();
+
+        builder.DiskType = variant switch
         {
-            get { return new[] { "fixed", "dynamic" }; }
-        }
+            "fixed" => FileType.Fixed,
+            "dynamic" => FileType.Dynamic,
+            _ => throw new ArgumentException(
+                                $"Unknown VHD disk variant '{variant}'",
+                                nameof(variant)),
+        };
+        return builder;
+    }
 
-        public override VirtualDiskTypeInfo GetDiskTypeInformation(string variant)
+    public override VirtualDisk CreateDisk(FileLocator locator, string variant, string path,
+                                           VirtualDiskParameters diskParameters)
+    {
+        return variant switch
         {
-            return MakeDiskTypeInfo(variant);
-        }
+            "fixed" => Disk.InitializeFixed(locator, path, diskParameters.Capacity, diskParameters.Geometry),
+            "dynamic" => Disk.InitializeDynamic(locator, path, diskParameters.Capacity, diskParameters.Geometry,
+                                DynamicHeader.DefaultBlockSize),
+            _ => throw new ArgumentException(
+                                $"Unknown VHD disk variant '{variant}'",
+                                nameof(variant)),
+        };
+    }
 
-        public override DiskImageBuilder GetImageBuilder(string variant)
+    public override VirtualDisk OpenDisk(string path, FileAccess access)
+    {
+        return new Disk(path, access);
+    }
+
+    public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)
+    {
+        return new Disk(locator, path, access);
+    }
+
+    public override VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access)
+    {
+        return new DiskImageFile(locator, path, access);
+    }
+
+    internal static VirtualDiskTypeInfo MakeDiskTypeInfo(string variant)
+    {
+        return new VirtualDiskTypeInfo
         {
-            DiskBuilder builder = new DiskBuilder();
-
-            switch (variant)
-            {
-                case "fixed":
-                    builder.DiskType = FileType.Fixed;
-                    break;
-                case "dynamic":
-                    builder.DiskType = FileType.Dynamic;
-                    break;
-                default:
-                    throw new ArgumentException(
-                        string.Format(CultureInfo.InvariantCulture, "Unknown VHD disk variant '{0}'", variant),
-                        nameof(variant));
-            }
-
-            return builder;
-        }
-
-        public override VirtualDisk CreateDisk(FileLocator locator, string variant, string path,
-                                               VirtualDiskParameters diskParameters)
-        {
-            switch (variant)
-            {
-                case "fixed":
-                    return Disk.InitializeFixed(locator, path, diskParameters.Capacity, diskParameters.Geometry);
-                case "dynamic":
-                    return Disk.InitializeDynamic(locator, path, diskParameters.Capacity, diskParameters.Geometry,
-                        DynamicHeader.DefaultBlockSize);
-                default:
-                    throw new ArgumentException(
-                        string.Format(CultureInfo.InvariantCulture, "Unknown VHD disk variant '{0}'", variant),
-                        nameof(variant));
-            }
-        }
-
-        public override VirtualDisk OpenDisk(string path, FileAccess access)
-        {
-            return new Disk(path, access);
-        }
-
-        public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)
-        {
-            return new Disk(locator, path, access);
-        }
-
-        public override VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access)
-        {
-            return new DiskImageFile(locator, path, access);
-        }
-
-        internal static VirtualDiskTypeInfo MakeDiskTypeInfo(string variant)
-        {
-            return new VirtualDiskTypeInfo
-            {
-                Name = "VHD",
-                Variant = variant,
-                CanBeHardDisk = true,
-                DeterministicGeometry = true,
-                PreservesBiosGeometry = false,
-                CalcGeometry = Geometry.FromCapacity
-            };
-        }
+            Name = "VHD",
+            Variant = variant,
+            CanBeHardDisk = true,
+            DeterministicGeometry = true,
+            PreservesBiosGeometry = false,
+            CalcGeometry = Geometry.FromCapacity
+        };
     }
 }

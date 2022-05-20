@@ -22,92 +22,91 @@
 
 using System;
 
-namespace DiscUtils.Registry
+namespace DiscUtils.Registry;
+
+/// <summary>
+/// The per-key flags present on registry keys.
+/// </summary>
+[Flags]
+public enum RegistryKeyFlags
 {
     /// <summary>
-    /// The per-key flags present on registry keys.
+    /// Unknown purpose.
     /// </summary>
-    [Flags]
-    public enum RegistryKeyFlags
-    {
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown0001 = 0x0001,
+    Unknown0001 = 0x0001,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown0002 = 0x0002,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown0002 = 0x0002,
 
-        /// <summary>
-        /// The key is the root key in the registry hive.
-        /// </summary>
-        Root = 0x0004,
+    /// <summary>
+    /// The key is the root key in the registry hive.
+    /// </summary>
+    Root = 0x0004,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown0008 = 0x0008,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown0008 = 0x0008,
 
-        /// <summary>
-        /// The key is a link to another key.
-        /// </summary>
-        Link = 0x0010,
+    /// <summary>
+    /// The key is a link to another key.
+    /// </summary>
+    Link = 0x0010,
 
-        /// <summary>
-        /// This is a normal key.
-        /// </summary>
-        Normal = 0x0020,
+    /// <summary>
+    /// This is a normal key.
+    /// </summary>
+    Normal = 0x0020,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown0040 = 0x0040,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown0040 = 0x0040,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown0080 = 0x0080,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown0080 = 0x0080,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown0100 = 0x0100,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown0100 = 0x0100,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown0200 = 0x0200,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown0200 = 0x0200,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown0400 = 0x0400,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown0400 = 0x0400,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown0800 = 0x0800,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown0800 = 0x0800,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown1000 = 0x1000,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown1000 = 0x1000,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown2000 = 0x2000,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown2000 = 0x2000,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown4000 = 0x4000,
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown4000 = 0x4000,
 
-        /// <summary>
-        /// Unknown purpose.
-        /// </summary>
-        Unknown8000 = 0x8000
-    }
+    /// <summary>
+    /// Unknown purpose.
+    /// </summary>
+    Unknown8000 = 0x8000
 }

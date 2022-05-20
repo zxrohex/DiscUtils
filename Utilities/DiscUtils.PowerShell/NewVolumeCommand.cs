@@ -25,112 +25,109 @@ using System.Management.Automation;
 using DiscUtils.Partitions;
 using DiscUtils.PowerShell.VirtualDiskProvider;
 
-namespace DiscUtils.PowerShell
+namespace DiscUtils.PowerShell;
+
+[Cmdlet(VerbsCommon.New, "Volume")]
+public class NewVolumeCommand : PSCmdlet
 {
-    [Cmdlet(VerbsCommon.New, "Volume")]
-    public class NewVolumeCommand : PSCmdlet
+    [Parameter(ValueFromPipeline = true)]
+    public PSObject InputObject { get; set; }
+
+    [Parameter(Position = 0)]
+    public string LiteralPath { get; set; }
+
+    [Parameter]
+    public string Size { get; set; }
+
+    [Parameter]
+    public WellKnownPartitionType Type { get; set; }
+
+    [Parameter]
+    public SwitchParameter Active { get; set; }
+
+    public NewVolumeCommand()
     {
-        [Parameter(ValueFromPipeline = true)]
-        public PSObject InputObject { get; set; }
+        Type = WellKnownPartitionType.WindowsNtfs;
+    }
 
-        [Parameter(Position = 0)]
-        public string LiteralPath { get; set; }
+    protected override void ProcessRecord()
+    {
+        PSObject diskObject = null;
+        VirtualDisk disk = null;
 
-        [Parameter]
-        public string Size { get; set; }
-
-        [Parameter]
-        public WellKnownPartitionType Type { get; set; }
-
-        [Parameter]
-        public SwitchParameter Active { get; set; }
-
-        public NewVolumeCommand()
+        if (InputObject != null)
         {
-            Type = WellKnownPartitionType.WindowsNtfs;
+            diskObject = InputObject;
+            disk = diskObject.BaseObject as VirtualDisk;
+        }
+        if (disk == null && string.IsNullOrEmpty(LiteralPath))
+        {
+            WriteError(new ErrorRecord(
+                new ArgumentException("No disk specified"),
+                "NoDiskSpecified",
+                ErrorCategory.InvalidArgument,
+                null));
+            return;
         }
 
-        protected override void ProcessRecord()
+        if (disk == null)
         {
-            PSObject diskObject = null;
-            VirtualDisk disk = null;
+            diskObject = SessionState.InvokeProvider.Item.Get(LiteralPath)[0];
 
-            if (InputObject != null)
-            {
-                diskObject = InputObject;
-                disk = diskObject.BaseObject as VirtualDisk;
-            }
-            if (disk == null && string.IsNullOrEmpty(LiteralPath))
+            if (diskObject.BaseObject is not VirtualDisk vdisk)
             {
                 WriteError(new ErrorRecord(
-                    new ArgumentException("No disk specified"),
-                    "NoDiskSpecified",
+                    new ArgumentException("Path specified is not a virtual disk"),
+                    "BadDiskSpecified",
+                    ErrorCategory.InvalidArgument,
+                    null));
+                return;
+
+            }
+
+            disk = vdisk;
+        }
+
+        int newIndex;
+        if (string.IsNullOrEmpty(Size))
+        {
+            newIndex = disk.Partitions.Create(Type, Active);
+        }
+        else
+        {
+            if (!DiscUtils.Common.Utilities.TryParseDiskSize(Size, out var size))
+            {
+                WriteError(new ErrorRecord(
+                    new ArgumentException("Unable to parse the volume size"),
+                    "BadVolumeSize",
                     ErrorCategory.InvalidArgument,
                     null));
                 return;
             }
 
-            if (disk == null)
+            newIndex = disk.Partitions.Create(size, Type, Active);
+        }
+
+        var startSector = disk.Partitions[newIndex].FirstSector;
+
+        // Changed volume layout, force a rescan
+        var drive = diskObject.Properties["PSDrive"].Value as VirtualDiskPSDriveInfo;
+        VolumeManager volMgr;
+        if (drive != null)
+        {
+            drive.RescanVolumes();
+            volMgr = drive.VolumeManager;
+        }
+        else
+        {
+            volMgr = new VolumeManager(disk);
+        }
+
+        foreach (var vol in volMgr.GetLogicalVolumes())
+        {
+            if (vol.PhysicalStartSector == startSector)
             {
-                diskObject = SessionState.InvokeProvider.Item.Get(LiteralPath)[0];
-                VirtualDisk vdisk = diskObject.BaseObject as VirtualDisk;
-
-                if (vdisk == null)
-                {
-                    WriteError(new ErrorRecord(
-                        new ArgumentException("Path specified is not a virtual disk"),
-                        "BadDiskSpecified",
-                        ErrorCategory.InvalidArgument,
-                        null));
-                    return;
-
-                }
-
-                disk = vdisk;
-            }
-
-            int newIndex;
-            if (string.IsNullOrEmpty(Size))
-            {
-                newIndex = disk.Partitions.Create(Type, Active);
-            }
-            else
-            {
-                long size;
-                if (!DiscUtils.Common.Utilities.TryParseDiskSize(Size, out size))
-                {
-                    WriteError(new ErrorRecord(
-                        new ArgumentException("Unable to parse the volume size"),
-                        "BadVolumeSize",
-                        ErrorCategory.InvalidArgument,
-                        null));
-                    return;
-                }
-
-                newIndex = disk.Partitions.Create(size, Type, Active);
-            }
-
-            long startSector = disk.Partitions[newIndex].FirstSector;
-            VolumeManager volMgr = null;
-
-            // Changed volume layout, force a rescan
-            var drive = diskObject.Properties["PSDrive"].Value as VirtualDiskPSDriveInfo;
-            if (drive != null)
-            {
-                drive.RescanVolumes();
-                volMgr = drive.VolumeManager;
-            }
-            else
-            {
-                volMgr = new VolumeManager(disk);
-            }
-
-            foreach (var vol in volMgr.GetLogicalVolumes())
-            {
-                if (vol.PhysicalStartSector == startSector)
-                {
-                    WriteObject(vol);
-                }
+                WriteObject(vol);
             }
         }
     }

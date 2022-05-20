@@ -27,226 +27,225 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public class MirrorStream : SparseStream
 {
-    public class MirrorStream : SparseStream
+    private readonly bool _canRead;
+    private readonly bool _canSeek;
+    private readonly bool _canWrite;
+    private readonly long _length;
+    private readonly Ownership _ownsWrapped;
+    private List<SparseStream> _wrapped;
+
+    public MirrorStream(Ownership ownsWrapped, IEnumerable<SparseStream> wrapped)
     {
-        private readonly bool _canRead;
-        private readonly bool _canSeek;
-        private readonly bool _canWrite;
-        private readonly long _length;
-        private readonly Ownership _ownsWrapped;
-        private List<SparseStream> _wrapped;
+        _wrapped = new List<SparseStream>(wrapped);
+        _ownsWrapped = ownsWrapped;
 
-        public MirrorStream(Ownership ownsWrapped, IEnumerable<SparseStream> wrapped)
+        _canRead = _wrapped[0].CanRead;
+        _canWrite = _wrapped[0].CanWrite;
+        _canSeek = _wrapped[0].CanSeek;
+        _length = _wrapped[0].Length;
+
+        foreach (var stream in _wrapped)
         {
-            _wrapped = new List<SparseStream>(wrapped);
-            _ownsWrapped = ownsWrapped;
-
-            _canRead = _wrapped[0].CanRead;
-            _canWrite = _wrapped[0].CanWrite;
-            _canSeek = _wrapped[0].CanSeek;
-            _length = _wrapped[0].Length;
-
-            foreach (SparseStream stream in _wrapped)
+            if (stream.CanRead != _canRead || stream.CanWrite != _canWrite || stream.CanSeek != _canSeek)
             {
-                if (stream.CanRead != _canRead || stream.CanWrite != _canWrite || stream.CanSeek != _canSeek)
-                {
-                    throw new ArgumentException("All mirrored streams must have the same read/write/seek permissions",
-                        nameof(wrapped));
-                }
+                throw new ArgumentException("All mirrored streams must have the same read/write/seek permissions",
+                    nameof(wrapped));
+            }
 
-                if (stream.Length != _length)
-                {
-                    throw new ArgumentException("All mirrored streams must have the same length", nameof(wrapped));
-                }
+            if (stream.Length != _length)
+            {
+                throw new ArgumentException("All mirrored streams must have the same length", nameof(wrapped));
             }
         }
+    }
 
-        public override bool CanRead
+    public override bool CanRead
+    {
+        get { return _canRead; }
+    }
+
+    public override bool CanSeek
+    {
+        get { return _canSeek; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return _canWrite; }
+    }
+
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get { return _wrapped[0].Extents; }
+    }
+
+    public override long Length
+    {
+        get { return _length; }
+    }
+
+    public override long Position
+    {
+        get { return _wrapped[0].Position; }
+
+        set { _wrapped[0].Position = value; }
+    }
+
+    public override void Flush()
+    {
+        foreach (var stream in _wrapped)
         {
-            get { return _canRead; }
+            stream.Flush();
         }
+    }
 
-        public override bool CanSeek
-        {
-            get { return _canSeek; }
-        }
-
-        public override bool CanWrite
-        {
-            get { return _canWrite; }
-        }
-
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get { return _wrapped[0].Extents; }
-        }
-
-        public override long Length
-        {
-            get { return _length; }
-        }
-
-        public override long Position
-        {
-            get { return _wrapped[0].Position; }
-
-            set { _wrapped[0].Position = value; }
-        }
-
-        public override void Flush()
-        {
-            foreach (var stream in _wrapped)
-            {
-                stream.Flush();
-            }
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return _wrapped[0].Read(buffer, offset, count);
-        }
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        return _wrapped[0].Read(buffer, offset, count);
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return _wrapped[0].ReadAsync(buffer, offset, count, cancellationToken);
-        }
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        return _wrapped[0].ReadAsync(buffer, offset, count, cancellationToken);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-        {
-            return _wrapped[0].ReadAsync(buffer, cancellationToken);
-        }
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        return _wrapped[0].ReadAsync(buffer, cancellationToken);
+    }
 
-        public override int Read(Span<byte> buffer)
-        {
-            return _wrapped[0].Read(buffer);
-        }
+    public override int Read(Span<byte> buffer)
+    {
+        return _wrapped[0].Read(buffer);
+    }
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        return _wrapped[0].Seek(offset, origin);
+    }
+
+    public override void SetLength(long value)
+    {
+        if (value != _length)
         {
-            return _wrapped[0].Seek(offset, origin);
+            throw new InvalidOperationException("Changing the stream length is not permitted for mirrored streams");
+        }
+    }
+
+    public override void Clear(int count)
+    {
+        var pos = _wrapped[0].Position;
+
+        if (pos + count > _length)
+        {
+            throw new IOException("Attempt to clear beyond end of mirrored stream");
         }
 
-        public override void SetLength(long value)
+        foreach (var stream in _wrapped)
         {
-            if (value != _length)
-            {
-                throw new InvalidOperationException("Changing the stream length is not permitted for mirrored streams");
-            }
+            stream.Position = pos;
+            stream.Clear(count);
+        }
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        var pos = _wrapped[0].Position;
+
+        if (pos + count > _length)
+        {
+            throw new IOException("Attempt to write beyond end of mirrored stream");
         }
 
-        public override void Clear(int count)
+        foreach (var stream in _wrapped)
         {
-            long pos = _wrapped[0].Position;
-
-            if (pos + count > _length)
-            {
-                throw new IOException("Attempt to clear beyond end of mirrored stream");
-            }
-
-            foreach (SparseStream stream in _wrapped)
-            {
-                stream.Position = pos;
-                stream.Clear(count);
-            }
+            stream.Position = pos;
+            stream.Write(buffer, offset, count);
         }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            long pos = _wrapped[0].Position;
-
-            if (pos + count > _length)
-            {
-                throw new IOException("Attempt to write beyond end of mirrored stream");
-            }
-
-            foreach (SparseStream stream in _wrapped)
-            {
-                stream.Position = pos;
-                stream.Write(buffer, offset, count);
-            }
-        }
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        var pos = _wrapped[0].Position;
+
+        if (pos + count > _length)
         {
-            long pos = _wrapped[0].Position;
-
-            if (pos + count > _length)
-            {
-                throw new IOException("Attempt to write beyond end of mirrored stream");
-            }
-
-            return Task.WhenAll(_wrapped.Select(stream =>
-            {
-                stream.Position = pos;
-                return stream.WriteAsync(buffer, offset, count, cancellationToken);
-            }));
+            throw new IOException("Attempt to write beyond end of mirrored stream");
         }
+
+        return Task.WhenAll(_wrapped.Select(stream =>
+        {
+            stream.Position = pos;
+            return stream.WriteAsync(buffer, offset, count, cancellationToken);
+        }));
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var pos = _wrapped[0].Position;
+
+        if (pos + buffer.Length > _length)
         {
-            long pos = _wrapped[0].Position;
-
-            if (pos + buffer.Length > _length)
-            {
-                throw new IOException("Attempt to write beyond end of mirrored stream");
-            }
-
-            return new(Task.WhenAll(_wrapped.Select(stream =>
-            {
-                stream.Position = pos;
-                return stream.WriteAsync(buffer, cancellationToken).AsTask();
-            })));
+            throw new IOException("Attempt to write beyond end of mirrored stream");
         }
 
-        public override void Write(ReadOnlySpan<byte> buffer)
+        return new(Task.WhenAll(_wrapped.Select(stream =>
         {
-            long pos = _wrapped[0].Position;
+            stream.Position = pos;
+            return stream.WriteAsync(buffer, cancellationToken).AsTask();
+        })));
+    }
 
-            if (pos + buffer.Length > _length)
-            {
-                throw new IOException("Attempt to write beyond end of mirrored stream");
-            }
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        var pos = _wrapped[0].Position;
 
-            foreach (SparseStream stream in _wrapped)
-            {
-                stream.Position = pos;
-                stream.Write(buffer);
-            }
+        if (pos + buffer.Length > _length)
+        {
+            throw new IOException("Attempt to write beyond end of mirrored stream");
         }
+
+        foreach (var stream in _wrapped)
+        {
+            stream.Position = pos;
+            stream.Write(buffer);
+        }
+    }
 #endif
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task FlushAsync(CancellationToken cancellationToken) =>
-            Task.WhenAll(_wrapped.Select(stream => stream.FlushAsync(cancellationToken)));
+    public override Task FlushAsync(CancellationToken cancellationToken) =>
+        Task.WhenAll(_wrapped.Select(stream => stream.FlushAsync(cancellationToken)));
 #endif
 
-        protected override void Dispose(bool disposing)
+    protected override void Dispose(bool disposing)
+    {
+        try
         {
-            try
+            if (disposing && _ownsWrapped == Ownership.Dispose && _wrapped != null)
             {
-                if (disposing && _ownsWrapped == Ownership.Dispose && _wrapped != null)
+                foreach (var stream in _wrapped)
                 {
-                    foreach (SparseStream stream in _wrapped)
-                    {
-                        stream.Dispose();
-                    }
-
-                    _wrapped = null;
+                    stream.Dispose();
                 }
+
+                _wrapped = null;
             }
-            finally
-            {
-                base.Dispose(disposing);
-            }
+        }
+        finally
+        {
+            base.Dispose(disposing);
         }
     }
 }

@@ -27,440 +27,438 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+/// <summary>
+/// Represents a sparse stream.
+/// </summary>
+/// <remarks>A sparse stream is a logically contiguous stream where some parts of the stream
+/// aren't stored.  The unstored parts are implicitly zero-byte ranges.</remarks>
+public abstract class SparseStream : Stream
 {
+    public event EventHandler Disposing;
+
+    public event EventHandler Disposed;
+
     /// <summary>
-    /// Represents a sparse stream.
+    /// Gets the parts of the stream that are stored.
     /// </summary>
-    /// <remarks>A sparse stream is a logically contiguous stream where some parts of the stream
-    /// aren't stored.  The unstored parts are implicitly zero-byte ranges.</remarks>
-    public abstract class SparseStream : Stream
+    /// <remarks>This may be an empty enumeration if all bytes are zero.</remarks>
+    public abstract IEnumerable<StreamExtent> Extents { get; }
+
+    /// <summary>
+    /// Converts any stream into a sparse stream.
+    /// </summary>
+    /// <param name="stream">The stream to convert.</param>
+    /// <param name="takeOwnership"><c>true</c> to have the new stream dispose the wrapped
+    /// stream when it is disposed.</param>
+    /// <returns>A sparse stream.</returns>
+    /// <remarks>The returned stream has the entire wrapped stream as a
+    /// single extent.</remarks>
+    public static SparseStream FromStream(Stream stream, Ownership takeOwnership)
     {
-        public event EventHandler Disposing;
+        return new SparseWrapperStream(stream, takeOwnership, null);
+    }
 
-        public event EventHandler Disposed;
+    /// <summary>
+    /// Converts any stream into a sparse stream.
+    /// </summary>
+    /// <param name="stream">The stream to convert.</param>
+    /// <param name="takeOwnership"><c>true</c> to have the new stream dispose the wrapped
+    /// stream when it is disposed.</param>
+    /// <param name="extents">The set of extents actually stored in <c>stream</c>.</param>
+    /// <returns>A sparse stream.</returns>
+    /// <remarks>The returned stream has the entire wrapped stream as a
+    /// single extent.</remarks>
+    public static SparseStream FromStream(Stream stream, Ownership takeOwnership, IEnumerable<StreamExtent> extents)
+    {
+        return new SparseWrapperStream(stream, takeOwnership, extents);
+    }
 
-        /// <summary>
-        /// Gets the parts of the stream that are stored.
-        /// </summary>
-        /// <remarks>This may be an empty enumeration if all bytes are zero.</remarks>
-        public abstract IEnumerable<StreamExtent> Extents { get; }
+    /// <summary>
+    /// Efficiently pumps data from a sparse stream to another stream.
+    /// </summary>
+    /// <param name="inStream">The sparse stream to pump from.</param>
+    /// <param name="outStream">The stream to pump to.</param>
+    /// <remarks><paramref name="outStream"/> must support seeking.</remarks>
+    public static void Pump(Stream inStream, Stream outStream)
+    {
+        Pump(inStream, outStream, Sizes.Sector);
+    }
 
-        /// <summary>
-        /// Converts any stream into a sparse stream.
-        /// </summary>
-        /// <param name="stream">The stream to convert.</param>
-        /// <param name="takeOwnership"><c>true</c> to have the new stream dispose the wrapped
-        /// stream when it is disposed.</param>
-        /// <returns>A sparse stream.</returns>
-        /// <remarks>The returned stream has the entire wrapped stream as a
-        /// single extent.</remarks>
-        public static SparseStream FromStream(Stream stream, Ownership takeOwnership)
+    /// <summary>
+    /// Efficiently pumps data from a sparse stream to another stream.
+    /// </summary>
+    /// <param name="inStream">The stream to pump from.</param>
+    /// <param name="outStream">The stream to pump to.</param>
+    /// <param name="chunkSize">The smallest sequence of zero bytes that will be skipped when writing to <paramref name="outStream"/>.</param>
+    /// <remarks><paramref name="outStream"/> must support seeking.</remarks>
+    public static void Pump(Stream inStream, Stream outStream, int chunkSize)
+    {
+        var pump = new StreamPump(inStream, outStream, chunkSize);
+        pump.Run();
+    }
+
+    /// <summary>
+    /// Wraps a sparse stream in a read-only wrapper, preventing modification.
+    /// </summary>
+    /// <param name="toWrap">The stream to make read-only.</param>
+    /// <param name="ownership">Whether to transfer responsibility for calling Dispose on <c>toWrap</c>.</param>
+    /// <returns>The read-only stream.</returns>
+    public static SparseStream ReadOnly(SparseStream toWrap, Ownership ownership)
+    {
+        if (toWrap is SparseReadOnlyWrapperStream)
         {
-            return new SparseWrapperStream(stream, takeOwnership, null);
+            return toWrap;
         }
+        return new SparseReadOnlyWrapperStream(toWrap, ownership);
+    }
 
-        /// <summary>
-        /// Converts any stream into a sparse stream.
-        /// </summary>
-        /// <param name="stream">The stream to convert.</param>
-        /// <param name="takeOwnership"><c>true</c> to have the new stream dispose the wrapped
-        /// stream when it is disposed.</param>
-        /// <param name="extents">The set of extents actually stored in <c>stream</c>.</param>
-        /// <returns>A sparse stream.</returns>
-        /// <remarks>The returned stream has the entire wrapped stream as a
-        /// single extent.</remarks>
-        public static SparseStream FromStream(Stream stream, Ownership takeOwnership, IEnumerable<StreamExtent> extents)
-        {
-            return new SparseWrapperStream(stream, takeOwnership, extents);
-        }
+    /// <summary>
+    /// Clears bytes from the stream.
+    /// </summary>
+    /// <param name="count">The number of bytes (from the current position) to clear.</param>
+    /// <remarks>
+    /// <para>Logically equivalent to writing <c>count</c> null/zero bytes to the stream, some
+    /// implementations determine that some (or all) of the range indicated is not actually
+    /// stored.  There is no direct, automatic, correspondence to clearing bytes and them
+    /// not being represented as an 'extent' - for example, the implementation of the underlying
+    /// stream may not permit fine-grained extent storage.</para>
+    /// <para>It is always safe to call this method to 'zero-out' a section of a stream, regardless of
+    /// the underlying stream implementation.</para>
+    /// </remarks>
+    public virtual void Clear(int count)
+    {
+        Write(new byte[count], 0, count);
+    }
 
-        /// <summary>
-        /// Efficiently pumps data from a sparse stream to another stream.
-        /// </summary>
-        /// <param name="inStream">The sparse stream to pump from.</param>
-        /// <param name="outStream">The stream to pump to.</param>
-        /// <remarks><paramref name="outStream"/> must support seeking.</remarks>
-        public static void Pump(Stream inStream, Stream outStream)
-        {
-            Pump(inStream, outStream, Sizes.Sector);
-        }
-
-        /// <summary>
-        /// Efficiently pumps data from a sparse stream to another stream.
-        /// </summary>
-        /// <param name="inStream">The stream to pump from.</param>
-        /// <param name="outStream">The stream to pump to.</param>
-        /// <param name="chunkSize">The smallest sequence of zero bytes that will be skipped when writing to <paramref name="outStream"/>.</param>
-        /// <remarks><paramref name="outStream"/> must support seeking.</remarks>
-        public static void Pump(Stream inStream, Stream outStream, int chunkSize)
-        {
-            StreamPump pump = new StreamPump(inStream, outStream, chunkSize);
-            pump.Run();
-        }
-
-        /// <summary>
-        /// Wraps a sparse stream in a read-only wrapper, preventing modification.
-        /// </summary>
-        /// <param name="toWrap">The stream to make read-only.</param>
-        /// <param name="ownership">Whether to transfer responsibility for calling Dispose on <c>toWrap</c>.</param>
-        /// <returns>The read-only stream.</returns>
-        public static SparseStream ReadOnly(SparseStream toWrap, Ownership ownership)
-        {
-            if (toWrap is SparseReadOnlyWrapperStream)
-            {
-                return toWrap;
-            }
-            return new SparseReadOnlyWrapperStream(toWrap, ownership);
-        }
-
-        /// <summary>
-        /// Clears bytes from the stream.
-        /// </summary>
-        /// <param name="count">The number of bytes (from the current position) to clear.</param>
-        /// <remarks>
-        /// <para>Logically equivalent to writing <c>count</c> null/zero bytes to the stream, some
-        /// implementations determine that some (or all) of the range indicated is not actually
-        /// stored.  There is no direct, automatic, correspondence to clearing bytes and them
-        /// not being represented as an 'extent' - for example, the implementation of the underlying
-        /// stream may not permit fine-grained extent storage.</para>
-        /// <para>It is always safe to call this method to 'zero-out' a section of a stream, regardless of
-        /// the underlying stream implementation.</para>
-        /// </remarks>
-        public virtual void Clear(int count)
-        {
-            Write(new byte[count], 0, count);
-        }
-
-        /// <summary>
-        /// Gets the parts of a stream that are stored, within a specified range.
-        /// </summary>
-        /// <param name="start">The offset of the first byte of interest.</param>
-        /// <param name="count">The number of bytes of interest.</param>
-        /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
-        public virtual IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
-        {
-            return StreamExtent.Intersect(Extents, new[] { new StreamExtent(start, count) });
-        }
+    /// <summary>
+    /// Gets the parts of a stream that are stored, within a specified range.
+    /// </summary>
+    /// <param name="start">The offset of the first byte of interest.</param>
+    /// <param name="count">The number of bytes of interest.</param>
+    /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
+    public virtual IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    {
+        return StreamExtent.Intersect(Extents, new StreamExtent(start, count));
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
-            ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+    public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+        ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
 
-        public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
+    public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
 
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-            Task.FromResult(Read(buffer, offset, count));
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+        Task.FromResult(Read(buffer, offset, count));
 
-        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
-            WriteAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+    public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+        WriteAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
 
-        public override void EndWrite(IAsyncResult asyncResult) => ((Task)asyncResult).Wait();
+    public override void EndWrite(IAsyncResult asyncResult) => ((Task)asyncResult).Wait();
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            Write(buffer, offset, count);
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        Write(buffer, offset, count);
 #if NET461_OR_GREATER || NETSTANDARD || NETCOREAPP
-            return Task.CompletedTask;
+        return Task.CompletedTask;
 #else
-            return Task.FromResult(0);
+        return Task.FromResult(0);
 #endif
+    }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+    public override int ReadByte()
+    {
+        byte b = 0;
+        if (Read(MemoryMarshal.CreateSpan(ref b, sizeof(byte))) != 1)
+        {
+            return -1;
+        }
+        return b;
+    }
+
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+        new(Read(buffer.Span));
+
+    public override void WriteByte(byte value) => base.Write(MemoryMarshal.CreateReadOnlySpan(ref value, sizeof(byte)));
+
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        Write(buffer.Span);
+        return new();
+    }
+#endif
+
+    private class SparseReadOnlyWrapperStream : SparseStream
+    {
+        private readonly Ownership _ownsWrapped;
+        private SparseStream _wrapped;
+
+        public SparseReadOnlyWrapperStream(SparseStream wrapped, Ownership ownsWrapped)
+        {
+            _wrapped = wrapped;
+            _ownsWrapped = ownsWrapped;
+        }
+
+        public override bool CanRead
+        {
+            get { return _wrapped.CanRead; }
+        }
+
+        public override bool CanSeek
+        {
+            get { return _wrapped.CanSeek; }
+        }
+
+        public override bool CanWrite
+        {
+            get { return false; }
+        }
+
+        public override IEnumerable<StreamExtent> Extents
+        {
+            get { return _wrapped.Extents; }
+        }
+
+        public override long Length
+        {
+            get { return _wrapped.Length; }
+        }
+
+        public override long Position
+        {
+            get { return _wrapped.Position; }
+
+            set { _wrapped.Position = value; }
+        }
+
+        public override void Flush() {}
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return _wrapped.Read(buffer, offset, count);
+        }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
         }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override int ReadByte()
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
         {
-            byte b = 0;
-            if (Read(MemoryMarshal.CreateSpan(ref b, sizeof(byte))) != 1)
-            {
-                return -1;
-            }
-            return b;
+            return _wrapped.ReadAsync(buffer, cancellationToken);
         }
 
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
-            new(Read(buffer.Span));
-
-        public override void WriteByte(byte value) => base.Write(MemoryMarshal.CreateReadOnlySpan(ref value, sizeof(byte)));
-
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        public override int Read(Span<byte> buffer)
         {
-            Write(buffer.Span);
-            return new();
+            return _wrapped.Read(buffer);
         }
 #endif
 
-        private class SparseReadOnlyWrapperStream : SparseStream
+        public override long Seek(long offset, SeekOrigin origin)
         {
-            private readonly Ownership _ownsWrapped;
-            private SparseStream _wrapped;
-
-            public SparseReadOnlyWrapperStream(SparseStream wrapped, Ownership ownsWrapped)
-            {
-                _wrapped = wrapped;
-                _ownsWrapped = ownsWrapped;
-            }
-
-            public override bool CanRead
-            {
-                get { return _wrapped.CanRead; }
-            }
-
-            public override bool CanSeek
-            {
-                get { return _wrapped.CanSeek; }
-            }
-
-            public override bool CanWrite
-            {
-                get { return false; }
-            }
-
-            public override IEnumerable<StreamExtent> Extents
-            {
-                get { return _wrapped.Extents; }
-            }
-
-            public override long Length
-            {
-                get { return _wrapped.Length; }
-            }
-
-            public override long Position
-            {
-                get { return _wrapped.Position; }
-
-                set { _wrapped.Position = value; }
-            }
-
-            public override void Flush() {}
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                return _wrapped.Read(buffer, offset, count);
-            }
-
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
-            }
-#endif
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-            {
-                return _wrapped.ReadAsync(buffer, cancellationToken);
-            }
-
-            public override int Read(Span<byte> buffer)
-            {
-                return _wrapped.Read(buffer);
-            }
-#endif
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                return _wrapped.Seek(offset, origin);
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new InvalidOperationException("Attempt to change length of read-only stream");
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                throw new InvalidOperationException("Attempt to write to read-only stream");
-            }
-
-            protected override void Dispose(bool disposing)
-            {
-                try
-                {
-                    if (disposing && _ownsWrapped == Ownership.Dispose && _wrapped != null)
-                    {
-                        _wrapped.Dispose();
-                        _wrapped = null;
-                    }
-                }
-                finally
-                {
-                    base.Dispose(disposing);
-                }
-            }
+            return _wrapped.Seek(offset, origin);
         }
 
-        private class SparseWrapperStream : SparseStream
+        public override void SetLength(long value)
         {
-            private readonly List<StreamExtent> _extents;
-            private readonly Ownership _ownsWrapped;
-            private Stream _wrapped;
+            throw new InvalidOperationException("Attempt to change length of read-only stream");
+        }
 
-            public SparseWrapperStream(Stream wrapped, Ownership ownsWrapped, IEnumerable<StreamExtent> extents)
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new InvalidOperationException("Attempt to write to read-only stream");
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            try
             {
-                _wrapped = wrapped;
-                _ownsWrapped = ownsWrapped;
-                if (extents != null)
+                if (disposing && _ownsWrapped == Ownership.Dispose && _wrapped != null)
                 {
-                    _extents = new List<StreamExtent>(extents);
-                }
-            }
-
-            public override bool CanRead
-            {
-                get { return _wrapped.CanRead; }
-            }
-
-            public override bool CanSeek
-            {
-                get { return _wrapped.CanSeek; }
-            }
-
-            public override bool CanWrite
-            {
-                get { return _wrapped.CanWrite; }
-            }
-
-            public override IEnumerable<StreamExtent> Extents
-            {
-                get
-                {
-                    if (_extents != null)
-                    {
-                        return _extents;
-                    }
-                    SparseStream wrappedAsSparse = _wrapped as SparseStream;
-                    if (wrappedAsSparse != null)
-                    {
-                        return wrappedAsSparse.Extents;
-                    }
-                    return new[] { new StreamExtent(0, _wrapped.Length) };
-                }
-            }
-
-            public override long Length
-            {
-                get { return _wrapped.Length; }
-            }
-
-            public override long Position
-            {
-                get { return _wrapped.Position; }
-
-                set { _wrapped.Position = value; }
-            }
-
-            public override void Flush()
-            {
-                _wrapped.Flush();
-            }
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                return _wrapped.Read(buffer, offset, count);
-            }
-
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
-            }
-#endif
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-            {
-                return _wrapped.ReadAsync(buffer, cancellationToken);
-            }
-
-            public override int Read(Span<byte> buffer)
-            {
-                return _wrapped.Read(buffer);
-            }
-#endif
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                return _wrapped.Seek(offset, origin);
-            }
-
-            public override void SetLength(long value)
-            {
-                _wrapped.SetLength(value);
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                if (_extents != null)
-                {
-                    throw new InvalidOperationException("Attempt to write to stream with explicit extents");
-                }
-
-                _wrapped.Write(buffer, offset, count);
-            }
-
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                if (_extents != null)
-                {
-                    throw new InvalidOperationException("Attempt to write to stream with explicit extents");
-                }
-
-                return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
-            }
-#endif
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-            public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
-            {
-                if (_extents != null)
-                {
-                    throw new InvalidOperationException("Attempt to write to stream with explicit extents");
-                }
-
-                return _wrapped.WriteAsync(buffer, cancellationToken);
-            }
-
-            public override void Write(ReadOnlySpan<byte> buffer)
-            {
-                if (_extents != null)
-                {
-                    throw new InvalidOperationException("Attempt to write to stream with explicit extents");
-                }
-
-                _wrapped.Write(buffer);
-            }
-#endif
-
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-            public override Task FlushAsync(CancellationToken cancellationToken) =>
-                _wrapped.FlushAsync(cancellationToken);
-#endif
-
-            protected override void Dispose(bool disposing)
-            {
-                try
-                {
-                    Disposing?.Invoke(this, EventArgs.Empty);
-
-                    if (disposing && _ownsWrapped == Ownership.Dispose && _wrapped != null)
-                    {
-                        _wrapped.Dispose();
-                    }
-
+                    _wrapped.Dispose();
                     _wrapped = null;
                 }
-                finally
-                {
-                    base.Dispose(disposing);
+            }
+            finally
+            {
+                base.Dispose(disposing);
+            }
+        }
+    }
 
-                    if (disposing)
-                    {
-                        Disposed?.Invoke(this, EventArgs.Empty);
-                    }
+    private class SparseWrapperStream : SparseStream
+    {
+        private readonly List<StreamExtent> _extents;
+        private readonly Ownership _ownsWrapped;
+        private Stream _wrapped;
+
+        public SparseWrapperStream(Stream wrapped, Ownership ownsWrapped, IEnumerable<StreamExtent> extents)
+        {
+            _wrapped = wrapped;
+            _ownsWrapped = ownsWrapped;
+            if (extents != null)
+            {
+                _extents = new List<StreamExtent>(extents);
+            }
+        }
+
+        public override bool CanRead
+        {
+            get { return _wrapped.CanRead; }
+        }
+
+        public override bool CanSeek
+        {
+            get { return _wrapped.CanSeek; }
+        }
+
+        public override bool CanWrite
+        {
+            get { return _wrapped.CanWrite; }
+        }
+
+        public override IEnumerable<StreamExtent> Extents
+        {
+            get
+            {
+                if (_extents != null)
+                {
+                    return _extents;
+                }
+                if (_wrapped is SparseStream wrappedAsSparse)
+                {
+                    return wrappedAsSparse.Extents;
+                }
+                return new[] { new StreamExtent(0, _wrapped.Length) };
+            }
+        }
+
+        public override long Length
+        {
+            get { return _wrapped.Length; }
+        }
+
+        public override long Position
+        {
+            get { return _wrapped.Position; }
+
+            set { _wrapped.Position = value; }
+        }
+
+        public override void Flush()
+        {
+            _wrapped.Flush();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return _wrapped.Read(buffer, offset, count);
+        }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            return _wrapped.ReadAsync(buffer, cancellationToken);
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            return _wrapped.Read(buffer);
+        }
+#endif
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            return _wrapped.Seek(offset, origin);
+        }
+
+        public override void SetLength(long value)
+        {
+            _wrapped.SetLength(value);
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            if (_extents != null)
+            {
+                throw new InvalidOperationException("Attempt to write to stream with explicit extents");
+            }
+
+            _wrapped.Write(buffer, offset, count);
+        }
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (_extents != null)
+            {
+                throw new InvalidOperationException("Attempt to write to stream with explicit extents");
+            }
+
+            return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
+        }
+#endif
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_extents != null)
+            {
+                throw new InvalidOperationException("Attempt to write to stream with explicit extents");
+            }
+
+            return _wrapped.WriteAsync(buffer, cancellationToken);
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            if (_extents != null)
+            {
+                throw new InvalidOperationException("Attempt to write to stream with explicit extents");
+            }
+
+            _wrapped.Write(buffer);
+        }
+#endif
+
+#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+        public override Task FlushAsync(CancellationToken cancellationToken) =>
+            _wrapped.FlushAsync(cancellationToken);
+#endif
+
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                Disposing?.Invoke(this, EventArgs.Empty);
+
+                if (disposing && _ownsWrapped == Ownership.Dispose && _wrapped != null)
+                {
+                    _wrapped.Dispose();
+                }
+
+                _wrapped = null;
+            }
+            finally
+            {
+                base.Dispose(disposing);
+
+                if (disposing)
+                {
+                    Disposed?.Invoke(this, EventArgs.Empty);
                 }
             }
         }

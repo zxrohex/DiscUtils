@@ -22,36 +22,26 @@
 
 using System.Text;
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal sealed class RockRidgeExtension : SuspExtension
 {
-    internal sealed class RockRidgeExtension : SuspExtension
+    public RockRidgeExtension(string identifier)
     {
-        public RockRidgeExtension(string identifier)
+        Identifier = identifier;
+    }
+
+    public override string Identifier { get; }
+
+    public override SystemUseEntry Parse(string name, byte length, byte version, byte[] data, int offset, Encoding encoding)
+    {
+        return name switch
         {
-            Identifier = identifier;
-        }
-
-        public override string Identifier { get; }
-
-        public override SystemUseEntry Parse(string name, byte length, byte version, byte[] data, int offset, Encoding encoding)
-        {
-            switch (name)
-            {
-                case "PX":
-                    return new PosixFileInfoSystemUseEntry(name, length, version, data, offset);
-
-                case "NM":
-                    return new PosixNameSystemUseEntry(name, length, version, data, offset);
-
-                case "CL":
-                    return new ChildLinkSystemUseEntry(name, length, version, data, offset);
-
-                case "TF":
-                    return new FileTimeSystemUseEntry(name, length, version, data, offset);
-
-                default:
-                    return new GenericSystemUseEntry(name, length, version, data, offset);
-            }
-        }
+            "PX" => new PosixFileInfoSystemUseEntry(name, length, version, data, offset),
+            "NM" => new PosixNameSystemUseEntry(name, length, version, data, offset),
+            "CL" => new ChildLinkSystemUseEntry(name, length, version, data, offset),
+            "TF" => new FileTimeSystemUseEntry(name, length, version, data, offset),
+            _ => new GenericSystemUseEntry(name, length, version, data, offset),
+        };
     }
 }

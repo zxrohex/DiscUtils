@@ -23,68 +23,67 @@
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class ProtocolDataUnit
 {
-    internal class ProtocolDataUnit
+    public ProtocolDataUnit(byte[] headerData, byte[] contentData)
     {
-        public ProtocolDataUnit(byte[] headerData, byte[] contentData)
+        HeaderData = headerData;
+        ContentData = contentData;
+    }
+
+    public byte[] ContentData { get; }
+
+    public byte[] HeaderData { get; }
+
+    public OpCode OpCode
+    {
+        get { return (OpCode)(HeaderData[0] & 0x3F); }
+    }
+
+    public static ProtocolDataUnit ReadFrom(Stream stream, bool headerDigestEnabled, bool dataDigestEnabled)
+    {
+        var numRead = 0;
+
+        var headerData = StreamUtilities.ReadExact(stream, 48);
+        numRead += 48;
+
+        byte[] contentData = null;
+
+        if (headerDigestEnabled)
         {
-            HeaderData = headerData;
-            ContentData = contentData;
+            var digest = ReadDigest(stream);
+            numRead += 4;
         }
 
-        public byte[] ContentData { get; }
+        var bhs = new BasicHeaderSegment();
+        bhs.ReadFrom(headerData, 0);
 
-        public byte[] HeaderData { get; }
-
-        public OpCode OpCode
+        if (bhs.DataSegmentLength > 0)
         {
-            get { return (OpCode)(HeaderData[0] & 0x3F); }
-        }
+            contentData = StreamUtilities.ReadExact(stream, bhs.DataSegmentLength);
+            numRead += bhs.DataSegmentLength;
 
-        public static ProtocolDataUnit ReadFrom(Stream stream, bool headerDigestEnabled, bool dataDigestEnabled)
-        {
-            int numRead = 0;
-
-            byte[] headerData = StreamUtilities.ReadExact(stream, 48);
-            numRead += 48;
-
-            byte[] contentData = null;
-
-            if (headerDigestEnabled)
+            if (dataDigestEnabled)
             {
-                uint digest = ReadDigest(stream);
+                var digest = ReadDigest(stream);
                 numRead += 4;
             }
-
-            BasicHeaderSegment bhs = new BasicHeaderSegment();
-            bhs.ReadFrom(headerData, 0);
-
-            if (bhs.DataSegmentLength > 0)
-            {
-                contentData = StreamUtilities.ReadExact(stream, bhs.DataSegmentLength);
-                numRead += bhs.DataSegmentLength;
-
-                if (dataDigestEnabled)
-                {
-                    uint digest = ReadDigest(stream);
-                    numRead += 4;
-                }
-            }
-
-            int rem = 4 - numRead % 4;
-            if (rem != 4)
-            {
-                StreamUtilities.ReadExact(stream, rem);
-            }
-
-            return new ProtocolDataUnit(headerData, contentData);
         }
 
-        private static uint ReadDigest(Stream stream)
+        var rem = 4 - numRead % 4;
+        if (rem != 4)
         {
-            byte[] data = StreamUtilities.ReadExact(stream, 4);
-            return EndianUtilities.ToUInt32BigEndian(data, 0);
+            StreamUtilities.ReadExact(stream, rem);
         }
+
+        return new ProtocolDataUnit(headerData, contentData);
+    }
+
+    private static uint ReadDigest(Stream stream)
+    {
+        var data = StreamUtilities.ReadExact(stream, 4);
+        return EndianUtilities.ToUInt32BigEndian(data, 0);
     }
 }

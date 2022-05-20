@@ -26,53 +26,52 @@ using DiscUtils.BootConfig;
 using DiscUtils.Common;
 using DiscUtils.Registry;
 
-namespace BCDDump
+namespace BCDDump;
+
+class Program : ProgramBase
 {
-    class Program : ProgramBase
+    private CommandLineParameter _bcdFile;
+
+    static void Main(string[] args)
     {
-        private CommandLineParameter _bcdFile;
+        var program = new Program();
+        program.Run(args);
+    }
 
-        static void Main(string[] args)
+    protected override ProgramBase.StandardSwitches DefineCommandLine(CommandLineParser parser)
+    {
+        _bcdFile = new CommandLineParameter("bcd_file", "Path to the BCD file to inspect.", false);
+
+        parser.AddParameter(_bcdFile);
+        return StandardSwitches.Default;
+    }
+
+    protected override void DoRun()
+    {
+        using var fileStream = File.OpenRead(_bcdFile.Value);
+        using var hive = new RegistryHive(fileStream);
+
+        var bcdDb = new Store(hive.Root);
+        foreach (var obj in bcdDb.Objects)
         {
-            Program program = new Program();
-            program.Run(args);
-        }
-
-        protected override ProgramBase.StandardSwitches DefineCommandLine(CommandLineParser parser)
-        {
-            _bcdFile = new CommandLineParameter("bcd_file", "Path to the BCD file to inspect.", false);
-
-            parser.AddParameter(_bcdFile);
-            return StandardSwitches.Default;
-        }
-
-        protected override void DoRun()
-        {
-            using var fileStream = File.OpenRead(_bcdFile.Value);
-            using var hive = new RegistryHive(fileStream);
-
-            Store bcdDb = new Store(hive.Root);
-            foreach (var obj in bcdDb.Objects)
+            Console.WriteLine(obj.FriendlyName + ":");
+            Console.WriteLine("               Id: " + obj.ToString());
+            Console.WriteLine("             Type: " + obj.ObjectType);
+            Console.WriteLine("   App Image Type: " + obj.ApplicationImageType);
+            Console.WriteLine("         App Type: " + obj.ApplicationType);
+            Console.WriteLine("  App can inherit: " + obj.IsInheritableBy(ObjectType.Application));
+            Console.WriteLine("  Dev can inherit: " + obj.IsInheritableBy(ObjectType.Device));
+            Console.WriteLine("  ELEMENTS");
+            foreach (var elem in obj.Elements)
             {
-                Console.WriteLine(obj.FriendlyName + ":");
-                Console.WriteLine("               Id: " + obj.ToString());
-                Console.WriteLine("             Type: " + obj.ObjectType);
-                Console.WriteLine("   App Image Type: " + obj.ApplicationImageType);
-                Console.WriteLine("         App Type: " + obj.ApplicationType);
-                Console.WriteLine("  App can inherit: " + obj.IsInheritableBy(ObjectType.Application));
-                Console.WriteLine("  Dev can inherit: " + obj.IsInheritableBy(ObjectType.Device));
-                Console.WriteLine("  ELEMENTS");
-                foreach (var elem in obj.Elements)
-                {
-                    Console.WriteLine("    " + elem.FriendlyName + ":");
-                    Console.WriteLine("          Id: " + elem.ToString());
-                    Console.WriteLine("       Class: " + elem.Class);
-                    Console.WriteLine("      Format: " + elem.Format);
-                    Console.WriteLine("       Value: " + elem.Value);
-                }
-
-                Console.WriteLine();
+                Console.WriteLine("    " + elem.FriendlyName + ":");
+                Console.WriteLine("          Id: " + elem.ToString());
+                Console.WriteLine("       Class: " + elem.Class);
+                Console.WriteLine("      Format: " + elem.Format);
+                Console.WriteLine("       Value: " + elem.Value);
             }
+
+            Console.WriteLine();
         }
     }
 }

@@ -1,9 +1,8 @@
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+internal enum ExtentAccess
 {
-    internal enum ExtentAccess
-    {
-        None = 0,
-        ReadOnly = 1,
-        ReadWrite = 2
-    }
+    None = 0,
+    ReadOnly = 1,
+    ReadWrite = 2
 }

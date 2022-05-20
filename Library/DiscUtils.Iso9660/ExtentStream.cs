@@ -25,150 +25,149 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal class ExtentStream : Stream
 {
-    internal class ExtentStream : Stream
+    private readonly uint _dataLength;
+    private readonly byte _fileUnitSize;
+    private readonly byte _interleaveGapSize;
+
+    private readonly Stream _isoStream;
+    private long _position;
+
+    private readonly uint _startBlock;
+
+    public ExtentStream(Stream isoStream, uint startBlock, uint dataLength, byte fileUnitSize,
+                        byte interleaveGapSize)
     {
-        private readonly uint _dataLength;
-        private readonly byte _fileUnitSize;
-        private readonly byte _interleaveGapSize;
+        _isoStream = isoStream;
+        _startBlock = startBlock;
+        _dataLength = dataLength;
+        _fileUnitSize = fileUnitSize;
+        _interleaveGapSize = interleaveGapSize;
 
-        private readonly Stream _isoStream;
-        private long _position;
-
-        private readonly uint _startBlock;
-
-        public ExtentStream(Stream isoStream, uint startBlock, uint dataLength, byte fileUnitSize,
-                            byte interleaveGapSize)
+        if (_fileUnitSize != 0 || _interleaveGapSize != 0)
         {
-            _isoStream = isoStream;
-            _startBlock = startBlock;
-            _dataLength = dataLength;
-            _fileUnitSize = fileUnitSize;
-            _interleaveGapSize = interleaveGapSize;
+            throw new NotSupportedException("Non-contiguous extents not supported");
+        }
+    }
 
-            if (_fileUnitSize != 0 || _interleaveGapSize != 0)
-            {
-                throw new NotSupportedException("Non-contiguous extents not supported");
-            }
+    public override bool CanRead
+    {
+        get { return true; }
+    }
+
+    public override bool CanSeek
+    {
+        get { return true; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
+
+    public override long Length
+    {
+        get { return _dataLength; }
+    }
+
+    public override long Position
+    {
+        get { return _position; }
+        set { _position = value; }
+    }
+
+    public override void Flush() {}
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        if (_position > _dataLength)
+        {
+            return 0;
         }
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
+        var toRead = (int)Math.Min((uint)count, _dataLength - _position);
 
-        public override bool CanSeek
-        {
-            get { return true; }
-        }
-
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
-
-        public override long Length
-        {
-            get { return _dataLength; }
-        }
-
-        public override long Position
-        {
-            get { return _position; }
-            set { _position = value; }
-        }
-
-        public override void Flush() {}
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (_position > _dataLength)
-            {
-                return 0;
-            }
-
-            int toRead = (int)Math.Min((uint)count, _dataLength - _position);
-
-            _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
-            int numRead = _isoStream.Read(buffer, offset, toRead);
-            _position += numRead;
-            return numRead;
-        }
+        _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
+        var numRead = _isoStream.Read(buffer, offset, toRead);
+        _position += numRead;
+        return numRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (_position > _dataLength)
         {
-            if (_position > _dataLength)
-            {
-                return 0;
-            }
-
-            int toRead = (int)Math.Min((uint)count, _dataLength - _position);
-
-            _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
-            int numRead = await _isoStream.ReadAsync(buffer, offset, toRead, cancellationToken).ConfigureAwait(false);
-            _position += numRead;
-            return numRead;
+            return 0;
         }
+
+        var toRead = (int)Math.Min((uint)count, _dataLength - _position);
+
+        _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
+        var numRead = await _isoStream.ReadAsync(buffer, offset, toRead, cancellationToken).ConfigureAwait(false);
+        _position += numRead;
+        return numRead;
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override int Read(Span<byte> buffer)
+    public override int Read(Span<byte> buffer)
+    {
+        if (_position > _dataLength)
         {
-            if (_position > _dataLength)
-            {
-                return 0;
-            }
-
-            int toRead = (int)Math.Min((uint)buffer.Length, _dataLength - _position);
-
-            _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
-            int numRead = _isoStream.Read(buffer[..toRead]);
-            _position += numRead;
-            return numRead;
+            return 0;
         }
 
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        var toRead = (int)Math.Min((uint)buffer.Length, _dataLength - _position);
+
+        _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
+        var numRead = _isoStream.Read(buffer[..toRead]);
+        _position += numRead;
+        return numRead;
+    }
+
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (_position > _dataLength)
         {
-            if (_position > _dataLength)
-            {
-                return 0;
-            }
-
-            int toRead = (int)Math.Min((uint)buffer.Length, _dataLength - _position);
-
-            _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
-            int numRead = await _isoStream.ReadAsync(buffer[..toRead], cancellationToken).ConfigureAwait(false);
-            _position += numRead;
-            return numRead;
+            return 0;
         }
+
+        var toRead = (int)Math.Min((uint)buffer.Length, _dataLength - _position);
+
+        _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
+        var numRead = await _isoStream.ReadAsync(buffer[..toRead], cancellationToken).ConfigureAwait(false);
+        _position += numRead;
+        return numRead;
+    }
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        var newPos = offset;
+        if (origin == SeekOrigin.Current)
         {
-            long newPos = offset;
-            if (origin == SeekOrigin.Current)
-            {
-                newPos += _position;
-            }
-            else if (origin == SeekOrigin.End)
-            {
-                newPos += _dataLength;
-            }
-
-            _position = newPos;
-            return newPos;
+            newPos += _position;
+        }
+        else if (origin == SeekOrigin.End)
+        {
+            newPos += _dataLength;
         }
 
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
+        _position = newPos;
+        return newPos;
+    }
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
+    public override void SetLength(long value)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
     }
 }

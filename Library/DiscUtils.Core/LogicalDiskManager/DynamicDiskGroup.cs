@@ -27,293 +27,291 @@ using System.IO;
 using DiscUtils.Partitions;
 using DiscUtils.Streams;
 
-namespace DiscUtils.LogicalDiskManager
+namespace DiscUtils.LogicalDiskManager;
+
+internal class DynamicDiskGroup : IDiagnosticTraceable
 {
-    internal class DynamicDiskGroup : IDiagnosticTraceable
+    private readonly Database _database;
+    private readonly Dictionary<Guid, DynamicDisk> _disks;
+    private readonly DiskGroupRecord _record;
+
+    internal DynamicDiskGroup(VirtualDisk disk)
     {
-        private readonly Database _database;
-        private readonly Dictionary<Guid, DynamicDisk> _disks;
-        private readonly DiskGroupRecord _record;
+        _disks = new Dictionary<Guid, DynamicDisk>();
 
-        internal DynamicDiskGroup(VirtualDisk disk)
+        var dynDisk = new DynamicDisk(disk);
+        _database = dynDisk.Database;
+        _disks.Add(dynDisk.Id, dynDisk);
+        _record = dynDisk.Database.GetDiskGroup(dynDisk.GroupId);
+    }
+
+    #region IDiagnosticTraceable Members
+
+    public void Dump(TextWriter writer, string linePrefix)
+    {
+        writer.WriteLine(linePrefix + "DISK GROUP (" + _record.Name + ")");
+        writer.WriteLine(linePrefix + "  Name: " + _record.Name);
+        writer.WriteLine(linePrefix + "  Flags: 0x" +
+                         (_record.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
+        writer.WriteLine(linePrefix + "  Database Id: " + _record.Id);
+        writer.WriteLine(linePrefix + "  Guid: " + _record.GroupGuidString);
+        writer.WriteLine();
+
+        writer.WriteLine(linePrefix + "  DISKS");
+        foreach (var disk in _database.Disks)
         {
-            _disks = new Dictionary<Guid, DynamicDisk>();
+            writer.WriteLine(linePrefix + "    DISK (" + disk.Name + ")");
+            writer.WriteLine(linePrefix + "      Name: " + disk.Name);
+            writer.WriteLine(linePrefix + "      Flags: 0x" +
+                             (disk.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
+            writer.WriteLine(linePrefix + "      Database Id: " + disk.Id);
+            writer.WriteLine(linePrefix + "      Guid: " + disk.DiskGuidString);
 
-            DynamicDisk dynDisk = new DynamicDisk(disk);
-            _database = dynDisk.Database;
-            _disks.Add(dynDisk.Id, dynDisk);
-            _record = dynDisk.Database.GetDiskGroup(dynDisk.GroupId);
+            if (_disks.TryGetValue(new Guid(disk.DiskGuidString), out var dynDisk))
+            {
+                writer.WriteLine(linePrefix + "      PRIVATE HEADER");
+                dynDisk.Dump(writer, linePrefix + "        ");
+            }
         }
 
-        #region IDiagnosticTraceable Members
-
-        public void Dump(TextWriter writer, string linePrefix)
+        writer.WriteLine(linePrefix + "  VOLUMES");
+        foreach (var vol in _database.Volumes)
         {
-            writer.WriteLine(linePrefix + "DISK GROUP (" + _record.Name + ")");
-            writer.WriteLine(linePrefix + "  Name: " + _record.Name);
-            writer.WriteLine(linePrefix + "  Flags: 0x" +
-                             (_record.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
-            writer.WriteLine(linePrefix + "  Database Id: " + _record.Id);
-            writer.WriteLine(linePrefix + "  Guid: " + _record.GroupGuidString);
-            writer.WriteLine();
+            writer.WriteLine(linePrefix + "    VOLUME (" + vol.Name + ")");
+            writer.WriteLine(linePrefix + "      Name: " + vol.Name);
+            writer.WriteLine(linePrefix + "      BIOS Type: " +
+                             vol.BiosType.ToString("X2", CultureInfo.InvariantCulture) + " [" +
+                             BiosPartitionTypes.ToString(vol.BiosType) + "]");
+            writer.WriteLine(linePrefix + "      Flags: 0x" +
+                             (vol.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
+            writer.WriteLine(linePrefix + "      Database Id: " + vol.Id);
+            writer.WriteLine(linePrefix + "      Guid: " + vol.VolumeGuid);
+            writer.WriteLine(linePrefix + "      State: " + vol.ActiveString);
+            writer.WriteLine(linePrefix + "      Drive Hint: " + vol.MountHint);
+            writer.WriteLine(linePrefix + "      Num Components: " + vol.ComponentCount);
+            writer.WriteLine(linePrefix + "      Link Id: " + vol.PartitionComponentLink);
 
-            writer.WriteLine(linePrefix + "  DISKS");
-            foreach (DiskRecord disk in _database.Disks)
+            writer.WriteLine(linePrefix + "      COMPONENTS");
+            foreach (var cmpnt in _database.GetVolumeComponents(vol.Id))
             {
-                writer.WriteLine(linePrefix + "    DISK (" + disk.Name + ")");
-                writer.WriteLine(linePrefix + "      Name: " + disk.Name);
-                writer.WriteLine(linePrefix + "      Flags: 0x" +
-                                 (disk.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
-                writer.WriteLine(linePrefix + "      Database Id: " + disk.Id);
-                writer.WriteLine(linePrefix + "      Guid: " + disk.DiskGuidString);
+                writer.WriteLine(linePrefix + "        COMPONENT (" + cmpnt.Name + ")");
+                writer.WriteLine(linePrefix + "          Name: " + cmpnt.Name);
+                writer.WriteLine(linePrefix + "          Flags: 0x" +
+                                 (cmpnt.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
+                writer.WriteLine(linePrefix + "          Database Id: " + cmpnt.Id);
+                writer.WriteLine(linePrefix + "          State: " + cmpnt.StatusString);
+                writer.WriteLine(linePrefix + "          Mode: " + cmpnt.MergeType);
+                writer.WriteLine(linePrefix + "          Num Extents: " + cmpnt.NumExtents);
+                writer.WriteLine(linePrefix + "          Link Id: " + cmpnt.LinkId);
+                writer.WriteLine(linePrefix + "          Stripe Size: " + cmpnt.StripeSizeSectors + " (Sectors)");
+                writer.WriteLine(linePrefix + "          Stripe Stride: " + cmpnt.StripeStride);
 
-                DynamicDisk dynDisk;
-                if (_disks.TryGetValue(new Guid(disk.DiskGuidString), out dynDisk))
+                writer.WriteLine(linePrefix + "          EXTENTS");
+                foreach (var extent in _database.GetComponentExtents(cmpnt.Id))
                 {
-                    writer.WriteLine(linePrefix + "      PRIVATE HEADER");
-                    dynDisk.Dump(writer, linePrefix + "        ");
-                }
-            }
-
-            writer.WriteLine(linePrefix + "  VOLUMES");
-            foreach (VolumeRecord vol in _database.Volumes)
-            {
-                writer.WriteLine(linePrefix + "    VOLUME (" + vol.Name + ")");
-                writer.WriteLine(linePrefix + "      Name: " + vol.Name);
-                writer.WriteLine(linePrefix + "      BIOS Type: " +
-                                 vol.BiosType.ToString("X2", CultureInfo.InvariantCulture) + " [" +
-                                 BiosPartitionTypes.ToString(vol.BiosType) + "]");
-                writer.WriteLine(linePrefix + "      Flags: 0x" +
-                                 (vol.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
-                writer.WriteLine(linePrefix + "      Database Id: " + vol.Id);
-                writer.WriteLine(linePrefix + "      Guid: " + vol.VolumeGuid);
-                writer.WriteLine(linePrefix + "      State: " + vol.ActiveString);
-                writer.WriteLine(linePrefix + "      Drive Hint: " + vol.MountHint);
-                writer.WriteLine(linePrefix + "      Num Components: " + vol.ComponentCount);
-                writer.WriteLine(linePrefix + "      Link Id: " + vol.PartitionComponentLink);
-
-                writer.WriteLine(linePrefix + "      COMPONENTS");
-                foreach (ComponentRecord cmpnt in _database.GetVolumeComponents(vol.Id))
-                {
-                    writer.WriteLine(linePrefix + "        COMPONENT (" + cmpnt.Name + ")");
-                    writer.WriteLine(linePrefix + "          Name: " + cmpnt.Name);
-                    writer.WriteLine(linePrefix + "          Flags: 0x" +
-                                     (cmpnt.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
-                    writer.WriteLine(linePrefix + "          Database Id: " + cmpnt.Id);
-                    writer.WriteLine(linePrefix + "          State: " + cmpnt.StatusString);
-                    writer.WriteLine(linePrefix + "          Mode: " + cmpnt.MergeType);
-                    writer.WriteLine(linePrefix + "          Num Extents: " + cmpnt.NumExtents);
-                    writer.WriteLine(linePrefix + "          Link Id: " + cmpnt.LinkId);
-                    writer.WriteLine(linePrefix + "          Stripe Size: " + cmpnt.StripeSizeSectors + " (Sectors)");
-                    writer.WriteLine(linePrefix + "          Stripe Stride: " + cmpnt.StripeStride);
-
-                    writer.WriteLine(linePrefix + "          EXTENTS");
-                    foreach (ExtentRecord extent in _database.GetComponentExtents(cmpnt.Id))
-                    {
-                        writer.WriteLine(linePrefix + "            EXTENT (" + extent.Name + ")");
-                        writer.WriteLine(linePrefix + "              Name: " + extent.Name);
-                        writer.WriteLine(linePrefix + "              Flags: 0x" +
-                                         (extent.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
-                        writer.WriteLine(linePrefix + "              Database Id: " + extent.Id);
-                        writer.WriteLine(linePrefix + "              Disk Offset: " + extent.DiskOffsetLba +
-                                         " (Sectors)");
-                        writer.WriteLine(linePrefix + "              Volume Offset: " + extent.OffsetInVolumeLba +
-                                         " (Sectors)");
-                        writer.WriteLine(linePrefix + "              Size: " + extent.SizeLba + " (Sectors)");
-                        writer.WriteLine(linePrefix + "              Component Id: " + extent.ComponentId);
-                        writer.WriteLine(linePrefix + "              Disk Id: " + extent.DiskId);
-                        writer.WriteLine(linePrefix + "              Link Id: " + extent.PartitionComponentLink);
-                        writer.WriteLine(linePrefix + "              Interleave Order: " + extent.InterleaveOrder);
-                    }
+                    writer.WriteLine(linePrefix + "            EXTENT (" + extent.Name + ")");
+                    writer.WriteLine(linePrefix + "              Name: " + extent.Name);
+                    writer.WriteLine(linePrefix + "              Flags: 0x" +
+                                     (extent.Flags & 0xFFF0).ToString("X4", CultureInfo.InvariantCulture));
+                    writer.WriteLine(linePrefix + "              Database Id: " + extent.Id);
+                    writer.WriteLine(linePrefix + "              Disk Offset: " + extent.DiskOffsetLba +
+                                     " (Sectors)");
+                    writer.WriteLine(linePrefix + "              Volume Offset: " + extent.OffsetInVolumeLba +
+                                     " (Sectors)");
+                    writer.WriteLine(linePrefix + "              Size: " + extent.SizeLba + " (Sectors)");
+                    writer.WriteLine(linePrefix + "              Component Id: " + extent.ComponentId);
+                    writer.WriteLine(linePrefix + "              Disk Id: " + extent.DiskId);
+                    writer.WriteLine(linePrefix + "              Link Id: " + extent.PartitionComponentLink);
+                    writer.WriteLine(linePrefix + "              Interleave Order: " + extent.InterleaveOrder);
                 }
             }
         }
+    }
 
-        #endregion
+    #endregion
 
-        public void Add(VirtualDisk disk)
+    public void Add(VirtualDisk disk)
+    {
+        var dynDisk = new DynamicDisk(disk);
+        _disks.Add(dynDisk.Id, dynDisk);
+    }
+
+    internal IEnumerable<DynamicVolume> GetVolumes()
+    {
+        foreach (var record in _database.GetVolumes())
         {
-            DynamicDisk dynDisk = new DynamicDisk(disk);
-            _disks.Add(dynDisk.Id, dynDisk);
+            yield return new DynamicVolume(this, record.VolumeGuid);
+        }
+    }
+
+    internal VolumeRecord GetVolume(Guid volume)
+    {
+        return _database.GetVolume(volume);
+    }
+
+    internal LogicalVolumeStatus GetVolumeStatus(ulong volumeId)
+    {
+        return GetVolumeStatus(_database.GetVolume(volumeId));
+    }
+
+    internal SparseStream OpenVolume(ulong volumeId)
+    {
+        return OpenVolume(_database.GetVolume(volumeId));
+    }
+
+    private static int CompareExtentOffsets(ExtentRecord x, ExtentRecord y)
+    {
+        if (x.OffsetInVolumeLba > y.OffsetInVolumeLba)
+        {
+            return 1;
+        }
+        if (x.OffsetInVolumeLba < y.OffsetInVolumeLba)
+        {
+            return -1;
         }
 
-        internal IEnumerable<DynamicVolume> GetVolumes()
+        return 0;
+    }
+
+    private static int CompareExtentInterleaveOrder(ExtentRecord x, ExtentRecord y)
+    {
+        if (x.InterleaveOrder > y.InterleaveOrder)
         {
-            foreach (VolumeRecord record in _database.GetVolumes())
+            return 1;
+        }
+        if (x.InterleaveOrder < y.InterleaveOrder)
+        {
+            return -1;
+        }
+
+        return 0;
+    }
+
+    private static LogicalVolumeStatus WorstOf(LogicalVolumeStatus x, LogicalVolumeStatus y)
+    {
+        return (LogicalVolumeStatus)Math.Max((int)x, (int)y);
+    }
+
+    private LogicalVolumeStatus GetVolumeStatus(VolumeRecord volume)
+    {
+        var numFailed = 0;
+        ulong numOK = 0;
+        var worst = LogicalVolumeStatus.Healthy;
+        foreach (var cmpnt in _database.GetVolumeComponents(volume.Id))
+        {
+            var cmpntStatus = GetComponentStatus(cmpnt);
+            worst = WorstOf(worst, cmpntStatus);
+            if (cmpntStatus == LogicalVolumeStatus.Failed)
             {
-                yield return new DynamicVolume(this, record.VolumeGuid);
+                numFailed++;
+            }
+            else
+            {
+                numOK++;
             }
         }
 
-        internal VolumeRecord GetVolume(Guid volume)
+        if (numOK < 1)
         {
-            return _database.GetVolume(volume);
+            return LogicalVolumeStatus.Failed;
         }
-
-        internal LogicalVolumeStatus GetVolumeStatus(ulong volumeId)
+        if (numOK == volume.ComponentCount)
         {
-            return GetVolumeStatus(_database.GetVolume(volumeId));
+            return worst;
         }
+        return LogicalVolumeStatus.FailedRedundancy;
+    }
 
-        internal SparseStream OpenVolume(ulong volumeId)
-        {
-            return OpenVolume(_database.GetVolume(volumeId));
-        }
+    private LogicalVolumeStatus GetComponentStatus(ComponentRecord cmpnt)
+    {
+        // NOTE: no support for RAID, so either valid or failed...
+        var status = LogicalVolumeStatus.Healthy;
 
-        private static int CompareExtentOffsets(ExtentRecord x, ExtentRecord y)
+        foreach (var extent in _database.GetComponentExtents(cmpnt.Id))
         {
-            if (x.OffsetInVolumeLba > y.OffsetInVolumeLba)
+            var disk = _database.GetDisk(extent.DiskId);
+            if (!_disks.ContainsKey(new Guid(disk.DiskGuidString)))
             {
-                return 1;
+                status = LogicalVolumeStatus.Failed;
+                break;
             }
-            if (x.OffsetInVolumeLba < y.OffsetInVolumeLba)
-            {
-                return -1;
-            }
-
-            return 0;
         }
 
-        private static int CompareExtentInterleaveOrder(ExtentRecord x, ExtentRecord y)
-        {
-            if (x.InterleaveOrder > y.InterleaveOrder)
-            {
-                return 1;
-            }
-            if (x.InterleaveOrder < y.InterleaveOrder)
-            {
-                return -1;
-            }
+        return status;
+    }
 
-            return 0;
-        }
+    private SparseStream OpenExtent(ExtentRecord extent)
+    {
+        var disk = _database.GetDisk(extent.DiskId);
 
-        private static LogicalVolumeStatus WorstOf(LogicalVolumeStatus x, LogicalVolumeStatus y)
-        {
-            return (LogicalVolumeStatus)Math.Max((int)x, (int)y);
-        }
+        var diskObj = _disks[new Guid(disk.DiskGuidString)];
 
-        private LogicalVolumeStatus GetVolumeStatus(VolumeRecord volume)
+        return new SubStream(diskObj.Content, Ownership.None,
+            (diskObj.DataOffset + extent.DiskOffsetLba) * Sizes.Sector, extent.SizeLba * Sizes.Sector);
+    }
+
+    private SparseStream OpenComponent(ComponentRecord component)
+    {
+        if (component.MergeType == ExtentMergeType.Concatenated)
         {
-            int numFailed = 0;
-            ulong numOK = 0;
-            LogicalVolumeStatus worst = LogicalVolumeStatus.Healthy;
-            foreach (ComponentRecord cmpnt in _database.GetVolumeComponents(volume.Id))
+            var extents = new List<ExtentRecord>(_database.GetComponentExtents(component.Id));
+            extents.Sort(CompareExtentOffsets);
+
+            // Sanity Check...
+            long pos = 0;
+            foreach (var extent in extents)
             {
-                LogicalVolumeStatus cmpntStatus = GetComponentStatus(cmpnt);
-                worst = WorstOf(worst, cmpntStatus);
-                if (cmpntStatus == LogicalVolumeStatus.Failed)
+                if (extent.OffsetInVolumeLba != pos)
                 {
-                    numFailed++;
-                }
-                else
-                {
-                    numOK++;
-                }
-            }
-
-            if (numOK < 1)
-            {
-                return LogicalVolumeStatus.Failed;
-            }
-            if (numOK == volume.ComponentCount)
-            {
-                return worst;
-            }
-            return LogicalVolumeStatus.FailedRedundancy;
-        }
-
-        private LogicalVolumeStatus GetComponentStatus(ComponentRecord cmpnt)
-        {
-            // NOTE: no support for RAID, so either valid or failed...
-            LogicalVolumeStatus status = LogicalVolumeStatus.Healthy;
-
-            foreach (ExtentRecord extent in _database.GetComponentExtents(cmpnt.Id))
-            {
-                DiskRecord disk = _database.GetDisk(extent.DiskId);
-                if (!_disks.ContainsKey(new Guid(disk.DiskGuidString)))
-                {
-                    status = LogicalVolumeStatus.Failed;
-                    break;
-                }
-            }
-
-            return status;
-        }
-
-        private SparseStream OpenExtent(ExtentRecord extent)
-        {
-            DiskRecord disk = _database.GetDisk(extent.DiskId);
-
-            DynamicDisk diskObj = _disks[new Guid(disk.DiskGuidString)];
-
-            return new SubStream(diskObj.Content, Ownership.None,
-                (diskObj.DataOffset + extent.DiskOffsetLba) * Sizes.Sector, extent.SizeLba * Sizes.Sector);
-        }
-
-        private SparseStream OpenComponent(ComponentRecord component)
-        {
-            if (component.MergeType == ExtentMergeType.Concatenated)
-            {
-                List<ExtentRecord> extents = new List<ExtentRecord>(_database.GetComponentExtents(component.Id));
-                extents.Sort(CompareExtentOffsets);
-
-                // Sanity Check...
-                long pos = 0;
-                foreach (ExtentRecord extent in extents)
-                {
-                    if (extent.OffsetInVolumeLba != pos)
-                    {
-                        throw new IOException("Volume extents are non-contiguous");
-                    }
-
-                    pos += extent.SizeLba;
+                    throw new IOException("Volume extents are non-contiguous");
                 }
 
-                List<SparseStream> streams = new List<SparseStream>();
-                foreach (ExtentRecord extent in extents)
-                {
-                    streams.Add(OpenExtent(extent));
-                }
-
-                return new ConcatStream(Ownership.Dispose, streams);
+                pos += extent.SizeLba;
             }
-            if (component.MergeType == ExtentMergeType.Interleaved)
+
+            var streams = new List<SparseStream>();
+            foreach (var extent in extents)
             {
-                List<ExtentRecord> extents = new List<ExtentRecord>(_database.GetComponentExtents(component.Id));
-                extents.Sort(CompareExtentInterleaveOrder);
-
-                List<SparseStream> streams = new List<SparseStream>();
-                foreach (ExtentRecord extent in extents)
-                {
-                    streams.Add(OpenExtent(extent));
-                }
-
-                return new StripedStream(component.StripeSizeSectors * Sizes.Sector, Ownership.Dispose, streams);
+                streams.Add(OpenExtent(extent));
             }
-            throw new NotImplementedException("Unknown component mode: " + component.MergeType);
-        }
 
-        private SparseStream OpenVolume(VolumeRecord volume)
+            return new ConcatStream(Ownership.Dispose, streams);
+        }
+        if (component.MergeType == ExtentMergeType.Interleaved)
         {
-            List<SparseStream> cmpntStreams = new List<SparseStream>();
-            foreach (ComponentRecord component in _database.GetVolumeComponents(volume.Id))
+            var extents = new List<ExtentRecord>(_database.GetComponentExtents(component.Id));
+            extents.Sort(CompareExtentInterleaveOrder);
+
+            var streams = new List<SparseStream>();
+            foreach (var extent in extents)
             {
-                if (GetComponentStatus(component) == LogicalVolumeStatus.Healthy)
-                {
-                    cmpntStreams.Add(OpenComponent(component));
-                }
+                streams.Add(OpenExtent(extent));
             }
 
-            if (cmpntStreams.Count < 1)
-            {
-                throw new IOException("Volume with no associated or healthy components");
-            }
-            if (cmpntStreams.Count == 1)
-            {
-                return cmpntStreams[0];
-            }
-            return new MirrorStream(Ownership.Dispose, cmpntStreams);
+            return new StripedStream(component.StripeSizeSectors * Sizes.Sector, Ownership.Dispose, streams);
         }
+        throw new NotImplementedException("Unknown component mode: " + component.MergeType);
+    }
+
+    private SparseStream OpenVolume(VolumeRecord volume)
+    {
+        var cmpntStreams = new List<SparseStream>();
+        foreach (var component in _database.GetVolumeComponents(volume.Id))
+        {
+            if (GetComponentStatus(component) == LogicalVolumeStatus.Healthy)
+            {
+                cmpntStreams.Add(OpenComponent(component));
+            }
+        }
+
+        if (cmpntStreams.Count < 1)
+        {
+            throw new IOException("Volume with no associated or healthy components");
+        }
+        if (cmpntStreams.Count == 1)
+        {
+            return cmpntStreams[0];
+        }
+        return new MirrorStream(Ownership.Dispose, cmpntStreams);
     }
 }

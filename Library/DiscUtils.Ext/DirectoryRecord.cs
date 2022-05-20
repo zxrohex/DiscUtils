@@ -24,51 +24,50 @@ using System;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal struct DirectoryRecord : IByteArraySerializable
 {
-    internal struct DirectoryRecord : IByteArraySerializable
+    public const byte FileTypeUnknown = 0;
+    public const byte FileTypeRegularFile = 1;
+    public const byte FileTypeDirectory = 2;
+    public const byte FileTypeCharacterDevice = 3;
+    public const byte FileTypeBlockDevice = 4;
+    public const byte FileTypeFifo = 5;
+    public const byte FileTypeSocket = 6;
+    public const byte FileTypeSymlink = 7;
+
+    private readonly Encoding _nameEncoding;
+    public byte FileType;
+
+    public uint Inode;
+    public string Name;
+
+    public DirectoryRecord(Encoding nameEncoding) : this()
     {
-        public const byte FileTypeUnknown = 0;
-        public const byte FileTypeRegularFile = 1;
-        public const byte FileTypeDirectory = 2;
-        public const byte FileTypeCharacterDevice = 3;
-        public const byte FileTypeBlockDevice = 4;
-        public const byte FileTypeFifo = 5;
-        public const byte FileTypeSocket = 6;
-        public const byte FileTypeSymlink = 7;
+        _nameEncoding = nameEncoding;
+    }
 
-        private readonly Encoding _nameEncoding;
-        public byte FileType;
+    public int Size
+    {
+        get { return MathUtilities.RoundUp(8 + Name.Length, 4); }
+    }
 
-        public uint Inode;
-        public string Name;
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Inode = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+        var recordLen = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
+        int nameLen = buffer[offset + 6];
+        FileType = buffer[offset + 7];
+        Name = _nameEncoding.GetString(buffer, offset + 8, nameLen);
 
-        public DirectoryRecord(Encoding nameEncoding) : this()
-        {
-            _nameEncoding = nameEncoding;
-        }
+        Name = Name.Replace('\\', '/');
 
-        public int Size
-        {
-            get { return MathUtilities.RoundUp(8 + Name.Length, 4); }
-        }
+        return recordLen;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Inode = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-            ushort recordLen = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-            int nameLen = buffer[offset + 6];
-            FileType = buffer[offset + 7];
-            Name = _nameEncoding.GetString(buffer, offset + 8, nameLen);
-
-            Name = Name.Replace('\\', '/');
-
-            return recordLen;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

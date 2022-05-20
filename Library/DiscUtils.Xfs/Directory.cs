@@ -21,131 +21,129 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+using System.IO;
+using System.Collections.Generic;
+using DiscUtils.Vfs;
+using DiscUtils.Streams;
+
+internal class Directory : File, IVfsDirectory<DirEntry, File>
 {
-    using System;
-    using System.IO;
-    using System.Collections.Generic;
-    using DiscUtils.Vfs;
-    using DiscUtils.Streams;
-
-    internal class Directory : File, IVfsDirectory<DirEntry, File>
+    public Directory(Context context, Inode inode)
+        : base(context, inode)
     {
-        public Directory(Context context, Inode inode)
-            : base(context, inode)
-        {
-        }
+    }
 
-        private Dictionary<string,DirEntry> _allEntries;
+    private Dictionary<string,DirEntry> _allEntries;
 
-        public ICollection<DirEntry> AllEntries
+    public IReadOnlyCollection<DirEntry> AllEntries
+    {
+        get
         {
-            get
+            if (_allEntries != null)
+                return new List<DirEntry>(_allEntries.Values);
+            var result = new Dictionary<string, DirEntry>();
+            if (Inode.Format == InodeFormat.Local)
             {
-                if (_allEntries != null)
-                    return new List<DirEntry>(_allEntries.Values);
-                var result = new Dictionary<string, DirEntry>();
-                if (Inode.Format == InodeFormat.Local)
+                //shortform directory
+                var sfDir = new ShortformDirectory(Context);
+                sfDir.ReadFrom(Inode.DataFork, 0);
+                foreach (var entry in sfDir.Entries)
                 {
-                    //shortform directory
-                    var sfDir = new ShortformDirectory(Context);
-                    sfDir.ReadFrom(Inode.DataFork, 0);
-                    foreach (var entry in sfDir.Entries)
-                    {
-                        result.Add(Context.Options.FileNameEncoding.GetString(entry.Name), new DirEntry(entry, Context));
-                    }
+                    result.Add(Context.Options.FileNameEncoding.GetString(entry.Name), new DirEntry(entry, Context));
                 }
-                else if (Inode.Format == InodeFormat.Extents)
+            }
+            else if (Inode.Format == InodeFormat.Extents)
+            {
+                if (Inode.Extents == 1)
                 {
-                    if (Inode.Extents == 1)
-                    {
-                        var blockDir = new BlockDirectory(Context);
-                        if (Context.SuperBlock.SbVersion == 5)
-                            blockDir = new BlockDirectoryV5(Context);
+                    var blockDir = new BlockDirectory(Context);
+                    if (Context.SuperBlock.SbVersion == 5)
+                        blockDir = new BlockDirectoryV5(Context);
 
-                        var dirContent = Inode.GetContentBuffer(Context);
-                        var buffer = StreamUtilities.ReadAll(dirContent);
-                        blockDir.ReadFrom(buffer, 0);
-                        if (!blockDir.HasValidMagic)
-                            throw new IOException("invalid block directory magic");
-                        AddDirEntries(blockDir.Entries, result);
-                    }
-                    else
-                    {
-                        var extents = Inode.GetExtents();
-                        AddLeafDirExtentEntries(extents, result);
-                    }
+                    var dirContent = Inode.GetContentBuffer(Context);
+                    var buffer = StreamUtilities.ReadAll(dirContent);
+                    blockDir.ReadFrom(buffer, 0);
+                    if (!blockDir.HasValidMagic)
+                        throw new IOException("invalid block directory magic");
+                    AddDirEntries(blockDir.Entries, result);
                 }
                 else
                 {
-                    var header = new BTreeExtentRoot();
-                    header.ReadFrom(Inode.DataFork, 0);
-                    header.LoadBtree(Context);
-                    var extents = header.GetExtents();
+                    var extents = Inode.GetExtents();
                     AddLeafDirExtentEntries(extents, result);
                 }
-                _allEntries = result;
-                return result.Values;
             }
-        }
-
-        private void AddLeafDirExtentEntries(IList<Extent> extents, Dictionary<string, DirEntry> target)
-        {
-            var leafOffset = LeafDirectory.LeafOffset / Context.SuperBlock.Blocksize;
-
-            foreach (var extent in extents)
+            else
             {
-                if (extent.StartOffset < leafOffset)
+                var header = new BTreeExtentRoot();
+                header.ReadFrom(Inode.DataFork, 0);
+                header.LoadBtree(Context);
+                var extents = header.GetExtents();
+                AddLeafDirExtentEntries(extents, result);
+            }
+            _allEntries = result;
+            return result.Values;
+        }
+    }
+
+    private void AddLeafDirExtentEntries(IEnumerable<Extent> extents, Dictionary<string, DirEntry> target)
+    {
+        var leafOffset = LeafDirectory.LeafOffset / Context.SuperBlock.Blocksize;
+
+        foreach (var extent in extents)
+        {
+            if (extent.StartOffset < leafOffset)
+            {
+                for (long i = 0; i < extent.BlockCount; i++)
                 {
-                    for (long i = 0; i < extent.BlockCount; i++)
-                    {
-                        var buffer = extent.GetData(Context, i* Context.SuperBlock.DirBlockSize, Context.SuperBlock.DirBlockSize);
-                        var leafDir = new LeafDirectory(Context);
-                        if (Context.SuperBlock.SbVersion == 5)
-                            leafDir = new LeafDirectoryV5(Context);
-                        leafDir.ReadFrom(buffer, 0);
-                        if (!leafDir.HasValidMagic)
-                            throw new IOException("invalid leaf directory magic");
-                        AddDirEntries(leafDir.Entries, target);
-                    }
-
+                    var buffer = extent.GetData(Context, i* Context.SuperBlock.DirBlockSize, Context.SuperBlock.DirBlockSize);
+                    var leafDir = new LeafDirectory(Context);
+                    if (Context.SuperBlock.SbVersion == 5)
+                        leafDir = new LeafDirectoryV5(Context);
+                    leafDir.ReadFrom(buffer, 0);
+                    if (!leafDir.HasValidMagic)
+                        throw new IOException("invalid leaf directory magic");
+                    AddDirEntries(leafDir.Entries, target);
                 }
+
             }
         }
+    }
 
-        private void AddDirEntries(IEnumerable<BlockDirectoryData> entries, Dictionary<string, DirEntry> target)
+    private void AddDirEntries(IEnumerable<BlockDirectoryData> entries, Dictionary<string, DirEntry> target)
+    {
+        foreach (var entry in entries)
         {
-            foreach (var entry in entries)
+            if (entry is not IDirectoryEntry dirEntry) continue;
+            var name = Context.Options.FileNameEncoding.GetString(dirEntry.Name);
+            if (name == "." || name == "..") continue;
+            target.Add(name, new DirEntry(dirEntry, Context));
+        }
+    }
+
+    public DirEntry Self
+    {
+        get { return null; }
+    }
+
+    public DirEntry GetEntryByName(string name)
+    {
+        foreach (var entry in AllEntries)
+        {
+            if (entry.FileName == name)
             {
-                IDirectoryEntry dirEntry = entry as IDirectoryEntry;
-                if (dirEntry == null) continue;
-                var name = Context.Options.FileNameEncoding.GetString(dirEntry.Name);
-                if (name == "." || name == "..") continue;
-                target.Add(name, new DirEntry(dirEntry, Context));
+                return entry;
             }
         }
 
-        public DirEntry Self
-        {
-            get { return null; }
-        }
+        return null;
+    }
 
-        public DirEntry GetEntryByName(string name)
-        {
-            foreach (DirEntry entry in AllEntries)
-            {
-                if (entry.FileName == name)
-                {
-                    return entry;
-                }
-            }
-
-            return null;
-        }
-
-        public DirEntry CreateNewFile(string name)
-        {
-            throw new NotImplementedException();
-        }
+    public DirEntry CreateNewFile(string name)
+    {
+        throw new NotImplementedException();
     }
 }

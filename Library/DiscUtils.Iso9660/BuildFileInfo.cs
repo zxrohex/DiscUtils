@@ -27,165 +27,164 @@ using System.Text;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+/// <summary>
+/// Represents a file that will be built into the ISO image.
+/// </summary>
+public sealed class BuildFileInfo : BuildDirectoryMember, IEquatable<BuildFileInfo>
 {
-    /// <summary>
-    /// Represents a file that will be built into the ISO image.
-    /// </summary>
-    public sealed class BuildFileInfo : BuildDirectoryMember, IEquatable<BuildFileInfo>
+    private readonly byte[] _contentData;
+    private readonly string _contentPath;
+    private readonly Stream _contentStream;
+
+    internal BuildFileInfo(string name, BuildDirectoryInfo parent, byte[] content)
+        : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
     {
-        private readonly byte[] _contentData;
-        private readonly string _contentPath;
-        private readonly Stream _contentStream;
-
-        internal BuildFileInfo(string name, BuildDirectoryInfo parent, byte[] content)
-            : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
+        if (content.LongLength >= (4L << 30))
         {
-            if (content.LongLength >= (4L << 30))
-            {
-                throw new InvalidOperationException("ISO 9660 file system does not support files larger than 4 GB");
-            }
-
-            Parent = parent;
-            _contentData = content;
+            throw new InvalidOperationException("ISO 9660 file system does not support files larger than 4 GB");
         }
 
-        internal BuildFileInfo(string name, BuildDirectoryInfo parent, string content)
-            : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
+        Parent = parent;
+        _contentData = content;
+    }
+
+    internal BuildFileInfo(string name, BuildDirectoryInfo parent, string content)
+        : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
+    {
+        if (new FileInfo(content).Length >= (4L << 30))
         {
-            if (new FileInfo(content).Length >= (4L << 30))
-            {
-                throw new InvalidOperationException("ISO 9660 file system does not support files larger than 4 GB");
-            }
-
-            Parent = parent;
-            _contentPath = content;
-
-            CreationTime = new FileInfo(_contentPath).LastWriteTimeUtc;
+            throw new InvalidOperationException("ISO 9660 file system does not support files larger than 4 GB");
         }
 
-        internal BuildFileInfo(string name, BuildDirectoryInfo parent, Stream source)
-            : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
-        {
-            if (source.Length >= (4L << 30))
-            {
-                throw new InvalidOperationException("ISO 9660 file system does not support files larger than 4 GB");
-            }
+        Parent = parent;
+        _contentPath = content;
 
-            Parent = parent;
-            _contentStream = source;
+        CreationTime = new FileInfo(_contentPath).LastWriteTimeUtc;
+    }
+
+    internal BuildFileInfo(string name, BuildDirectoryInfo parent, Stream source)
+        : base(IsoUtilities.NormalizeFileName(name), MakeShortFileName(name))
+    {
+        if (source.Length >= (4L << 30))
+        {
+            throw new InvalidOperationException("ISO 9660 file system does not support files larger than 4 GB");
         }
 
-        /// <summary>
-        /// The parent directory, or <c>null</c> if none.
-        /// </summary>
-        public override BuildDirectoryInfo Parent { get; }
+        Parent = parent;
+        _contentStream = source;
+    }
 
-        internal override long GetDataSize(Encoding enc)
+    /// <summary>
+    /// The parent directory, or <c>null</c> if none.
+    /// </summary>
+    public override BuildDirectoryInfo Parent { get; }
+
+    internal override long GetDataSize(Encoding enc)
+    {
+        if (_contentData != null)
         {
-            if (_contentData != null)
-            {
-                return _contentData.Length;
-            }
-            if (_contentPath != null)
-            {
-                return new FileInfo(_contentPath).Length;
-            }
-            return _contentStream.Length;
+            return _contentData.Length;
+        }
+        if (_contentPath != null)
+        {
+            return new FileInfo(_contentPath).Length;
+        }
+        return _contentStream.Length;
+    }
+
+    internal Stream OpenStream()
+    {
+        if (_contentData != null)
+        {
+            return new MemoryStream(_contentData, writable: false);
+        }
+        if (_contentPath != null)
+        {
+            var locator = new LocalFileLocator(string.Empty);
+            return locator.Open(_contentPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+        return _contentStream;
+    }
+
+    internal void CloseStream(Stream s)
+    {
+        // Close and dispose the stream, unless it's one we were given to stream in
+        // from (we might need it again).
+        if (_contentStream != s)
+        {
+            s.Dispose();
+        }
+    }
+
+    private static string MakeShortFileName(string longName)
+    {
+        if (IsoUtilities.IsValidFileName(longName))
+        {
+            return longName;
         }
 
-        internal Stream OpenStream()
+        var shortNameChars = longName.ToUpper(CultureInfo.InvariantCulture).ToCharArray();
+        for (var i = 0; i < shortNameChars.Length; ++i)
         {
-            if (_contentData != null)
+            if (!IsoUtilities.IsValidDChar(shortNameChars[i]) && shortNameChars[i] != '.' && shortNameChars[i] != ';')
             {
-                return new MemoryStream(_contentData, writable: false);
-            }
-            if (_contentPath != null)
-            {
-                var locator = new LocalFileLocator(string.Empty);
-                return locator.Open(_contentPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            }
-            return _contentStream;
-        }
-
-        internal void CloseStream(Stream s)
-        {
-            // Close and dispose the stream, unless it's one we were given to stream in
-            // from (we might need it again).
-            if (_contentStream != s)
-            {
-                s.Dispose();
+                shortNameChars[i] = '_';
             }
         }
 
-        private static string MakeShortFileName(string longName)
+        var parts = IsoUtilities.SplitFileName(new string(shortNameChars));
+
+        if (parts[0].Length + parts[1].Length > 30)
         {
-            if (IsoUtilities.IsValidFileName(longName))
-            {
-                return longName;
-            }
-
-            char[] shortNameChars = longName.ToUpper(CultureInfo.InvariantCulture).ToCharArray();
-            for (int i = 0; i < shortNameChars.Length; ++i)
-            {
-                if (!IsoUtilities.IsValidDChar(shortNameChars[i]) && shortNameChars[i] != '.' && shortNameChars[i] != ';')
-                {
-                    shortNameChars[i] = '_';
-                }
-            }
-
-            string[] parts = IsoUtilities.SplitFileName(new string(shortNameChars));
-
-            if (parts[0].Length + parts[1].Length > 30)
-            {
-                parts[1] = parts[1].Substring(0, Math.Min(parts[1].Length, 3));
-            }
-
-            if (parts[0].Length + parts[1].Length > 30)
-            {
-                parts[0] = parts[0].Substring(0, 30 - parts[1].Length);
-            }
-
-            string candidate = $"{parts[0]}.{parts[1]};{parts[2]}";
-
-            // TODO: Make unique
-            return candidate;
+            parts[1] = parts[1].Substring(0, Math.Min(parts[1].Length, 3));
         }
 
-        internal bool Equals(Stream stream) =>
-            _contentStream != null &&
-            ReferenceEquals(_contentStream, stream);
-
-        internal bool Equals(byte[] data)
+        if (parts[0].Length + parts[1].Length > 30)
         {
-            if (_contentData == null || data == null || _contentData.Length != data.Length)
-            {
-                return false;
-            }
+            parts[0] = parts[0].Substring(0, 30 - parts[1].Length);
+        }
 
-            if (ReferenceEquals(_contentData, data))
-            {
-                return true;
-            }
+        var candidate = $"{parts[0]}.{parts[1]};{parts[2]}";
 
-            for (var i = 0; i < _contentData.Length; i++)
-            {
-                if (data[i] != _contentData[i])
-                {
-                    return false;
-                }
-            }
+        // TODO: Make unique
+        return candidate;
+    }
 
+    internal bool Equals(Stream stream) =>
+        _contentStream != null &&
+        ReferenceEquals(_contentStream, stream);
+
+    internal bool Equals(byte[] data)
+    {
+        if (_contentData == null || data == null || _contentData.Length != data.Length)
+        {
+            return false;
+        }
+
+        if (ReferenceEquals(_contentData, data))
+        {
             return true;
         }
 
-        internal bool Equals(string path) =>
-            _contentPath != null &&
-            StringComparer.OrdinalIgnoreCase.Equals(_contentPath, path);
+        for (var i = 0; i < _contentData.Length; i++)
+        {
+            if (data[i] != _contentData[i])
+            {
+                return false;
+            }
+        }
 
-        public bool Equals(BuildFileInfo other) =>
-            Equals(other._contentStream) ||
-            Equals(other._contentPath) ||
-            Equals(other._contentData);
+        return true;
     }
+
+    internal bool Equals(string path) =>
+        _contentPath != null &&
+        StringComparer.OrdinalIgnoreCase.Equals(_contentPath, path);
+
+    public bool Equals(BuildFileInfo other) =>
+        Equals(other._contentStream) ||
+        Equals(other._contentPath) ||
+        Equals(other._contentData);
 }

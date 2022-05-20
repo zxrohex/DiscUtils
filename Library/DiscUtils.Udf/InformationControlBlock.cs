@@ -23,43 +23,42 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class InformationControlBlock : IByteArraySerializable
 {
-    internal class InformationControlBlock : IByteArraySerializable
+    public AllocationType AllocationType;
+    public FileType FileType;
+    public InformationControlBlockFlags Flags;
+    public ushort MaxEntries;
+    public LogicalBlockAddress ParentICBLocation;
+    public uint PriorDirectEntries;
+    public ushort StrategyParameter;
+    public ushort StrategyType;
+
+    public int Size
     {
-        public AllocationType AllocationType;
-        public FileType FileType;
-        public InformationControlBlockFlags Flags;
-        public ushort MaxEntries;
-        public LogicalBlockAddress ParentICBLocation;
-        public uint PriorDirectEntries;
-        public ushort StrategyParameter;
-        public ushort StrategyType;
+        get { return 20; }
+    }
 
-        public int Size
-        {
-            get { return 20; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        PriorDirectEntries = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
+        StrategyType = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
+        StrategyParameter = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
+        MaxEntries = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 8);
+        FileType = (FileType)buffer[offset + 11];
+        ParentICBLocation = EndianUtilities.ToStruct<LogicalBlockAddress>(buffer, offset + 12);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            PriorDirectEntries = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-            StrategyType = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-            StrategyParameter = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
-            MaxEntries = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 8);
-            FileType = (FileType)buffer[offset + 11];
-            ParentICBLocation = EndianUtilities.ToStruct<LogicalBlockAddress>(buffer, offset + 12);
+        var flagsField = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 18);
+        AllocationType = (AllocationType)(flagsField & 0x3);
+        Flags = (InformationControlBlockFlags)(flagsField & 0xFFFC);
 
-            ushort flagsField = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 18);
-            AllocationType = (AllocationType)(flagsField & 0x3);
-            Flags = (InformationControlBlockFlags)(flagsField & 0xFFFC);
+        return 20;
+    }
 
-            return 20;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -25,91 +25,92 @@ using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-namespace DiskClone
+namespace DiskClone;
+
+internal sealed class Volume : IDisposable
 {
-    internal sealed class Volume : IDisposable
+    private SafeFileHandle _handle;
+    private Stream _stream;
+
+    public string Path { get; }
+
+    public long Length { get; }
+
+    public Volume(string path, long length)
     {
-        private string _path;
-        private SafeFileHandle _handle;
-        private Stream _stream;
-        private long _length;
+        Path = path.TrimEnd('\\');
+        Length = length;
 
-        public Volume(string path, long length)
+        if (!Path.StartsWith(@"\\"))
         {
-            _path = path.TrimEnd('\\');
-            _length = length;
+            Path = @"\\.\" + Path;
+        }
 
-            if (!_path.StartsWith(@"\\"))
+        _handle = NativeMethods.CreateFileW(Path, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
+        if (_handle.IsInvalid)
+        {
+            throw Win32Wrapper.GetIOExceptionForLastError();
+        }
+
+        // Enable reading the full contents of the volume (not just the region bounded by the file system)
+        var bytesRet = 0;
+        if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.FsctlAllowExtendedDasdIo, IntPtr.Zero, 0, IntPtr.Zero, 0, ref bytesRet, IntPtr.Zero))
+        {
+            throw Win32Wrapper.GetIOExceptionForLastError();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_stream != null)
+        {
+            _stream.Dispose();
+            _stream = null;
+        }
+
+        if (!_handle.IsClosed)
+        {
+            _handle.Dispose();
+        }
+    }
+
+    public Stream Content
+    {
+        get
+        {
+            if (_stream == null)
             {
-                _path = @"\\.\" + _path;
+                _stream = new VolumeStream(_handle);
             }
 
-            _handle = NativeMethods.CreateFileW(_path, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
-            if (_handle.IsInvalid)
+            return _stream;
+        }
+    }
+
+    public NativeMethods.DiskExtent[] GetDiskExtents()
+    {
+        var numExtents = 1;
+        var bufferSize = 8 + Marshal.SizeOf(typeof(NativeMethods.DiskExtent)) * numExtents;
+        var buffer = new byte[bufferSize];
+
+        var bytesRet = 0;
+        if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.VolumeGetDiskExtents, null, 0, buffer, bufferSize, ref bytesRet, IntPtr.Zero))
+        {
+            if (Marshal.GetLastWin32Error() != NativeMethods.ERROR_MORE_DATA)
             {
                 throw Win32Wrapper.GetIOExceptionForLastError();
             }
 
-            // Enable reading the full contents of the volume (not just the region bounded by the file system)
-            int bytesRet = 0;
-            if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.FsctlAllowExtendedDasdIo, IntPtr.Zero, 0, IntPtr.Zero, 0, ref bytesRet, IntPtr.Zero))
-            {
-                throw Win32Wrapper.GetIOExceptionForLastError();
-            }
-        }
+            numExtents = BitConverter.ToInt32(buffer, 0);
+            bufferSize = 8 + Marshal.SizeOf(typeof(NativeMethods.DiskExtent)) * numExtents;
+            buffer = new byte[bufferSize];
 
-        public void Dispose()
-        {
-            if (_stream != null)
-            {
-                _stream.Dispose();
-                _stream = null;
-            }
-
-            if (!_handle.IsClosed)
-            {
-                _handle.Dispose();
-            }
-        }
-
-        public Stream Content
-        {
-            get
-            {
-                if (_stream == null)
-                {
-                    _stream = new VolumeStream(_handle);
-                }
-
-                return _stream;
-            }
-        }
-
-        public NativeMethods.DiskExtent[] GetDiskExtents()
-        {
-            int numExtents = 1;
-            int bufferSize = 8 + Marshal.SizeOf(typeof(NativeMethods.DiskExtent)) * numExtents;
-            byte[] buffer = new byte[bufferSize];
-
-            int bytesRet = 0;
             if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.VolumeGetDiskExtents, null, 0, buffer, bufferSize, ref bytesRet, IntPtr.Zero))
             {
-                if (Marshal.GetLastWin32Error() != NativeMethods.ERROR_MORE_DATA)
-                {
-                    throw Win32Wrapper.GetIOExceptionForLastError();
-                }
-
-                numExtents = Marshal.ReadInt32(buffer, 0);
-                bufferSize = 8 + Marshal.SizeOf(typeof(NativeMethods.DiskExtent)) * numExtents;
-                buffer = new byte[bufferSize];
-
-                if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.VolumeGetDiskExtents, null, 0, buffer, bufferSize, ref bytesRet, IntPtr.Zero))
-                {
-                    throw Win32Wrapper.GetIOExceptionForLastError();
-                }
+                throw Win32Wrapper.GetIOExceptionForLastError();
             }
-
-            return Win32Wrapper.ByteArrayToStructureArray<NativeMethods.DiskExtent>(buffer, 8, 1);
         }
+
+        return Win32Wrapper.ByteArrayToStructureArray<NativeMethods.DiskExtent>(buffer, 8, 1);
     }
 }

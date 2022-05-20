@@ -22,54 +22,53 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3WeakCacheConsistencyAttr
 {
-    public sealed class Nfs3WeakCacheConsistencyAttr
+    internal Nfs3WeakCacheConsistencyAttr(XdrDataReader reader)
     {
-        internal Nfs3WeakCacheConsistencyAttr(XdrDataReader reader)
+        Size = reader.ReadInt64();
+        ModifyTime = new Nfs3FileTime(reader);
+        ChangeTime = new Nfs3FileTime(reader);
+    }
+
+    public Nfs3WeakCacheConsistencyAttr()
+    {
+    }
+
+    public Nfs3FileTime ChangeTime { get; set; }
+
+    public Nfs3FileTime ModifyTime { get; set; }
+
+    public long Size { get; set; }
+
+    internal void Write(XdrDataWriter writer)
+    {
+        writer.Write(Size);
+        ModifyTime.Write(writer);
+        ChangeTime.Write(writer);
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3WeakCacheConsistencyAttr);
+    }
+
+    public bool Equals(Nfs3WeakCacheConsistencyAttr other)
+    {
+        if (other == null)
         {
-            Size = reader.ReadInt64();
-            ModifyTime = new Nfs3FileTime(reader);
-            ChangeTime = new Nfs3FileTime(reader);
+            return false;
         }
 
-        public Nfs3WeakCacheConsistencyAttr()
-        {
-        }
+        return other.Size == Size
+            && object.Equals(other.ModifyTime, ModifyTime)
+            && object.Equals(other.ChangeTime, ChangeTime);
+    }
 
-        public Nfs3FileTime ChangeTime { get; set; }
-
-        public Nfs3FileTime ModifyTime { get; set; }
-
-        public long Size { get; set; }
-
-        internal void Write(XdrDataWriter writer)
-        {
-            writer.Write(Size);
-            ModifyTime.Write(writer);
-            ChangeTime.Write(writer);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Nfs3WeakCacheConsistencyAttr);
-        }
-
-        public bool Equals(Nfs3WeakCacheConsistencyAttr other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other.Size == Size
-                && object.Equals(other.ModifyTime, ModifyTime)
-                && object.Equals(other.ChangeTime, ChangeTime);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Size, ModifyTime, ChangeTime);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Size, ModifyTime, ChangeTime);
     }
 }

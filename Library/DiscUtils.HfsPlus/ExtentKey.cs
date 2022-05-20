@@ -23,79 +23,78 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class ExtentKey : BTreeKey, IComparable<ExtentKey>
 {
-    internal sealed class ExtentKey : BTreeKey, IComparable<ExtentKey>
+    private byte _forkType; // 0 is data, 0xff is rsrc
+    private ushort _keyLength;
+    private uint _startBlock;
+
+    public ExtentKey() {}
+
+    public ExtentKey(CatalogNodeId cnid, uint startBlock, bool resource_fork = false)
     {
-        private byte _forkType; // 0 is data, 0xff is rsrc
-        private ushort _keyLength;
-        private uint _startBlock;
+        _keyLength = 10;
+        NodeId = cnid;
+        _startBlock = startBlock;
+        _forkType = (byte)(resource_fork ? 0xff : 0x00);
+    }
 
-        public ExtentKey() {}
+    public CatalogNodeId NodeId { get; private set; }
 
-        public ExtentKey(CatalogNodeId cnid, uint startBlock, bool resource_fork = false)
+    public override int Size
+    {
+        get { return 12; }
+    }
+
+    public int CompareTo(ExtentKey other)
+    {
+        if (other == null)
         {
-            _keyLength = 10;
-            NodeId = cnid;
-            _startBlock = startBlock;
-            _forkType = (byte)(resource_fork ? 0xff : 0x00);
+            throw new ArgumentNullException(nameof(other));
         }
 
-        public CatalogNodeId NodeId { get; private set; }
-
-        public override int Size
+        // Sort by file id, fork type, then starting block
+        if (NodeId != other.NodeId)
         {
-            get { return 12; }
+            return NodeId < other.NodeId ? -1 : 1;
         }
 
-        public int CompareTo(ExtentKey other)
+        if (_forkType != other._forkType)
         {
-            if (other == null)
-            {
-                throw new ArgumentNullException(nameof(other));
-            }
-
-            // Sort by file id, fork type, then starting block
-            if (NodeId != other.NodeId)
-            {
-                return NodeId < other.NodeId ? -1 : 1;
-            }
-
-            if (_forkType != other._forkType)
-            {
-                return _forkType < other._forkType ? -1 : 1;
-            }
-
-            if (_startBlock != other._startBlock)
-            {
-                return _startBlock < other._startBlock ? -1 : 1;
-            }
-
-            return 0;
+            return _forkType < other._forkType ? -1 : 1;
         }
 
-        public override int ReadFrom(byte[] buffer, int offset)
+        if (_startBlock != other._startBlock)
         {
-            _keyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
-            _forkType = buffer[offset + 2];
-            NodeId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 4));
-            _startBlock = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-            return _keyLength + 2;
+            return _startBlock < other._startBlock ? -1 : 1;
         }
 
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+        return 0;
+    }
 
-        public override int CompareTo(BTreeKey other)
-        {
-            return CompareTo(other as ExtentKey);
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        _keyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
+        _forkType = buffer[offset + 2];
+        NodeId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 4));
+        _startBlock = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
+        return _keyLength + 2;
+    }
 
-        public override string ToString()
-        {
-            return "ExtentKey (" + NodeId + " - " + _startBlock + ")";
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override int CompareTo(BTreeKey other)
+    {
+        return CompareTo(other as ExtentKey);
+    }
+
+    public override string ToString()
+    {
+        return "ExtentKey (" + NodeId + " - " + _startBlock + ")";
     }
 }

@@ -22,80 +22,79 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3FileTime
 {
-    public sealed class Nfs3FileTime
+    private const long TicksPerSec = 10 * 1000 * 1000; // 10 million ticks per sec
+    private const long TicksPerNanoSec = 100; // 1 tick = 100 ns
+
+    private readonly DateTime nfsEpoch = new DateTime(1970, 1, 1);
+    private readonly uint _nseconds;
+
+    private readonly uint _seconds;
+
+    internal Nfs3FileTime(XdrDataReader reader)
     {
-        private const long TicksPerSec = 10 * 1000 * 1000; // 10 million ticks per sec
-        private const long TicksPerNanoSec = 100; // 1 tick = 100 ns
+        _seconds = reader.ReadUInt32();
+        _nseconds = reader.ReadUInt32();
+    }
 
-        private readonly DateTime nfsEpoch = new DateTime(1970, 1, 1);
-        private readonly uint _nseconds;
+    public Nfs3FileTime(DateTime time)
+    {
+        var ticks = time.Ticks - nfsEpoch.Ticks;
+        _seconds = (uint)(ticks / TicksPerSec);
+        _nseconds = (uint)(ticks % TicksPerSec * TicksPerNanoSec);
+    }
 
-        private readonly uint _seconds;
+    public Nfs3FileTime(uint seconds, uint nseconds)
+    {
+        _seconds = seconds;
+        _nseconds = nseconds;
+    }
 
-        internal Nfs3FileTime(XdrDataReader reader)
+    public DateTime ToDateTime()
+    {
+        return new DateTime(_seconds * TicksPerSec + _nseconds / TicksPerNanoSec + nfsEpoch.Ticks);
+    }
+
+    internal void Write(XdrDataWriter writer)
+    {
+        writer.Write(_seconds);
+        writer.Write(_nseconds);
+    }
+
+    public static Nfs3FileTime Precision
+    {
+        get
         {
-            _seconds = reader.ReadUInt32();
-            _nseconds = reader.ReadUInt32();
+            return new Nfs3FileTime(0, 1);
+        }
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3FileTime);
+    }
+
+    public bool Equals(Nfs3FileTime other)
+    {
+        if (other == null)
+        {
+            return false;
         }
 
-        public Nfs3FileTime(DateTime time)
-        {
-            long ticks = time.Ticks - nfsEpoch.Ticks;
-            _seconds = (uint)(ticks / TicksPerSec);
-            _nseconds = (uint)(ticks % TicksPerSec * TicksPerNanoSec);
-        }
+        return other._seconds == _seconds
+            && other._nseconds == _nseconds;
+    }
 
-        public Nfs3FileTime(uint seconds, uint nseconds)
-        {
-            _seconds = seconds;
-            _nseconds = nseconds;
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(_seconds, _nseconds);
+    }
 
-        public DateTime ToDateTime()
-        {
-            return new DateTime(_seconds * TicksPerSec + _nseconds / TicksPerNanoSec + nfsEpoch.Ticks);
-        }
-
-        internal void Write(XdrDataWriter writer)
-        {
-            writer.Write(_seconds);
-            writer.Write(_nseconds);
-        }
-
-        public static Nfs3FileTime Precision
-        {
-            get
-            {
-                return new Nfs3FileTime(0, 1);
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Nfs3FileTime);
-        }
-
-        public bool Equals(Nfs3FileTime other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other._seconds == _seconds
-                && other._nseconds == _nseconds;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(_seconds, _nseconds);
-        }
-
-        public override string ToString()
-        {
-            return ToDateTime().ToString();
-        }
+    public override string ToString()
+    {
+        return ToDateTime().ToString();
     }
 }

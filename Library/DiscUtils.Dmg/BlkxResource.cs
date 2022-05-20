@@ -23,16 +23,15 @@
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Dmg
-{
-    internal class BlkxResource : Resource
-    {
-        internal BlkxResource(Dictionary<string, object> parts)
-            : base("blkx", parts)
-        {
-            Block = EndianUtilities.ToStruct<CompressedBlock>(parts["Data"] as byte[], 0);
-        }
+namespace DiscUtils.Dmg;
 
-        public CompressedBlock Block { get; }
+internal class BlkxResource : Resource
+{
+    internal BlkxResource(Dictionary<string, object> parts)
+        : base("blkx", parts)
+    {
+        Block = EndianUtilities.ToStruct<CompressedBlock>(parts["Data"] as byte[], 0);
     }
+
+    public CompressedBlock Block { get; }
 }

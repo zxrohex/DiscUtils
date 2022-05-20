@@ -21,684 +21,785 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal sealed class Connection : IDisposable
 {
-    internal sealed class Connection : IDisposable
+    private readonly Authenticator[] _authenticators;
+
+    /// <summary>
+    /// The set of all 'parameters' we've negotiated.
+    /// </summary>
+    private readonly Dictionary<string, string> _negotiatedParameters;
+
+    private readonly Stream _stream;
+
+    public Connection(Session session, TargetAddress address, Authenticator[] authenticators)
     {
-        private readonly Authenticator[] _authenticators;
+        Session = session;
+        _authenticators = authenticators;
 
-        /// <summary>
-        /// The set of all 'parameters' we've negotiated.
-        /// </summary>
-        private readonly Dictionary<string, string> _negotiatedParameters;
-
-        private readonly Stream _stream;
-
-        public Connection(Session session, TargetAddress address, Authenticator[] authenticators)
+        var client = new TcpClient(address.NetworkAddress, address.NetworkPort)
         {
-            Session = session;
-            _authenticators = authenticators;
+            NoDelay = true
+        };
+        _stream = client.GetStream();
 
-            TcpClient client = new TcpClient(address.NetworkAddress, address.NetworkPort);
-            client.NoDelay = true;
-            _stream = client.GetStream();
+        Id = session.NextConnectionId();
 
-            Id = session.NextConnectionId();
+        // Default negotiated values
+        HeaderDigest = Digest.None;
+        DataDigest = Digest.None;
+        MaxInitiatorTransmitDataSegmentLength = 131072;
+        MaxTargetReceiveDataSegmentLength = 8192;
 
-            // Default negotiated values
-            HeaderDigest = Digest.None;
-            DataDigest = Digest.None;
-            MaxInitiatorTransmitDataSegmentLength = 131072;
-            MaxTargetReceiveDataSegmentLength = 8192;
+        _negotiatedParameters = new Dictionary<string, string>();
+        NegotiateSecurity();
+        NegotiateFeatures();
+    }
 
-            _negotiatedParameters = new Dictionary<string, string>();
-            NegotiateSecurity();
-            NegotiateFeatures();
+    internal LoginStages CurrentLoginStage { get; private set; } = LoginStages.SecurityNegotiation;
+
+    internal uint ExpectedStatusSequenceNumber { get; private set; } = 1;
+
+    internal ushort Id { get; }
+
+    internal LoginStages NextLoginStage
+    {
+        get
+        {
+            return CurrentLoginStage switch
+            {
+                LoginStages.SecurityNegotiation => LoginStages.LoginOperationalNegotiation,
+                LoginStages.LoginOperationalNegotiation => LoginStages.FullFeaturePhase,
+                _ => LoginStages.FullFeaturePhase,
+            };
+        }
+    }
+
+    internal Session Session { get; }
+
+    public void Dispose()
+    {
+        Close(LogoutReason.CloseConnection);
+    }
+
+    public void Close(LogoutReason reason)
+    {
+        var req = new LogoutRequest(this);
+        var packet = req.GetBytes(reason);
+        _stream.Write(packet, 0, packet.Length);
+        _stream.Flush();
+
+        var pdu = ReadPdu();
+        var resp = ParseResponse<LogoutResponse>(pdu);
+
+        if (resp.Response != LogoutResponseCode.ClosedSuccessfully)
+        {
+            throw new InvalidProtocolException("Target indicated failure during logout: " + resp.Response);
         }
 
-        internal LoginStages CurrentLoginStage { get; private set; } = LoginStages.SecurityNegotiation;
+        _stream.Dispose();
+    }
 
-        internal uint ExpectedStatusSequenceNumber { get; private set; } = 1;
+    /// <summary>
+    /// Sends an SCSI command (aka task) to a LUN via the connected target.
+    /// </summary>
+    /// <param name="cmd">The command to send.</param>
+    /// <param name="outBuffer">The data to send with the command.</param>
+    /// <param name="outBufferOffset">The offset of the first byte to send.</param>
+    /// <param name="outBufferCount">The number of bytes to send, if any.</param>
+    /// <param name="inBuffer">The buffer to fill with returned data.</param>
+    /// <param name="inBufferOffset">The first byte to fill with returned data.</param>
+    /// <param name="inBufferMax">The maximum amount of data to receive.</param>
+    /// <returns>The number of bytes received.</returns>
+    public int Send(ScsiCommand cmd, byte[] outBuffer, int outBufferOffset, int outBufferCount, byte[] inBuffer, int inBufferOffset, int inBufferMax)
+    {
+        var req = new CommandRequest(this, cmd.TargetLun);
 
-        internal ushort Id { get; }
-
-        internal LoginStages NextLoginStage
+        var toSend = Math.Min(Math.Min(outBufferCount, Session.ImmediateData ? Session.FirstBurstLength : 0), MaxTargetReceiveDataSegmentLength);
+        var packet = req.GetBytes(cmd, outBuffer, outBufferOffset, toSend, true, inBufferMax != 0, outBufferCount != 0, (uint)(outBufferCount != 0 ? outBufferCount : inBufferMax));
+        _stream.Write(packet, 0, packet.Length);
+        _stream.Flush();
+        var numSent = toSend;
+        var pktsSent = 0;
+        while (numSent < outBufferCount)
         {
-            get
+            var pdu = ReadPdu();
+
+            var resp = ParseResponse<ReadyToTransferPacket>(pdu);
+            var numApproved = (int)resp.DesiredTransferLength;
+            var targetTransferTag = resp.TargetTransferTag;
+
+            while (numApproved > 0)
             {
-                switch (CurrentLoginStage)
-                {
-                    case LoginStages.SecurityNegotiation:
-                        return LoginStages.LoginOperationalNegotiation;
-                    case LoginStages.LoginOperationalNegotiation:
-                        return LoginStages.FullFeaturePhase;
-                    default:
-                        return LoginStages.FullFeaturePhase;
-                }
+                toSend = Math.Min(Math.Min(outBufferCount - numSent, numApproved), MaxTargetReceiveDataSegmentLength);
+
+                var pkt = new DataOutPacket(this, cmd.TargetLun);
+                packet = pkt.GetBytes(outBuffer, outBufferOffset + numSent, toSend, toSend == numApproved, pktsSent++, (uint)numSent, targetTransferTag);
+                _stream.Write(packet, 0, packet.Length);
+                _stream.Flush();
+
+                numApproved -= toSend;
+                numSent += toSend;
             }
         }
 
-        internal Session Session { get; }
-
-        public void Dispose()
+        var isFinal = false;
+        var numRead = 0;
+        while (!isFinal)
         {
-            Close(LogoutReason.CloseConnection);
+            var pdu = ReadPdu();
+
+            if (pdu.OpCode == OpCode.ScsiResponse)
+            {
+                var resp = ParseResponse<Response>(pdu);
+
+                if (resp.StatusPresent && resp.Status == ScsiStatus.CheckCondition)
+                {
+                    var senseLength = EndianUtilities.ToUInt16BigEndian(pdu.ContentData, 0);
+                    var senseData = new byte[senseLength];
+                    Array.Copy(pdu.ContentData, 2, senseData, 0, senseLength);
+                    throw new ScsiCommandException(resp.Status, "Target indicated SCSI failure", senseData);
+                }
+                if (resp.StatusPresent && resp.Status != ScsiStatus.Good)
+                {
+                    throw new ScsiCommandException(resp.Status, "Target indicated SCSI failure");
+                }
+
+                isFinal = resp.Header.FinalPdu;
+            }
+            else if (pdu.OpCode == OpCode.ScsiDataIn)
+            {
+                var resp = ParseResponse<DataInPacket>(pdu);
+
+                if (resp.StatusPresent && resp.Status != ScsiStatus.Good)
+                {
+                    throw new ScsiCommandException(resp.Status, "Target indicated SCSI failure");
+                }
+
+                if (resp.ReadData != null)
+                {
+                    Array.Copy(resp.ReadData, 0, inBuffer, (int)(inBufferOffset + resp.BufferOffset), resp.ReadData.Length);
+                    numRead += resp.ReadData.Length;
+                }
+
+                isFinal = resp.Header.FinalPdu;
+            }
         }
 
-        public void Close(LogoutReason reason)
+        Session.NextTaskTag();
+        Session.NextCommandSequenceNumber();
+
+        return numRead;
+    }
+
+    /// <summary>
+    /// Sends an SCSI command (aka task) to a LUN via the connected target.
+    /// </summary>
+    /// <param name="cmd">The command to send.</param>
+    /// <param name="outBuffer">The data to send with the command.</param>
+    /// <param name="outBufferOffset">The offset of the first byte to send.</param>
+    /// <param name="outBufferCount">The number of bytes to send, if any.</param>
+    /// <param name="inBuffer">The buffer to fill with returned data.</param>
+    /// <param name="inBufferOffset">The first byte to fill with returned data.</param>
+    /// <param name="inBufferMax">The maximum amount of data to receive.</param>
+    /// <returns>The number of bytes received.</returns>
+    public async Task<int> SendAsync(ScsiCommand cmd, byte[] outBuffer, int outBufferOffset, int outBufferCount, byte[] inBuffer, int inBufferOffset, int inBufferMax, CancellationToken cancellationToken)
+    {
+        var req = new CommandRequest(this, cmd.TargetLun);
+
+        var toSend = Math.Min(Math.Min(outBufferCount, Session.ImmediateData ? Session.FirstBurstLength : 0), MaxTargetReceiveDataSegmentLength);
+        var packet = req.GetBytes(cmd, outBuffer, outBufferOffset, toSend, true, inBufferMax != 0, outBufferCount != 0, (uint)(outBufferCount != 0 ? outBufferCount : inBufferMax));
+        await _stream.WriteAsync(packet, 0, packet.Length, cancellationToken).ConfigureAwait(false);
+        await _stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        var numSent = toSend;
+        var pktsSent = 0;
+        while (numSent < outBufferCount)
         {
-            LogoutRequest req = new LogoutRequest(this);
-            byte[] packet = req.GetBytes(reason);
-            _stream.Write(packet, 0, packet.Length);
-            _stream.Flush();
+            var pdu = ReadPdu();
 
-            ProtocolDataUnit pdu = ReadPdu();
-            LogoutResponse resp = ParseResponse<LogoutResponse>(pdu);
+            var resp = ParseResponse<ReadyToTransferPacket>(pdu);
+            var numApproved = (int)resp.DesiredTransferLength;
+            var targetTransferTag = resp.TargetTransferTag;
 
-            if (resp.Response != LogoutResponseCode.ClosedSuccessfully)
+            while (numApproved > 0)
             {
-                throw new InvalidProtocolException("Target indicated failure during logout: " + resp.Response);
-            }
+                toSend = Math.Min(Math.Min(outBufferCount - numSent, numApproved), MaxTargetReceiveDataSegmentLength);
 
-            _stream.Dispose();
+                var pkt = new DataOutPacket(this, cmd.TargetLun);
+                packet = pkt.GetBytes(outBuffer, outBufferOffset + numSent, toSend, toSend == numApproved, pktsSent++, (uint)numSent, targetTransferTag);
+                await _stream.WriteAsync(packet, 0, packet.Length, cancellationToken).ConfigureAwait(false);
+                await _stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                numApproved -= toSend;
+                numSent += toSend;
+            }
         }
 
-        /// <summary>
-        /// Sends an SCSI command (aka task) to a LUN via the connected target.
-        /// </summary>
-        /// <param name="cmd">The command to send.</param>
-        /// <param name="outBuffer">The data to send with the command.</param>
-        /// <param name="outBufferOffset">The offset of the first byte to send.</param>
-        /// <param name="outBufferCount">The number of bytes to send, if any.</param>
-        /// <param name="inBuffer">The buffer to fill with returned data.</param>
-        /// <param name="inBufferOffset">The first byte to fill with returned data.</param>
-        /// <param name="inBufferMax">The maximum amount of data to receive.</param>
-        /// <returns>The number of bytes received.</returns>
-        public int Send(ScsiCommand cmd, byte[] outBuffer, int outBufferOffset, int outBufferCount, byte[] inBuffer, int inBufferOffset, int inBufferMax)
+        var isFinal = false;
+        var numRead = 0;
+        while (!isFinal)
         {
-            CommandRequest req = new CommandRequest(this, cmd.TargetLun);
+            var pdu = ReadPdu();
 
-            int toSend = Math.Min(Math.Min(outBufferCount, Session.ImmediateData ? Session.FirstBurstLength : 0), MaxTargetReceiveDataSegmentLength);
-            byte[] packet = req.GetBytes(cmd, outBuffer, outBufferOffset, toSend, true, inBufferMax != 0, outBufferCount != 0, (uint)(outBufferCount != 0 ? outBufferCount : inBufferMax));
-            _stream.Write(packet, 0, packet.Length);
-            _stream.Flush();
-
-            int numApproved = 0;
-            int numSent = toSend;
-            int pktsSent = 0;
-            while (numSent < outBufferCount)
+            if (pdu.OpCode == OpCode.ScsiResponse)
             {
-                ProtocolDataUnit pdu = ReadPdu();
+                var resp = ParseResponse<Response>(pdu);
 
-                ReadyToTransferPacket resp = ParseResponse<ReadyToTransferPacket>(pdu);
-                numApproved = (int)resp.DesiredTransferLength;
-                uint targetTransferTag = resp.TargetTransferTag;
-
-                while (numApproved > 0)
+                if (resp.StatusPresent && resp.Status == ScsiStatus.CheckCondition)
                 {
-                    toSend = Math.Min(Math.Min(outBufferCount - numSent, numApproved), MaxTargetReceiveDataSegmentLength);
-
-                    DataOutPacket pkt = new DataOutPacket(this, cmd.TargetLun);
-                    packet = pkt.GetBytes(outBuffer, outBufferOffset + numSent, toSend, toSend == numApproved, pktsSent++, (uint)numSent, targetTransferTag);
-                    _stream.Write(packet, 0, packet.Length);
-                    _stream.Flush();
-
-                    numApproved -= toSend;
-                    numSent += toSend;
+                    var senseLength = EndianUtilities.ToUInt16BigEndian(pdu.ContentData, 0);
+                    var senseData = new byte[senseLength];
+                    Array.Copy(pdu.ContentData, 2, senseData, 0, senseLength);
+                    throw new ScsiCommandException(resp.Status, "Target indicated SCSI failure", senseData);
                 }
-            }
+                if (resp.StatusPresent && resp.Status != ScsiStatus.Good)
+                {
+                    throw new ScsiCommandException(resp.Status, "Target indicated SCSI failure");
+                }
 
-            bool isFinal = false;
-            int numRead = 0;
-            while (!isFinal)
+                isFinal = resp.Header.FinalPdu;
+            }
+            else if (pdu.OpCode == OpCode.ScsiDataIn)
             {
-                ProtocolDataUnit pdu = ReadPdu();
+                var resp = ParseResponse<DataInPacket>(pdu);
 
-                if (pdu.OpCode == OpCode.ScsiResponse)
+                if (resp.StatusPresent && resp.Status != ScsiStatus.Good)
                 {
-                    Response resp = ParseResponse<Response>(pdu);
-
-                    if (resp.StatusPresent && resp.Status == ScsiStatus.CheckCondition)
-                    {
-                        ushort senseLength = EndianUtilities.ToUInt16BigEndian(pdu.ContentData, 0);
-                        byte[] senseData = new byte[senseLength];
-                        Array.Copy(pdu.ContentData, 2, senseData, 0, senseLength);
-                        throw new ScsiCommandException(resp.Status, "Target indicated SCSI failure", senseData);
-                    }
-                    if (resp.StatusPresent && resp.Status != ScsiStatus.Good)
-                    {
-                        throw new ScsiCommandException(resp.Status, "Target indicated SCSI failure");
-                    }
-
-                    isFinal = resp.Header.FinalPdu;
+                    throw new ScsiCommandException(resp.Status, "Target indicated SCSI failure");
                 }
-                else if (pdu.OpCode == OpCode.ScsiDataIn)
+
+                if (resp.ReadData != null)
                 {
-                    DataInPacket resp = ParseResponse<DataInPacket>(pdu);
-
-                    if (resp.StatusPresent && resp.Status != ScsiStatus.Good)
-                    {
-                        throw new ScsiCommandException(resp.Status, "Target indicated SCSI failure");
-                    }
-
-                    if (resp.ReadData != null)
-                    {
-                        Array.Copy(resp.ReadData, 0, inBuffer, (int)(inBufferOffset + resp.BufferOffset), resp.ReadData.Length);
-                        numRead += resp.ReadData.Length;
-                    }
-
-                    isFinal = resp.Header.FinalPdu;
+                    Array.Copy(resp.ReadData, 0, inBuffer, (int)(inBufferOffset + resp.BufferOffset), resp.ReadData.Length);
+                    numRead += resp.ReadData.Length;
                 }
+
+                isFinal = resp.Header.FinalPdu;
             }
-
-            Session.NextTaskTag();
-            Session.NextCommandSequenceNumber();
-
-            return numRead;
         }
 
-        public T Send<T>(ScsiCommand cmd, byte[] buffer, int offset, int count, int expected)
-            where T : ScsiResponse, new()
-        {
-            byte[] tempBuffer = new byte[expected];
-            int numRead = Send(cmd, buffer, offset, count, tempBuffer, 0, expected);
+        Session.NextTaskTag();
+        Session.NextCommandSequenceNumber();
 
-            T result = new T();
+        return numRead;
+    }
+
+    public T Send<T>(ScsiCommand cmd, byte[] buffer, int offset, int count, int expected)
+        where T : ScsiResponse, new()
+    {
+        var tempBuffer = ArrayPool<byte>.Shared.Rent(expected);
+        try
+        {
+            var numRead = Send(cmd, buffer, offset, count, tempBuffer, 0, expected);
+
+            var result = new T();
             result.ReadFrom(tempBuffer, 0, numRead);
             return result;
         }
-
-        public List<TargetInfo> EnumerateTargets()
+        finally
         {
-            TextBuffer parameters = new TextBuffer();
-            parameters.Add(SendTargetsParameter, "All");
+            ArrayPool<byte>.Shared.Return(tempBuffer);
+        }
+    }
 
-            byte[] paramBuffer = new byte[parameters.Size];
+    public IEnumerable<TargetInfo> EnumerateTargets()
+    {
+        var parameters = new TextBuffer();
+        parameters.Add(SendTargetsParameter, "All");
+
+        var paramBuffer = ArrayPool<byte>.Shared.Rent(parameters.Size);
+        try
+        {
             parameters.WriteTo(paramBuffer, 0);
 
-            TextRequest req = new TextRequest(this);
-            byte[] packet = req.GetBytes(0, paramBuffer, 0, paramBuffer.Length, true);
+            var req = new TextRequest(this);
+            var packet = req.GetBytes(0, paramBuffer, 0, parameters.Size, true);
+            _stream.Write(packet, 0, packet.Length);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(paramBuffer);
+        }
+
+        _stream.Flush();
+
+        var pdu = ReadPdu();
+        var resp = ParseResponse<TextResponse>(pdu);
+
+        var buffer = new TextBuffer();
+        if (resp.TextData != null)
+        {
+            buffer.ReadFrom(resp.TextData, 0, resp.TextData.Length);
+        }
+
+        string currentTarget = null;
+        List<TargetAddress> currentAddresses = null;
+        foreach (var line in buffer.Lines)
+        {
+            if (currentTarget == null)
+            {
+                if (line.Key != TargetNameParameter)
+                {
+                    throw new InvalidProtocolException($"Unexpected response parameter {line.Key} expected {TargetNameParameter}");
+                }
+
+                currentTarget = line.Value;
+                currentAddresses = new List<TargetAddress>();
+            }
+            else if (line.Key == TargetNameParameter)
+            {
+                yield return new TargetInfo(currentTarget, currentAddresses.ToArray());
+                currentTarget = line.Value;
+                currentAddresses.Clear();
+            }
+            else if (line.Key == TargetAddressParameter)
+            {
+                currentAddresses.Add(TargetAddress.Parse(line.Value));
+            }
+        }
+
+        if (currentTarget != null)
+        {
+            yield return new TargetInfo(currentTarget, currentAddresses.ToArray());
+        }
+    }
+
+    internal void SeenStatusSequenceNumber(uint number)
+    {
+        if (number != 0 && number != ExpectedStatusSequenceNumber)
+        {
+            throw new InvalidProtocolException("Unexpected status sequence number " + number + ", expected " + ExpectedStatusSequenceNumber);
+        }
+
+        ExpectedStatusSequenceNumber = number + 1;
+    }
+
+    private void NegotiateSecurity()
+    {
+        CurrentLoginStage = LoginStages.SecurityNegotiation;
+
+        //
+        // Establish the contents of the request
+        //
+        var parameters = new TextBuffer();
+
+        GetParametersToNegotiate(parameters, KeyUsagePhase.SecurityNegotiation, Session.SessionType);
+        Session.GetParametersToNegotiate(parameters, KeyUsagePhase.SecurityNegotiation);
+
+        var authParam = _authenticators[0].Identifier;
+        for (var i = 1; i < _authenticators.Length; ++i)
+        {
+            authParam += "," + _authenticators[i].Identifier;
+        }
+
+        parameters.Add(AuthMethodParameter, authParam);
+
+        //
+        // Send the request...
+        //
+        var paramBuffer = ArrayPool<byte>.Shared.Rent(parameters.Size);
+        try
+        {
+            parameters.WriteTo(paramBuffer, 0);
+
+            var req = new LoginRequest(this);
+            var packet = req.GetBytes(paramBuffer, 0, parameters.Size, true);
 
             _stream.Write(packet, 0, packet.Length);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(paramBuffer);
+        }
+        _stream.Flush();
+
+        //
+        // Read the response...
+        //
+        var settings = new TextBuffer();
+
+        var pdu = ReadPdu();
+        var resp = ParseResponse<LoginResponse>(pdu);
+
+        if (resp.StatusCode != LoginStatusCode.Success)
+        {
+            throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
+        }
+
+        if (resp.Continue)
+        {
+            var ms = new MemoryStream();
+            ms.Write(resp.TextData, 0, resp.TextData.Length);
+
+            while (resp.Continue)
+            {
+                pdu = ReadPdu();
+                resp = ParseResponse<LoginResponse>(pdu);
+                ms.Write(resp.TextData, 0, resp.TextData.Length);
+            }
+
+            settings.ReadFrom(ms.ToArray(), 0, (int)ms.Length);
+        }
+        else if (resp.TextData != null)
+        {
+            settings.ReadFrom(resp.TextData, 0, resp.TextData.Length);
+        }
+
+        Authenticator authenticator = null;
+        for (var i = 0; i < _authenticators.Length; ++i)
+        {
+            if (settings[AuthMethodParameter] == _authenticators[i].Identifier)
+            {
+                authenticator = _authenticators[i];
+                break;
+            }
+        }
+
+        settings.Remove(AuthMethodParameter);
+        settings.Remove("TargetPortalGroupTag");
+
+        if (authenticator == null)
+        {
+            throw new LoginException("iSCSI Target specified an unsupported authentication method: " + settings[AuthMethodParameter]);
+        }
+
+        parameters = new TextBuffer();
+        ConsumeParameters(settings, parameters);
+
+        while (!resp.Transit)
+        {
+            //
+            // Send the request...
+            //
+            parameters = new TextBuffer();
+            authenticator.GetParameters(parameters);
+
+            paramBuffer = ArrayPool<byte>.Shared.Rent(parameters.Size);
+            try
+            {
+                parameters.WriteTo(paramBuffer, 0);
+
+                var req = new LoginRequest(this);
+                var packet = req.GetBytes(paramBuffer, 0, parameters.Size, true);
+
+                _stream.Write(packet, 0, packet.Length);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(paramBuffer);
+            }
             _stream.Flush();
 
-            ProtocolDataUnit pdu = ReadPdu();
-            TextResponse resp = ParseResponse<TextResponse>(pdu);
+            //
+            // Read the response...
+            //
+            settings = new TextBuffer();
 
-            TextBuffer buffer = new TextBuffer();
+            pdu = ReadPdu();
+            resp = ParseResponse<LoginResponse>(pdu);
+
+            if (resp.StatusCode != LoginStatusCode.Success)
+            {
+                throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
+            }
+
+            if (resp.TextData != null && resp.TextData.Length != 0)
+            {
+                if (resp.Continue)
+                {
+                    var ms = new MemoryStream();
+                    ms.Write(resp.TextData, 0, resp.TextData.Length);
+
+                    while (resp.Continue)
+                    {
+                        pdu = ReadPdu();
+                        resp = ParseResponse<LoginResponse>(pdu);
+                        ms.Write(resp.TextData, 0, resp.TextData.Length);
+                    }
+
+                    settings.ReadFrom(ms.ToArray(), 0, (int)ms.Length);
+                }
+                else
+                {
+                    settings.ReadFrom(resp.TextData, 0, resp.TextData.Length);
+                }
+
+                authenticator.SetParameters(settings);
+            }
+        }
+
+        if (resp.NextStage != NextLoginStage)
+        {
+            throw new LoginException("iSCSI Target wants to transition to a different login stage: " + resp.NextStage + " (expected: " + NextLoginStage + ")");
+        }
+
+        CurrentLoginStage = resp.NextStage;
+    }
+
+    private void NegotiateFeatures()
+    {
+        //
+        // Send the request...
+        //
+        var parameters = new TextBuffer();
+        GetParametersToNegotiate(parameters, KeyUsagePhase.OperationalNegotiation, Session.SessionType);
+        Session.GetParametersToNegotiate(parameters, KeyUsagePhase.OperationalNegotiation);
+
+        var paramBuffer = ArrayPool<byte>.Shared.Rent(parameters.Size);
+        try
+        {
+            parameters.WriteTo(paramBuffer, 0);
+
+            var req = new LoginRequest(this);
+            var packet = req.GetBytes(paramBuffer, 0, parameters.Size, true);
+
+            _stream.Write(packet, 0, packet.Length);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(paramBuffer);
+        }
+        _stream.Flush();
+
+        //
+        // Read the response...
+        //
+        var settings = new TextBuffer();
+
+        var pdu = ReadPdu();
+        var resp = ParseResponse<LoginResponse>(pdu);
+
+        if (resp.StatusCode != LoginStatusCode.Success)
+        {
+            throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
+        }
+
+        if (resp.Continue)
+        {
+            var ms = new MemoryStream();
+            ms.Write(resp.TextData, 0, resp.TextData.Length);
+
+            while (resp.Continue)
+            {
+                pdu = ReadPdu();
+                resp = ParseResponse<LoginResponse>(pdu);
+                ms.Write(resp.TextData, 0, resp.TextData.Length);
+            }
+
+            settings.ReadFrom(ms.ToArray(), 0, (int)ms.Length);
+        }
+        else if (resp.TextData != null)
+        {
+            settings.ReadFrom(resp.TextData, 0, resp.TextData.Length);
+        }
+
+        parameters = new TextBuffer();
+        ConsumeParameters(settings, parameters);
+
+        while (!resp.Transit || parameters.Count != 0)
+        {
+            paramBuffer = ArrayPool<byte>.Shared.Rent(parameters.Size);
+            try
+            {
+                parameters.WriteTo(paramBuffer, 0);
+
+                var req = new LoginRequest(this);
+                var packet = req.GetBytes(paramBuffer, 0, paramBuffer.Length, true);
+
+                _stream.Write(packet, 0, packet.Length);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(paramBuffer);
+            }
+            _stream.Flush();
+
+            //
+            // Read the response...
+            //
+            settings = new TextBuffer();
+
+            pdu = ReadPdu();
+            resp = ParseResponse<LoginResponse>(pdu);
+
+            if (resp.StatusCode != LoginStatusCode.Success)
+            {
+                throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
+            }
+
+            parameters = new TextBuffer();
+
             if (resp.TextData != null)
             {
-                buffer.ReadFrom(resp.TextData, 0, resp.TextData.Length);
-            }
-
-            List<TargetInfo> targets = new List<TargetInfo>();
-
-            string currentTarget = null;
-            List<TargetAddress> currentAddresses = null;
-            foreach (KeyValuePair<string, string> line in buffer.Lines)
-            {
-                if (currentTarget == null)
+                if (resp.Continue)
                 {
-                    if (line.Key != TargetNameParameter)
-                    {
-                        throw new InvalidProtocolException("Unexpected response parameter " + line.Key + " expected " + TargetNameParameter);
-                    }
-
-                    currentTarget = line.Value;
-                    currentAddresses = new List<TargetAddress>();
-                }
-                else if (line.Key == TargetNameParameter)
-                {
-                    targets.Add(new TargetInfo(currentTarget, currentAddresses.ToArray()));
-                    currentTarget = line.Value;
-                    currentAddresses.Clear();
-                }
-                else if (line.Key == TargetAddressParameter)
-                {
-                    currentAddresses.Add(TargetAddress.Parse(line.Value));
-                }
-            }
-
-            if (currentTarget != null)
-            {
-                targets.Add(new TargetInfo(currentTarget, currentAddresses.ToArray()));
-            }
-
-            return targets;
-        }
-
-        internal void SeenStatusSequenceNumber(uint number)
-        {
-            if (number != 0 && number != ExpectedStatusSequenceNumber)
-            {
-                throw new InvalidProtocolException("Unexpected status sequence number " + number + ", expected " + ExpectedStatusSequenceNumber);
-            }
-
-            ExpectedStatusSequenceNumber = number + 1;
-        }
-
-        private void NegotiateSecurity()
-        {
-            CurrentLoginStage = LoginStages.SecurityNegotiation;
-
-            //
-            // Establish the contents of the request
-            //
-            TextBuffer parameters = new TextBuffer();
-
-            GetParametersToNegotiate(parameters, KeyUsagePhase.SecurityNegotiation, Session.SessionType);
-            Session.GetParametersToNegotiate(parameters, KeyUsagePhase.SecurityNegotiation);
-
-            string authParam = _authenticators[0].Identifier;
-            for (int i = 1; i < _authenticators.Length; ++i)
-            {
-                authParam += "," + _authenticators[i].Identifier;
-            }
-
-            parameters.Add(AuthMethodParameter, authParam);
-
-            //
-            // Send the request...
-            //
-            byte[] paramBuffer = new byte[parameters.Size];
-            parameters.WriteTo(paramBuffer, 0);
-
-            LoginRequest req = new LoginRequest(this);
-            byte[] packet = req.GetBytes(paramBuffer, 0, paramBuffer.Length, true);
-
-            _stream.Write(packet, 0, packet.Length);
-            _stream.Flush();
-
-            //
-            // Read the response...
-            //
-            TextBuffer settings = new TextBuffer();
-
-            ProtocolDataUnit pdu = ReadPdu();
-            LoginResponse resp = ParseResponse<LoginResponse>(pdu);
-
-            if (resp.StatusCode != LoginStatusCode.Success)
-            {
-                throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
-            }
-
-            if (resp.Continue)
-            {
-                MemoryStream ms = new MemoryStream();
-                ms.Write(resp.TextData, 0, resp.TextData.Length);
-
-                while (resp.Continue)
-                {
-                    pdu = ReadPdu();
-                    resp = ParseResponse<LoginResponse>(pdu);
+                    var ms = new MemoryStream();
                     ms.Write(resp.TextData, 0, resp.TextData.Length);
-                }
 
-                settings.ReadFrom(ms.ToArray(), 0, (int)ms.Length);
-            }
-            else if (resp.TextData != null)
-            {
-                settings.ReadFrom(resp.TextData, 0, resp.TextData.Length);
-            }
-
-            Authenticator authenticator = null;
-            for (int i = 0; i < _authenticators.Length; ++i)
-            {
-                if (settings[AuthMethodParameter] == _authenticators[i].Identifier)
-                {
-                    authenticator = _authenticators[i];
-                    break;
-                }
-            }
-
-            settings.Remove(AuthMethodParameter);
-            settings.Remove("TargetPortalGroupTag");
-
-            if (authenticator == null)
-            {
-                throw new LoginException("iSCSI Target specified an unsupported authentication method: " + settings[AuthMethodParameter]);
-            }
-
-            parameters = new TextBuffer();
-            ConsumeParameters(settings, parameters);
-
-            while (!resp.Transit)
-            {
-                //
-                // Send the request...
-                //
-                parameters = new TextBuffer();
-                authenticator.GetParameters(parameters);
-                paramBuffer = new byte[parameters.Size];
-                parameters.WriteTo(paramBuffer, 0);
-
-                req = new LoginRequest(this);
-                packet = req.GetBytes(paramBuffer, 0, paramBuffer.Length, true);
-
-                _stream.Write(packet, 0, packet.Length);
-                _stream.Flush();
-
-                //
-                // Read the response...
-                //
-                settings = new TextBuffer();
-
-                pdu = ReadPdu();
-                resp = ParseResponse<LoginResponse>(pdu);
-
-                if (resp.StatusCode != LoginStatusCode.Success)
-                {
-                    throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
-                }
-
-                if (resp.TextData != null && resp.TextData.Length != 0)
-                {
-                    if (resp.Continue)
+                    while (resp.Continue)
                     {
-                        MemoryStream ms = new MemoryStream();
+                        pdu = ReadPdu();
+                        resp = ParseResponse<LoginResponse>(pdu);
                         ms.Write(resp.TextData, 0, resp.TextData.Length);
-
-                        while (resp.Continue)
-                        {
-                            pdu = ReadPdu();
-                            resp = ParseResponse<LoginResponse>(pdu);
-                            ms.Write(resp.TextData, 0, resp.TextData.Length);
-                        }
-
-                        settings.ReadFrom(ms.ToArray(), 0, (int)ms.Length);
-                    }
-                    else
-                    {
-                        settings.ReadFrom(resp.TextData, 0, resp.TextData.Length);
                     }
 
-                    authenticator.SetParameters(settings);
+                    settings.ReadFrom(ms.ToArray(), 0, (int)ms.Length);
                 }
-            }
+                else
+                {
+                    settings.ReadFrom(resp.TextData, 0, resp.TextData.Length);
+                }
 
-            if (resp.NextStage != NextLoginStage)
-            {
-                throw new LoginException("iSCSI Target wants to transition to a different login stage: " + resp.NextStage + " (expected: " + NextLoginStage + ")");
+                ConsumeParameters(settings, parameters);
             }
-
-            CurrentLoginStage = resp.NextStage;
         }
 
-        private void NegotiateFeatures()
+        if (resp.NextStage != NextLoginStage)
         {
-            //
-            // Send the request...
-            //
-            TextBuffer parameters = new TextBuffer();
-            GetParametersToNegotiate(parameters, KeyUsagePhase.OperationalNegotiation, Session.SessionType);
-            Session.GetParametersToNegotiate(parameters, KeyUsagePhase.OperationalNegotiation);
-
-            byte[] paramBuffer = new byte[parameters.Size];
-            parameters.WriteTo(paramBuffer, 0);
-
-            LoginRequest req = new LoginRequest(this);
-            byte[] packet = req.GetBytes(paramBuffer, 0, paramBuffer.Length, true);
-
-            _stream.Write(packet, 0, packet.Length);
-            _stream.Flush();
-
-            //
-            // Read the response...
-            //
-            TextBuffer settings = new TextBuffer();
-
-            ProtocolDataUnit pdu = ReadPdu();
-            LoginResponse resp = ParseResponse<LoginResponse>(pdu);
-
-            if (resp.StatusCode != LoginStatusCode.Success)
-            {
-                throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
-            }
-
-            if (resp.Continue)
-            {
-                MemoryStream ms = new MemoryStream();
-                ms.Write(resp.TextData, 0, resp.TextData.Length);
-
-                while (resp.Continue)
-                {
-                    pdu = ReadPdu();
-                    resp = ParseResponse<LoginResponse>(pdu);
-                    ms.Write(resp.TextData, 0, resp.TextData.Length);
-                }
-
-                settings.ReadFrom(ms.ToArray(), 0, (int)ms.Length);
-            }
-            else if (resp.TextData != null)
-            {
-                settings.ReadFrom(resp.TextData, 0, resp.TextData.Length);
-            }
-
-            parameters = new TextBuffer();
-            ConsumeParameters(settings, parameters);
-
-            while (!resp.Transit || parameters.Count != 0)
-            {
-                paramBuffer = new byte[parameters.Size];
-                parameters.WriteTo(paramBuffer, 0);
-
-                req = new LoginRequest(this);
-                packet = req.GetBytes(paramBuffer, 0, paramBuffer.Length, true);
-
-                _stream.Write(packet, 0, packet.Length);
-                _stream.Flush();
-
-                //
-                // Read the response...
-                //
-                settings = new TextBuffer();
-
-                pdu = ReadPdu();
-                resp = ParseResponse<LoginResponse>(pdu);
-
-                if (resp.StatusCode != LoginStatusCode.Success)
-                {
-                    throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
-                }
-
-                parameters = new TextBuffer();
-
-                if (resp.TextData != null)
-                {
-                    if (resp.Continue)
-                    {
-                        MemoryStream ms = new MemoryStream();
-                        ms.Write(resp.TextData, 0, resp.TextData.Length);
-
-                        while (resp.Continue)
-                        {
-                            pdu = ReadPdu();
-                            resp = ParseResponse<LoginResponse>(pdu);
-                            ms.Write(resp.TextData, 0, resp.TextData.Length);
-                        }
-
-                        settings.ReadFrom(ms.ToArray(), 0, (int)ms.Length);
-                    }
-                    else
-                    {
-                        settings.ReadFrom(resp.TextData, 0, resp.TextData.Length);
-                    }
-
-                    ConsumeParameters(settings, parameters);
-                }
-            }
-
-            if (resp.NextStage != NextLoginStage)
-            {
-                throw new LoginException("iSCSI Target wants to transition to a different login stage: " + resp.NextStage + " (expected: " + NextLoginStage + ")");
-            }
-
-            CurrentLoginStage = resp.NextStage;
+            throw new LoginException("iSCSI Target wants to transition to a different login stage: " + resp.NextStage + " (expected: " + NextLoginStage + ")");
         }
 
-        private ProtocolDataUnit ReadPdu()
+        CurrentLoginStage = resp.NextStage;
+    }
+
+    private ProtocolDataUnit ReadPdu()
+    {
+        var pdu = ProtocolDataUnit.ReadFrom(_stream, HeaderDigest != Digest.None, DataDigest != Digest.None);
+
+        if (pdu.OpCode == OpCode.Reject)
         {
-            ProtocolDataUnit pdu = ProtocolDataUnit.ReadFrom(_stream, HeaderDigest != Digest.None, DataDigest != Digest.None);
+            var pkt = new RejectPacket();
+            pkt.Parse(pdu);
 
-            if (pdu.OpCode == OpCode.Reject)
-            {
-                RejectPacket pkt = new RejectPacket();
-                pkt.Parse(pdu);
-
-                throw new IscsiException("Target sent reject packet, reason " + pkt.Reason);
-            }
-
-            return pdu;
+            throw new IscsiException("Target sent reject packet, reason " + pkt.Reason);
         }
 
-        private void GetParametersToNegotiate(TextBuffer parameters, KeyUsagePhase phase, SessionType sessionType)
-        {
-            PropertyInfo[] properties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            foreach (PropertyInfo propInfo in properties)
-            {
-                ProtocolKeyAttribute attr = propInfo.GetCustomAttribute<ProtocolKeyAttribute>();
-                if (attr != null)
-                {
-                    object value = propInfo.GetGetMethod(true).Invoke(this, null);
+        return pdu;
+    }
 
-                    if (attr.ShouldTransmit(value, propInfo.PropertyType, phase, sessionType == SessionType.Discovery))
+    private void GetParametersToNegotiate(TextBuffer parameters, KeyUsagePhase phase, SessionType sessionType)
+    {
+        var properties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        foreach (var propInfo in properties)
+        {
+            var attr = propInfo.GetCustomAttribute<ProtocolKeyAttribute>();
+            if (attr != null)
+            {
+                var value = propInfo.GetGetMethod(true).Invoke(this, null);
+
+                if (attr.ShouldTransmit(value, propInfo.PropertyType, phase, sessionType == SessionType.Discovery))
+                {
+                    parameters.Add(attr.Name, ProtocolKeyAttribute.GetValueAsString(value, propInfo.PropertyType));
+                    _negotiatedParameters.Add(attr.Name, string.Empty);
+                }
+            }
+        }
+    }
+
+    private void ConsumeParameters(TextBuffer inParameters, TextBuffer outParameters)
+    {
+        var properties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        foreach (var propInfo in properties)
+        {
+            var attr = propInfo.GetCustomAttribute<ProtocolKeyAttribute>();
+            if (attr != null && (attr.Sender & KeySender.Target) != 0)
+            {
+                if (inParameters[attr.Name] != null)
+                {
+                    var value = ProtocolKeyAttribute.GetValueAsObject(inParameters[attr.Name], propInfo.PropertyType);
+
+                    propInfo.GetSetMethod(true).Invoke(this, new[] { value });
+                    inParameters.Remove(attr.Name);
+
+                    if (attr.Type == KeyType.Negotiated && !_negotiatedParameters.ContainsKey(attr.Name))
                     {
-                        parameters.Add(attr.Name, ProtocolKeyAttribute.GetValueAsString(value, propInfo.PropertyType));
+                        value = propInfo.GetGetMethod(true).Invoke(this, null);
+                        outParameters.Add(attr.Name, ProtocolKeyAttribute.GetValueAsString(value, propInfo.PropertyType));
                         _negotiatedParameters.Add(attr.Name, string.Empty);
                     }
                 }
             }
         }
 
-        private void ConsumeParameters(TextBuffer inParameters, TextBuffer outParameters)
+        Session.ConsumeParameters(inParameters, outParameters);
+
+        foreach (var param in inParameters.Lines)
         {
-            PropertyInfo[] properties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            foreach (PropertyInfo propInfo in properties)
-            {
-                ProtocolKeyAttribute attr = propInfo.GetCustomAttribute<ProtocolKeyAttribute>();
-                if (attr != null && (attr.Sender & KeySender.Target) != 0)
-                {
-                    if (inParameters[attr.Name] != null)
-                    {
-                        object value = ProtocolKeyAttribute.GetValueAsObject(inParameters[attr.Name], propInfo.PropertyType);
-
-                        propInfo.GetSetMethod(true).Invoke(this, new[] { value });
-                        inParameters.Remove(attr.Name);
-
-                        if (attr.Type == KeyType.Negotiated && !_negotiatedParameters.ContainsKey(attr.Name))
-                        {
-                            value = propInfo.GetGetMethod(true).Invoke(this, null);
-                            outParameters.Add(attr.Name, ProtocolKeyAttribute.GetValueAsString(value, propInfo.PropertyType));
-                            _negotiatedParameters.Add(attr.Name, string.Empty);
-                        }
-                    }
-                }
-            }
-
-            Session.ConsumeParameters(inParameters, outParameters);
-
-            foreach (KeyValuePair<string, string> param in inParameters.Lines)
-            {
-                outParameters.Add(param.Key, "NotUnderstood");
-            }
+            outParameters.Add(param.Key, "NotUnderstood");
         }
-
-        private T ParseResponse<T>(ProtocolDataUnit pdu)
-            where T : BaseResponse, new()
-        {
-            BaseResponse resp;
-
-            switch (pdu.OpCode)
-            {
-                case OpCode.LoginResponse:
-                    resp = new LoginResponse();
-                    break;
-
-                case OpCode.LogoutResponse:
-                    resp = new LogoutResponse();
-                    break;
-
-                case OpCode.ReadyToTransfer:
-                    resp = new ReadyToTransferPacket();
-                    break;
-
-                case OpCode.Reject:
-                    resp = new RejectPacket();
-                    break;
-
-                case OpCode.ScsiDataIn:
-                    resp = new DataInPacket();
-                    break;
-
-                case OpCode.ScsiResponse:
-                    resp = new Response();
-                    break;
-
-                case OpCode.TextResponse:
-                    resp = new TextResponse();
-                    break;
-
-                default:
-                    throw new InvalidProtocolException("Unrecognized response opcode: " + pdu.OpCode);
-            }
-
-            resp.Parse(pdu);
-            if (resp.StatusPresent)
-            {
-                SeenStatusSequenceNumber(resp.StatusSequenceNumber);
-            }
-
-            T result = resp as T;
-            if (result == null)
-            {
-                throw new InvalidProtocolException("Unexpected response, expected " + typeof(T) + ", got " + result.GetType());
-            }
-
-            return result;
-        }
-
-        #region Parameters
-
-        private const string InitiatorNameParameter = "InitiatorName";
-        private const string SessionTypeParameter = "SessionType";
-        private const string AuthMethodParameter = "AuthMethod";
-
-        private const string HeaderDigestParameter = "HeaderDigest";
-        private const string DataDigestParameter = "DataDigest";
-        private const string MaxRecvDataSegmentLengthParameter = "MaxRecvDataSegmentLength";
-        private const string DefaultTime2WaitParameter = "DefaultTime2Wait";
-        private const string DefaultTime2RetainParameter = "DefaultTime2Retain";
-
-        private const string SendTargetsParameter = "SendTargets";
-        private const string TargetNameParameter = "TargetName";
-        private const string TargetAddressParameter = "TargetAddress";
-
-        private const string NoneValue = "None";
-        private const string ChapValue = "CHAP";
-
-        #endregion
-
-        #region Protocol Features
-
-        [ProtocolKey("HeaderDigest", "None", KeyUsagePhase.OperationalNegotiation, KeySender.Both, KeyType.Negotiated, UsedForDiscovery = true)]
-        public Digest HeaderDigest { get; set; }
-
-        [ProtocolKey("DataDigest", "None", KeyUsagePhase.OperationalNegotiation, KeySender.Both, KeyType.Negotiated, UsedForDiscovery = true)]
-        public Digest DataDigest { get; set; }
-
-        [ProtocolKey("MaxRecvDataSegmentLength", "8192", KeyUsagePhase.OperationalNegotiation, KeySender.Initiator, KeyType.Declarative)]
-        internal int MaxInitiatorTransmitDataSegmentLength { get; set; }
-
-        [ProtocolKey("MaxRecvDataSegmentLength", "8192", KeyUsagePhase.OperationalNegotiation, KeySender.Target, KeyType.Declarative)]
-        internal int MaxTargetReceiveDataSegmentLength { get; set; }
-
-        #endregion
     }
+
+    private T ParseResponse<T>(ProtocolDataUnit pdu)
+        where T : BaseResponse, new()
+    {
+        BaseResponse resp = pdu.OpCode switch
+        {
+            OpCode.LoginResponse => new LoginResponse(),
+            OpCode.LogoutResponse => new LogoutResponse(),
+            OpCode.ReadyToTransfer => new ReadyToTransferPacket(),
+            OpCode.Reject => new RejectPacket(),
+            OpCode.ScsiDataIn => new DataInPacket(),
+            OpCode.ScsiResponse => new Response(),
+            OpCode.TextResponse => new TextResponse(),
+            _ => throw new InvalidProtocolException("Unrecognized response opcode: " + pdu.OpCode),
+        };
+        resp.Parse(pdu);
+        if (resp.StatusPresent)
+        {
+            SeenStatusSequenceNumber(resp.StatusSequenceNumber);
+        }
+
+        return resp is T result
+            ? result
+            : throw new InvalidProtocolException($"Unexpected response, expected {typeof(T)}, got {resp.GetType()}");
+    }
+
+    #region Parameters
+
+    private const string InitiatorNameParameter = "InitiatorName";
+    private const string SessionTypeParameter = "SessionType";
+    private const string AuthMethodParameter = "AuthMethod";
+
+    private const string HeaderDigestParameter = "HeaderDigest";
+    private const string DataDigestParameter = "DataDigest";
+    private const string MaxRecvDataSegmentLengthParameter = "MaxRecvDataSegmentLength";
+    private const string DefaultTime2WaitParameter = "DefaultTime2Wait";
+    private const string DefaultTime2RetainParameter = "DefaultTime2Retain";
+
+    private const string SendTargetsParameter = "SendTargets";
+    private const string TargetNameParameter = "TargetName";
+    private const string TargetAddressParameter = "TargetAddress";
+
+    private const string NoneValue = "None";
+    private const string ChapValue = "CHAP";
+
+    #endregion
+
+    #region Protocol Features
+
+    [ProtocolKey("HeaderDigest", "None", KeyUsagePhase.OperationalNegotiation, KeySender.Both, KeyType.Negotiated, UsedForDiscovery = true)]
+    public Digest HeaderDigest { get; set; }
+
+    [ProtocolKey("DataDigest", "None", KeyUsagePhase.OperationalNegotiation, KeySender.Both, KeyType.Negotiated, UsedForDiscovery = true)]
+    public Digest DataDigest { get; set; }
+
+    [ProtocolKey("MaxRecvDataSegmentLength", "8192", KeyUsagePhase.OperationalNegotiation, KeySender.Initiator, KeyType.Declarative)]
+    internal int MaxInitiatorTransmitDataSegmentLength { get; set; }
+
+    [ProtocolKey("MaxRecvDataSegmentLength", "8192", KeyUsagePhase.OperationalNegotiation, KeySender.Target, KeyType.Declarative)]
+    internal int MaxTargetReceiveDataSegmentLength { get; set; }
+
+    #endregion
 }

@@ -22,12 +22,11 @@
 
 using System;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+[Flags]
+internal enum RegionFlags : uint
 {
-    [Flags]
-    internal enum RegionFlags : uint
-    {
-        None = 0x00,
-        Required = 0x01
-    }
+    None = 0x00,
+    Required = 0x01
 }

@@ -27,137 +27,116 @@ using DiscUtils.Btrfs.Base.Items;
 using DiscUtils.Internal;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Btrfs
+namespace DiscUtils.Btrfs;
+
+internal class DirEntry : VfsDirEntry
 {
-    internal class DirEntry : VfsDirEntry
+    private readonly InodeItem _inode;
+    private readonly DirIndex _item;
+    private readonly ulong _treeId;
+
+    public DirEntry(ulong treeId, ulong objectId)
     {
-        private readonly InodeItem _inode;
-        private readonly DirIndex _item;
-        private readonly ulong _treeId;
+        _treeId = treeId;
+        ObjectId = objectId;
+    }
 
-        public DirEntry(ulong treeId, ulong objectId)
-        {
-            _treeId = treeId;
-            ObjectId = objectId;
-        }
+    public DirEntry(ulong treeId, DirIndex item, InodeItem inode)
+        :this(treeId, item.ChildLocation.ObjectId)
+    {
+        _inode = inode;
+        _item = item;
+    }
 
-        public DirEntry(ulong treeId, DirIndex item, InodeItem inode)
-            :this(treeId, item.ChildLocation.ObjectId)
-        {
-            _inode = inode;
-            _item = item;
-        }
+    public override DateTime CreationTimeUtc
+    {
+        get { return _inode.CTime.DateTime.DateTime; }
+    }
 
-        public override DateTime CreationTimeUtc
-        {
-            get { return _inode.CTime.DateTime.DateTime; }
-        }
+    public override DateTime LastAccessTimeUtc
+    {
+        get { return _inode.ATime.DateTime.DateTime; }
+    }
 
-        public override DateTime LastAccessTimeUtc
-        {
-            get { return _inode.ATime.DateTime.DateTime; }
-        }
+    public override DateTime LastWriteTimeUtc
+    {
+        get { return _inode.MTime.DateTime.DateTime; }
+    }
 
-        public override DateTime LastWriteTimeUtc
-        {
-            get { return _inode.MTime.DateTime.DateTime; }
-        }
+    public override bool HasVfsTimeInfo
+    {
+        get { return true; }
+    }
 
-        public override bool HasVfsTimeInfo
+    public override FileAttributes FileAttributes
+    {
+        get
         {
-            get { return true; }
-        }
-
-        public override FileAttributes FileAttributes
-        {
-            get
+            var unixFileType = _item.ChildType switch
             {
-                UnixFileType unixFileType;
-                switch (_item.ChildType)
-                {
-                    case DirItemChildType.Unknown:
-                        unixFileType = UnixFileType.None;
-                        break;
-                    case DirItemChildType.RegularFile:
-                        unixFileType = UnixFileType.Regular;
-                        break;
-                    case DirItemChildType.Directory:
-                        unixFileType = UnixFileType.Directory;
-                        break;
-                    case DirItemChildType.CharDevice:
-                        unixFileType = UnixFileType.Character;
-                        break;
-                    case DirItemChildType.BlockDevice:
-                        unixFileType = UnixFileType.Block;
-                        break;
-                    case DirItemChildType.Fifo:
-                        unixFileType = UnixFileType.Fifo;
-                        break;
-                    case DirItemChildType.Socket:
-                        unixFileType = UnixFileType.Socket;
-                        break;
-                    case DirItemChildType.Symlink:
-                        unixFileType = UnixFileType.Link;
-                        break;
-                    case DirItemChildType.ExtendedAttribute:
-                        unixFileType = UnixFileType.None;
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-                var result = Utilities.FileAttributesFromUnixFileType(unixFileType);
+                DirItemChildType.Unknown => UnixFileType.None,
+                DirItemChildType.RegularFile => UnixFileType.Regular,
+                DirItemChildType.Directory => UnixFileType.Directory,
+                DirItemChildType.CharDevice => UnixFileType.Character,
+                DirItemChildType.BlockDevice => UnixFileType.Block,
+                DirItemChildType.Fifo => UnixFileType.Fifo,
+                DirItemChildType.Socket => UnixFileType.Socket,
+                DirItemChildType.Symlink => UnixFileType.Link,
+                DirItemChildType.ExtendedAttribute => UnixFileType.None,
+                _ => throw new ArgumentOutOfRangeException(),
+            };
+            var result = Utilities.FileAttributesFromUnixFileType(unixFileType);
 
-                if (_inode != null && (_inode.Flags & InodeFlag.Readonly) == InodeFlag.Readonly)
-                    result |= FileAttributes.ReadOnly;
+            if (_inode != null && (_inode.Flags & InodeFlag.Readonly) == InodeFlag.Readonly)
+                result |= FileAttributes.ReadOnly;
 
+            return result;
+        }
+    }
+
+    public override bool HasVfsFileAttributes
+    {
+        get { return _item != null; }
+    }
+
+    public override string FileName
+    {
+        get { return _item.Name; }
+    }
+
+    public override bool IsDirectory
+    {
+        get { return _item.ChildType == DirItemChildType.Directory; }
+    }
+
+    public override bool IsSymlink
+    {
+        get { return _item.ChildType == DirItemChildType.Symlink; }
+    }
+
+    public override long UniqueCacheId
+    {
+        get
+        {
+            unchecked
+            {
+                var result = _inode == null?0:(long)_inode.TransId;
+                result = (result * 397) ^ (long)_item.TransId;
+                result = (result * 397) ^ (long)_item.ChildLocation.ObjectId;
                 return result;
             }
         }
-
-        public override bool HasVfsFileAttributes
-        {
-            get { return _item != null; }
-        }
-
-        public override string FileName
-        {
-            get { return _item.Name; }
-        }
-
-        public override bool IsDirectory
-        {
-            get { return _item.ChildType == DirItemChildType.Directory; }
-        }
-
-        public override bool IsSymlink
-        {
-            get { return _item.ChildType == DirItemChildType.Symlink; }
-        }
-
-        public override long UniqueCacheId
-        {
-            get
-            {
-                unchecked
-                {
-                    long result = _inode == null?0:(long)_inode.TransId;
-                    result = (result * 397) ^ (long)_item.TransId;
-                    result = (result * 397) ^ (long)_item.ChildLocation.ObjectId;
-                    return result;
-                }
-            }
-        }
-
-        internal Directory CachedDirectory { get; set; }
-
-        internal DirItemChildType Type { get { return _item.ChildType; } }
-
-        internal ulong ObjectId { get; private set; }
-
-        internal ulong TreeId { get { return _treeId; } }
-
-        internal ulong FileSize { get { return _inode.FileSize; } }
-
-        internal bool IsSubtree { get { return _item != null && _item.ChildLocation.ItemType == ItemType.RootItem; } }
     }
+
+    internal Directory CachedDirectory { get; set; }
+
+    internal DirItemChildType Type { get { return _item.ChildType; } }
+
+    internal ulong ObjectId { get; private set; }
+
+    internal ulong TreeId { get { return _treeId; } }
+
+    internal ulong FileSize { get { return _inode.FileSize; } }
+
+    internal bool IsSubtree { get { return _item != null && _item.ChildLocation.ItemType == ItemType.RootItem; } }
 }

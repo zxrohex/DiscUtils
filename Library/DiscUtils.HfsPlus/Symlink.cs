@@ -2,31 +2,28 @@
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal class Symlink : File, IVfsSymlink<DirEntry, File>
 {
-    internal class Symlink : File, IVfsSymlink<DirEntry, File>
+    private string _targetPath;
+
+    public Symlink(Context context, CatalogNodeId nodeId, CommonCatalogFileInfo catalogInfo)
+        : base(context, nodeId, catalogInfo) {}
+
+    public string TargetPath
     {
-        private string _targetPath;
-
-        public Symlink(Context context, CatalogNodeId nodeId, CommonCatalogFileInfo catalogInfo)
-            : base(context, nodeId, catalogInfo) {}
-
-        public string TargetPath
+        get
         {
-            get
+            if (_targetPath == null)
             {
-                if (_targetPath == null)
-                {
-                    using (BufferStream stream = new BufferStream(FileContent, FileAccess.Read))
-                    using (StreamReader reader = new StreamReader(stream))
-                    {
-                        _targetPath = reader.ReadToEnd();
-                        _targetPath = _targetPath.Replace('/', Path.DirectorySeparatorChar);
-                    }
-                }
-
-                return _targetPath;
+                using var stream = new BufferStream(FileContent, FileAccess.Read);
+                using var reader = new StreamReader(stream);
+                _targetPath = reader.ReadToEnd();
+                _targetPath = _targetPath.Replace('/', Path.DirectorySeparatorChar);
             }
+
+            return _targetPath;
         }
     }
 }

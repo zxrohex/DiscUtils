@@ -24,68 +24,67 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+
+internal class BTreeInodeNode : BtreeHeader
 {
-    using DiscUtils.Streams;
-    using System;
+    public uint[] Keys { get; private set; }
 
-    internal class BTreeInodeNode : BtreeHeader
+    public uint[] Pointer { get; private set; }
+
+    public Dictionary<uint, BtreeHeader> Children { get; private set; }
+
+    public override int Size
     {
-        public uint[] Keys { get; private set; }
+        get { return base.Size + (NumberOfRecords * 0x8); }
+    }
 
-        public uint[] Pointer { get; private set; }
+    public BTreeInodeNode(uint superBlockVersion) : base(superBlockVersion) { }
 
-        public Dictionary<uint, BtreeHeader> Children { get; private set; }
-
-        public override int Size
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        base.ReadFrom(buffer, offset);
+        offset += base.Size;
+        if (Level == 0)
+            throw new IOException("invalid B+tree level - expected 0");
+        Keys = new uint[NumberOfRecords];
+        Pointer = new uint[NumberOfRecords];
+        for (var i = 0; i < NumberOfRecords; i++)
         {
-            get { return base.Size + (NumberOfRecords * 0x8); }
+            Keys[i] = EndianUtilities.ToUInt32BigEndian(buffer, offset);
         }
-
-        public BTreeInodeNode(uint superBlockVersion) : base(superBlockVersion) { }
-
-        public override int ReadFrom(byte[] buffer, int offset)
+        for (var i = 0; i < NumberOfRecords; i++)
         {
-            base.ReadFrom(buffer, offset);
-            offset += base.Size;
-            if (Level == 0)
-                throw new IOException("invalid B+tree level - expected 0");
-            Keys = new uint[NumberOfRecords];
-            Pointer = new uint[NumberOfRecords];
-            for (int i = 0; i < NumberOfRecords; i++)
-            {
-                Keys[i] = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            }
-            for (int i = 0; i < NumberOfRecords; i++)
-            {
-                Pointer[i] = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            }
-            return Size;
+            Pointer[i] = EndianUtilities.ToUInt32BigEndian(buffer, offset);
         }
+        return Size;
+    }
 
-        public override void LoadBtree(AllocationGroup ag)
+    public override void LoadBtree(AllocationGroup ag)
+    {
+        Children = new Dictionary<uint,BtreeHeader>(NumberOfRecords);
+        for (var i = 0; i < NumberOfRecords; i++)
         {
-            Children = new Dictionary<uint,BtreeHeader>(NumberOfRecords);
-            for (int i = 0; i < NumberOfRecords; i++)
+            BtreeHeader child;
+            if (Level == 1)
             {
-                BtreeHeader child;
-                if (Level == 1)
-                {
-                    child = new BTreeInodeLeaf(base.SbVersion);
-                }
-                else
-                {
-                    child = new BTreeInodeNode(base.SbVersion);
-                }
-                var data = ag.Context.RawStream;
-
-                data.Position = ((long)Pointer[i] * ag.Context.SuperBlock.Blocksize) + ag.Offset;
-                var buffer = StreamUtilities.ReadExact(data, (int)ag.Context.SuperBlock.Blocksize);
-
-                child.ReadFrom(buffer, 0);
-                child.LoadBtree(ag);
-                Children.Add(Keys[i], child);
+                child = new BTreeInodeLeaf(base.SbVersion);
             }
+            else
+            {
+                child = new BTreeInodeNode(base.SbVersion);
+            }
+            var data = ag.Context.RawStream;
+
+            data.Position = ((long)Pointer[i] * ag.Context.SuperBlock.Blocksize) + ag.Offset;
+            var buffer = StreamUtilities.ReadExact(data, (int)ag.Context.SuperBlock.Blocksize);
+
+            child.ReadFrom(buffer, 0);
+            child.LoadBtree(ag);
+            Children.Add(Keys[i], child);
         }
     }
 }

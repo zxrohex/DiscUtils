@@ -22,82 +22,81 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public class Nfs3CreateResult : Nfs3CallResult
 {
-    public class Nfs3CreateResult : Nfs3CallResult
+    internal Nfs3CreateResult(XdrDataReader reader)
     {
-        internal Nfs3CreateResult(XdrDataReader reader)
+        Status = (Nfs3Status)reader.ReadInt32();
+        if (Status == Nfs3Status.Ok)
         {
-            Status = (Nfs3Status)reader.ReadInt32();
-            if (Status == Nfs3Status.Ok)
+            if (reader.ReadBool())
             {
-                if (reader.ReadBool())
-                {
-                    FileHandle = new Nfs3FileHandle(reader);
-                }
-
-                if (reader.ReadBool())
-                {
-                    FileAttributes = new Nfs3FileAttributes(reader);
-                }
+                FileHandle = new Nfs3FileHandle(reader);
             }
 
-            CacheConsistency = new Nfs3WeakCacheConsistency(reader);
-        }
-
-        public Nfs3CreateResult()
-        {
-        }
-
-        public Nfs3WeakCacheConsistency CacheConsistency { get; set; }
-
-        public Nfs3FileAttributes FileAttributes { get; set; }
-
-        public Nfs3FileHandle FileHandle { get; set; }
-
-        public override void Write(XdrDataWriter writer)
-        {
-            writer.Write((int)Status);
-
-            if (Status == Nfs3Status.Ok)
+            if (reader.ReadBool())
             {
-                writer.Write(FileHandle != null);
-                if (FileHandle != null)
-                {
-                    FileHandle.Write(writer);
-                }
+                FileAttributes = new Nfs3FileAttributes(reader);
+            }
+        }
 
-                writer.Write(FileAttributes != null);
-                if (FileAttributes != null)
-                {
-                    FileAttributes.Write(writer);
-                }
+        CacheConsistency = new Nfs3WeakCacheConsistency(reader);
+    }
+
+    public Nfs3CreateResult()
+    {
+    }
+
+    public Nfs3WeakCacheConsistency CacheConsistency { get; set; }
+
+    public Nfs3FileAttributes FileAttributes { get; set; }
+
+    public Nfs3FileHandle FileHandle { get; set; }
+
+    public override void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)Status);
+
+        if (Status == Nfs3Status.Ok)
+        {
+            writer.Write(FileHandle != null);
+            if (FileHandle != null)
+            {
+                FileHandle.Write(writer);
             }
 
-            CacheConsistency.Write(writer);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Nfs3CreateResult);
-        }
-
-        public bool Equals(Nfs3CreateResult other)
-        {
-            if (other == null)
+            writer.Write(FileAttributes != null);
+            if (FileAttributes != null)
             {
-                return false;
+                FileAttributes.Write(writer);
             }
-
-            return other.Status == Status
-                && object.Equals(other.FileHandle, FileHandle)
-                && object.Equals(other.FileAttributes, FileAttributes)
-                && object.Equals(other.CacheConsistency, CacheConsistency);
         }
 
-        public override int GetHashCode()
+        CacheConsistency.Write(writer);
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3CreateResult);
+    }
+
+    public bool Equals(Nfs3CreateResult other)
+    {
+        if (other == null)
         {
-            return HashCode.Combine(Status, FileHandle, FileAttributes, CacheConsistency);
+            return false;
         }
+
+        return other.Status == Status
+            && object.Equals(other.FileHandle, FileHandle)
+            && object.Equals(other.FileAttributes, FileAttributes)
+            && object.Equals(other.CacheConsistency, CacheConsistency);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Status, FileHandle, FileAttributes, CacheConsistency);
     }
 }

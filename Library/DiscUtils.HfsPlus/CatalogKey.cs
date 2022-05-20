@@ -23,66 +23,65 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class CatalogKey : BTreeKey, IComparable<CatalogKey>
 {
-    internal sealed class CatalogKey : BTreeKey, IComparable<CatalogKey>
+    private ushort _keyLength;
+
+    public CatalogKey() {}
+
+    public CatalogKey(CatalogNodeId nodeId, string name)
     {
-        private ushort _keyLength;
+        NodeId = nodeId;
+        Name = name;
+    }
 
-        public CatalogKey() {}
+    public string Name { get; private set; }
 
-        public CatalogKey(CatalogNodeId nodeId, string name)
+    public CatalogNodeId NodeId { get; private set; }
+
+    public override int Size
+    {
+        get { throw new NotImplementedException(); }
+    }
+
+    public int CompareTo(CatalogKey other)
+    {
+        if (other == null)
         {
-            NodeId = nodeId;
-            Name = name;
+            throw new ArgumentNullException(nameof(other));
         }
 
-        public string Name { get; private set; }
-
-        public CatalogNodeId NodeId { get; private set; }
-
-        public override int Size
+        if (NodeId != other.NodeId)
         {
-            get { throw new NotImplementedException(); }
+            return NodeId < other.NodeId ? -1 : 1;
         }
 
-        public int CompareTo(CatalogKey other)
-        {
-            if (other == null)
-            {
-                throw new ArgumentNullException(nameof(other));
-            }
+        return HfsPlusUtilities.FastUnicodeCompare(Name, other.Name);
+    }
 
-            if (NodeId != other.NodeId)
-            {
-                return NodeId < other.NodeId ? -1 : 1;
-            }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        _keyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
+        NodeId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 2));
+        Name = HfsPlusUtilities.ReadUniStr255(buffer, offset + 6);
 
-            return HfsPlusUtilities.FastUnicodeCompare(Name, other.Name);
-        }
+        return _keyLength + 2;
+    }
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            _keyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
-            NodeId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 2));
-            Name = HfsPlusUtilities.ReadUniStr255(buffer, offset + 6);
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-            return _keyLength + 2;
-        }
+    public override int CompareTo(BTreeKey other)
+    {
+        return CompareTo(other as CatalogKey);
+    }
 
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override int CompareTo(BTreeKey other)
-        {
-            return CompareTo(other as CatalogKey);
-        }
-
-        public override string ToString()
-        {
-            return Name + " (" + NodeId + ")";
-        }
+    public override string ToString()
+    {
+        return Name + " (" + NodeId + ")";
     }
 }

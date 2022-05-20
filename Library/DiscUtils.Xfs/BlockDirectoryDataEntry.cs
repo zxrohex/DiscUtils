@@ -22,63 +22,62 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+internal class BlockDirectoryDataEntry : BlockDirectoryData, IDirectoryEntry
 {
-    internal class BlockDirectoryDataEntry : BlockDirectoryData, IDirectoryEntry
+    private readonly bool _ftype;
+
+    public ulong Inode { get; private set; }
+
+    public byte NameLength { get; private set; }
+
+    public byte[] Name { get; private set; }
+
+    public ushort Tag { get; private set; }
+
+    public DirectoryFType FType { get; private set; }
+
+    public override int Size
     {
-        private readonly bool _ftype;
-
-        public ulong Inode { get; private set; }
-
-        public byte NameLength { get; private set; }
-
-        public byte[] Name { get; private set; }
-
-        public ushort Tag { get; private set; }
-
-        public DirectoryFType FType { get; private set; }
-
-        public override int Size
+        get
         {
-            get
-            {
-                var size = 0xb + NameLength + (_ftype?1:0);
-                var padding = size%8;
-                if (padding != 0)
-                    return size + (8 - padding);
-                return size;
-            }
+            var size = 0xb + NameLength + (_ftype?1:0);
+            var padding = size%8;
+            if (padding != 0)
+                return size + (8 - padding);
+            return size;
+        }
+    }
+
+    public BlockDirectoryDataEntry(Context context)
+    {
+        _ftype = context.SuperBlock.HasFType;
+    }
+
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        Inode = EndianUtilities.ToUInt64BigEndian(buffer, offset);
+        NameLength = buffer[offset + 0x8];
+        Name = EndianUtilities.ToByteArray(buffer, offset + 0x9, NameLength);
+        offset += 0x9 + NameLength;
+        if (_ftype)
+        {
+            FType = (DirectoryFType)buffer[offset];
+            offset++;
         }
 
-        public BlockDirectoryDataEntry(Context context)
-        {
-            _ftype = context.SuperBlock.HasFType;
-        }
+        var padding = 6 - ((NameLength + (_ftype ? 2 : 1)) % 8);
+        if (padding < 0)
+            padding += 8;
+        offset += padding;
+        Tag = EndianUtilities.ToUInt16BigEndian(buffer, offset);
+        return Size;
+    }
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            Inode = EndianUtilities.ToUInt64BigEndian(buffer, offset);
-            NameLength = buffer[offset + 0x8];
-            Name = EndianUtilities.ToByteArray(buffer, offset + 0x9, NameLength);
-            offset += 0x9 + NameLength;
-            if (_ftype)
-            {
-                FType = (DirectoryFType)buffer[offset];
-                offset++;
-            }
-
-            var padding = 6 - ((NameLength + (_ftype ? 2 : 1)) % 8);
-            if (padding < 0)
-                padding += 8;
-            offset += padding;
-            Tag = EndianUtilities.ToUInt16BigEndian(buffer, offset);
-            return Size;
-        }
-
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            return $"{Inode}: {EndianUtilities.BytesToString(Name, 0, NameLength)}";
-        }
+    /// <inheritdoc />
+    public override string ToString()
+    {
+        return $"{Inode}: {EndianUtilities.BytesToString(Name, 0, NameLength)}";
     }
 }

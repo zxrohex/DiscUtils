@@ -22,101 +22,100 @@
 
 using System;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+/// <summary>
+/// Class representing an individual metadata item.
+/// </summary>
+public sealed class MetadataInfo
 {
-    /// <summary>
-    /// Class representing an individual metadata item.
-    /// </summary>
-    public sealed class MetadataInfo
+    private readonly MetadataEntry _entry;
+
+    internal MetadataInfo(MetadataEntry entry)
     {
-        private readonly MetadataEntry _entry;
+        _entry = entry;
+    }
 
-        internal MetadataInfo(MetadataEntry entry)
-        {
-            _entry = entry;
-        }
+    /// <summary>
+    /// Gets a value indicating whether parsing this metadata is needed to open the VHDX file.
+    /// </summary>
+    public bool IsRequired
+    {
+        get { return (_entry.Flags & MetadataEntryFlags.IsRequired) != 0; }
+    }
 
-        /// <summary>
-        /// Gets a value indicating whether parsing this metadata is needed to open the VHDX file.
-        /// </summary>
-        public bool IsRequired
-        {
-            get { return (_entry.Flags & MetadataEntryFlags.IsRequired) != 0; }
-        }
+    /// <summary>
+    /// Gets a value indicating whether this is system or user metadata.
+    /// </summary>
+    public bool IsUser
+    {
+        get { return (_entry.Flags & MetadataEntryFlags.IsUser) != 0; }
+    }
 
-        /// <summary>
-        /// Gets a value indicating whether this is system or user metadata.
-        /// </summary>
-        public bool IsUser
-        {
-            get { return (_entry.Flags & MetadataEntryFlags.IsUser) != 0; }
-        }
+    /// <summary>
+    /// Gets a value indicating whether this is virtual disk metadata, or VHDX file metadata.
+    /// </summary>
+    public bool IsVirtualDisk
+    {
+        get { return (_entry.Flags & MetadataEntryFlags.IsVirtualDisk) != 0; }
+    }
 
-        /// <summary>
-        /// Gets a value indicating whether this is virtual disk metadata, or VHDX file metadata.
-        /// </summary>
-        public bool IsVirtualDisk
-        {
-            get { return (_entry.Flags & MetadataEntryFlags.IsVirtualDisk) != 0; }
-        }
+    /// <summary>
+    /// Gets the unique identifier for the metadata.
+    /// </summary>
+    public Guid ItemId
+    {
+        get { return _entry.ItemId; }
+    }
 
-        /// <summary>
-        /// Gets the unique identifier for the metadata.
-        /// </summary>
-        public Guid ItemId
-        {
-            get { return _entry.ItemId; }
-        }
+    /// <summary>
+    /// Gets the length of the metadata.
+    /// </summary>
+    public long Length
+    {
+        get { return _entry.Length; }
+    }
 
-        /// <summary>
-        /// Gets the length of the metadata.
-        /// </summary>
-        public long Length
-        {
-            get { return _entry.Length; }
-        }
+    /// <summary>
+    /// Gets the offset within the metadata region of the metadata.
+    /// </summary>
+    public long Offset
+    {
+        get { return _entry.Offset; }
+    }
 
-        /// <summary>
-        /// Gets the offset within the metadata region of the metadata.
-        /// </summary>
-        public long Offset
+    /// <summary>
+    /// Gets the descriptive name for well-known metadata.
+    /// </summary>
+    public string WellKnownName
+    {
+        get
         {
-            get { return _entry.Offset; }
-        }
-
-        /// <summary>
-        /// Gets the descriptive name for well-known metadata.
-        /// </summary>
-        public string WellKnownName
-        {
-            get
+            if (_entry.ItemId == MetadataTable.FileParametersGuid)
             {
-                if (_entry.ItemId == MetadataTable.FileParametersGuid)
-                {
-                    return "File Parameters";
-                }
-                if (_entry.ItemId == MetadataTable.LogicalSectorSizeGuid)
-                {
-                    return "Logical Sector Size";
-                }
-                if (_entry.ItemId == MetadataTable.Page83DataGuid)
-                {
-                    return "SCSI Page 83 Data";
-                }
-                if (_entry.ItemId == MetadataTable.ParentLocatorGuid)
-                {
-                    return "Parent Locator";
-                }
-                if (_entry.ItemId == MetadataTable.PhysicalSectorSizeGuid)
-                {
-                    return "Physical Sector Size";
-                }
-                if (_entry.ItemId == MetadataTable.VirtualDiskSizeGuid)
-                {
-                    return "Virtual Disk Size";
-                }
-                return null;
+                return "File Parameters";
             }
+            if (_entry.ItemId == MetadataTable.LogicalSectorSizeGuid)
+            {
+                return "Logical Sector Size";
+            }
+            if (_entry.ItemId == MetadataTable.Page83DataGuid)
+            {
+                return "SCSI Page 83 Data";
+            }
+            if (_entry.ItemId == MetadataTable.ParentLocatorGuid)
+            {
+                return "Parent Locator";
+            }
+            if (_entry.ItemId == MetadataTable.PhysicalSectorSizeGuid)
+            {
+                return "Physical Sector Size";
+            }
+            if (_entry.ItemId == MetadataTable.VirtualDiskSizeGuid)
+            {
+                return "Virtual Disk Size";
+            }
+            return null;
         }
     }
 }

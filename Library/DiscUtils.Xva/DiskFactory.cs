@@ -26,80 +26,79 @@ using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Xva
+namespace DiscUtils.Xva;
+
+[VirtualDiskFactory("XVA", ".xva")]
+internal sealed class DiskFactory : VirtualDiskFactory
 {
-    [VirtualDiskFactory("XVA", ".xva")]
-    internal sealed class DiskFactory : VirtualDiskFactory
+    public override string[] Variants
     {
-        public override string[] Variants
+        get { return new[] { "dynamic" }; }
+    }
+
+    public override VirtualDiskTypeInfo GetDiskTypeInformation(string variant)
+    {
+        return MakeDiskTypeInfo();
+    }
+
+    public override DiskImageBuilder GetImageBuilder(string variant)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override VirtualDisk CreateDisk(FileLocator locator, string variant, string path, VirtualDiskParameters diskParameters)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override VirtualDisk OpenDisk(string path, FileAccess access)
+    {
+        return OpenDisk(new LocalFileLocator(Path.GetDirectoryName(path)), Path.GetFileName(path), access);
+    }
+
+    public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)
+    {
+        return OpenDisk(locator, path, string.Empty, new Dictionary<string, string>(), access);
+    }
+
+    public override VirtualDisk OpenDisk(FileLocator locator, string path, string extraInfo, Dictionary<string, string> parameters, FileAccess access)
+    {
+        var machine = new VirtualMachine(locator.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read), Ownership.Dispose);
+
+        if (!int.TryParse(extraInfo, out var diskIndex))
         {
-            get { return new[] { "dynamic" }; }
+            diskIndex = 0;
         }
 
-        public override VirtualDiskTypeInfo GetDiskTypeInformation(string variant)
+        var i = 0;
+        foreach (var disk in machine.Disks)
         {
-            return MakeDiskTypeInfo();
-        }
-
-        public override DiskImageBuilder GetImageBuilder(string variant)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override VirtualDisk CreateDisk(FileLocator locator, string variant, string path, VirtualDiskParameters diskParameters)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override VirtualDisk OpenDisk(string path, FileAccess access)
-        {
-            return OpenDisk(new LocalFileLocator(Path.GetDirectoryName(path)), Path.GetFileName(path), access);
-        }
-
-        public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)
-        {
-            return OpenDisk(locator, path, string.Empty, new Dictionary<string, string>(), access);
-        }
-
-        public override VirtualDisk OpenDisk(FileLocator locator, string path, string extraInfo, Dictionary<string, string> parameters, FileAccess access)
-        {
-            VirtualMachine machine = new VirtualMachine(locator.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read), Ownership.Dispose);
-
-            if (!int.TryParse(extraInfo, out var diskIndex))
+            if (i == diskIndex)
             {
-                diskIndex = 0;
+                return disk;
             }
 
-            int i = 0;
-            foreach (Disk disk in machine.Disks)
-            {
-                if (i == diskIndex)
-                {
-                    return disk;
-                }
-
-                ++i;
-            }
-
-            return null;
+            ++i;
         }
 
-        public override VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access)
+        return null;
+    }
+
+    public override VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access)
+    {
+        return null;
+    }
+
+    internal static VirtualDiskTypeInfo MakeDiskTypeInfo()
+    {
+        return new VirtualDiskTypeInfo
         {
-            return null;
-        }
-
-        internal static VirtualDiskTypeInfo MakeDiskTypeInfo()
-        {
-            return new VirtualDiskTypeInfo
-            {
-                Name = "XVA",
-                Variant = "dynamic",
-                CanBeHardDisk = true,
-                DeterministicGeometry = true,
-                PreservesBiosGeometry = false,
-                CalcGeometry = Geometry.FromCapacity
-            };
-        }
+            Name = "XVA",
+            Variant = "dynamic",
+            CanBeHardDisk = true,
+            DeterministicGeometry = true,
+            PreservesBiosGeometry = false,
+            CalcGeometry = Geometry.FromCapacity
+        };
     }
 }

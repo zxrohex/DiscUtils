@@ -21,77 +21,78 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal class File : IVfsFile
 {
-    internal class File : IVfsFile
+    private FileContentBuffer _content;
+    private readonly MetadataRef _inodeRef;
+
+    public File(Context context, Inode inode, MetadataRef inodeRef)
     {
-        private FileContentBuffer _content;
-        private readonly MetadataRef _inodeRef;
+        Context = context;
+        Inode = inode;
+        _inodeRef = inodeRef;
+    }
 
-        public File(Context context, Inode inode, MetadataRef inodeRef)
+    protected Context Context { get; }
+
+    internal Inode Inode { get; }
+
+    public DateTime LastAccessTimeUtc
+    {
+        get { return Inode.ModificationTime; }
+
+        set { throw new NotSupportedException(); }
+    }
+
+    public DateTime LastWriteTimeUtc
+    {
+        get { return Inode.ModificationTime; }
+
+        set { throw new NotSupportedException(); }
+    }
+
+    public DateTime CreationTimeUtc
+    {
+        get { return Inode.ModificationTime; }
+
+        set { throw new NotSupportedException(); }
+    }
+
+    public FileAttributes FileAttributes
+    {
+        get
         {
-            Context = context;
-            Inode = inode;
-            _inodeRef = inodeRef;
+            var fileType = VfsSquashFileSystemReader.FileTypeFromInodeType(Inode.Type);
+            return Utilities.FileAttributesFromUnixFileType(fileType);
         }
 
-        protected Context Context { get; }
+        set { throw new NotSupportedException(); }
+    }
 
-        internal Inode Inode { get; }
+    public long FileLength
+    {
+        get { return Inode.FileSize; }
+    }
 
-        public DateTime LastAccessTimeUtc
+    public IBuffer FileContent
+    {
+        get
         {
-            get { return Inode.ModificationTime; }
-
-            set { throw new NotSupportedException(); }
-        }
-
-        public DateTime LastWriteTimeUtc
-        {
-            get { return Inode.ModificationTime; }
-
-            set { throw new NotSupportedException(); }
-        }
-
-        public DateTime CreationTimeUtc
-        {
-            get { return Inode.ModificationTime; }
-
-            set { throw new NotSupportedException(); }
-        }
-
-        public FileAttributes FileAttributes
-        {
-            get
+            if (_content == null)
             {
-                UnixFileType fileType = VfsSquashFileSystemReader.FileTypeFromInodeType(Inode.Type);
-                return Utilities.FileAttributesFromUnixFileType(fileType);
+                _content = new FileContentBuffer(Context, (RegularInode)Inode, _inodeRef);
             }
 
-            set { throw new NotSupportedException(); }
-        }
-
-        public long FileLength
-        {
-            get { return Inode.FileSize; }
-        }
-
-        public IBuffer FileContent
-        {
-            get
-            {
-                if (_content == null)
-                {
-                    _content = new FileContentBuffer(Context, (RegularInode)Inode, _inodeRef);
-                }
-
-                return _content;
-            }
+            return _content;
         }
     }
 }

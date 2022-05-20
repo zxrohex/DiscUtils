@@ -20,12 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal enum ExtentDataCompression : byte
 {
-    internal enum ExtentDataCompression : byte
-    {
-        None = 0,
-        Zlib = 1,
-        Lzo = 2,
-    }
+    None = 0,
+    Zlib = 1,
+    Lzo = 2,
 }

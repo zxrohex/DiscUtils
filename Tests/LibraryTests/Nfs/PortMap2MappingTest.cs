@@ -31,7 +31,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            PortMap2Mapping attributes = new PortMap2Mapping()
+            var attributes = new PortMap2Mapping()
             {
                 Port = 1,
                 Program = 2,
@@ -41,13 +41,13 @@ namespace LibraryTests.Nfs
 
             PortMap2Mapping clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 attributes.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new PortMap2Mapping(reader);
             }
 

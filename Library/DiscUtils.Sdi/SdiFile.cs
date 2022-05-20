@@ -25,92 +25,91 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Sdi
+namespace DiscUtils.Sdi;
+
+/// <summary>
+/// Class for accessing the contents of Simple Deployment Image (.sdi) files.
+/// </summary>
+/// <remarks>SDI files are primitive disk images, containing multiple blobs.</remarks>
+public sealed class SdiFile : IDisposable
 {
+    private readonly FileHeader _header;
+    private readonly Ownership _ownership;
+    private readonly List<SectionRecord> _sections;
+    private Stream _stream;
+
     /// <summary>
-    /// Class for accessing the contents of Simple Deployment Image (.sdi) files.
+    /// Initializes a new instance of the SdiFile class.
     /// </summary>
-    /// <remarks>SDI files are primitive disk images, containing multiple blobs.</remarks>
-    public sealed class SdiFile : IDisposable
+    /// <param name="stream">The stream formatted as an SDI file.</param>
+    public SdiFile(Stream stream)
+        : this(stream, Ownership.None) {}
+
+    /// <summary>
+    /// Initializes a new instance of the SdiFile class.
+    /// </summary>
+    /// <param name="stream">The stream formatted as an SDI file.</param>
+    /// <param name="ownership">Whether to pass ownership of <c>stream</c> to the new instance.</param>
+    public SdiFile(Stream stream, Ownership ownership)
     {
-        private readonly FileHeader _header;
-        private readonly Ownership _ownership;
-        private readonly List<SectionRecord> _sections;
-        private Stream _stream;
+        _stream = stream;
+        _ownership = ownership;
 
-        /// <summary>
-        /// Initializes a new instance of the SdiFile class.
-        /// </summary>
-        /// <param name="stream">The stream formatted as an SDI file.</param>
-        public SdiFile(Stream stream)
-            : this(stream, Ownership.None) {}
+        var page = StreamUtilities.ReadExact(_stream, 512);
 
-        /// <summary>
-        /// Initializes a new instance of the SdiFile class.
-        /// </summary>
-        /// <param name="stream">The stream formatted as an SDI file.</param>
-        /// <param name="ownership">Whether to pass ownership of <c>stream</c> to the new instance.</param>
-        public SdiFile(Stream stream, Ownership ownership)
+        _header = new FileHeader();
+        _header.ReadFrom(page, 0);
+
+        _stream.Position = _header.PageAlignment * 512;
+        var toc = StreamUtilities.ReadExact(_stream, (int)(_header.PageAlignment * 512));
+
+        _sections = new List<SectionRecord>();
+        var pos = 0;
+        while (EndianUtilities.ToUInt64LittleEndian(toc, pos) != 0)
         {
-            _stream = stream;
-            _ownership = ownership;
+            var record = new SectionRecord();
+            record.ReadFrom(toc, pos);
 
-            byte[] page = StreamUtilities.ReadExact(_stream, 512);
+            _sections.Add(record);
 
-            _header = new FileHeader();
-            _header.ReadFrom(page, 0);
+            pos += SectionRecord.RecordSize;
+        }
+    }
 
-            _stream.Position = _header.PageAlignment * 512;
-            byte[] toc = StreamUtilities.ReadExact(_stream, (int)(_header.PageAlignment * 512));
-
-            _sections = new List<SectionRecord>();
-            int pos = 0;
-            while (EndianUtilities.ToUInt64LittleEndian(toc, pos) != 0)
+    /// <summary>
+    /// Gets all of the sections within the file.
+    /// </summary>
+    public IEnumerable<Section> Sections
+    {
+        get
+        {
+            var i = 0;
+            foreach (var section in _sections)
             {
-                SectionRecord record = new SectionRecord();
-                record.ReadFrom(toc, pos);
-
-                _sections.Add(record);
-
-                pos += SectionRecord.RecordSize;
+                yield return new Section(section, i++);
             }
         }
+    }
 
-        /// <summary>
-        /// Gets all of the sections within the file.
-        /// </summary>
-        public IEnumerable<Section> Sections
+    /// <summary>
+    /// Disposes of this instance.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_ownership == Ownership.Dispose && _stream != null)
         {
-            get
-            {
-                int i = 0;
-                foreach (SectionRecord section in _sections)
-                {
-                    yield return new Section(section, i++);
-                }
-            }
+            _stream.Dispose();
+            _stream = null;
         }
+    }
 
-        /// <summary>
-        /// Disposes of this instance.
-        /// </summary>
-        public void Dispose()
-        {
-            if (_ownership == Ownership.Dispose && _stream != null)
-            {
-                _stream.Dispose();
-                _stream = null;
-            }
-        }
-
-        /// <summary>
-        /// Opens a stream to access a particular section.
-        /// </summary>
-        /// <param name="index">The zero-based index of the section.</param>
-        /// <returns>A stream that can be used to access the section.</returns>
-        public Stream OpenSection(int index)
-        {
-            return new SubStream(_stream, _sections[index].Offset, _sections[index].Size);
-        }
+    /// <summary>
+    /// Opens a stream to access a particular section.
+    /// </summary>
+    /// <param name="index">The zero-based index of the section.</param>
+    /// <returns>A stream that can be used to access the section.</returns>
+    public Stream OpenSection(int index)
+    {
+        return new SubStream(_stream, _sections[index].Offset, _sections[index].Size);
     }
 }

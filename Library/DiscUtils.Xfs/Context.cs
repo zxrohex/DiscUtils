@@ -21,29 +21,28 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System.IO;
+using DiscUtils.Vfs;
+
+internal class Context : VfsContext
 {
-    using System.IO;
-    using DiscUtils.Vfs;
+    public Stream RawStream { get; set; }
 
-    internal class Context : VfsContext
+    public SuperBlock SuperBlock { get; set; }
+
+    public AllocationGroup[] AllocationGroups { get; set; }
+    
+    public XfsFileSystemOptions Options { get; set; }
+
+    public Inode GetInode(ulong number)
     {
-        public Stream RawStream { get; set; }
-
-        public SuperBlock SuperBlock { get; set; }
-
-        public AllocationGroup[] AllocationGroups { get; set; }
-        
-        public XfsFileSystemOptions Options { get; set; }
-
-        public Inode GetInode(ulong number)
-        {
-            var inode = new Inode(number, this);
-            AllocationGroup group = AllocationGroups[inode.AllocationGroup];
-            group.LoadInode(inode);
-            if (inode.Magic != Inode.InodeMagic)
-                throw new IOException("invalid inode magic");
-            return inode;
-        }
+        var inode = new Inode(number, this);
+        var group = AllocationGroups[inode.AllocationGroup];
+        group.LoadInode(inode);
+        if (inode.Magic != Inode.InodeMagic)
+            throw new IOException("invalid inode magic");
+        return inode;
     }
 }

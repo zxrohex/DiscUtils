@@ -1,11 +1,10 @@
-namespace DiscUtils.Iscsi
-{
-    internal enum SessionType
-    {
-        [ProtocolKeyValue("Discovery")]
-        Discovery = 0,
+namespace DiscUtils.Iscsi;
 
-        [ProtocolKeyValue("Normal")]
-        Normal = 1
-    }
+internal enum SessionType
+{
+    [ProtocolKeyValue("Discovery")]
+    Discovery = 0,
+
+    [ProtocolKeyValue("Normal")]
+    Normal = 1
 }

@@ -24,107 +24,106 @@ using System;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal sealed class VhdxHeader : IByteArraySerializable
 {
-    internal sealed class VhdxHeader : IByteArraySerializable
+    public const uint VhdxHeaderSignature = 0x64616568;
+    private readonly byte[] _data = new byte[4096];
+    public uint Checksum;
+    public Guid DataWriteGuid;
+    public Guid FileWriteGuid;
+    public Guid LogGuid;
+    public uint LogLength;
+    public ulong LogOffset;
+    public ushort LogVersion;
+    public ulong SequenceNumber;
+
+    public uint Signature = VhdxHeaderSignature;
+    public ushort Version;
+
+    public VhdxHeader() {}
+
+    public VhdxHeader(VhdxHeader header)
     {
-        public const uint VhdxHeaderSignature = 0x64616568;
-        private readonly byte[] _data = new byte[4096];
-        public uint Checksum;
-        public Guid DataWriteGuid;
-        public Guid FileWriteGuid;
-        public Guid LogGuid;
-        public uint LogLength;
-        public ulong LogOffset;
-        public ushort LogVersion;
-        public ulong SequenceNumber;
+        Array.Copy(header._data, _data, 4096);
 
-        public uint Signature = VhdxHeaderSignature;
-        public ushort Version;
+        Signature = header.Signature;
+        Checksum = header.Checksum;
+        SequenceNumber = header.SequenceNumber;
+        FileWriteGuid = header.FileWriteGuid;
+        DataWriteGuid = header.DataWriteGuid;
+        LogGuid = header.LogGuid;
+        LogVersion = header.LogVersion;
+        Version = header.Version;
+        LogLength = header.LogLength;
+        LogOffset = header.LogOffset;
+    }
 
-        public VhdxHeader() {}
-
-        public VhdxHeader(VhdxHeader header)
+    public bool IsValid
+    {
+        get
         {
-            Array.Copy(header._data, _data, 4096);
-
-            Signature = header.Signature;
-            Checksum = header.Checksum;
-            SequenceNumber = header.SequenceNumber;
-            FileWriteGuid = header.FileWriteGuid;
-            DataWriteGuid = header.DataWriteGuid;
-            LogGuid = header.LogGuid;
-            LogVersion = header.LogVersion;
-            Version = header.Version;
-            LogLength = header.LogLength;
-            LogOffset = header.LogOffset;
-        }
-
-        public bool IsValid
-        {
-            get
+            if (Signature != VhdxHeaderSignature)
             {
-                if (Signature != VhdxHeaderSignature)
-                {
-                    return false;
-                }
-
-                byte[] checkData = new byte[4096];
-                Array.Copy(_data, checkData, 4096);
-                EndianUtilities.WriteBytesLittleEndian((uint)0, checkData, 4);
-                return Checksum == Crc32LittleEndian.Compute(Crc32Algorithm.Castagnoli, checkData, 0, 4096);
+                return false;
             }
+
+            var checkData = new byte[4096];
+            Array.Copy(_data, checkData, 4096);
+            EndianUtilities.WriteBytesLittleEndian((uint)0, checkData, 4);
+            return Checksum == Crc32LittleEndian.Compute(Crc32Algorithm.Castagnoli, checkData, 0, 4096);
         }
+    }
 
-        public int Size
-        {
-            get { return (int)(4 * Sizes.OneKiB); }
-        }
+    public int Size
+    {
+        get { return (int)(4 * Sizes.OneKiB); }
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Array.Copy(buffer, offset, _data, 0, 4096);
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Array.Copy(buffer, offset, _data, 0, 4096);
 
-            Signature = EndianUtilities.ToUInt32LittleEndian(_data, 0);
-            Checksum = EndianUtilities.ToUInt32LittleEndian(_data, 4);
+        Signature = EndianUtilities.ToUInt32LittleEndian(_data, 0);
+        Checksum = EndianUtilities.ToUInt32LittleEndian(_data, 4);
 
-            SequenceNumber = EndianUtilities.ToUInt64LittleEndian(_data, 8);
-            FileWriteGuid = EndianUtilities.ToGuidLittleEndian(_data, 16);
-            DataWriteGuid = EndianUtilities.ToGuidLittleEndian(_data, 32);
-            LogGuid = EndianUtilities.ToGuidLittleEndian(_data, 48);
-            LogVersion = EndianUtilities.ToUInt16LittleEndian(_data, 64);
-            Version = EndianUtilities.ToUInt16LittleEndian(_data, 66);
-            LogLength = EndianUtilities.ToUInt32LittleEndian(_data, 68);
-            LogOffset = EndianUtilities.ToUInt64LittleEndian(_data, 72);
+        SequenceNumber = EndianUtilities.ToUInt64LittleEndian(_data, 8);
+        FileWriteGuid = EndianUtilities.ToGuidLittleEndian(_data, 16);
+        DataWriteGuid = EndianUtilities.ToGuidLittleEndian(_data, 32);
+        LogGuid = EndianUtilities.ToGuidLittleEndian(_data, 48);
+        LogVersion = EndianUtilities.ToUInt16LittleEndian(_data, 64);
+        Version = EndianUtilities.ToUInt16LittleEndian(_data, 66);
+        LogLength = EndianUtilities.ToUInt32LittleEndian(_data, 68);
+        LogOffset = EndianUtilities.ToUInt64LittleEndian(_data, 72);
 
-            return Size;
-        }
+        return Size;
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            RefreshData();
-            Array.Copy(_data, 0, buffer, offset, (int)(4 * Sizes.OneKiB));
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        RefreshData();
+        Array.Copy(_data, 0, buffer, offset, (int)(4 * Sizes.OneKiB));
+    }
 
-        public void CalcChecksum()
-        {
-            Checksum = 0;
-            RefreshData();
-            Checksum = Crc32LittleEndian.Compute(Crc32Algorithm.Castagnoli, _data, 0, 4096);
-        }
+    public void CalcChecksum()
+    {
+        Checksum = 0;
+        RefreshData();
+        Checksum = Crc32LittleEndian.Compute(Crc32Algorithm.Castagnoli, _data, 0, 4096);
+    }
 
-        private void RefreshData()
-        {
-            EndianUtilities.WriteBytesLittleEndian(Signature, _data, 0);
-            EndianUtilities.WriteBytesLittleEndian(Checksum, _data, 4);
-            EndianUtilities.WriteBytesLittleEndian(SequenceNumber, _data, 8);
-            EndianUtilities.WriteBytesLittleEndian(FileWriteGuid, _data, 16);
-            EndianUtilities.WriteBytesLittleEndian(DataWriteGuid, _data, 32);
-            EndianUtilities.WriteBytesLittleEndian(LogGuid, _data, 48);
-            EndianUtilities.WriteBytesLittleEndian(LogVersion, _data, 64);
-            EndianUtilities.WriteBytesLittleEndian(Version, _data, 66);
-            EndianUtilities.WriteBytesLittleEndian(LogLength, _data, 68);
-            EndianUtilities.WriteBytesLittleEndian(LogOffset, _data, 72);
-        }
+    private void RefreshData()
+    {
+        EndianUtilities.WriteBytesLittleEndian(Signature, _data, 0);
+        EndianUtilities.WriteBytesLittleEndian(Checksum, _data, 4);
+        EndianUtilities.WriteBytesLittleEndian(SequenceNumber, _data, 8);
+        EndianUtilities.WriteBytesLittleEndian(FileWriteGuid, _data, 16);
+        EndianUtilities.WriteBytesLittleEndian(DataWriteGuid, _data, 32);
+        EndianUtilities.WriteBytesLittleEndian(LogGuid, _data, 48);
+        EndianUtilities.WriteBytesLittleEndian(LogVersion, _data, 64);
+        EndianUtilities.WriteBytesLittleEndian(Version, _data, 66);
+        EndianUtilities.WriteBytesLittleEndian(LogLength, _data, 68);
+        EndianUtilities.WriteBytesLittleEndian(LogOffset, _data, 72);
     }
 }

@@ -16,29 +16,27 @@ namespace LibraryTests.Swap
         public void SwapVhdxGzip()
         {
             SetupHelper.SetupComplete();
-            using (FileStream fs = File.OpenRead(Path.Combine("..", "..", "..", "Swap", "Data", "swap.zip")))
-            using (Stream vhdx = ZipUtilities.ReadFileFromZip(fs))
-            using (var diskImage = new DiskImageFile(vhdx, Ownership.Dispose))
-            using (var disk = new Disk(new List<DiskImageFile> { diskImage }, Ownership.Dispose))
-            {
-                var manager = new VolumeManager(disk);
-                var logicalVolumes = manager.GetLogicalVolumes();
-                Assert.Single(logicalVolumes);
+            using var fs = File.OpenRead(Path.Combine("..", "..", "..", "Swap", "Data", "swap.zip"));
+            using var vhdx = ZipUtilities.ReadFileFromZip(fs);
+            using var diskImage = new DiskImageFile(vhdx, Ownership.Dispose);
+            using var disk = new Disk(new List<DiskImageFile> { diskImage }, Ownership.Dispose);
+            var manager = new VolumeManager(disk);
+            var logicalVolumes = manager.GetLogicalVolumes();
+            Assert.Single(logicalVolumes);
 
-                var volume = logicalVolumes[0];
-                var filesystems = FileSystemManager.DetectFileSystems(volume);
-                Assert.Single(filesystems);
+            var volume = logicalVolumes[0];
+            var filesystems = FileSystemManager.DetectFileSystems(volume);
+            Assert.Single(filesystems);
 
-                var filesystem = filesystems[0];
-                Assert.Equal("Swap", filesystem.Name);
+            var filesystem = filesystems[0];
+            Assert.Equal("Swap", filesystem.Name);
 
-                var swap = filesystem.Open(volume);
-                Assert.IsType<SwapFileSystem>(swap);
+            var swap = filesystem.Open(volume);
+            Assert.IsType<SwapFileSystem>(swap);
 
-                Assert.Equal(0, swap.AvailableSpace);
-                Assert.Equal(10737414144, swap.Size);
-                Assert.Equal(swap.Size, swap.UsedSpace);
-            }
+            Assert.Equal(0, swap.AvailableSpace);
+            Assert.Equal(10737414144, swap.Size);
+            Assert.Equal(swap.Size, swap.UsedSpace);
         }
     }
 }

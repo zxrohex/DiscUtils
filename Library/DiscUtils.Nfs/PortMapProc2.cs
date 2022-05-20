@@ -20,14 +20,13 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum PortMapProc2
 {
-    public enum PortMapProc2
-    {
-        Null = 0,
-        Set = 1,
-        Unset = 2,
-        GetPort = 3,
-        Dump = 4
-    }
+    Null = 0,
+    Set = 1,
+    Unset = 2,
+    GetPort = 3,
+    Dump = 4
 }

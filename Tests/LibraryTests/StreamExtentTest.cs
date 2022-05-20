@@ -34,11 +34,11 @@ namespace LibraryTests
         [Fact]
         public void TestIntersect1()
         {
-            StreamExtent[] s1 = new StreamExtent[] {
+            var s1 = new StreamExtent[] {
                 new StreamExtent(0,4)};
-            StreamExtent[] s2 = new StreamExtent[] {
+            var s2 = new StreamExtent[] {
                 new StreamExtent(4,8)};
-            StreamExtent[] r = new StreamExtent[] { };
+            var r = Array.Empty<StreamExtent>();
 
             Compare(r, StreamExtent.Intersect(s1, s2));
         }
@@ -46,11 +46,11 @@ namespace LibraryTests
         [Fact]
         public void TestIntersect2()
         {
-            StreamExtent[] s1 = new StreamExtent[] {
+            var s1 = new StreamExtent[] {
                 new StreamExtent(0,4)};
-            StreamExtent[] s2 = new StreamExtent[] {
+            var s2 = new StreamExtent[] {
                 new StreamExtent(3,8)};
-            StreamExtent[] r = new StreamExtent[] {
+            var r = new StreamExtent[] {
                 new StreamExtent(3,1)};
 
             Compare(r, StreamExtent.Intersect(s1, s2));
@@ -59,12 +59,12 @@ namespace LibraryTests
         [Fact]
         public void TestIntersect3()
         {
-            StreamExtent[] s1 = new StreamExtent[] {
+            var s1 = new StreamExtent[] {
                 new StreamExtent(0,4),
                 new StreamExtent(10, 10)};
-            StreamExtent[] s2 = new StreamExtent[] {
+            var s2 = new StreamExtent[] {
                 new StreamExtent(3,8)};
-            StreamExtent[] r = new StreamExtent[] {
+            var r = new StreamExtent[] {
                 new StreamExtent(3,1),
                 new StreamExtent(10,1)};
 
@@ -74,14 +74,13 @@ namespace LibraryTests
         [Fact]
         public void TestIntersect4()
         {
-            StreamExtent[] s1 = new StreamExtent[] {
+            var s1 = new StreamExtent[] {
                 new StreamExtent(0,4)};
-            StreamExtent[] s2 = new StreamExtent[] {
+            var s2 = new StreamExtent[] {
                 new StreamExtent(3,8)};
-            StreamExtent[] s3 = new StreamExtent[] {
+            var s3 = new StreamExtent[] {
                 new StreamExtent(10,10)};
-            StreamExtent[] r = new StreamExtent[] {
-                };
+            var r = Array.Empty<StreamExtent>();
 
             Compare(r, StreamExtent.Intersect(s1, s2, s3));
         }
@@ -89,11 +88,11 @@ namespace LibraryTests
         [Fact]
         public void TestIntersect5()
         {
-            StreamExtent[] s1 = new StreamExtent[] {
+            var s1 = new StreamExtent[] {
                 new StreamExtent(0,10)};
-            StreamExtent[] s2 = new StreamExtent[] {
+            var s2 = new StreamExtent[] {
                 new StreamExtent(3,5)};
-            StreamExtent[] r = new StreamExtent[] {
+            var r = new StreamExtent[] {
                 new StreamExtent(3,5)};
 
             Compare(r, StreamExtent.Intersect(s1, s2));
@@ -102,11 +101,11 @@ namespace LibraryTests
         [Fact]
         public void TestUnion1()
         {
-            StreamExtent[] s1 = new StreamExtent[] {
+            var s1 = new StreamExtent[] {
                 new StreamExtent(0,4)};
-            StreamExtent[] s2 = new StreamExtent[] {
+            var s2 = new StreamExtent[] {
                 new StreamExtent(4,8)};
-            StreamExtent[] r = new StreamExtent[] {
+            var r = new StreamExtent[] {
                 new StreamExtent(0,12)};
 
             Compare(r, StreamExtent.Union(s1, s2));
@@ -115,11 +114,11 @@ namespace LibraryTests
         [Fact]
         public void TestUnion2()
         {
-            StreamExtent[] s1 = new StreamExtent[] {
+            var s1 = new StreamExtent[] {
                 new StreamExtent(0,4)};
-            StreamExtent[] s2 = new StreamExtent[] {
+            var s2 = new StreamExtent[] {
                 new StreamExtent(5,8)};
-            StreamExtent[] r = new StreamExtent[] {
+            var r = new StreamExtent[] {
                 new StreamExtent(0,4),
                 new StreamExtent(5,8)};
 
@@ -129,11 +128,11 @@ namespace LibraryTests
         [Fact]
         public void TestUnion3()
         {
-            StreamExtent[] s1 = new StreamExtent[] {
+            var s1 = new StreamExtent[] {
                 new StreamExtent(0,4)};
-            StreamExtent[] s2 = new StreamExtent[] {
+            var s2 = new StreamExtent[] {
                 new StreamExtent(2,8)};
-            StreamExtent[] r = new StreamExtent[] {
+            var r = new StreamExtent[] {
                 new StreamExtent(0,10)};
 
             Compare(r, StreamExtent.Union(s1, s2));
@@ -142,10 +141,10 @@ namespace LibraryTests
         [Fact]
         public void TestUnion4()
         {
-            StreamExtent[] s1 = new StreamExtent[] {
+            var s1 = new StreamExtent[] {
                 new StreamExtent(0,4),
                 new StreamExtent(4,4)};
-            StreamExtent[] r = new StreamExtent[] {
+            var r = new StreamExtent[] {
                 new StreamExtent(0,8)};
 
             Compare(r, StreamExtent.Union(s1));
@@ -154,7 +153,7 @@ namespace LibraryTests
         [Fact]
         public void TestUnion5()
         {
-            StreamExtent[] r = new StreamExtent[] { };
+            var r = Array.Empty<StreamExtent>();
 
             Compare(r, StreamExtent.Union());
         }
@@ -162,7 +161,7 @@ namespace LibraryTests
         [Fact]
         public void TestBlockCount()
         {
-            StreamExtent[] s = new StreamExtent[] {
+            var s = new StreamExtent[] {
                 new StreamExtent(0,8),
                 new StreamExtent(11, 4)
             };
@@ -188,12 +187,12 @@ namespace LibraryTests
         [Fact]
         public void TestBlocks()
         {
-            StreamExtent[] s = new StreamExtent[] {
+            var s = new StreamExtent[] {
                 new StreamExtent(0,8),
                 new StreamExtent(11, 4)
             };
 
-            List<Range<long,long>> ranges = new List<Range<long,long>>(StreamExtent.Blocks(s, 10));
+            var ranges = new List<Range<long,long>>(StreamExtent.Blocks(s, 10));
 
             Assert.Single(ranges);
             Assert.Equal(0, ranges[0].Offset);
@@ -226,16 +225,16 @@ namespace LibraryTests
         }
 
 
-        private void Compare(IEnumerable<StreamExtent> expected, IEnumerable<StreamExtent> actual)
+        private static void Compare(IEnumerable<StreamExtent> expected, IEnumerable<StreamExtent> actual)
         {
-            List<StreamExtent> eList = new List<StreamExtent>(expected);
-            List<StreamExtent> aList = new List<StreamExtent>(actual);
+            var eList = new List<StreamExtent>(expected);
+            var aList = new List<StreamExtent>(actual);
 
-            bool failed = false;
-            int failedIndex = -1;
+            var failed = false;
+            var failedIndex = -1;
             if (eList.Count == aList.Count)
             {
-                for (int i = 0; i < eList.Count; ++i)
+                for (var i = 0; i < eList.Count; ++i)
                 {
                     if (eList[i] != aList[i])
                     {
@@ -252,8 +251,8 @@ namespace LibraryTests
 
             if (failed)
             {
-                string str = "Expected " + eList.Count + "(<";
-                for (int i = 0; i < Math.Min(4, eList.Count); ++i)
+                var str = "Expected " + eList.Count + "(<";
+                for (var i = 0; i < Math.Min(4, eList.Count); ++i)
                 {
                     str += eList[i].ToString() + ",";
                 }
@@ -264,7 +263,7 @@ namespace LibraryTests
                 str += ">)";
 
                 str += ", actual " + aList.Count + "(<";
-                for (int i = 0; i < Math.Min(4, aList.Count); ++i)
+                for (var i = 0; i < Math.Min(4, aList.Count); ++i)
                 {
                     str += aList[i].ToString() + ",";
                 }

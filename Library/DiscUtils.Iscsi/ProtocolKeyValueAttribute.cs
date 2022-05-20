@@ -22,16 +22,15 @@
 
 using System;
 
-namespace DiscUtils.Iscsi
-{
-    [AttributeUsage(AttributeTargets.Field)]
-    internal sealed class ProtocolKeyValueAttribute : Attribute
-    {
-        public ProtocolKeyValueAttribute(string name)
-        {
-            Name = name;
-        }
+namespace DiscUtils.Iscsi;
 
-        public string Name { get; }
+[AttributeUsage(AttributeTargets.Field)]
+internal sealed class ProtocolKeyValueAttribute : Attribute
+{
+    public ProtocolKeyValueAttribute(string name)
+    {
+        Name = name;
     }
+
+    public string Name { get; }
 }

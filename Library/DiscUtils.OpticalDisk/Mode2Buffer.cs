@@ -27,167 +27,166 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 
-namespace DiscUtils.OpticalDisk
+namespace DiscUtils.OpticalDisk;
+
+/// <summary>
+/// Interprets a Mode 2 image.
+/// </summary>
+/// <remarks>
+/// Effectively just strips the additional header / footer from the Mode 2 sector
+/// data - does not attempt to validate the information.
+/// </remarks>
+internal class Mode2Buffer : Streams.Buffer
 {
-    /// <summary>
-    /// Interprets a Mode 2 image.
-    /// </summary>
-    /// <remarks>
-    /// Effectively just strips the additional header / footer from the Mode 2 sector
-    /// data - does not attempt to validate the information.
-    /// </remarks>
-    internal class Mode2Buffer : Streams.Buffer
+    private readonly byte[] _iobuffer;
+    private readonly IBuffer _wrapped;
+
+    public Mode2Buffer(IBuffer toWrap)
     {
-        private readonly byte[] _iobuffer;
-        private readonly IBuffer _wrapped;
+        _wrapped = toWrap;
+        _iobuffer = new byte[DiscImageFile.Mode2SectorSize];
+    }
 
-        public Mode2Buffer(IBuffer toWrap)
+    public override bool CanRead
+    {
+        get { return true; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
+
+    public override long Capacity
+    {
+        get { return _wrapped.Capacity / DiscImageFile.Mode2SectorSize * DiscImageFile.Mode1SectorSize; }
+    }
+
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get { yield return new StreamExtent(0, Capacity); }
+    }
+
+    public override int Read(long pos, byte[] buffer, int offset, int count)
+    {
+        var totalToRead = (int)Math.Min(Capacity - pos, count);
+        var totalRead = 0;
+
+        while (totalRead < totalToRead)
         {
-            _wrapped = toWrap;
-            _iobuffer = new byte[DiscImageFile.Mode2SectorSize];
+            var thisPos = pos + totalRead;
+            var sector = thisPos / DiscImageFile.Mode1SectorSize;
+            var sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
+
+            StreamUtilities.ReadExact(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
+
+            var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
+            Array.Copy(_iobuffer, 24 + sectorOffset, buffer, offset + totalRead, bytesToCopy);
+            totalRead += bytesToCopy;
         }
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
-
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
-
-        public override long Capacity
-        {
-            get { return _wrapped.Capacity / DiscImageFile.Mode2SectorSize * DiscImageFile.Mode1SectorSize; }
-        }
-
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get { yield return new StreamExtent(0, Capacity); }
-        }
-
-        public override int Read(long pos, byte[] buffer, int offset, int count)
-        {
-            int totalToRead = (int)Math.Min(Capacity - pos, count);
-            int totalRead = 0;
-
-            while (totalRead < totalToRead)
-            {
-                long thisPos = pos + totalRead;
-                long sector = thisPos / DiscImageFile.Mode1SectorSize;
-                int sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
-
-                StreamUtilities.ReadExact(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
-
-                int bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
-                Array.Copy(_iobuffer, 24 + sectorOffset, buffer, offset + totalRead, bytesToCopy);
-                totalRead += bytesToCopy;
-            }
-
-            return totalRead;
-        }
+        return totalRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        var totalToRead = (int)Math.Min(Capacity - pos, count);
+        var totalRead = 0;
+
+        while (totalRead < totalToRead)
         {
-            int totalToRead = (int)Math.Min(Capacity - pos, count);
-            int totalRead = 0;
+            var thisPos = pos + totalRead;
+            var sector = thisPos / DiscImageFile.Mode1SectorSize;
+            var sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
 
-            while (totalRead < totalToRead)
-            {
-                long thisPos = pos + totalRead;
-                long sector = thisPos / DiscImageFile.Mode1SectorSize;
-                int sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
+            await StreamUtilities.ReadExactAsync(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize, cancellationToken).ConfigureAwait(false);
 
-                await StreamUtilities.ReadExactAsync(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize, cancellationToken).ConfigureAwait(false);
-
-                int bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
-                Array.Copy(_iobuffer, 24 + sectorOffset, buffer, offset + totalRead, bytesToCopy);
-                totalRead += bytesToCopy;
-            }
-
-            return totalRead;
+            var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
+            Array.Copy(_iobuffer, 24 + sectorOffset, buffer, offset + totalRead, bytesToCopy);
+            totalRead += bytesToCopy;
         }
+
+        return totalRead;
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
+        var totalRead = 0;
+
+        while (totalRead < totalToRead)
         {
-            int totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
-            int totalRead = 0;
+            var thisPos = pos + totalRead;
+            var sector = thisPos / DiscImageFile.Mode1SectorSize;
+            var sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
 
-            while (totalRead < totalToRead)
-            {
-                long thisPos = pos + totalRead;
-                long sector = thisPos / DiscImageFile.Mode1SectorSize;
-                int sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
+            await StreamUtilities.ReadExactAsync(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize, cancellationToken).ConfigureAwait(false);
 
-                await StreamUtilities.ReadExactAsync(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize, cancellationToken).ConfigureAwait(false);
-
-                int bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
-                _iobuffer.AsMemory(24 + sectorOffset, bytesToCopy).CopyTo(buffer[totalRead..]);
-                totalRead += bytesToCopy;
-            }
-
-            return totalRead;
+            var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
+            _iobuffer.AsMemory(24 + sectorOffset, bytesToCopy).CopyTo(buffer[totalRead..]);
+            totalRead += bytesToCopy;
         }
 
-        public override int Read(long pos, Span<byte> buffer)
+        return totalRead;
+    }
+
+    public override int Read(long pos, Span<byte> buffer)
+    {
+        var totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
+        var totalRead = 0;
+
+        while (totalRead < totalToRead)
         {
-            int totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
-            int totalRead = 0;
+            var thisPos = pos + totalRead;
+            var sector = thisPos / DiscImageFile.Mode1SectorSize;
+            var sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
 
-            while (totalRead < totalToRead)
-            {
-                long thisPos = pos + totalRead;
-                long sector = thisPos / DiscImageFile.Mode1SectorSize;
-                int sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
+            StreamUtilities.ReadExact(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
 
-                StreamUtilities.ReadExact(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
-
-                int bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
-                _iobuffer.AsSpan(24 + sectorOffset, bytesToCopy).CopyTo(buffer[totalRead..]);
-                totalRead += bytesToCopy;
-            }
-
-            return totalRead;
+            var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
+            _iobuffer.AsSpan(24 + sectorOffset, bytesToCopy).CopyTo(buffer[totalRead..]);
+            totalRead += bytesToCopy;
         }
+
+        return totalRead;
+    }
 #endif
 
-        public override void Write(long pos, byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
+    public override void Write(long pos, byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
-            throw new NotSupportedException();
+    public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+        throw new NotSupportedException();
 #endif
 
-        public override void Clear(long pos, int count)
-        {
-            throw new NotSupportedException();
-        }
+    public override void Clear(long pos, int count)
+    {
+        throw new NotSupportedException();
+    }
 
-        public override void Flush()
-        {
-            throw new NotSupportedException();
-        }
+    public override void Flush()
+    {
+        throw new NotSupportedException();
+    }
 
-        public override void SetCapacity(long value)
-        {
-            throw new NotSupportedException();
-        }
+    public override void SetCapacity(long value)
+    {
+        throw new NotSupportedException();
+    }
 
-        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    {
+        var capacity = Capacity;
+        if (start < capacity)
         {
-            long capacity = Capacity;
-            if (start < capacity)
-            {
-                long end = Math.Min(start + count, capacity);
-                yield return new StreamExtent(start, end - start);
-            }
+            var end = Math.Min(start + count, capacity);
+            yield return new StreamExtent(start, end - start);
         }
     }
 }

@@ -23,66 +23,65 @@
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base.Items
+namespace DiscUtils.Btrfs.Base.Items;
+
+/// <summary>
+/// From an inode to a name in a directory
+/// </summary>
+internal class DirItem : BaseItem
 {
+    public DirItem(Key key) : base(key) { }
+
     /// <summary>
-    /// From an inode to a name in a directory
+    /// Key for the <see cref="InodeItem"/> or <see cref="RootItem"/> associated with this entry.
+    /// Unused and zeroed out when the entry describes an extended attribute.
     /// </summary>
-    internal class DirItem : BaseItem
+    public Key ChildLocation { get; private set; }
+
+    /// <summary>
+    /// transid
+    /// </summary>
+    public ulong TransId { get; private set; }
+
+    /// <summary>
+    /// (m)
+    /// </summary>
+    public ushort DataLength { get; private set; }
+
+    /// <summary>
+    /// (n)
+    /// </summary>
+    public ushort NameLength { get; private set; }
+
+    /// <summary>
+    /// type of child
+    /// </summary>
+    public DirItemChildType ChildType { get; private set; }
+
+    /// <summary>
+    /// name of item in directory 
+    /// </summary>
+    public string Name { get; private set; }
+
+    /// <summary>
+    /// data of item in directory (empty for normal directory items)
+    /// </summary>
+    public byte[] Data { get; private set; }
+
+    public override int Size
     {
-        public DirItem(Key key) : base(key) { }
+        get { return 0x1e+NameLength+DataLength; }
+    }
 
-        /// <summary>
-        /// Key for the <see cref="InodeItem"/> or <see cref="RootItem"/> associated with this entry.
-        /// Unused and zeroed out when the entry describes an extended attribute.
-        /// </summary>
-        public Key ChildLocation { get; private set; }
-
-        /// <summary>
-        /// transid
-        /// </summary>
-        public ulong TransId { get; private set; }
-
-        /// <summary>
-        /// (m)
-        /// </summary>
-        public ushort DataLength { get; private set; }
-
-        /// <summary>
-        /// (n)
-        /// </summary>
-        public ushort NameLength { get; private set; }
-
-        /// <summary>
-        /// type of child
-        /// </summary>
-        public DirItemChildType ChildType { get; private set; }
-
-        /// <summary>
-        /// name of item in directory 
-        /// </summary>
-        public string Name { get; private set; }
-
-        /// <summary>
-        /// data of item in directory (empty for normal directory items)
-        /// </summary>
-        public byte[] Data { get; private set; }
-
-        public override int Size
-        {
-            get { return 0x1e+NameLength+DataLength; }
-        }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            ChildLocation = EndianUtilities.ToStruct<Key>(buffer, offset);
-            TransId = EndianUtilities.ToUInt64LittleEndian(buffer, offset+0x11);
-            DataLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x19);
-            NameLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x1b);
-            ChildType = (DirItemChildType)buffer[offset + 0x1d];
-            Name = Encoding.UTF8.GetString(buffer, offset + 0x1e, NameLength);
-            Data = EndianUtilities.ToByteArray(buffer, offset + 0x1e + NameLength, DataLength);
-            return Size;
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        ChildLocation = EndianUtilities.ToStruct<Key>(buffer, offset);
+        TransId = EndianUtilities.ToUInt64LittleEndian(buffer, offset+0x11);
+        DataLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x19);
+        NameLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x1b);
+        ChildType = (DirItemChildType)buffer[offset + 0x1d];
+        Name = Encoding.UTF8.GetString(buffer, offset + 0x1e, NameLength);
+        Data = EndianUtilities.ToByteArray(buffer, offset + 0x1e + NameLength, DataLength);
+        return Size;
     }
 }

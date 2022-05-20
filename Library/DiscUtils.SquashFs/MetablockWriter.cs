@@ -24,100 +24,100 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using DiscUtils.Compression;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal sealed class MetablockWriter : IDisposable
 {
-    internal sealed class MetablockWriter : IDisposable
+    private MemoryStream _buffer;
+
+    private readonly byte[] _currentBlock;
+    private int _currentBlockNum;
+    private int _currentOffset;
+
+    public MetablockWriter()
     {
-        private MemoryStream _buffer;
+        _currentBlock = new byte[8 * 1024];
+        _buffer = new MemoryStream();
+    }
 
-        private readonly byte[] _currentBlock;
-        private int _currentBlockNum;
-        private int _currentOffset;
+    public MetadataRef Position
+    {
+        get { return new MetadataRef(_currentBlockNum, _currentOffset); }
+    }
 
-        public MetablockWriter()
+    public void Dispose()
+    {
+        if (_buffer != null)
         {
-            _currentBlock = new byte[8 * 1024];
-            _buffer = new MemoryStream();
+            _buffer.Dispose();
+            _buffer = null;
         }
+    }
 
-        public MetadataRef Position
+    public void Write(byte[] buffer, int offset, int count)
+    {
+        var totalStored = 0;
+
+        while (totalStored < count)
         {
-            get { return new MetadataRef(_currentBlockNum, _currentOffset); }
-        }
+            var toCopy = Math.Min(_currentBlock.Length - _currentOffset, count - totalStored);
+            Array.Copy(buffer, offset + totalStored, _currentBlock, _currentOffset, toCopy);
+            _currentOffset += toCopy;
+            totalStored += toCopy;
 
-        public void Dispose()
-        {
-            if (_buffer != null)
-            {
-                _buffer.Dispose();
-                _buffer = null;
-            }
-        }
-
-        public void Write(byte[] buffer, int offset, int count)
-        {
-            int totalStored = 0;
-
-            while (totalStored < count)
-            {
-                int toCopy = Math.Min(_currentBlock.Length - _currentOffset, count - totalStored);
-                Array.Copy(buffer, offset + totalStored, _currentBlock, _currentOffset, toCopy);
-                _currentOffset += toCopy;
-                totalStored += toCopy;
-
-                if (_currentOffset == _currentBlock.Length)
-                {
-                    NextBlock();
-                    _currentOffset = 0;
-                }
-            }
-        }
-
-        internal void Persist(Stream output)
-        {
-            if (_currentOffset > 0)
+            if (_currentOffset == _currentBlock.Length)
             {
                 NextBlock();
+                _currentOffset = 0;
             }
-
-            output.Write(_buffer.ToArray(), 0, (int)_buffer.Length);
         }
+    }
 
-        internal long DistanceFrom(MetadataRef startPos)
+    internal void Persist(Stream output)
+    {
+        if (_currentOffset > 0)
         {
-            return (_currentBlockNum - startPos.Block) * VfsSquashFileSystemReader.MetadataBufferSize
-                   + (_currentOffset - startPos.Offset);
+            NextBlock();
         }
 
-        private void NextBlock()
+        output.Write(_buffer.ToArray(), 0, (int)_buffer.Length);
+    }
+
+    internal long DistanceFrom(MetadataRef startPos)
+    {
+        return (_currentBlockNum - startPos.Block) * VfsSquashFileSystemReader.MetadataBufferSize
+               + (_currentOffset - startPos.Offset);
+    }
+
+    private void NextBlock()
+    {
+        var compressed = new MemoryStream();
+        using (var compStream = new ZlibStream(compressed, CompressionMode.Compress, true))
         {
-            MemoryStream compressed = new MemoryStream();
-            using (ZlibStream compStream = new ZlibStream(compressed, CompressionMode.Compress, true))
-            {
-                compStream.Write(_currentBlock, 0, _currentOffset);
-            }
-
-            byte[] writeData;
-            ushort writeLen;
-            if (compressed.Length < _currentOffset)
-            {
-                writeData = compressed.ToArray();
-                writeLen = (ushort)compressed.Length;
-            }
-            else
-            {
-                writeData = _currentBlock;
-                writeLen = (ushort)(_currentOffset | 0x8000);
-            }
-
-            byte[] header = new byte[2];
-            EndianUtilities.WriteBytesLittleEndian(writeLen, header, 0);
-            _buffer.Write(header, 0, 2);
-            _buffer.Write(writeData, 0, writeLen & 0x7FFF);
-
-            ++_currentBlockNum;
+            compStream.Write(_currentBlock, 0, _currentOffset);
         }
+
+        byte[] writeData;
+        ushort writeLen;
+        if (compressed.Length < _currentOffset)
+        {
+            writeData = compressed.ToArray();
+            writeLen = (ushort)compressed.Length;
+        }
+        else
+        {
+            writeData = _currentBlock;
+            writeLen = (ushort)(_currentOffset | 0x8000);
+        }
+
+        Span<byte> header = stackalloc byte[2];
+        EndianUtilities.WriteBytesLittleEndian(writeLen, header);
+        _buffer.Write(header);
+        _buffer.Write(writeData, 0, writeLen & 0x7FFF);
+
+        ++_currentBlockNum;
     }
 }

@@ -21,86 +21,86 @@
 //
 
 using System.IO;
+using System.Linq;
 
-namespace DiscUtils.Common
+namespace DiscUtils.Common;
+
+public class CommandLineParameter
 {
-    public class CommandLineParameter
+    private string _name;
+    private string _description;
+    private bool _isOptional;
+
+    private bool _isPresent;
+    private string _value;
+
+    public CommandLineParameter(string name, string description, bool isOptional)
     {
-        private string _name;
-        private string _description;
-        private bool _isOptional;
+        _name = name;
+        _description = description;
+        _isOptional = isOptional;
+    }
 
-        private bool _isPresent;
-        private string _value;
+    public bool IsPresent
+    {
+        get { return _isPresent; }
+    }
 
-        public CommandLineParameter(string name, string description, bool isOptional)
+    public string Value
+    {
+        get { return _value; }
+    }
+
+    public virtual bool IsValid
+    {
+        get { return _isOptional || _isPresent; }
+    }
+
+    internal bool IsOptional
+    {
+        get { return _isOptional; }
+    }
+
+    internal string CommandLineText
+    {
+        get
         {
-            _name = name;
-            _description = description;
-            _isOptional = isOptional;
-        }
-
-        public bool IsPresent
-        {
-            get { return _isPresent; }
-        }
-
-        public string Value
-        {
-            get { return _value; }
-        }
-
-        public virtual bool IsValid
-        {
-            get { return _isOptional || _isPresent; }
-        }
-
-        internal bool IsOptional
-        {
-            get { return _isOptional; }
-        }
-
-        internal string CommandLineText
-        {
-            get
+            if (_isOptional)
             {
-                if (_isOptional)
-                {
-                    return "[" + _name + "]";
-                }
-                else
-                {
-                    return _name;
-                }
+                return "[" + _name + "]";
+            }
+            else
+            {
+                return _name;
             }
         }
+    }
 
-        internal int NameDisplayLength
+    internal int NameDisplayLength
+    {
+        get { return _name.Length; }
+    }
+
+    internal void WriteDescription(TextWriter writer, string lineTemplate, int perLineDescWidth)
+    {
+        var text = Utilities.WordWrap((_isOptional ? "Optional. " : "") + _description, perLineDescWidth).ToArray();
+
+        writer.WriteLine(lineTemplate, _name, text[0]);
+        for (var i = 1; i < text.Length; ++i)
         {
-            get { return _name.Length; }
+            writer.WriteLine(lineTemplate, "", text[i]);
         }
+    }
 
-        internal void WriteDescription(TextWriter writer, string lineTemplate, int perLineDescWidth)
-        {
-            string[] text = Utilities.WordWrap((_isOptional ? "Optional. " : "") + _description, perLineDescWidth);
+    protected internal virtual bool Matches(string arg)
+    {
+        return true;
+    }
 
-            writer.WriteLine(lineTemplate, _name, text[0]);
-            for (int i = 1; i < text.Length; ++i)
-            {
-                writer.WriteLine(lineTemplate, "", text[i]);
-            }
-        }
-
-        protected internal virtual bool Matches(string arg)
-        {
-            return true;
-        }
-
-        protected internal virtual int Process(string[] args, int pos)
-        {
-            _isPresent = true;
-            _value = args[pos];
-            return pos + 1;
-        }
+    protected internal virtual int Process(string[] args, int pos)
+    {
+        _isPresent = true;
+        _value = args[pos];
+        return pos + 1;
     }
 }

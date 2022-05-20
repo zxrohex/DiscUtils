@@ -22,34 +22,33 @@
 
 using System;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class ScsiReadCapacityCommand : ScsiCommand
 {
-    internal class ScsiReadCapacityCommand : ScsiCommand
+    public const int ResponseDataLength = 32;
+
+    public ScsiReadCapacityCommand(ulong targetLun)
+        : base(targetLun) {}
+
+    public override int Size
     {
-        public const int ResponseDataLength = 32;
+        get { return 10; }
+    }
 
-        public ScsiReadCapacityCommand(ulong targetLun)
-            : base(targetLun) {}
+    public override TaskAttributes TaskAttributes
+    {
+        get { return TaskAttributes.Simple; }
+    }
 
-        public override int Size
-        {
-            get { return 10; }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override TaskAttributes TaskAttributes
-        {
-            get { return TaskAttributes.Simple; }
-        }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            Array.Clear(buffer, offset, 10);
-            buffer[offset] = 0x25; // OpCode
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        Array.Clear(buffer, offset, 10);
+        buffer[offset] = 0x25; // OpCode
     }
 }

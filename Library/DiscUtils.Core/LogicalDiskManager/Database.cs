@@ -21,134 +21,80 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 
-namespace DiscUtils.LogicalDiskManager
+namespace DiscUtils.LogicalDiskManager;
+
+internal class Database
 {
-    internal class Database
+    private readonly Dictionary<ulong, DatabaseRecord> _records;
+    private readonly DatabaseHeader _vmdb;
+
+    public Database(Stream stream)
     {
-        private readonly Dictionary<ulong, DatabaseRecord> _records;
-        private readonly DatabaseHeader _vmdb;
+        var dbStart = stream.Position;
 
-        public Database(Stream stream)
+        var buffer = ArrayPool<byte>.Shared.Rent(Sizes.Sector);
+        try
         {
-            long dbStart = stream.Position;
-
-            byte[] buffer = new byte[Sizes.Sector];
-            stream.Read(buffer, 0, buffer.Length);
+            stream.Read(buffer, 0, Sizes.Sector);
             _vmdb = new DatabaseHeader();
             _vmdb.ReadFrom(buffer, 0);
 
             stream.Position = dbStart + _vmdb.HeaderSize;
 
-            buffer = StreamUtilities.ReadExact(stream, (int)(_vmdb.BlockSize * _vmdb.NumVBlks));
+            var bufferSize = (int)(_vmdb.BlockSize * _vmdb.NumVBlks);
+            if (buffer.Length < bufferSize)
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+                buffer = null;
+                buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+            }
+
+            StreamUtilities.ReadExact(stream, buffer, 0, bufferSize);
 
             _records = new Dictionary<ulong, DatabaseRecord>();
-            for (int i = 0; i < _vmdb.NumVBlks; ++i)
+            for (var i = 0; i < _vmdb.NumVBlks; ++i)
             {
-                DatabaseRecord rec = DatabaseRecord.ReadFrom(buffer, (int)(i * _vmdb.BlockSize));
+                var rec = DatabaseRecord.ReadFrom(buffer, (int)(i * _vmdb.BlockSize));
                 if (rec != null)
                 {
                     _records.Add(rec.Id, rec);
                 }
             }
         }
-
-        internal IEnumerable<DiskRecord> Disks
+        finally
         {
-            get
+            if (buffer is not null)
             {
-                foreach (DatabaseRecord record in _records.Values)
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+    }
+
+    internal IEnumerable<DiskRecord> Disks
+    {
+        get
+        {
+            foreach (var record in _records.Values)
+            {
+                if (record.RecordType == RecordType.Disk)
                 {
-                    if (record.RecordType == RecordType.Disk)
-                    {
-                        yield return (DiskRecord)record;
-                    }
+                    yield return (DiskRecord)record;
                 }
             }
         }
+    }
 
-        internal IEnumerable<VolumeRecord> Volumes
+    internal IEnumerable<VolumeRecord> Volumes
+    {
+        get
         {
-            get
-            {
-                foreach (DatabaseRecord record in _records.Values)
-                {
-                    if (record.RecordType == RecordType.Volume)
-                    {
-                        yield return (VolumeRecord)record;
-                    }
-                }
-            }
-        }
-
-        internal DiskGroupRecord GetDiskGroup(Guid guid)
-        {
-            foreach (DatabaseRecord record in _records.Values)
-            {
-                if (record.RecordType == RecordType.DiskGroup)
-                {
-                    DiskGroupRecord dgRecord = (DiskGroupRecord)record;
-                    if (new Guid(dgRecord.GroupGuidString) == guid || guid == Guid.Empty)
-                    {
-                        return dgRecord;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        internal IEnumerable<ComponentRecord> GetVolumeComponents(ulong volumeId)
-        {
-            foreach (DatabaseRecord record in _records.Values)
-            {
-                if (record.RecordType == RecordType.Component)
-                {
-                    ComponentRecord cmpntRecord = (ComponentRecord)record;
-                    if (cmpntRecord.VolumeId == volumeId)
-                    {
-                        yield return cmpntRecord;
-                    }
-                }
-            }
-        }
-
-        internal IEnumerable<ExtentRecord> GetComponentExtents(ulong componentId)
-        {
-            foreach (DatabaseRecord record in _records.Values)
-            {
-                if (record.RecordType == RecordType.Extent)
-                {
-                    ExtentRecord extentRecord = (ExtentRecord)record;
-                    if (extentRecord.ComponentId == componentId)
-                    {
-                        yield return extentRecord;
-                    }
-                }
-            }
-        }
-
-        internal DiskRecord GetDisk(ulong diskId)
-        {
-            return (DiskRecord)_records[diskId];
-        }
-
-        internal VolumeRecord GetVolume(ulong volumeId)
-        {
-            return (VolumeRecord)_records[volumeId];
-        }
-
-        internal VolumeRecord GetVolume(Guid id)
-        {
-            return FindRecord<VolumeRecord>(r => r.VolumeGuid == id, RecordType.Volume);
-        }
-
-        internal IEnumerable<VolumeRecord> GetVolumes()
-        {
-            foreach (DatabaseRecord record in _records.Values)
+            foreach (var record in _records.Values)
             {
                 if (record.RecordType == RecordType.Volume)
                 {
@@ -156,23 +102,96 @@ namespace DiscUtils.LogicalDiskManager
                 }
             }
         }
+    }
 
-        internal T FindRecord<T>(Predicate<T> pred, RecordType typeId)
-            where T : DatabaseRecord
+    internal DiskGroupRecord GetDiskGroup(Guid guid)
+    {
+        foreach (var record in _records.Values)
         {
-            foreach (DatabaseRecord record in _records.Values)
+            if (record.RecordType == RecordType.DiskGroup)
             {
-                if (record.RecordType == typeId)
+                var dgRecord = (DiskGroupRecord)record;
+                if (new Guid(dgRecord.GroupGuidString) == guid || guid == Guid.Empty)
                 {
-                    T t = (T)record;
-                    if (pred(t))
-                    {
-                        return t;
-                    }
+                    return dgRecord;
                 }
             }
-
-            return null;
         }
+
+        return null;
+    }
+
+    internal IEnumerable<ComponentRecord> GetVolumeComponents(ulong volumeId)
+    {
+        foreach (var record in _records.Values)
+        {
+            if (record.RecordType == RecordType.Component)
+            {
+                var cmpntRecord = (ComponentRecord)record;
+                if (cmpntRecord.VolumeId == volumeId)
+                {
+                    yield return cmpntRecord;
+                }
+            }
+        }
+    }
+
+    internal IEnumerable<ExtentRecord> GetComponentExtents(ulong componentId)
+    {
+        foreach (var record in _records.Values)
+        {
+            if (record.RecordType == RecordType.Extent)
+            {
+                var extentRecord = (ExtentRecord)record;
+                if (extentRecord.ComponentId == componentId)
+                {
+                    yield return extentRecord;
+                }
+            }
+        }
+    }
+
+    internal DiskRecord GetDisk(ulong diskId)
+    {
+        return (DiskRecord)_records[diskId];
+    }
+
+    internal VolumeRecord GetVolume(ulong volumeId)
+    {
+        return (VolumeRecord)_records[volumeId];
+    }
+
+    internal VolumeRecord GetVolume(Guid id)
+    {
+        return FindRecord<VolumeRecord>(r => r.VolumeGuid == id, RecordType.Volume);
+    }
+
+    internal IEnumerable<VolumeRecord> GetVolumes()
+    {
+        foreach (var record in _records.Values)
+        {
+            if (record.RecordType == RecordType.Volume)
+            {
+                yield return (VolumeRecord)record;
+            }
+        }
+    }
+
+    internal T FindRecord<T>(Predicate<T> pred, RecordType typeId)
+        where T : DatabaseRecord
+    {
+        foreach (var record in _records.Values)
+        {
+            if (record.RecordType == typeId)
+            {
+                var t = (T)record;
+                if (pred(t))
+                {
+                    return t;
+                }
+            }
+        }
+
+        return null;
     }
 }

@@ -20,33 +20,32 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+internal enum InodeFormat : byte
 {
-    internal enum InodeFormat : byte
-    {
-        /// <summary>
-        /// character and block devices
-        /// </summary>
-        Dev,
+    /// <summary>
+    /// character and block devices
+    /// </summary>
+    Dev,
 
-        /// <summary>
-        /// all metadata associated with the file is within the inode
-        /// </summary>
-        Local,
+    /// <summary>
+    /// all metadata associated with the file is within the inode
+    /// </summary>
+    Local,
 
-        /// <summary>
-        /// the inode contains an array of extents to other filesystem blocks which contain the associated metadata or data
-        /// </summary>
-        Extents,
+    /// <summary>
+    /// the inode contains an array of extents to other filesystem blocks which contain the associated metadata or data
+    /// </summary>
+    Extents,
 
-        /// <summary>
-        /// the inode contains a B+tree root node which points to filesystem blocks containing the metadata or data 
-        /// </summary>
-        Btree,
+    /// <summary>
+    /// the inode contains a B+tree root node which points to filesystem blocks containing the metadata or data 
+    /// </summary>
+    Btree,
 
-        /// <summary>
-        /// currently not used
-        /// </summary>
-        Uuid
-    }
+    /// <summary>
+    /// currently not used
+    /// </summary>
+    Uuid
 }

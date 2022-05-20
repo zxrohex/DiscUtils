@@ -27,275 +27,273 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Diagnostics
+namespace DiscUtils.Diagnostics;
+
+internal sealed class ValidatingFileSystemWrapperStream<Tfs, Tc> : SparseStream
+    where Tfs : DiscFileSystem, IDiagnosticTraceable
+    where Tc : DiscFileSystemChecker
 {
-    internal sealed class ValidatingFileSystemWrapperStream<Tfs, Tc> : SparseStream
-        where Tfs : DiscFileSystem, IDiagnosticTraceable
-        where Tc : DiscFileSystemChecker
+    private ValidatingFileSystem<Tfs, Tc> _fileSystem;
+    private ValidatingFileSystem<Tfs, Tc>.StreamOpenFn _openFn;
+    private long _replayHandle;
+
+    private static long _nextReplayHandle;
+
+    private long _shadowPosition;
+    private bool _disposed;
+
+
+    public ValidatingFileSystemWrapperStream(ValidatingFileSystem<Tfs, Tc> fileSystem, ValidatingFileSystem<Tfs, Tc>.StreamOpenFn openFn)
     {
-        private ValidatingFileSystem<Tfs, Tc> _fileSystem;
-        private ValidatingFileSystem<Tfs, Tc>.StreamOpenFn _openFn;
-        private long _replayHandle;
+        _fileSystem = fileSystem;
+        _openFn = openFn;
 
-        private static long _nextReplayHandle;
+        _replayHandle = Interlocked.Increment(ref _nextReplayHandle);
+    }
 
-        private long _shadowPosition;
-        private bool _disposed;
-
-
-        public ValidatingFileSystemWrapperStream(ValidatingFileSystem<Tfs, Tc> fileSystem, ValidatingFileSystem<Tfs, Tc>.StreamOpenFn openFn)
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && !_disposed && !_fileSystem.InLockdown)
         {
-            _fileSystem = fileSystem;
-            _openFn = openFn;
-
-            _replayHandle = Interlocked.Increment(ref _nextReplayHandle);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && !_disposed && !_fileSystem.InLockdown)
-            {
-                long pos = _shadowPosition;
-                Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
-                {
-                    GetNativeStream(fs, context, pos).Dispose();
-                    _disposed = true;
-                    ForgetNativeStream(context);
-                    return null;
-                };
-
-                _fileSystem.PerformActivity(fn);
-
-            }
-
-            // Don't call base.Dispose because it calls close 
-            base.Dispose(disposing);
-        }
-
-        public override bool CanRead
-        {
-            get
-            {
-                long pos = _shadowPosition;
-
-                Activity<Tfs, bool> fn = delegate(Tfs fs, Dictionary<string, object> context)
-                {
-                    return GetNativeStream(fs, context, pos).CanRead;
-                };
-
-                return _fileSystem.PerformActivity(fn);
-            }
-        }
-
-        public override bool CanSeek
-        {
-            get
-            {
-                long pos = _shadowPosition;
-
-                Activity<Tfs, bool> fn = delegate(Tfs fs, Dictionary<string, object> context)
-                {
-                    return GetNativeStream(fs, context, pos).CanSeek;
-                };
-
-                return _fileSystem.PerformActivity(fn);
-            }
-        }
-
-        public override bool CanWrite
-        {
-            get
-            {
-                long pos = _shadowPosition;
-
-                Activity<Tfs, bool> fn = delegate(Tfs fs, Dictionary<string, object> context)
-                {
-                    return GetNativeStream(fs, context, pos).CanWrite;
-                };
-
-                return _fileSystem.PerformActivity(fn);
-            }
-        }
-
-        public override void Flush()
-        {
-            long pos = _shadowPosition;
-
+            var pos = _shadowPosition;
             Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
             {
-                GetNativeStream(fs, context, pos).Flush();
+                GetNativeStream(fs, context, pos).Dispose();
+                _disposed = true;
+                ForgetNativeStream(context);
                 return null;
             };
 
             _fileSystem.PerformActivity(fn);
+
         }
 
-        public override long Length
+        // Don't call base.Dispose because it calls close 
+        base.Dispose(disposing);
+    }
+
+    public override bool CanRead
+    {
+        get
         {
-            get
+            var pos = _shadowPosition;
+
+            Activity<Tfs, bool> fn = delegate(Tfs fs, Dictionary<string, object> context)
             {
-                long pos = _shadowPosition;
-
-                Activity<Tfs, long> fn = delegate(Tfs fs, Dictionary<string, object> context)
-                {
-                    return GetNativeStream(fs, context, pos).Length;
-                };
-
-                return _fileSystem.PerformActivity(fn);
-            }
-        }
-
-        public override long Position
-        {
-            get
-            {
-                long pos = _shadowPosition;
-
-                Activity<Tfs, long> fn = delegate(Tfs fs, Dictionary<string, object> context)
-                {
-                    return GetNativeStream(fs, context, pos).Position;
-                };
-
-                return _fileSystem.PerformActivity(fn);
-            }
-            set
-            {
-                long pos = _shadowPosition;
-
-                Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
-                {
-                    GetNativeStream(fs, context, pos).Position = value;
-                    return null;
-                };
-
-                _fileSystem.PerformActivity(fn);
-
-                _shadowPosition = value;
-            }
-        }
-
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get
-            {
-                long pos = _shadowPosition;
-
-                Activity<Tfs, IEnumerable<StreamExtent>> fn = delegate(Tfs fs, Dictionary<string, object> context)
-                {
-                    return GetNativeStream(fs, context, pos).Extents;
-                };
-
-                return _fileSystem.PerformActivity(fn);
-            }
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            long pos = _shadowPosition;
-
-            // Avoid stomping on buffers we know nothing about by ditching the writes into gash buffer.
-            byte[] tempBuffer = new byte[buffer.Length];
-
-            Activity<Tfs, int> fn = delegate(Tfs fs, Dictionary<string, object> context)
-            {
-                return GetNativeStream(fs, context, pos).Read(tempBuffer, offset, count);
+                return GetNativeStream(fs, context, pos).CanRead;
             };
 
-            int numRead = _fileSystem.PerformActivity(fn);
-
-            Array.Copy(tempBuffer, buffer, numRead);
-
-            _shadowPosition += numRead;
-
-            return numRead;
+            return _fileSystem.PerformActivity(fn);
         }
+    }
 
-        public override long Seek(long offset, SeekOrigin origin)
+    public override bool CanSeek
+    {
+        get
         {
-            long pos = _shadowPosition;
+            var pos = _shadowPosition;
+
+            Activity<Tfs, bool> fn = delegate(Tfs fs, Dictionary<string, object> context)
+            {
+                return GetNativeStream(fs, context, pos).CanSeek;
+            };
+
+            return _fileSystem.PerformActivity(fn);
+        }
+    }
+
+    public override bool CanWrite
+    {
+        get
+        {
+            var pos = _shadowPosition;
+
+            Activity<Tfs, bool> fn = delegate(Tfs fs, Dictionary<string, object> context)
+            {
+                return GetNativeStream(fs, context, pos).CanWrite;
+            };
+
+            return _fileSystem.PerformActivity(fn);
+        }
+    }
+
+    public override void Flush()
+    {
+        var pos = _shadowPosition;
+
+        Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
+        {
+            GetNativeStream(fs, context, pos).Flush();
+            return null;
+        };
+
+        _fileSystem.PerformActivity(fn);
+    }
+
+    public override long Length
+    {
+        get
+        {
+            var pos = _shadowPosition;
 
             Activity<Tfs, long> fn = delegate(Tfs fs, Dictionary<string, object> context)
             {
-                return GetNativeStream(fs, context, pos).Seek(offset, origin);
+                return GetNativeStream(fs, context, pos).Length;
             };
 
-            _shadowPosition = _fileSystem.PerformActivity(fn);
-
-            return _shadowPosition;
+            return _fileSystem.PerformActivity(fn);
         }
+    }
 
-        public override void SetLength(long value)
+    public override long Position
+    {
+        get
         {
-            long pos = _shadowPosition;
+            var pos = _shadowPosition;
+
+            Activity<Tfs, long> fn = delegate(Tfs fs, Dictionary<string, object> context)
+            {
+                return GetNativeStream(fs, context, pos).Position;
+            };
+
+            return _fileSystem.PerformActivity(fn);
+        }
+        set
+        {
+            var pos = _shadowPosition;
 
             Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
             {
-                GetNativeStream(fs, context, pos).SetLength(value);
-                return null;
-            };
-
-            _fileSystem.PerformActivity(fn);
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            long pos = _shadowPosition;
-
-            // Take a copy of the buffer - otherwise who knows what we're messing with.
-            byte[] tempBuffer = new byte[buffer.Length];
-            Array.Copy(buffer, tempBuffer, buffer.Length);
-
-            Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
-            {
-                GetNativeStream(fs, context, pos).Write(tempBuffer, offset, count);
+                GetNativeStream(fs, context, pos).Position = value;
                 return null;
             };
 
             _fileSystem.PerformActivity(fn);
 
-            _shadowPosition += count;
+            _shadowPosition = value;
         }
+    }
 
-
-        internal void SetNativeStream(Dictionary<string, object> context, Stream s)
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get
         {
-            var streamKey = $"WrapStream#{_replayHandle}_Stream";
+            var pos = _shadowPosition;
 
+            Activity<Tfs, IEnumerable<StreamExtent>> fn = delegate(Tfs fs, Dictionary<string, object> context)
+            {
+                return GetNativeStream(fs, context, pos).Extents;
+            };
+
+            return _fileSystem.PerformActivity(fn);
+        }
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        var pos = _shadowPosition;
+
+        // Avoid stomping on buffers we know nothing about by ditching the writes into gash buffer.
+        var tempBuffer = new byte[buffer.Length];
+
+        Activity<Tfs, int> fn = delegate(Tfs fs, Dictionary<string, object> context)
+        {
+            return GetNativeStream(fs, context, pos).Read(tempBuffer, offset, count);
+        };
+
+        var numRead = _fileSystem.PerformActivity(fn);
+
+        Array.Copy(tempBuffer, buffer, numRead);
+
+        _shadowPosition += numRead;
+
+        return numRead;
+    }
+
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        var pos = _shadowPosition;
+
+        Activity<Tfs, long> fn = delegate(Tfs fs, Dictionary<string, object> context)
+        {
+            return GetNativeStream(fs, context, pos).Seek(offset, origin);
+        };
+
+        _shadowPosition = _fileSystem.PerformActivity(fn);
+
+        return _shadowPosition;
+    }
+
+    public override void SetLength(long value)
+    {
+        var pos = _shadowPosition;
+
+        Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
+        {
+            GetNativeStream(fs, context, pos).SetLength(value);
+            return null;
+        };
+
+        _fileSystem.PerformActivity(fn);
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        var pos = _shadowPosition;
+
+        // Take a copy of the buffer - otherwise who knows what we're messing with.
+        var tempBuffer = new byte[buffer.Length];
+        Array.Copy(buffer, tempBuffer, buffer.Length);
+
+        Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
+        {
+            GetNativeStream(fs, context, pos).Write(tempBuffer, offset, count);
+            return null;
+        };
+
+        _fileSystem.PerformActivity(fn);
+
+        _shadowPosition += count;
+    }
+
+
+    internal void SetNativeStream(Dictionary<string, object> context, Stream s)
+    {
+        var streamKey = $"WrapStream#{_replayHandle}_Stream";
+
+        context[streamKey] = s;
+    }
+
+    private SparseStream GetNativeStream(Tfs fs, Dictionary<string, object> context, long shadowPosition)
+    {
+        var streamKey = "WrapStream#" + _replayHandle + "_Stream";
+
+        SparseStream s;
+
+        if (context.TryGetValue(streamKey, out var streamObj))
+        {
+            s = (SparseStream)streamObj;
+        }
+        else
+        {
+            // The native stream isn't in the context.  This means we're replaying
+            // but the stream open isn't part of the sequence being replayed.  We
+            // do our best to re-create it...
+            s = _openFn(fs);
             context[streamKey] = s;
         }
 
-        private SparseStream GetNativeStream(Tfs fs, Dictionary<string, object> context, long shadowPosition)
+        if (shadowPosition != s.Position)
         {
-            string streamKey = "WrapStream#" + _replayHandle + "_Stream";
-
-            Object streamObj;
-            SparseStream s;
-
-            if (context.TryGetValue(streamKey, out streamObj))
-            {
-                s = (SparseStream)streamObj;
-            }
-            else
-            {
-                // The native stream isn't in the context.  This means we're replaying
-                // but the stream open isn't part of the sequence being replayed.  We
-                // do our best to re-create it...
-                s = _openFn(fs);
-                context[streamKey] = s;
-            }
-
-            if (shadowPosition != s.Position)
-            {
-                s.Position = shadowPosition;
-            }
-
-            return s;
+            s.Position = shadowPosition;
         }
 
-        private void ForgetNativeStream(Dictionary<string, object> context)
-        {
-            string streamKey = "WrapStream#" + _replayHandle + "_Stream";
-            context.Remove(streamKey);
-        }
+        return s;
+    }
+
+    private void ForgetNativeStream(Dictionary<string, object> context)
+    {
+        var streamKey = "WrapStream#" + _replayHandle + "_Stream";
+        context.Remove(streamKey);
     }
 }

@@ -20,21 +20,20 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils
+namespace DiscUtils;
+
+/// <summary>
+/// Well known hard disk adaptor types.
+/// </summary>
+public enum GenericDiskAdapterType
 {
     /// <summary>
-    /// Well known hard disk adaptor types.
+    /// IDE adaptor.
     /// </summary>
-    public enum GenericDiskAdapterType
-    {
-        /// <summary>
-        /// IDE adaptor.
-        /// </summary>
-        Ide = 0,
+    Ide = 0,
 
-        /// <summary>
-        /// SCSI adaptor.
-        /// </summary>
-        Scsi = 1
-    }
+    /// <summary>
+    /// SCSI adaptor.
+    /// </summary>
+    Scsi = 1
 }

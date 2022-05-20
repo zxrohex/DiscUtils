@@ -23,25 +23,23 @@
 using System;
 using System.Globalization;
 
-namespace DiscUtils.Udf
-{
-    internal class DomainEntityIdentifier : EntityIdentifier
-    {
-        public override string ToString()
-        {
-            string major = ((uint)Suffix[1]).ToString("X", CultureInfo.InvariantCulture);
-            string minor = ((uint)Suffix[0]).ToString("X", CultureInfo.InvariantCulture);
-            DomainFlags flags = (DomainFlags)Suffix[2];
-            return string.Format(CultureInfo.InvariantCulture, "{0} [UDF {1}.{2} : Flags {3}]", Identifier, major, minor,
-                flags);
-        }
+namespace DiscUtils.Udf;
 
-        [Flags]
-        private enum DomainFlags : byte
-        {
-            None = 0,
-            HardWriteProtect = 1,
-            SoftWriteProtect = 2
-        }
+internal class DomainEntityIdentifier : EntityIdentifier
+{
+    public override string ToString()
+    {
+        var major = ((uint)Suffix[1]).ToString("X", CultureInfo.InvariantCulture);
+        var minor = ((uint)Suffix[0]).ToString("X", CultureInfo.InvariantCulture);
+        var flags = (DomainFlags)Suffix[2];
+        return $"{Identifier} [UDF {major}.{minor} : Flags {flags}]";
+    }
+
+    [Flags]
+    private enum DomainFlags : byte
+    {
+        None = 0,
+        HardWriteProtect = 1,
+        SoftWriteProtect = 2
     }
 }

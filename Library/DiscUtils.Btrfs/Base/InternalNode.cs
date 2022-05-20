@@ -20,63 +20,63 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Btrfs.Base.Items;
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal class InternalNode:NodeHeader
 {
-    internal class InternalNode:NodeHeader
+    /// <summary>
+    /// key pointers
+    /// </summary>
+    public KeyPointer[] KeyPointers { get; private set; }
+
+    /// <summary>
+    /// data at <see cref="KeyPointers"/>
+    /// </summary>
+    public NodeHeader[] Nodes { get; private set; }
+
+    public override int Size
     {
-        /// <summary>
-        /// key pointers
-        /// </summary>
-        public KeyPointer[] KeyPointers { get; private set; }
+        get { return (int)(base.Size + ItemCount*KeyPointer.Length); }
+    }
 
-        /// <summary>
-        /// data at <see cref="KeyPointers"/>
-        /// </summary>
-        public NodeHeader[] Nodes { get; private set; }
-
-        public override int Size
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
+    {
+        var offset = base.ReadFrom(buffer);
+        KeyPointers = new KeyPointer[ItemCount];
+        if (KeyPointers.Length == 0) throw new IOException("invalid InteralNode without KeyPointers");
+        for (var i = 0; i < ItemCount; i++)
         {
-            get { return (int)(base.Size + ItemCount*KeyPointer.Length); }
+            KeyPointers[i] = new KeyPointer();
+            offset += KeyPointers[i].ReadFrom(buffer.Slice(offset));
         }
+        Nodes = new NodeHeader[ItemCount];
+        return Size;
+    }
 
-        public override int ReadFrom(byte[] buffer, int offset)
+    public override IEnumerable<BaseItem> Find(Key key, Context context)
+    {
+        if (KeyPointers[0].Key.ObjectId > key.ObjectId)
+            yield break;
+        var i = 1;
+        while (i < KeyPointers.Length && KeyPointers[i].Key.ObjectId < key.ObjectId)
         {
-            offset += base.ReadFrom(buffer, offset);
-            KeyPointers = new KeyPointer[ItemCount];
-            if (KeyPointers.Length == 0) throw new IOException("invalid InteralNode without KeyPointers");
-            for (int i = 0; i < ItemCount; i++)
-            {
-                KeyPointers[i] = new KeyPointer();
-                offset += KeyPointers[i].ReadFrom(buffer, offset);
-            }
-            Nodes = new NodeHeader[ItemCount];
-            return Size;
+            i++;
         }
-
-        public override IEnumerable<BaseItem> Find(Key key, Context context)
+        for (var j = i-1; j < KeyPointers.Length; j++)
         {
-            if (KeyPointers[0].Key.ObjectId > key.ObjectId)
+            var keyPtr = KeyPointers[j];
+            if (keyPtr.Key.ObjectId > key.ObjectId)
                 yield break;
-            var i = 1;
-            while (i < KeyPointers.Length && KeyPointers[i].Key.ObjectId < key.ObjectId)
+            if (Nodes[j] == null)
+                Nodes[j] = context.ReadTree(keyPtr.BlockNumber, Level);
+            foreach (var item in Nodes[j].Find(key, context))
             {
-                i++;
-            }
-            for (int j = i-1; j < KeyPointers.Length; j++)
-            {
-                var keyPtr = KeyPointers[j];
-                if (keyPtr.Key.ObjectId > key.ObjectId)
-                    yield break;
-                if (Nodes[j] == null)
-                    Nodes[j] = context.ReadTree(keyPtr.BlockNumber, Level);
-                foreach (var item in Nodes[j].Find(key, context))
-                {
-                    yield return item;
-                }
+                yield return item;
             }
         }
     }

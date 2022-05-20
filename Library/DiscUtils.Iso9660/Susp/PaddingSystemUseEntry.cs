@@ -20,13 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal sealed class PaddingSystemUseEntry : SystemUseEntry
 {
-    internal sealed class PaddingSystemUseEntry : SystemUseEntry
+    public PaddingSystemUseEntry(string name, byte length, byte version)
     {
-        public PaddingSystemUseEntry(string name, byte length, byte version)
-        {
-            CheckAndSetCommonProperties(name, length, version, 4, 1);
-        }
+        CheckAndSetCommonProperties(name, length, version, 4, 1);
     }
 }

@@ -20,12 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+internal enum ExtentFlag : byte
 {
-    internal enum ExtentFlag : byte
-    {
-        Normal,
-        Unwritten,
-        Invalid
-    }
+    Normal,
+    Unwritten,
+    Invalid
 }

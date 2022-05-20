@@ -21,101 +21,109 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal sealed class FragmentWriter
 {
-    internal sealed class FragmentWriter
+    private readonly BuilderContext _context;
+
+    private readonly byte[] _currentBlock;
+    private int _currentOffset;
+
+    private readonly List<FragmentRecord> _fragmentBlocks;
+
+    public FragmentWriter(BuilderContext context)
     {
-        private readonly BuilderContext _context;
+        _context = context;
+        _currentBlock = new byte[context.DataBlockSize];
+        _currentOffset = 0;
 
-        private readonly byte[] _currentBlock;
-        private int _currentOffset;
+        _fragmentBlocks = new List<FragmentRecord>();
+    }
 
-        private readonly List<FragmentRecord> _fragmentBlocks;
+    public int FragmentCount { get; private set; }
 
-        public FragmentWriter(BuilderContext context)
+    public void Flush()
+    {
+        if (_currentOffset != 0)
         {
-            _context = context;
-            _currentBlock = new byte[context.DataBlockSize];
+            NextBlock();
+        }
+    }
+
+    public uint WriteFragment(int length, out uint offset)
+    {
+        if (_currentBlock.Length - _currentOffset < length)
+        {
+            NextBlock();
             _currentOffset = 0;
-
-            _fragmentBlocks = new List<FragmentRecord>();
         }
 
-        public int FragmentCount { get; private set; }
+        offset = (uint)_currentOffset;
+        Array.Copy(_context.IoBuffer, 0, _currentBlock, _currentOffset, length);
+        _currentOffset += length;
 
-        public void Flush()
+        ++FragmentCount;
+
+        return (uint)_fragmentBlocks.Count;
+    }
+
+    internal long Persist()
+    {
+        if (_fragmentBlocks.Count <= 0)
         {
-            if (_currentOffset != 0)
-            {
-                NextBlock();
-            }
+            return -1;
         }
 
-        public uint WriteFragment(int length, out uint offset)
+        if (_fragmentBlocks.Count * FragmentRecord.RecordSize > _context.DataBlockSize)
         {
-            if (_currentBlock.Length - _currentOffset < length)
-            {
-                NextBlock();
-                _currentOffset = 0;
-            }
-
-            offset = (uint)_currentOffset;
-            Array.Copy(_context.IoBuffer, 0, _currentBlock, _currentOffset, length);
-            _currentOffset += length;
-
-            ++FragmentCount;
-
-            return (uint)_fragmentBlocks.Count;
+            throw new NotImplementedException("Large numbers of fragments");
         }
 
-        internal long Persist()
+        // Persist the table that references the block containing the fragment records
+        var blockPos = _context.RawStream.Position;
+        var recordSize = FragmentRecord.RecordSize;
+        var buffer = ArrayPool<byte>.Shared.Rent(_fragmentBlocks.Count * recordSize);
+        try
         {
-            if (_fragmentBlocks.Count <= 0)
-            {
-                return -1;
-            }
-
-            if (_fragmentBlocks.Count * FragmentRecord.RecordSize > _context.DataBlockSize)
-            {
-                throw new NotImplementedException("Large numbers of fragments");
-            }
-
-            // Persist the table that references the block containing the fragment records
-            long blockPos = _context.RawStream.Position;
-            int recordSize = FragmentRecord.RecordSize;
-            byte[] buffer = new byte[_fragmentBlocks.Count * recordSize];
-            for (int i = 0; i < _fragmentBlocks.Count; ++i)
+            for (var i = 0; i < _fragmentBlocks.Count; ++i)
             {
                 _fragmentBlocks[i].WriteTo(buffer, i * recordSize);
             }
 
-            MetablockWriter writer = new MetablockWriter();
-            writer.Write(buffer, 0, buffer.Length);
+            var writer = new MetablockWriter();
+            writer.Write(buffer, 0, _fragmentBlocks.Count * recordSize);
             writer.Persist(_context.RawStream);
-
-            long tablePos = _context.RawStream.Position;
-            byte[] tableBuffer = new byte[8];
-            EndianUtilities.WriteBytesLittleEndian(blockPos, tableBuffer, 0);
-            _context.RawStream.Write(tableBuffer, 0, 8);
-
-            return tablePos;
         }
-
-        private void NextBlock()
+        finally
         {
-            long position = _context.RawStream.Position;
-
-            uint writeLen = _context.WriteDataBlock(_currentBlock, 0, _currentOffset);
-            FragmentRecord blockRecord = new FragmentRecord
-            {
-                StartBlock = position,
-                CompressedSize = (int)writeLen
-            };
-
-            _fragmentBlocks.Add(blockRecord);
+            ArrayPool<byte>.Shared.Return(buffer);
         }
+
+        var tablePos = _context.RawStream.Position;
+        Span<byte> tableBuffer = stackalloc byte[8];
+        EndianUtilities.WriteBytesLittleEndian(blockPos, tableBuffer);
+        _context.RawStream.Write(tableBuffer);
+
+        return tablePos;
+    }
+
+    private void NextBlock()
+    {
+        var position = _context.RawStream.Position;
+
+        var writeLen = _context.WriteDataBlock(_currentBlock, 0, _currentOffset);
+        var blockRecord = new FragmentRecord
+        {
+            StartBlock = position,
+            CompressedSize = (int)writeLen
+        };
+
+        _fragmentBlocks.Add(blockRecord);
     }
 }

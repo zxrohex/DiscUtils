@@ -22,19 +22,18 @@
 
 using System;
 
-namespace DiscUtils.Internal
+namespace DiscUtils.Internal;
+
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class VirtualDiskFactoryAttribute : Attribute
 {
-    [AttributeUsage(AttributeTargets.Class)]
-    public sealed class VirtualDiskFactoryAttribute : Attribute
+    public VirtualDiskFactoryAttribute(string type, string fileExtensions)
     {
-        public VirtualDiskFactoryAttribute(string type, string fileExtensions)
-        {
-            Type = type;
-            FileExtensions = fileExtensions.Replace(".", string.Empty).Split(',');
-        }
-
-        public string[] FileExtensions { get; }
-
-        public string Type { get; }
+        Type = type;
+        FileExtensions = fileExtensions.Replace(".", string.Empty).Split(',');
     }
+
+    public string[] FileExtensions { get; }
+
+    public string Type { get; }
 }

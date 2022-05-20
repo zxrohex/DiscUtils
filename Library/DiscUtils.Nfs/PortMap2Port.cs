@@ -22,44 +22,43 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public class PortMap2Port : IRpcObject
 {
-    public class PortMap2Port : IRpcObject
+    public PortMap2Port()
     {
-        public PortMap2Port()
+    }
+
+    public PortMap2Port(XdrDataReader reader)
+    {
+        Port = reader.ReadUInt32();
+    }
+
+    public uint Port { get; set; }
+
+    public void Write(XdrDataWriter writer)
+    {
+        writer.Write(Port);
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as PortMap2Port);
+    }
+
+    public bool Equals(PortMap2Port other)
+    {
+        if (other == null)
         {
+            return false;
         }
 
-        public PortMap2Port(XdrDataReader reader)
-        {
-            Port = reader.ReadUInt32();
-        }
+        return other.Port == Port;
+    }
 
-        public uint Port { get; set; }
-
-        public void Write(XdrDataWriter writer)
-        {
-            writer.Write(Port);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as PortMap2Port);
-        }
-
-        public bool Equals(PortMap2Port other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other.Port == Port;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Port);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Port);
     }
 }

@@ -22,23 +22,22 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class PhysicalPartition : Partition
 {
-    internal class PhysicalPartition : Partition
+    private PartitionDescriptor _descriptor;
+    private readonly IBuffer _parentBuffer;
+    private ushort _partitionNumber;
+
+    public PhysicalPartition(PartitionDescriptor descriptor, IBuffer buffer, uint sectorSize)
     {
-        private PartitionDescriptor _descriptor;
-        private readonly IBuffer _parentBuffer;
-        private ushort _partitionNumber;
-
-        public PhysicalPartition(PartitionDescriptor descriptor, IBuffer buffer, uint sectorSize)
-        {
-            _partitionNumber = descriptor.PartitionNumber;
-            _parentBuffer = buffer;
-            Content = new SubBuffer(_parentBuffer, descriptor.PartitionStartingLocation * (long)sectorSize,
-                descriptor.PartitionLength * (long)sectorSize);
-            _descriptor = descriptor;
-        }
-
-        public override IBuffer Content { get; }
+        _partitionNumber = descriptor.PartitionNumber;
+        _parentBuffer = buffer;
+        Content = new SubBuffer(_parentBuffer, descriptor.PartitionStartingLocation * (long)sectorSize,
+            descriptor.PartitionLength * (long)sectorSize);
+        _descriptor = descriptor;
     }
+
+    public override IBuffer Content { get; }
 }

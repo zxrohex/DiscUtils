@@ -22,11 +22,10 @@
 
 using System.Management.Automation;
 
-namespace DiscUtils.PowerShell.VirtualDiskProvider
+namespace DiscUtils.PowerShell.VirtualDiskProvider;
+
+public class ContentParameters
 {
-    public class ContentParameters
-    {
-        [Parameter]
-        public ContentEncoding Encoding { get; set; }
-    }
+    [Parameter]
+    public ContentEncoding Encoding { get; set; }
 }

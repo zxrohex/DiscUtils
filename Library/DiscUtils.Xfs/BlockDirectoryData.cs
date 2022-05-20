@@ -20,20 +20,19 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+
+internal abstract class BlockDirectoryData : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
+    public abstract int Size { get; }
 
-    internal abstract class BlockDirectoryData : IByteArraySerializable
+    public abstract int ReadFrom(byte[] buffer, int offset);
+
+    public void WriteTo(byte[] buffer, int offset)
     {
-        public abstract int Size { get; }
-
-        public abstract int ReadFrom(byte[] buffer, int offset);
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+        throw new NotImplementedException();
     }
 }

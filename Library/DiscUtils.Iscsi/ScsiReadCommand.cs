@@ -23,38 +23,37 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class ScsiReadCommand : ScsiCommand
 {
-    internal class ScsiReadCommand : ScsiCommand
+    private readonly uint _logicalBlockAddress;
+    private readonly ushort _numBlocks;
+
+    public ScsiReadCommand(ulong targetLun, uint logicalBlockAddress, ushort numBlocks)
+        : base(targetLun)
     {
-        private readonly uint _logicalBlockAddress;
-        private readonly ushort _numBlocks;
+        _logicalBlockAddress = logicalBlockAddress;
+        _numBlocks = numBlocks;
+    }
 
-        public ScsiReadCommand(ulong targetLun, uint logicalBlockAddress, ushort numBlocks)
-            : base(targetLun)
-        {
-            _logicalBlockAddress = logicalBlockAddress;
-            _numBlocks = numBlocks;
-        }
+    public override int Size
+    {
+        get { return 10; }
+    }
 
-        public override int Size
-        {
-            get { return 10; }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            buffer[offset + 0] = 0x28; // OpCode: READ(10)
-            buffer[offset + 1] = 0;
-            EndianUtilities.WriteBytesBigEndian(_logicalBlockAddress, buffer, offset + 2);
-            buffer[offset + 6] = 0;
-            EndianUtilities.WriteBytesBigEndian(_numBlocks, buffer, offset + 7);
-            buffer[offset + 9] = 0;
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        buffer[offset + 0] = 0x28; // OpCode: READ(10)
+        buffer[offset + 1] = 0;
+        EndianUtilities.WriteBytesBigEndian(_logicalBlockAddress, buffer, offset + 2);
+        buffer[offset + 6] = 0;
+        EndianUtilities.WriteBytesBigEndian(_numBlocks, buffer, offset + 7);
+        buffer[offset + 9] = 0;
     }
 }

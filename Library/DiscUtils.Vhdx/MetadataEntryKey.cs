@@ -22,79 +22,78 @@
 
 using System;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal sealed class MetadataEntryKey : IEquatable<MetadataEntryKey>
 {
-    internal sealed class MetadataEntryKey : IEquatable<MetadataEntryKey>
+    private Guid _itemId;
+
+    public MetadataEntryKey(Guid itemId, bool isUser)
     {
-        private Guid _itemId;
+        _itemId = itemId;
+        IsUser = isUser;
+    }
 
-        public MetadataEntryKey(Guid itemId, bool isUser)
+    public bool IsUser { get; }
+
+    public Guid ItemId
+    {
+        get { return _itemId; }
+    }
+
+    public bool Equals(MetadataEntryKey other)
+    {
+        if (other == null)
         {
-            _itemId = itemId;
-            IsUser = isUser;
-        }
-
-        public bool IsUser { get; }
-
-        public Guid ItemId
-        {
-            get { return _itemId; }
-        }
-
-        public bool Equals(MetadataEntryKey other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return _itemId == other._itemId && IsUser == other.IsUser;
-        }
-
-        public static bool operator ==(MetadataEntryKey x, MetadataEntryKey y)
-        {
-            if (ReferenceEquals(x, y))
-            {
-                return true;
-            }
-
-            if (((object)x == null) || ((object)y == null))
-            {
-                return false;
-            }
-
-            return x._itemId == y._itemId && x.IsUser == y.IsUser;
-        }
-
-        public static bool operator !=(MetadataEntryKey x, MetadataEntryKey y)
-        {
-            return !(x == y);
-        }
-
-        public static MetadataEntryKey FromEntry(MetadataEntry entry)
-        {
-            return new MetadataEntryKey(entry.ItemId, (entry.Flags & MetadataEntryFlags.IsUser) != 0);
-        }
-
-        public override bool Equals(object other)
-        {
-            MetadataEntryKey otherKey = other as MetadataEntryKey;
-            if (otherKey != null)
-            {
-                return Equals(otherKey);
-            }
-
             return false;
         }
 
-        public override int GetHashCode()
+        return _itemId == other._itemId && IsUser == other.IsUser;
+    }
+
+    public static bool operator ==(MetadataEntryKey x, MetadataEntryKey y)
+    {
+        if (ReferenceEquals(x, y))
         {
-            return _itemId.GetHashCode() ^ (IsUser ? 0x3C13A5 : 0);
+            return true;
         }
 
-        public override string ToString()
+        if (((object)x == null) || ((object)y == null))
         {
-            return _itemId + (IsUser ? " - User" : " - System");
+            return false;
         }
+
+        return x._itemId == y._itemId && x.IsUser == y.IsUser;
+    }
+
+    public static bool operator !=(MetadataEntryKey x, MetadataEntryKey y)
+    {
+        return !(x == y);
+    }
+
+    public static MetadataEntryKey FromEntry(MetadataEntry entry)
+    {
+        return new MetadataEntryKey(entry.ItemId, (entry.Flags & MetadataEntryFlags.IsUser) != 0);
+    }
+
+    public override bool Equals(object other)
+    {
+        var otherKey = other as MetadataEntryKey;
+        if (otherKey != null)
+        {
+            return Equals(otherKey);
+        }
+
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return _itemId.GetHashCode() ^ (IsUser ? 0x3C13A5 : 0);
+    }
+
+    public override string ToString()
+    {
+        return _itemId + (IsUser ? " - User" : " - System");
     }
 }

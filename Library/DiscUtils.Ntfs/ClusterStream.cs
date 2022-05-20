@@ -24,30 +24,29 @@ using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal abstract class ClusterStream
 {
-    internal abstract class ClusterStream
-    {
-        public abstract long AllocatedClusterCount { get; }
+    public abstract long AllocatedClusterCount { get; }
 
-        public abstract IEnumerable<Range<long, long>> StoredClusters { get; }
+    public abstract IEnumerable<Range<long, long>> StoredClusters { get; }
 
-        public abstract bool IsClusterStored(long vcn);
+    public abstract bool IsClusterStored(long vcn);
 
-        public abstract void ExpandToClusters(long numVirtualClusters, NonResidentAttributeRecord extent, bool allocate);
+    public abstract void ExpandToClusters(long numVirtualClusters, NonResidentAttributeRecord extent, bool allocate);
 
-        public abstract void TruncateToClusters(long numVirtualClusters);
+    public abstract void TruncateToClusters(long numVirtualClusters);
 
-        public abstract void ReadClusters(long startVcn, int count, byte[] buffer, int offset);
+    public abstract void ReadClusters(long startVcn, int count, byte[] buffer, int offset);
 
-        public abstract int WriteClusters(long startVcn, int count, byte[] buffer, int offset);
+    public abstract int WriteClusters(long startVcn, int count, byte[] buffer, int offset);
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public abstract void ReadClusters(long startVcn, int count, Span<byte> buffer);
+    public abstract void ReadClusters(long startVcn, int count, Span<byte> buffer);
 
-        public abstract int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer);
+    public abstract int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer);
 #endif
 
-        public abstract int ClearClusters(long startVcn, int count);
-    }
+    public abstract int ClearClusters(long startVcn, int count);
 }

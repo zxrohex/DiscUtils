@@ -20,24 +20,28 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Internal
+using System;
+
+namespace DiscUtils.Internal;
+
+internal abstract class Crc32
 {
-    internal abstract class Crc32
+    protected readonly uint[] Table;
+    protected uint _value;
+
+    protected Crc32(uint[] table)
     {
-        protected readonly uint[] Table;
-        protected uint _value;
-
-        protected Crc32(uint[] table)
-        {
-            Table = table;
-            _value = 0xFFFFFFFF;
-        }
-
-        public uint Value
-        {
-            get { return _value ^ 0xFFFFFFFF; }
-        }
-
-        public abstract void Process(byte[] buffer, int offset, int count);
+        Table = table;
+        _value = 0xFFFFFFFF;
     }
+
+    public uint Value
+    {
+        get { return _value ^ 0xFFFFFFFF; }
+    }
+
+    public void Process(byte[] buffer, int offset, int count)
+        => Process(buffer.AsSpan(offset, count));
+
+    public abstract void Process(ReadOnlySpan<byte> buffer);
 }

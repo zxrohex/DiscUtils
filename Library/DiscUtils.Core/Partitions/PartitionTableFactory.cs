@@ -22,12 +22,11 @@
 
 using System.IO;
 
-namespace DiscUtils.Partitions
-{
-    internal abstract class PartitionTableFactory
-    {
-        public abstract bool DetectIsPartitioned(Stream s);
+namespace DiscUtils.Partitions;
 
-        public abstract PartitionTable DetectPartitionTable(VirtualDisk disk);
-    }
+internal abstract class PartitionTableFactory
+{
+    public abstract bool DetectIsPartitioned(Stream s);
+
+    public abstract PartitionTable DetectPartitionTable(VirtualDisk disk);
 }

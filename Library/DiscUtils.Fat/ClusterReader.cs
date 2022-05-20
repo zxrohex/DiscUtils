@@ -21,75 +21,84 @@
 //
 
 using System;
+using System.Buffers;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Fat
+namespace DiscUtils.Fat;
+
+internal sealed class ClusterReader
 {
-    internal sealed class ClusterReader
+    private readonly int _bytesPerSector;
+
+    /// <summary>
+    /// Pre-calculated value because of number of uses of this externally.
+    /// </summary>
+    private readonly int _clusterSize;
+
+    private readonly int _firstDataSector;
+    private readonly int _sectorsPerCluster;
+    private readonly Stream _stream;
+
+    public ClusterReader(Stream stream, int firstDataSector, int sectorsPerCluster, int bytesPerSector)
     {
-        private readonly int _bytesPerSector;
+        _stream = stream;
+        _firstDataSector = firstDataSector;
+        _sectorsPerCluster = sectorsPerCluster;
+        _bytesPerSector = bytesPerSector;
 
-        /// <summary>
-        /// Pre-calculated value because of number of uses of this externally.
-        /// </summary>
-        private readonly int _clusterSize;
+        _clusterSize = _sectorsPerCluster * _bytesPerSector;
+    }
 
-        private readonly int _firstDataSector;
-        private readonly int _sectorsPerCluster;
-        private readonly Stream _stream;
+    public int ClusterSize
+    {
+        get { return _clusterSize; }
+    }
 
-        public ClusterReader(Stream stream, int firstDataSector, int sectorsPerCluster, int bytesPerSector)
+    public void ReadCluster(uint cluster, byte[] buffer, int offset)
+    {
+        if (offset + ClusterSize > buffer.Length)
         {
-            _stream = stream;
-            _firstDataSector = firstDataSector;
-            _sectorsPerCluster = sectorsPerCluster;
-            _bytesPerSector = bytesPerSector;
-
-            _clusterSize = _sectorsPerCluster * _bytesPerSector;
+            throw new ArgumentOutOfRangeException(nameof(offset),
+                "buffer is too small - cluster would overflow buffer");
         }
 
-        public int ClusterSize
+        var firstSector = (uint)((cluster - 2) * _sectorsPerCluster + _firstDataSector);
+
+        _stream.Position = firstSector * _bytesPerSector;
+        StreamUtilities.ReadExact(_stream, buffer, offset, _clusterSize);
+    }
+
+    internal void WriteCluster(uint cluster, byte[] buffer, int offset)
+    {
+        if (offset + ClusterSize > buffer.Length)
         {
-            get { return _clusterSize; }
+            throw new ArgumentOutOfRangeException(nameof(offset),
+                "buffer is too small - cluster would overflow buffer");
         }
 
-        public void ReadCluster(uint cluster, byte[] buffer, int offset)
+        var firstSector = (uint)((cluster - 2) * _sectorsPerCluster + _firstDataSector);
+
+        _stream.Position = firstSector * _bytesPerSector;
+
+        _stream.Write(buffer, offset, _clusterSize);
+    }
+
+    internal void WipeCluster(uint cluster)
+    {
+        var firstSector = (uint)((cluster - 2) * _sectorsPerCluster + _firstDataSector);
+
+        _stream.Position = firstSector * _bytesPerSector;
+
+        var buffer = ArrayPool<byte>.Shared.Rent(_clusterSize);
+        try
         {
-            if (offset + ClusterSize > buffer.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset),
-                    "buffer is too small - cluster would overflow buffer");
-            }
-
-            uint firstSector = (uint)((cluster - 2) * _sectorsPerCluster + _firstDataSector);
-
-            _stream.Position = firstSector * _bytesPerSector;
-            StreamUtilities.ReadExact(_stream, buffer, offset, _clusterSize);
+            Array.Clear(buffer, 0, _clusterSize);
+            _stream.Write(buffer, 0, _clusterSize);
         }
-
-        internal void WriteCluster(uint cluster, byte[] buffer, int offset)
+        finally
         {
-            if (offset + ClusterSize > buffer.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset),
-                    "buffer is too small - cluster would overflow buffer");
-            }
-
-            uint firstSector = (uint)((cluster - 2) * _sectorsPerCluster + _firstDataSector);
-
-            _stream.Position = firstSector * _bytesPerSector;
-
-            _stream.Write(buffer, offset, _clusterSize);
-        }
-
-        internal void WipeCluster(uint cluster)
-        {
-            uint firstSector = (uint)((cluster - 2) * _sectorsPerCluster + _firstDataSector);
-
-            _stream.Position = firstSector * _bytesPerSector;
-
-            _stream.Write(new byte[_clusterSize], 0, _clusterSize);
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 }

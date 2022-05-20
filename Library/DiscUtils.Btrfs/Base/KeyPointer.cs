@@ -23,44 +23,45 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal class KeyPointer : IByteArraySerializable
 {
-    internal class KeyPointer : IByteArraySerializable
+    public static readonly int Length = 0x21;
+
+    /// <summary>
+    /// key
+    /// </summary>
+    public Key Key { get; internal set; }
+
+    /// <summary>
+    /// block number
+    /// </summary>
+    public ulong BlockNumber { get; internal set; }
+
+    /// <summary>
+    /// generation
+    /// </summary>
+    public ulong Generation { get; internal set; }
+
+    public int Size
     {
-        public static readonly int Length = 0x21;
+        get { return Length; }
+    }
 
-        /// <summary>
-        /// key
-        /// </summary>
-        public Key Key { get; internal set; }
+    public int ReadFrom(byte[] buffer, int offset) => ReadFrom(buffer.AsSpan(offset));
 
-        /// <summary>
-        /// block number
-        /// </summary>
-        public ulong BlockNumber { get; internal set; }
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
+    {
+        Key = new Key();
+        var offset = Key.ReadFrom(buffer);
+        BlockNumber = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(offset));
+        Generation = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(offset + 0x8));
+        return Size;
+    }
 
-        /// <summary>
-        /// generation
-        /// </summary>
-        public ulong Generation { get; internal set; }
-
-        public int Size
-        {
-            get { return Length; }
-        }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Key = new Key();
-            offset += Key.ReadFrom(buffer, offset);
-            BlockNumber = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-            Generation = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-            return Size;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

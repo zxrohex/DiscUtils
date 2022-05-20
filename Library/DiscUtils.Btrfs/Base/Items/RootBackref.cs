@@ -20,13 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs.Base.Items
+namespace DiscUtils.Btrfs.Base.Items;
+
+/// <summary>
+/// From an inode to a name in a directory
+/// </summary>
+internal class RootBackref : RootRef
 {
-    /// <summary>
-    /// From an inode to a name in a directory
-    /// </summary>
-    internal class RootBackref : RootRef
-    {
-        public RootBackref(Key key) : base(key) {}
-    }
+    public RootBackref(Key key) : base(key) {}
 }

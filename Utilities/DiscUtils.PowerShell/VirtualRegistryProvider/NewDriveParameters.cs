@@ -22,14 +22,13 @@
 
 using System.Management.Automation;
 
-namespace DiscUtils.PowerShell.VirtualRegistryProvider
+namespace DiscUtils.PowerShell.VirtualRegistryProvider;
+
+public class NewDriveParameters
 {
-    public class NewDriveParameters
+    [Parameter]
+    public SwitchParameter ReadWrite
     {
-        [Parameter]
-        public SwitchParameter ReadWrite
-        {
-            get; set;
-        }
+        get; set;
     }
 }

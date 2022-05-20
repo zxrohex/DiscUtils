@@ -30,7 +30,7 @@ namespace LibraryTests
         [Fact]
         public void Create()
         {
-            ChsAddress g = new ChsAddress(100, 16, 63);
+            var g = new ChsAddress(100, 16, 63);
             Assert.Equal(100, g.Cylinder);
             Assert.Equal(16, g.Head);
             Assert.Equal(63, g.Sector);

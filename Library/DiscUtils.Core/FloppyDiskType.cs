@@ -20,26 +20,25 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils
+namespace DiscUtils;
+
+/// <summary>
+/// The supported Floppy Disk logical formats.
+/// </summary>
+public enum FloppyDiskType
 {
     /// <summary>
-    /// The supported Floppy Disk logical formats.
+    /// 720KiB capacity disk.
     /// </summary>
-    public enum FloppyDiskType
-    {
-        /// <summary>
-        /// 720KiB capacity disk.
-        /// </summary>
-        DoubleDensity = 0,
+    DoubleDensity = 0,
 
-        /// <summary>
-        /// 1440KiB capacity disk.
-        /// </summary>
-        HighDensity = 1,
+    /// <summary>
+    /// 1440KiB capacity disk.
+    /// </summary>
+    HighDensity = 1,
 
-        /// <summary>
-        /// 2880KiB capacity disk.
-        /// </summary>
-        Extended = 2
-    }
+    /// <summary>
+    /// 2880KiB capacity disk.
+    /// </summary>
+    Extended = 2
 }

@@ -22,39 +22,38 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class TextResponse : BaseResponse
 {
-    internal class TextResponse : BaseResponse
+    private ulong _lun;
+    private uint _targetTransferTag = 0xFFFFFFFF;
+    public bool Continue;
+    public byte[] TextData;
+
+    public override void Parse(ProtocolDataUnit pdu)
     {
-        private ulong _lun;
-        private uint _targetTransferTag = 0xFFFFFFFF;
-        public bool Continue;
-        public byte[] TextData;
+        Parse(pdu.HeaderData, 0, pdu.ContentData);
+    }
 
-        public override void Parse(ProtocolDataUnit pdu)
+    public void Parse(byte[] headerData, int headerOffset, byte[] bodyData)
+    {
+        var _headerSegment = new BasicHeaderSegment();
+        _headerSegment.ReadFrom(headerData, headerOffset);
+
+        if (_headerSegment.OpCode != OpCode.TextResponse)
         {
-            Parse(pdu.HeaderData, 0, pdu.ContentData);
+            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.TextResponse +
+                                               " was " + _headerSegment.OpCode);
         }
 
-        public void Parse(byte[] headerData, int headerOffset, byte[] bodyData)
-        {
-            BasicHeaderSegment _headerSegment = new BasicHeaderSegment();
-            _headerSegment.ReadFrom(headerData, headerOffset);
+        Continue = (headerData[headerOffset + 1] & 0x40) != 0;
+        _lun = EndianUtilities.ToUInt64BigEndian(headerData, headerOffset + 8);
+        _targetTransferTag = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 20);
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
 
-            if (_headerSegment.OpCode != OpCode.TextResponse)
-            {
-                throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.TextResponse +
-                                                   " was " + _headerSegment.OpCode);
-            }
-
-            Continue = (headerData[headerOffset + 1] & 0x40) != 0;
-            _lun = EndianUtilities.ToUInt64BigEndian(headerData, headerOffset + 8);
-            _targetTransferTag = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 20);
-            StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-            ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-            MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-
-            TextData = bodyData;
-        }
+        TextData = bodyData;
     }
 }

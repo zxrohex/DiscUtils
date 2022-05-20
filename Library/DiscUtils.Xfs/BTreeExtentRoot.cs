@@ -21,98 +21,93 @@
 //
 
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+internal class BTreeExtentRoot : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
+    public ushort Level { get; protected set; }
 
-    internal class BTreeExtentRoot : IByteArraySerializable
+    public ushort NumberOfRecords { get; protected set; }
+
+    public ulong[] Keys { get; private set; }
+
+    public ulong[] Pointer { get; private set; }
+
+    public Dictionary<ulong, BTreeExtentHeader> Children { get; private set; }
+
+    public int Size
     {
-        public ushort Level { get; protected set; }
+        get { return 4 + (0x9 * 0x16); }
+    }
 
-        public ushort NumberOfRecords { get; protected set; }
-
-        public ulong[] Keys { get; private set; }
-
-        public ulong[] Pointer { get; private set; }
-
-        public Dictionary<ulong, BTreeExtentHeader> Children { get; private set; }
-
-        public int Size
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Level = EndianUtilities.ToUInt16BigEndian(buffer, offset);
+        NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
+        offset += 0x4;
+        Keys = new ulong[NumberOfRecords];
+        Pointer = new ulong[NumberOfRecords];
+        for (var i = 0; i < NumberOfRecords; i++)
         {
-            get { return 4 + (0x9 * 0x16); }
+            Keys[i] = EndianUtilities.ToUInt64BigEndian(buffer, offset + i * 0x8);
         }
-
-        public int ReadFrom(byte[] buffer, int offset)
+        offset += ((buffer.Length - offset)/16)*8;
+        for (var i = 0; i < NumberOfRecords; i++)
         {
-            Level = EndianUtilities.ToUInt16BigEndian(buffer, offset);
-            NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
-            offset += 0x4;
-            Keys = new ulong[NumberOfRecords];
-            Pointer = new ulong[NumberOfRecords];
-            for (int i = 0; i < NumberOfRecords; i++)
-            {
-                Keys[i] = EndianUtilities.ToUInt64BigEndian(buffer, offset + i * 0x8);
-            }
-            offset += ((buffer.Length - offset)/16)*8;
-            for (int i = 0; i < NumberOfRecords; i++)
-            {
-                Pointer[i] = EndianUtilities.ToUInt64BigEndian(buffer, offset + i * 0x8);
-            }
-            return Size;
+            Pointer[i] = EndianUtilities.ToUInt64BigEndian(buffer, offset + i * 0x8);
         }
+        return Size;
+    }
 
 
-        /// <inheritdoc />
-        public void WriteTo(byte[] buffer, int offset)
+    /// <inheritdoc />
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void LoadBtree(Context context)
+    {
+        Children = new Dictionary<ulong, BTreeExtentHeader>(NumberOfRecords);
+        for (var i = 0; i < NumberOfRecords; i++)
         {
-            throw new NotImplementedException();
-        }
-
-        public void LoadBtree(Context context)
-        {
-            Children = new Dictionary<ulong, BTreeExtentHeader>(NumberOfRecords);
-            for (int i = 0; i < NumberOfRecords; i++)
+            BTreeExtentHeader child;
+            if (Level == 1)
             {
-                BTreeExtentHeader child;
-                if (Level == 1)
-                {
-                    if (context.SuperBlock.SbVersion == 5)
-                        child = new BTreeExtentLeafV5();
-                    else
-                        child = new BTreeExtentLeaf();
-                }
+                if (context.SuperBlock.SbVersion == 5)
+                    child = new BTreeExtentLeafV5();
                 else
-                {
-                    if (context.SuperBlock.SbVersion == 5)
-                        child = new BTreeExtentNodeV5();
-                    else
-                        child = new BTreeExtentNode();
-                }
-                var data = context.RawStream;
-                data.Position = Extent.GetOffset(context, Pointer[i]);
-                var buffer = StreamUtilities.ReadExact(data, (int)context.SuperBlock.Blocksize);
-                child.ReadFrom(buffer, 0);
-                if (context.SuperBlock.SbVersion < 5 && child.Magic != BTreeExtentHeader.BtreeMagic ||
-                    context.SuperBlock.SbVersion == 5 && child.Magic != BTreeExtentHeaderV5.BtreeMagicV5)
-                {
-                    throw new IOException("invalid btree directory magic");
-                }
-                child.LoadBtree(context);
-                Children.Add(Keys[i], child);
+                    child = new BTreeExtentLeaf();
             }
-        }
-
-        public List<Extent> GetExtents()
-        {
-            var result = new List<Extent>();
-            foreach (var child in Children)
+            else
             {
-                result.AddRange(child.Value.GetExtents());
+                if (context.SuperBlock.SbVersion == 5)
+                    child = new BTreeExtentNodeV5();
+                else
+                    child = new BTreeExtentNode();
             }
-            return result;
+            var data = context.RawStream;
+            data.Position = Extent.GetOffset(context, Pointer[i]);
+            var buffer = StreamUtilities.ReadExact(data, (int)context.SuperBlock.Blocksize);
+            child.ReadFrom(buffer, 0);
+            if (context.SuperBlock.SbVersion < 5 && child.Magic != BTreeExtentHeader.BtreeMagic ||
+                context.SuperBlock.SbVersion == 5 && child.Magic != BTreeExtentHeaderV5.BtreeMagicV5)
+            {
+                throw new IOException("invalid btree directory magic");
+            }
+            child.LoadBtree(context);
+            Children.Add(Keys[i], child);
         }
+    }
+
+    public IEnumerable<Extent> GetExtents()
+    {
+        return Children.SelectMany(child => child.Value.GetExtents());
     }
 }

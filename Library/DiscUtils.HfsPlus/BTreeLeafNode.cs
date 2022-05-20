@@ -23,67 +23,66 @@
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class BTreeLeafNode<TKey> : BTreeKeyedNode<TKey>
+    where TKey : BTreeKey, new()
 {
-    internal sealed class BTreeLeafNode<TKey> : BTreeKeyedNode<TKey>
-        where TKey : BTreeKey, new()
+    private BTreeLeafRecord<TKey>[] _records;
+
+    public BTreeLeafNode(BTree tree, BTreeNodeDescriptor descriptor)
+        : base(tree, descriptor) {}
+
+    public override byte[] FindKey(TKey key)
     {
-        private BTreeLeafRecord<TKey>[] _records;
-
-        public BTreeLeafNode(BTree tree, BTreeNodeDescriptor descriptor)
-            : base(tree, descriptor) {}
-
-        public override byte[] FindKey(TKey key)
+        var idx = 0;
+        while (idx < _records.Length)
         {
-            int idx = 0;
-            while (idx < _records.Length)
+            var compResult = key.CompareTo(_records[idx].Key);
+            if (compResult == 0)
             {
-                int compResult = key.CompareTo(_records[idx].Key);
-                if (compResult == 0)
-                {
-                    return _records[idx].Data;
-                }
-
-                if (compResult < 0)
-                {
-                    return null;
-                }
-
-                ++idx;
+                return _records[idx].Data;
             }
 
-            return null;
-        }
-
-        public override void VisitRange(BTreeVisitor<TKey> visitor)
-        {
-            int idx = 0;
-            while (idx < _records.Length && visitor(_records[idx].Key, _records[idx].Data) <= 0)
+            if (compResult < 0)
             {
-                idx++;
-            }
-        }
-
-        protected override IList<BTreeNodeRecord> ReadRecords(byte[] buffer, int offset)
-        {
-            int numRecords = Descriptor.NumRecords;
-            int nodeSize = Tree.NodeSize;
-
-            _records = new BTreeLeafRecord<TKey>[numRecords];
-
-            int start = EndianUtilities.ToUInt16BigEndian(buffer, offset + nodeSize - 2);
-
-            for (int i = 0; i < numRecords; ++i)
-            {
-                int end = EndianUtilities.ToUInt16BigEndian(buffer, offset + nodeSize - (i + 2) * 2);
-
-                _records[i] = new BTreeLeafRecord<TKey>(end - start);
-                _records[i].ReadFrom(buffer, offset + start);
-
-                start = end;
+                return null;
             }
 
-            return _records;
+            ++idx;
         }
+
+        return null;
+    }
+
+    public override void VisitRange(BTreeVisitor<TKey> visitor)
+    {
+        var idx = 0;
+        while (idx < _records.Length && visitor(_records[idx].Key, _records[idx].Data) <= 0)
+        {
+            idx++;
+        }
+    }
+
+    protected override IList<BTreeNodeRecord> ReadRecords(byte[] buffer, int offset)
+    {
+        int numRecords = Descriptor.NumRecords;
+        var nodeSize = Tree.NodeSize;
+
+        _records = new BTreeLeafRecord<TKey>[numRecords];
+
+        int start = EndianUtilities.ToUInt16BigEndian(buffer, offset + nodeSize - 2);
+
+        for (var i = 0; i < numRecords; ++i)
+        {
+            int end = EndianUtilities.ToUInt16BigEndian(buffer, offset + nodeSize - (i + 2) * 2);
+
+            _records[i] = new BTreeLeafRecord<TKey>(end - start);
+            _records[i].ReadFrom(buffer, offset + start);
+
+            start = end;
+        }
+
+        return _records;
     }
 }

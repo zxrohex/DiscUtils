@@ -20,14 +20,13 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
-{
-    using System;
-    
-    internal interface IDirectoryEntry
-    {
-        byte[] Name { get; }
+namespace DiscUtils.Xfs;
 
-        ulong Inode { get; }
-    }
+using System;
+
+internal interface IDirectoryEntry
+{
+    byte[] Name { get; }
+
+    ulong Inode { get; }
 }

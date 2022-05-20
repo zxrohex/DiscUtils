@@ -23,50 +23,49 @@
 using System.Collections.Generic;
 using System.Net;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Represents an endpoint (address, port, etc) that provides a DNS-SD service instance.
+/// </summary>
+public sealed class ServiceInstanceEndPoint
 {
-    /// <summary>
-    /// Represents an endpoint (address, port, etc) that provides a DNS-SD service instance.
-    /// </summary>
-    public sealed class ServiceInstanceEndPoint
+    private readonly IReadOnlyList<IPEndPoint> _ipEndPoints;
+
+    internal ServiceInstanceEndPoint(int priority, int weight, int port, string address, IReadOnlyList<IPEndPoint> ipEndPoints)
     {
-        private readonly IPEndPoint[] _ipEndPoints;
-
-        internal ServiceInstanceEndPoint(int priority, int weight, int port, string address, IPEndPoint[] ipEndPoints)
-        {
-            Priority = priority;
-            Weight = weight;
-            Port = port;
-            DnsAddress = address;
-            _ipEndPoints = ipEndPoints;
-        }
-
-        /// <summary>
-        /// Gets the DNS address of this EndPoint.
-        /// </summary>
-        public string DnsAddress { get; }
-
-        /// <summary>
-        /// Gets the IP addresses (as IPEndPoint instances) of this EndPoint.
-        /// </summary>
-        public IEnumerable<IPEndPoint> IPEndPoints
-        {
-            get { return _ipEndPoints; }
-        }
-
-        /// <summary>
-        /// Gets the port of this EndPoint.
-        /// </summary>
-        public int Port { get; }
-
-        /// <summary>
-        /// Gets the priority of this EndPoint (lower value is higher priority).
-        /// </summary>
-        public int Priority { get; }
-
-        /// <summary>
-        /// Gets the relative weight of this EndPoint when randomly choosing between EndPoints of equal priority.
-        /// </summary>
-        public int Weight { get; }
+        Priority = priority;
+        Weight = weight;
+        Port = port;
+        DnsAddress = address;
+        _ipEndPoints = ipEndPoints;
     }
+
+    /// <summary>
+    /// Gets the DNS address of this EndPoint.
+    /// </summary>
+    public string DnsAddress { get; }
+
+    /// <summary>
+    /// Gets the IP addresses (as IPEndPoint instances) of this EndPoint.
+    /// </summary>
+    public IEnumerable<IPEndPoint> IPEndPoints
+    {
+        get { return _ipEndPoints; }
+    }
+
+    /// <summary>
+    /// Gets the port of this EndPoint.
+    /// </summary>
+    public int Port { get; }
+
+    /// <summary>
+    /// Gets the priority of this EndPoint (lower value is higher priority).
+    /// </summary>
+    public int Priority { get; }
+
+    /// <summary>
+    /// Gets the relative weight of this EndPoint when randomly choosing between EndPoints of equal priority.
+    /// </summary>
+    public int Weight { get; }
 }

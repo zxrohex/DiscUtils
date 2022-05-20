@@ -22,23 +22,22 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal sealed class VirtualPartitionMap : PartitionMap
 {
-    internal sealed class VirtualPartitionMap : PartitionMap
+    public ushort PartitionNumber;
+    public ushort VolumeSequenceNumber;
+
+    public override int Size
     {
-        public ushort PartitionNumber;
-        public ushort VolumeSequenceNumber;
+        get { return 64; }
+    }
 
-        public override int Size
-        {
-            get { return 64; }
-        }
-
-        protected override int Parse(byte[] buffer, int offset)
-        {
-            VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
-            PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 38);
-            return 64;
-        }
+    protected override int Parse(byte[] buffer, int offset)
+    {
+        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
+        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 38);
+        return 64;
     }
 }

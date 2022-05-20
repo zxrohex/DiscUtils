@@ -20,23 +20,22 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs.Base.Items
+namespace DiscUtils.Btrfs.Base.Items;
+
+/// <summary>
+/// Maps logical address to physical
+/// </summary>
+internal class OrphanItem : BaseItem
 {
-    /// <summary>
-    /// Maps logical address to physical
-    /// </summary>
-    internal class OrphanItem : BaseItem
+    public OrphanItem(Key key) : base(key) { }
+
+    public override int Size
     {
-        public OrphanItem(Key key) : base(key) { }
+        get { return 0; }
+    }
 
-        public override int Size
-        {
-            get { return 0; }
-        }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            return Size;
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        return Size;
     }
 }

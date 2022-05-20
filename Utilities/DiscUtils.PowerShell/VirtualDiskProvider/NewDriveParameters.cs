@@ -22,20 +22,19 @@
 
 using System.Management.Automation;
 
-namespace DiscUtils.PowerShell.VirtualDiskProvider
-{
-    public class NewDriveParameters
-    {
-        [Parameter]
-        public SwitchParameter ReadWrite
-        {
-            get; set;
-        }
+namespace DiscUtils.PowerShell.VirtualDiskProvider;
 
-        [Parameter]
-        public string DiskType
-        {
-            get; set;
-        }
+public class NewDriveParameters
+{
+    [Parameter]
+    public SwitchParameter ReadWrite
+    {
+        get; set;
+    }
+
+    [Parameter]
+    public string DiskType
+    {
+        get; set;
     }
 }

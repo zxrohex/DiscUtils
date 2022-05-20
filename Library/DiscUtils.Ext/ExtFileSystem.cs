@@ -25,54 +25,53 @@ using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+/// <summary>
+/// Read-only access to ext file system.
+/// </summary>
+public sealed class ExtFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocationExtentsEnumerable
 {
     /// <summary>
-    /// Read-only access to ext file system.
+    /// Initializes a new instance of the ExtFileSystem class.
     /// </summary>
-    public sealed class ExtFileSystem : VfsFileSystemFacade, IUnixFileSystem
+    /// <param name="stream">The stream containing the ext file system.</param>
+    public ExtFileSystem(Stream stream)
+        : base(new VfsExtFileSystem(stream, null)) {}
+
+    /// <summary>
+    /// Initializes a new instance of the ExtFileSystem class.
+    /// </summary>
+    /// <param name="stream">The stream containing the ext file system.</param>
+    /// <param name="parameters">The generic file system parameters (only file name encoding is honoured).</param>
+    public ExtFileSystem(Stream stream, FileSystemParameters parameters)
+        : base(new VfsExtFileSystem(stream, parameters)) {}
+
+    /// <summary>
+    /// Retrieves Unix-specific information about a file or directory.
+    /// </summary>
+    /// <param name="path">Path to the file or directory.</param>
+    /// <returns>Information about the owner, group, permissions and type of the
+    /// file or directory.</returns>
+    public UnixFileSystemInfo GetUnixFileInfo(string path) =>
+        GetRealFileSystem<VfsExtFileSystem>().GetUnixFileInfo(path);
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path) =>
+        GetRealFileSystem<VfsExtFileSystem>().EnumerateAllocationExtents(path);
+
+    internal static bool Detect(Stream stream)
     {
-        /// <summary>
-        /// Initializes a new instance of the ExtFileSystem class.
-        /// </summary>
-        /// <param name="stream">The stream containing the ext file system.</param>
-        public ExtFileSystem(Stream stream)
-            : base(new VfsExtFileSystem(stream, null)) {}
-
-        /// <summary>
-        /// Initializes a new instance of the ExtFileSystem class.
-        /// </summary>
-        /// <param name="stream">The stream containing the ext file system.</param>
-        /// <param name="parameters">The generic file system parameters (only file name encoding is honoured).</param>
-        public ExtFileSystem(Stream stream, FileSystemParameters parameters)
-            : base(new VfsExtFileSystem(stream, parameters)) {}
-
-        /// <summary>
-        /// Retrieves Unix-specific information about a file or directory.
-        /// </summary>
-        /// <param name="path">Path to the file or directory.</param>
-        /// <returns>Information about the owner, group, permissions and type of the
-        /// file or directory.</returns>
-        public UnixFileSystemInfo GetUnixFileInfo(string path) =>
-            GetRealFileSystem<VfsExtFileSystem>().GetUnixFileInfo(path);
-
-        public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path) =>
-            GetRealFileSystem<VfsExtFileSystem>().EnumerateAllocationExtents(path);
-
-        internal static bool Detect(Stream stream)
+        if (stream.Length < 2048)
         {
-            if (stream.Length < 2048)
-            {
-                return false;
-            }
-
-            stream.Position = 1024;
-            byte[] superblockData = StreamUtilities.ReadExact(stream, 1024);
-
-            SuperBlock superblock = new SuperBlock();
-            superblock.ReadFrom(superblockData, 0);
-
-            return superblock.Magic == SuperBlock.Ext2Magic;
+            return false;
         }
+
+        stream.Position = 1024;
+        var superblockData = StreamUtilities.ReadExact(stream, 1024);
+
+        var superblock = new SuperBlock();
+        superblock.ReadFrom(superblockData, 0);
+
+        return superblock.Magic == SuperBlock.Ext2Magic;
     }
 }

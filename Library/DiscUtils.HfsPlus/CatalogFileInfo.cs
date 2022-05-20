@@ -23,36 +23,35 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class CatalogFileInfo : CommonCatalogFileInfo
 {
-    internal sealed class CatalogFileInfo : CommonCatalogFileInfo
+    public ForkData DataFork;
+    public FileInfo FileInfo;
+    public ushort Flags;
+    public ForkData ResourceFork;
+
+    public override int Size
     {
-        public ForkData DataFork;
-        public FileInfo FileInfo;
-        public ushort Flags;
-        public ForkData ResourceFork;
+        get { throw new NotImplementedException(); }
+    }
 
-        public override int Size
-        {
-            get { throw new NotImplementedException(); }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        base.ReadFrom(buffer, offset);
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            base.ReadFrom(buffer, offset);
+        Flags = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
+        FileInfo = EndianUtilities.ToStruct<FileInfo>(buffer, offset + 48);
 
-            Flags = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
-            FileInfo = EndianUtilities.ToStruct<FileInfo>(buffer, offset + 48);
+        DataFork = EndianUtilities.ToStruct<ForkData>(buffer, offset + 88);
+        ResourceFork = EndianUtilities.ToStruct<ForkData>(buffer, offset + 168);
 
-            DataFork = EndianUtilities.ToStruct<ForkData>(buffer, offset + 88);
-            ResourceFork = EndianUtilities.ToStruct<ForkData>(buffer, offset + 168);
+        return 0;
+    }
 
-            return 0;
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

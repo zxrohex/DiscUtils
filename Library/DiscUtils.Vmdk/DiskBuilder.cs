@@ -25,127 +25,126 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+/// <summary>
+/// Creates new VMDK disks by wrapping existing streams.
+/// </summary>
+/// <remarks>Using this method for creating virtual disks avoids consuming
+/// large amounts of memory, or going via the local file system when the aim
+/// is simply to present a VMDK version of an existing disk.</remarks>
+public sealed class DiskBuilder : DiskImageBuilder
 {
     /// <summary>
-    /// Creates new VMDK disks by wrapping existing streams.
+    /// Initializes a new instance of the DiskBuilder class.
     /// </summary>
-    /// <remarks>Using this method for creating virtual disks avoids consuming
-    /// large amounts of memory, or going via the local file system when the aim
-    /// is simply to present a VMDK version of an existing disk.</remarks>
-    public sealed class DiskBuilder : DiskImageBuilder
+    public DiskBuilder()
     {
-        /// <summary>
-        /// Initializes a new instance of the DiskBuilder class.
-        /// </summary>
-        public DiskBuilder()
+        DiskType = DiskCreateType.Vmfs;
+        AdapterType = DiskAdapterType.LsiLogicScsi;
+    }
+
+    /// <summary>
+    /// Gets or sets the specific VMware disk adapter type to embed in the VMDK.
+    /// </summary>
+    public DiskAdapterType AdapterType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the type of VMDK disk file required.
+    /// </summary>
+    public DiskCreateType DiskType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the adaptor type for created virtual disk, setting to SCSI implies LSI logic adapter.
+    /// </summary>
+    public override GenericDiskAdapterType GenericAdapterType
+    {
+        get { return AdapterType == DiskAdapterType.Ide ? GenericDiskAdapterType.Ide : GenericDiskAdapterType.Scsi; }
+
+        set
         {
-            DiskType = DiskCreateType.Vmfs;
-            AdapterType = DiskAdapterType.LsiLogicScsi;
-        }
-
-        /// <summary>
-        /// Gets or sets the specific VMware disk adapter type to embed in the VMDK.
-        /// </summary>
-        public DiskAdapterType AdapterType { get; set; }
-
-        /// <summary>
-        /// Gets or sets the type of VMDK disk file required.
-        /// </summary>
-        public DiskCreateType DiskType { get; set; }
-
-        /// <summary>
-        /// Gets or sets the adaptor type for created virtual disk, setting to SCSI implies LSI logic adapter.
-        /// </summary>
-        public override GenericDiskAdapterType GenericAdapterType
-        {
-            get { return AdapterType == DiskAdapterType.Ide ? GenericDiskAdapterType.Ide : GenericDiskAdapterType.Scsi; }
-
-            set
+            if (value == GenericDiskAdapterType.Ide)
             {
-                if (value == GenericDiskAdapterType.Ide)
-                {
-                    AdapterType = DiskAdapterType.Ide;
-                }
-                else if (AdapterType == DiskAdapterType.Ide)
-                {
-                    AdapterType = DiskAdapterType.LsiLogicScsi;
-                }
+                AdapterType = DiskAdapterType.Ide;
+            }
+            else if (AdapterType == DiskAdapterType.Ide)
+            {
+                AdapterType = DiskAdapterType.LsiLogicScsi;
             }
         }
+    }
 
-        /// <summary>
-        /// Gets whether this file format preserves BIOS geometry information.
-        /// </summary>
-        public override bool PreservesBiosGeometry
+    /// <summary>
+    /// Gets whether this file format preserves BIOS geometry information.
+    /// </summary>
+    public override bool PreservesBiosGeometry
+    {
+        get { return true; }
+    }
+
+    /// <summary>
+    /// Initiates the build process.
+    /// </summary>
+    /// <param name="baseName">The base name for the VMDK, for example 'foo' to create 'foo.vmdk'.</param>
+    /// <returns>A set of one or more logical files that constitute the VMDK.  The first file is
+    /// the 'primary' file that is normally attached to VMs.</returns>
+    public override IEnumerable<DiskImageFileSpecification> Build(string baseName)
+    {
+        if (string.IsNullOrEmpty(baseName))
         {
-            get { return true; }
+            throw new ArgumentException("Invalid base file name", nameof(baseName));
         }
 
-        /// <summary>
-        /// Initiates the build process.
-        /// </summary>
-        /// <param name="baseName">The base name for the VMDK, for example 'foo' to create 'foo.vmdk'.</param>
-        /// <returns>A set of one or more logical files that constitute the VMDK.  The first file is
-        /// the 'primary' file that is normally attached to VMs.</returns>
-        public override IEnumerable<DiskImageFileSpecification> Build(string baseName)
+        if (Content == null)
         {
-            if (string.IsNullOrEmpty(baseName))
-            {
-                throw new ArgumentException("Invalid base file name", nameof(baseName));
-            }
+            throw new InvalidOperationException("No content stream specified");
+        }
 
-            if (Content == null)
-            {
-                throw new InvalidOperationException("No content stream specified");
-            }
+        if (DiskType != DiskCreateType.Vmfs && DiskType != DiskCreateType.VmfsSparse &&
+            DiskType != DiskCreateType.MonolithicSparse)
+        {
+            throw new NotImplementedException("Only MonolithicSparse, Vmfs and VmfsSparse disks implemented");
+        }
 
-            if (DiskType != DiskCreateType.Vmfs && DiskType != DiskCreateType.VmfsSparse &&
-                DiskType != DiskCreateType.MonolithicSparse)
-            {
-                throw new NotImplementedException("Only MonolithicSparse, Vmfs and VmfsSparse disks implemented");
-            }
+        var geometry = Geometry ?? DiskImageFile.DefaultGeometry(Content.Length);
+        var biosGeometry = BiosGeometry ?? Geometry.LbaAssistedBiosGeometry(Content.Length, Sizes.Sector);
 
-            Geometry geometry = Geometry ?? DiskImageFile.DefaultGeometry(Content.Length);
-            Geometry biosGeometry = BiosGeometry ?? Geometry.LbaAssistedBiosGeometry(Content.Length, Sizes.Sector);
+        var baseDescriptor = DiskImageFile.CreateSimpleDiskDescriptor(geometry, biosGeometry, DiskType,
+            AdapterType);
 
-            DescriptorFile baseDescriptor = DiskImageFile.CreateSimpleDiskDescriptor(geometry, biosGeometry, DiskType,
-                AdapterType);
+        if (DiskType == DiskCreateType.Vmfs)
+        {
+            var extent = new ExtentDescriptor(ExtentAccess.ReadWrite, Content.Length / 512,
+                ExtentType.Vmfs, baseName + "-flat.vmdk", 0);
+            baseDescriptor.Extents.Add(extent);
 
-            if (DiskType == DiskCreateType.Vmfs)
-            {
-                ExtentDescriptor extent = new ExtentDescriptor(ExtentAccess.ReadWrite, Content.Length / 512,
-                    ExtentType.Vmfs, baseName + "-flat.vmdk", 0);
-                baseDescriptor.Extents.Add(extent);
+            var ms = new MemoryStream();
+            baseDescriptor.Write(ms);
 
-                MemoryStream ms = new MemoryStream();
-                baseDescriptor.Write(ms);
+            yield return new DiskImageFileSpecification(baseName + ".vmdk", new PassthroughStreamBuilder(ms));
+            yield return new DiskImageFileSpecification(baseName + "-flat.vmdk",
+                new PassthroughStreamBuilder(Content));
+        }
+        else if (DiskType == DiskCreateType.VmfsSparse)
+        {
+            var extent = new ExtentDescriptor(ExtentAccess.ReadWrite, Content.Length / 512,
+                ExtentType.VmfsSparse, baseName + "-sparse.vmdk", 0);
+            baseDescriptor.Extents.Add(extent);
 
-                yield return new DiskImageFileSpecification(baseName + ".vmdk", new PassthroughStreamBuilder(ms));
-                yield return new DiskImageFileSpecification(baseName + "-flat.vmdk",
-                    new PassthroughStreamBuilder(Content));
-            }
-            else if (DiskType == DiskCreateType.VmfsSparse)
-            {
-                ExtentDescriptor extent = new ExtentDescriptor(ExtentAccess.ReadWrite, Content.Length / 512,
-                    ExtentType.VmfsSparse, baseName + "-sparse.vmdk", 0);
-                baseDescriptor.Extents.Add(extent);
+            var ms = new MemoryStream();
+            baseDescriptor.Write(ms);
 
-                MemoryStream ms = new MemoryStream();
-                baseDescriptor.Write(ms);
-
-                yield return new DiskImageFileSpecification(baseName + ".vmdk", new PassthroughStreamBuilder(ms));
-                yield return new DiskImageFileSpecification(baseName + "-sparse.vmdk",
-                    new VmfsSparseExtentBuilder(Content));
-            }
-            else if (DiskType == DiskCreateType.MonolithicSparse)
-            {
-                ExtentDescriptor extent = new ExtentDescriptor(ExtentAccess.ReadWrite, Content.Length / 512,
-                    ExtentType.Sparse, baseName + ".vmdk", 0);
-                baseDescriptor.Extents.Add(extent);
-                yield return new DiskImageFileSpecification(baseName + ".vmdk",
-                    new MonolithicSparseExtentBuilder(Content, baseDescriptor));
-            }
+            yield return new DiskImageFileSpecification(baseName + ".vmdk", new PassthroughStreamBuilder(ms));
+            yield return new DiskImageFileSpecification(baseName + "-sparse.vmdk",
+                new VmfsSparseExtentBuilder(Content));
+        }
+        else if (DiskType == DiskCreateType.MonolithicSparse)
+        {
+            var extent = new ExtentDescriptor(ExtentAccess.ReadWrite, Content.Length / 512,
+                ExtentType.Sparse, baseName + ".vmdk", 0);
+            baseDescriptor.Extents.Add(extent);
+            yield return new DiskImageFileSpecification(baseName + ".vmdk",
+                new MonolithicSparseExtentBuilder(Content, baseDescriptor));
         }
     }
 }

@@ -22,24 +22,23 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class Type1Partition : LogicalPartition
 {
-    internal class Type1Partition : LogicalPartition
+    private Type1PartitionMap _partitionMap;
+    private readonly PhysicalPartition _physical;
+
+    public Type1Partition(UdfContext context, LogicalVolumeDescriptor volumeDescriptor,
+                          Type1PartitionMap partitionMap)
+        : base(context, volumeDescriptor)
     {
-        private Type1PartitionMap _partitionMap;
-        private readonly PhysicalPartition _physical;
+        _partitionMap = partitionMap;
+        _physical = context.PhysicalPartitions[partitionMap.PartitionNumber];
+    }
 
-        public Type1Partition(UdfContext context, LogicalVolumeDescriptor volumeDescriptor,
-                              Type1PartitionMap partitionMap)
-            : base(context, volumeDescriptor)
-        {
-            _partitionMap = partitionMap;
-            _physical = context.PhysicalPartitions[partitionMap.PartitionNumber];
-        }
-
-        public override IBuffer Content
-        {
-            get { return _physical.Content; }
-        }
+    public override IBuffer Content
+    {
+        get { return _physical.Content; }
     }
 }

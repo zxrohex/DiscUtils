@@ -20,10 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vfs
-{
-    /// <summary>
-    /// Base class for a context object that holds global state for file system implementations.
-    /// </summary>
-    public abstract class VfsContext {}
-}
+namespace DiscUtils.Vfs;
+
+/// <summary>
+/// Base class for a context object that holds global state for file system implementations.
+/// </summary>
+public abstract class VfsContext {}

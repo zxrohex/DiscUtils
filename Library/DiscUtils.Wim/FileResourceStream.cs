@@ -27,273 +27,272 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Wim
+namespace DiscUtils.Wim;
+
+/// <summary>
+/// Provides access to a (compressed) resource within the WIM file.
+/// </summary>
+/// <remarks>Stream access must be strictly sequential.</remarks>
+internal class FileResourceStream : SparseStream
 {
-    /// <summary>
-    /// Provides access to a (compressed) resource within the WIM file.
-    /// </summary>
-    /// <remarks>Stream access must be strictly sequential.</remarks>
-    internal class FileResourceStream : SparseStream
+    private const int E8DecodeFileSize = 12000000;
+
+    private readonly Stream _baseStream;
+    private readonly long[] _chunkLength;
+
+    private readonly long[] _chunkOffsets;
+    private readonly int _chunkSize;
+
+    private int _currentChunk;
+    private Stream _currentChunkStream;
+    private readonly ShortResourceHeader _header;
+    private readonly bool _lzxCompression;
+    private readonly long _offsetDelta;
+
+    private long _position;
+
+    public FileResourceStream(Stream baseStream, ShortResourceHeader header, bool lzxCompression, int chunkSize)
     {
-        private const int E8DecodeFileSize = 12000000;
+        _baseStream = baseStream;
+        _header = header;
+        _lzxCompression = lzxCompression;
+        _chunkSize = chunkSize;
 
-        private readonly Stream _baseStream;
-        private readonly long[] _chunkLength;
-
-        private readonly long[] _chunkOffsets;
-        private readonly int _chunkSize;
-
-        private int _currentChunk;
-        private Stream _currentChunkStream;
-        private readonly ShortResourceHeader _header;
-        private readonly bool _lzxCompression;
-        private readonly long _offsetDelta;
-
-        private long _position;
-
-        public FileResourceStream(Stream baseStream, ShortResourceHeader header, bool lzxCompression, int chunkSize)
+        if (baseStream.Length > uint.MaxValue)
         {
-            _baseStream = baseStream;
-            _header = header;
-            _lzxCompression = lzxCompression;
-            _chunkSize = chunkSize;
+            throw new NotImplementedException("Large files >4GB");
+        }
 
-            if (baseStream.Length > uint.MaxValue)
+        var numChunks = (int)MathUtilities.Ceil(header.OriginalSize, _chunkSize);
+
+        _chunkOffsets = new long[numChunks];
+        _chunkLength = new long[numChunks];
+        for (var i = 1; i < numChunks; ++i)
+        {
+            _chunkOffsets[i] = EndianUtilities.ToUInt32LittleEndian(StreamUtilities.ReadExact(_baseStream, 4), 0);
+            _chunkLength[i - 1] = _chunkOffsets[i] - _chunkOffsets[i - 1];
+        }
+
+        _chunkLength[numChunks - 1] = _baseStream.Length - _baseStream.Position - _chunkOffsets[numChunks - 1];
+        _offsetDelta = _baseStream.Position;
+
+        _currentChunk = -1;
+    }
+
+    public override bool CanRead
+    {
+        get { return true; }
+    }
+
+    public override bool CanSeek
+    {
+        get { return false; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
+
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get { yield return new StreamExtent(0, Length); }
+    }
+
+    public override long Length
+    {
+        get { return _header.OriginalSize; }
+    }
+
+    public override long Position
+    {
+        get { return _position; }
+
+        set { _position = value; }
+    }
+
+    public override void Flush() {}
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        if (_position >= Length)
+        {
+            return 0;
+        }
+
+        var maxToRead = (int)Math.Min(Length - _position, count);
+
+        var totalRead = 0;
+        while (totalRead < maxToRead)
+        {
+            var chunk = (int)(_position / _chunkSize);
+            var chunkOffset = (int)(_position % _chunkSize);
+            var numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
+
+            if (_currentChunk != chunk)
             {
-                throw new NotImplementedException("Large files >4GB");
+                _currentChunkStream = OpenChunkStream(chunk);
+                _currentChunk = chunk;
             }
 
-            int numChunks = (int)MathUtilities.Ceil(header.OriginalSize, _chunkSize);
-
-            _chunkOffsets = new long[numChunks];
-            _chunkLength = new long[numChunks];
-            for (int i = 1; i < numChunks; ++i)
+            _currentChunkStream.Position = chunkOffset;
+            var numRead = _currentChunkStream.Read(buffer, offset + totalRead, numToRead);
+            if (numRead == 0)
             {
-                _chunkOffsets[i] = EndianUtilities.ToUInt32LittleEndian(StreamUtilities.ReadExact(_baseStream, 4), 0);
-                _chunkLength[i - 1] = _chunkOffsets[i] - _chunkOffsets[i - 1];
+                return totalRead;
             }
 
-            _chunkLength[numChunks - 1] = _baseStream.Length - _baseStream.Position - _chunkOffsets[numChunks - 1];
-            _offsetDelta = _baseStream.Position;
-
-            _currentChunk = -1;
+            _position += numRead;
+            totalRead += numRead;
         }
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
-
-        public override bool CanSeek
-        {
-            get { return false; }
-        }
-
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
-
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get { return new[] { new StreamExtent(0, Length) }; }
-        }
-
-        public override long Length
-        {
-            get { return _header.OriginalSize; }
-        }
-
-        public override long Position
-        {
-            get { return _position; }
-
-            set { _position = value; }
-        }
-
-        public override void Flush() {}
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (_position >= Length)
-            {
-                return 0;
-            }
-
-            int maxToRead = (int)Math.Min(Length - _position, count);
-
-            int totalRead = 0;
-            while (totalRead < maxToRead)
-            {
-                int chunk = (int)(_position / _chunkSize);
-                int chunkOffset = (int)(_position % _chunkSize);
-                int numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
-
-                if (_currentChunk != chunk)
-                {
-                    _currentChunkStream = OpenChunkStream(chunk);
-                    _currentChunk = chunk;
-                }
-
-                _currentChunkStream.Position = chunkOffset;
-                int numRead = _currentChunkStream.Read(buffer, offset + totalRead, numToRead);
-                if (numRead == 0)
-                {
-                    return totalRead;
-                }
-
-                _position += numRead;
-                totalRead += numRead;
-            }
-
-            return totalRead;
-        }
+        return totalRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (_position >= Length)
         {
-            if (_position >= Length)
-            {
-                return 0;
-            }
-
-            int maxToRead = (int)Math.Min(Length - _position, count);
-
-            int totalRead = 0;
-            while (totalRead < maxToRead)
-            {
-                int chunk = (int)(_position / _chunkSize);
-                int chunkOffset = (int)(_position % _chunkSize);
-                int numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
-
-                if (_currentChunk != chunk)
-                {
-                    _currentChunkStream = OpenChunkStream(chunk);
-                    _currentChunk = chunk;
-                }
-
-                _currentChunkStream.Position = chunkOffset;
-                int numRead = await _currentChunkStream.ReadAsync(buffer, offset + totalRead, numToRead, cancellationToken).ConfigureAwait(false);
-                if (numRead == 0)
-                {
-                    return totalRead;
-                }
-
-                _position += numRead;
-                totalRead += numRead;
-            }
-
-            return totalRead;
+            return 0;
         }
+
+        var maxToRead = (int)Math.Min(Length - _position, count);
+
+        var totalRead = 0;
+        while (totalRead < maxToRead)
+        {
+            var chunk = (int)(_position / _chunkSize);
+            var chunkOffset = (int)(_position % _chunkSize);
+            var numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
+
+            if (_currentChunk != chunk)
+            {
+                _currentChunkStream = OpenChunkStream(chunk);
+                _currentChunk = chunk;
+            }
+
+            _currentChunkStream.Position = chunkOffset;
+            var numRead = await _currentChunkStream.ReadAsync(buffer, offset + totalRead, numToRead, cancellationToken).ConfigureAwait(false);
+            if (numRead == 0)
+            {
+                return totalRead;
+            }
+
+            _position += numRead;
+            totalRead += numRead;
+        }
+
+        return totalRead;
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (_position >= Length)
         {
-            if (_position >= Length)
-            {
-                return 0;
-            }
-
-            int maxToRead = (int)Math.Min(Length - _position, buffer.Length);
-
-            int totalRead = 0;
-            while (totalRead < maxToRead)
-            {
-                int chunk = (int)(_position / _chunkSize);
-                int chunkOffset = (int)(_position % _chunkSize);
-                int numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
-
-                if (_currentChunk != chunk)
-                {
-                    _currentChunkStream = OpenChunkStream(chunk);
-                    _currentChunk = chunk;
-                }
-
-                _currentChunkStream.Position = chunkOffset;
-                int numRead = await _currentChunkStream.ReadAsync(buffer.Slice(totalRead, numToRead), cancellationToken).ConfigureAwait(false);
-                if (numRead == 0)
-                {
-                    return totalRead;
-                }
-
-                _position += numRead;
-                totalRead += numRead;
-            }
-
-            return totalRead;
+            return 0;
         }
 
-        public override int Read(Span<byte> buffer)
+        var maxToRead = (int)Math.Min(Length - _position, buffer.Length);
+
+        var totalRead = 0;
+        while (totalRead < maxToRead)
         {
-            if (_position >= Length)
+            var chunk = (int)(_position / _chunkSize);
+            var chunkOffset = (int)(_position % _chunkSize);
+            var numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
+
+            if (_currentChunk != chunk)
             {
-                return 0;
+                _currentChunkStream = OpenChunkStream(chunk);
+                _currentChunk = chunk;
             }
 
-            int maxToRead = (int)Math.Min(Length - _position, buffer.Length);
-
-            int totalRead = 0;
-            while (totalRead < maxToRead)
+            _currentChunkStream.Position = chunkOffset;
+            var numRead = await _currentChunkStream.ReadAsync(buffer.Slice(totalRead, numToRead), cancellationToken).ConfigureAwait(false);
+            if (numRead == 0)
             {
-                int chunk = (int)(_position / _chunkSize);
-                int chunkOffset = (int)(_position % _chunkSize);
-                int numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
-
-                if (_currentChunk != chunk)
-                {
-                    _currentChunkStream = OpenChunkStream(chunk);
-                    _currentChunk = chunk;
-                }
-
-                _currentChunkStream.Position = chunkOffset;
-                int numRead = _currentChunkStream.Read(buffer.Slice(totalRead, numToRead));
-                if (numRead == 0)
-                {
-                    return totalRead;
-                }
-
-                _position += numRead;
-                totalRead += numRead;
+                return totalRead;
             }
 
-            return totalRead;
+            _position += numRead;
+            totalRead += numRead;
         }
+
+        return totalRead;
+    }
+
+    public override int Read(Span<byte> buffer)
+    {
+        if (_position >= Length)
+        {
+            return 0;
+        }
+
+        var maxToRead = (int)Math.Min(Length - _position, buffer.Length);
+
+        var totalRead = 0;
+        while (totalRead < maxToRead)
+        {
+            var chunk = (int)(_position / _chunkSize);
+            var chunkOffset = (int)(_position % _chunkSize);
+            var numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
+
+            if (_currentChunk != chunk)
+            {
+                _currentChunkStream = OpenChunkStream(chunk);
+                _currentChunk = chunk;
+            }
+
+            _currentChunkStream.Position = chunkOffset;
+            var numRead = _currentChunkStream.Read(buffer.Slice(totalRead, numToRead));
+            if (numRead == 0)
+            {
+                return totalRead;
+            }
+
+            _position += numRead;
+            totalRead += numRead;
+        }
+
+        return totalRead;
+    }
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override void SetLength(long value)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
+
+    private Stream OpenChunkStream(int chunk)
+    {
+        var targetUncompressed = _chunkSize;
+        if (chunk == _chunkLength.Length - 1)
         {
-            throw new NotSupportedException();
+            targetUncompressed = (int)(Length - _position);
         }
 
-        public override void SetLength(long value)
+        Stream rawChunkStream = new SubStream(_baseStream, _offsetDelta + _chunkOffsets[chunk], _chunkLength[chunk]);
+        if ((_header.Flags & ResourceFlags.Compressed) != 0 && _chunkLength[chunk] != targetUncompressed)
         {
-            throw new NotSupportedException();
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
-
-        private Stream OpenChunkStream(int chunk)
-        {
-            int targetUncompressed = _chunkSize;
-            if (chunk == _chunkLength.Length - 1)
+            if (_lzxCompression)
             {
-                targetUncompressed = (int)(Length - _position);
+                return new LzxStream(rawChunkStream, 15, E8DecodeFileSize);
             }
-
-            Stream rawChunkStream = new SubStream(_baseStream, _offsetDelta + _chunkOffsets[chunk], _chunkLength[chunk]);
-            if ((_header.Flags & ResourceFlags.Compressed) != 0 && _chunkLength[chunk] != targetUncompressed)
-            {
-                if (_lzxCompression)
-                {
-                    return new LzxStream(rawChunkStream, 15, E8DecodeFileSize);
-                }
-                return new XpressStream(rawChunkStream, targetUncompressed);
-            }
-            return rawChunkStream;
+            return new XpressStream(rawChunkStream, targetUncompressed);
         }
+        return rawChunkStream;
     }
 }

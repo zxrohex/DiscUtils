@@ -25,65 +25,64 @@ using System.Collections.Generic;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class Directory : File, IVfsDirectory<FileIdentifier, File>
 {
-    internal class Directory : File, IVfsDirectory<FileIdentifier, File>
+    private readonly List<FileIdentifier> _entries;
+
+    public Directory(UdfContext context, LogicalPartition partition, FileEntry fileEntry)
+        : base(context, partition, fileEntry, (uint)partition.LogicalBlockSize)
     {
-        private readonly List<FileIdentifier> _entries;
-
-        public Directory(UdfContext context, LogicalPartition partition, FileEntry fileEntry)
-            : base(context, partition, fileEntry, (uint)partition.LogicalBlockSize)
+        if (FileContent.Capacity > int.MaxValue)
         {
-            if (FileContent.Capacity > int.MaxValue)
+            throw new NotImplementedException("Very large directory");
+        }
+
+        _entries = new List<FileIdentifier>();
+
+        var contentBytes = StreamUtilities.ReadExact(FileContent, 0, (int)FileContent.Capacity);
+
+        var pos = 0;
+        while (pos < contentBytes.Length)
+        {
+            var id = new FileIdentifier();
+            var size = id.ReadFrom(contentBytes, pos);
+
+            if ((id.FileCharacteristics & (FileCharacteristic.Deleted | FileCharacteristic.Parent)) == 0)
             {
-                throw new NotImplementedException("Very large directory");
+                _entries.Add(id);
             }
 
-            _entries = new List<FileIdentifier>();
+            pos += size;
+        }
+    }
 
-            byte[] contentBytes = StreamUtilities.ReadExact(FileContent, 0, (int)FileContent.Capacity);
+    public IReadOnlyCollection<FileIdentifier> AllEntries
+    {
+        get { return _entries; }
+    }
 
-            int pos = 0;
-            while (pos < contentBytes.Length)
+    public FileIdentifier Self
+    {
+        get { return null; }
+    }
+
+    public FileIdentifier CreateNewFile(string name)
+    {
+        throw new NotSupportedException();
+    }
+
+    public FileIdentifier GetEntryByName(string name)
+    {
+        foreach (var entry in _entries)
+        {
+            if (string.Compare(entry.Name, name, StringComparison.OrdinalIgnoreCase) == 0)
             {
-                FileIdentifier id = new FileIdentifier();
-                int size = id.ReadFrom(contentBytes, pos);
-
-                if ((id.FileCharacteristics & (FileCharacteristic.Deleted | FileCharacteristic.Parent)) == 0)
-                {
-                    _entries.Add(id);
-                }
-
-                pos += size;
+                return entry;
             }
         }
 
-        public ICollection<FileIdentifier> AllEntries
-        {
-            get { return _entries; }
-        }
-
-        public FileIdentifier Self
-        {
-            get { return null; }
-        }
-
-        public FileIdentifier CreateNewFile(string name)
-        {
-            throw new NotSupportedException();
-        }
-
-        public FileIdentifier GetEntryByName(string name)
-        {
-            foreach (FileIdentifier entry in _entries)
-            {
-                if (string.Compare(entry.Name, name, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    return entry;
-                }
-            }
-
-            return null;
-        }
+        return null;
     }
 }

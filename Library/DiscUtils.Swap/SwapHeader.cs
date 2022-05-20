@@ -24,51 +24,50 @@ using System;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Swap
+namespace DiscUtils.Swap;
+
+public class SwapHeader : IByteArraySerializable
 {
-    public class SwapHeader : IByteArraySerializable
+    public static readonly string Magic1 = "SWAP-SPACE";
+    public static readonly string Magic2 = "SWAPSPACE2";
+    public static readonly int PageShift = 12;
+    public static readonly int PageSize = 1 << PageShift;
+
+    public uint Version { get; private set; }
+
+    public uint LastPage { get; private set; }
+
+    public uint BadPages { get; private set; }
+
+    public Guid Uuid { get; private set; }
+
+    public string Volume { get; private set; }
+
+    public string Magic { get; private set; }
+
+    public int Size
     {
-        public static readonly string Magic1 = "SWAP-SPACE";
-        public static readonly string Magic2 = "SWAPSPACE2";
-        public static readonly int PageShift = 12;
-        public static readonly int PageSize = 1 << PageShift;
+        get { return PageSize; }
+    }
 
-        public uint Version { get; private set; }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Magic = EndianUtilities.BytesToString(buffer, PageSize - 10, 10);
+        if (Magic != Magic1 && Magic != Magic2) return Size;
 
-        public uint LastPage { get; private set; }
+        Version = EndianUtilities.ToUInt32LittleEndian(buffer, 0x400);
+        LastPage = EndianUtilities.ToUInt32LittleEndian(buffer, 0x404);
+        BadPages = EndianUtilities.ToUInt32LittleEndian(buffer, 0x408);
+        Uuid = EndianUtilities.ToGuidLittleEndian(buffer, 0x40c);
+        var volume = EndianUtilities.ToByteArray(buffer, 0x41c, 16);
+        var nullIndex = Array.IndexOf(volume, (byte)0);
+        if (nullIndex > 0)
+            Volume = Encoding.UTF8.GetString(volume, 0, nullIndex);
+        return Size;
+    }
 
-        public uint BadPages { get; private set; }
-
-        public Guid Uuid { get; private set; }
-
-        public string Volume { get; private set; }
-
-        public string Magic { get; private set; }
-
-        public int Size
-        {
-            get { return PageSize; }
-        }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Magic = EndianUtilities.BytesToString(buffer, PageSize - 10, 10);
-            if (Magic != Magic1 && Magic != Magic2) return Size;
-
-            Version = EndianUtilities.ToUInt32LittleEndian(buffer, 0x400);
-            LastPage = EndianUtilities.ToUInt32LittleEndian(buffer, 0x404);
-            BadPages = EndianUtilities.ToUInt32LittleEndian(buffer, 0x408);
-            Uuid = EndianUtilities.ToGuidLittleEndian(buffer, 0x40c);
-            var volume = EndianUtilities.ToByteArray(buffer, 0x41c, 16);
-            var nullIndex = Array.IndexOf(volume, (byte)0);
-            if (nullIndex > 0)
-                Volume = Encoding.UTF8.GetString(volume, 0, nullIndex);
-            return Size;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

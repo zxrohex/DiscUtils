@@ -22,25 +22,24 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Sdi
+namespace DiscUtils.Sdi;
+
+internal class SectionRecord
 {
-    internal class SectionRecord
+    public const int RecordSize = 64;
+    public ulong Attr;
+    public long Offset;
+    public ulong PartitionType;
+
+    public string SectionType;
+    public long Size;
+
+    public void ReadFrom(byte[] buffer, int offset)
     {
-        public const int RecordSize = 64;
-        public ulong Attr;
-        public long Offset;
-        public ulong PartitionType;
-
-        public string SectionType;
-        public long Size;
-
-        public void ReadFrom(byte[] buffer, int offset)
-        {
-            SectionType = EndianUtilities.BytesToString(buffer, offset, 8).TrimEnd('\0');
-            Attr = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 8);
-            Offset = EndianUtilities.ToInt64LittleEndian(buffer, offset + 16);
-            Size = EndianUtilities.ToInt64LittleEndian(buffer, offset + 24);
-            PartitionType = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 32);
-        }
+        SectionType = EndianUtilities.BytesToString(buffer, offset, 8).TrimEnd('\0');
+        Attr = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 8);
+        Offset = EndianUtilities.ToInt64LittleEndian(buffer, offset + 16);
+        Size = EndianUtilities.ToInt64LittleEndian(buffer, offset + 24);
+        PartitionType = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 32);
     }
 }

@@ -24,22 +24,21 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.SquashFs
-{
-    [VfsFileSystemFactory]
-    internal class FileSystemFactory : VfsFileSystemFactory
-    {
-        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
-        {
-            if (SquashFileSystemReader.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("SquashFS", "Squash Filesystem", Open);
-            }
-        }
+namespace DiscUtils.SquashFs;
 
-        private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+[VfsFileSystemFactory]
+internal class FileSystemFactory : VfsFileSystemFactory
+{
+    public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+    {
+        if (SquashFileSystemReader.Detect(stream))
         {
-            return new SquashFileSystemReader(stream);
+            yield return new VfsFileSystemInfo("SquashFS", "Squash Filesystem", Open);
         }
+    }
+
+    private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new SquashFileSystemReader(stream);
     }
 }

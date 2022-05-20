@@ -25,129 +25,128 @@ using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+/// <summary>
+/// Exception thrown when a low-level iSCSI failure is detected.
+/// </summary>
+[Serializable]
+public class ScsiCommandException : IscsiException
 {
+    private readonly byte[] _senseData;
+
     /// <summary>
-    /// Exception thrown when a low-level iSCSI failure is detected.
+    /// Initializes a new instance of the ScsiCommandException class.
     /// </summary>
-    [Serializable]
-    public class ScsiCommandException : IscsiException
+    public ScsiCommandException()
     {
-        private readonly byte[] _senseData;
+        Status = ScsiStatus.Good;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the ScsiCommandException class.
-        /// </summary>
-        public ScsiCommandException()
-        {
-            Status = ScsiStatus.Good;
-        }
+    /// <summary>
+    /// Initializes a new instance of the ScsiCommandException class.
+    /// </summary>
+    /// <param name="status">The SCSI status code.</param>
+    public ScsiCommandException(ScsiStatus status)
+    {
+        Status = status;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the ScsiCommandException class.
-        /// </summary>
-        /// <param name="status">The SCSI status code.</param>
-        public ScsiCommandException(ScsiStatus status)
-        {
-            Status = status;
-        }
+    /// <summary>
+    /// Initializes a new instance of the ScsiCommandException class.
+    /// </summary>
+    /// <param name="message">The reason for the exception.</param>
+    public ScsiCommandException(string message)
+        : base(message)
+    {
+        Status = ScsiStatus.Good;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the ScsiCommandException class.
-        /// </summary>
-        /// <param name="message">The reason for the exception.</param>
-        public ScsiCommandException(string message)
-            : base(message)
-        {
-            Status = ScsiStatus.Good;
-        }
+    /// <summary>
+    /// Initializes a new instance of the ScsiCommandException class.
+    /// </summary>
+    /// <param name="status">The SCSI status code.</param>
+    /// <param name="message">The reason for the exception.</param>
+    public ScsiCommandException(ScsiStatus status, string message)
+        : base(message)
+    {
+        Status = status;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the ScsiCommandException class.
-        /// </summary>
-        /// <param name="status">The SCSI status code.</param>
-        /// <param name="message">The reason for the exception.</param>
-        public ScsiCommandException(ScsiStatus status, string message)
-            : base(message)
-        {
-            Status = status;
-        }
+    /// <summary>
+    /// Initializes a new instance of the ScsiCommandException class.
+    /// </summary>
+    /// <param name="status">The SCSI status code.</param>
+    /// <param name="message">The reason for the exception.</param>
+    /// <param name="senseData">The SCSI sense data.</param>
+    public ScsiCommandException(ScsiStatus status, string message, byte[] senseData)
+        : base(message)
+    {
+        Status = status;
+        _senseData = senseData;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the ScsiCommandException class.
-        /// </summary>
-        /// <param name="status">The SCSI status code.</param>
-        /// <param name="message">The reason for the exception.</param>
-        /// <param name="senseData">The SCSI sense data.</param>
-        public ScsiCommandException(ScsiStatus status, string message, byte[] senseData)
-            : base(message)
-        {
-            Status = status;
-            _senseData = senseData;
-        }
+    /// <summary>
+    /// Initializes a new instance of the ScsiCommandException class.
+    /// </summary>
+    /// <param name="message">The reason for the exception.</param>
+    /// <param name="innerException">The inner exception.</param>
+    public ScsiCommandException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+        Status = ScsiStatus.Good;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the ScsiCommandException class.
-        /// </summary>
-        /// <param name="message">The reason for the exception.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public ScsiCommandException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-            Status = ScsiStatus.Good;
-        }
+    /// <summary>
+    /// Initializes a new instance of the ScsiCommandException class.
+    /// </summary>
+    /// <param name="status">The SCSI status code.</param>
+    /// <param name="message">The reason for the exception.</param>
+    /// <param name="innerException">The inner exception.</param>
+    public ScsiCommandException(ScsiStatus status, string message, Exception innerException)
+        : base(message, innerException)
+    {
+        Status = status;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the ScsiCommandException class.
-        /// </summary>
-        /// <param name="status">The SCSI status code.</param>
-        /// <param name="message">The reason for the exception.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public ScsiCommandException(ScsiStatus status, string message, Exception innerException)
-            : base(message, innerException)
-        {
-            Status = status;
-        }
+    /// <summary>
+    /// Initializes a new instance of the ScsiCommandException class.
+    /// </summary>
+    /// <param name="info">The serialization info.</param>
+    /// <param name="context">Ther context.</param>
+    protected ScsiCommandException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
+    {
+        Status = (ScsiStatus)info.GetByte("status");
+        _senseData = (byte[])info.GetValue("senseData", typeof(byte[]));
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the ScsiCommandException class.
-        /// </summary>
-        /// <param name="info">The serialization info.</param>
-        /// <param name="context">Ther context.</param>
-        protected ScsiCommandException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-            Status = (ScsiStatus)info.GetByte("status");
-            _senseData = (byte[])info.GetValue("senseData", typeof(byte[]));
-        }
+    /// <summary>
+    /// Gets the SCSI status associated with this exception.
+    /// </summary>
+    public ScsiStatus Status { get; }
 
-        /// <summary>
-        /// Gets the SCSI status associated with this exception.
-        /// </summary>
-        public ScsiStatus Status { get; }
-
-        /// <summary>
-        /// Gets the serialized state of this exception.
-        /// </summary>
-        /// <param name="info">The serialization info.</param>
-        /// <param name="context">The serialization context.</param>
+    /// <summary>
+    /// Gets the serialized state of this exception.
+    /// </summary>
+    /// <param name="info">The serialization info.</param>
+    /// <param name="context">The serialization context.</param>
 #if !NETCOREAPP2_0_OR_GREATER
-        [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.SerializationFormatter)]
+    [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.SerializationFormatter)]
 #endif
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            base.GetObjectData(info, context);
-            info.AddValue("status", (byte)Status);
-            info.AddValue("senseData", _senseData);
-        }
+    public override void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        base.GetObjectData(info, context);
+        info.AddValue("status", (byte)Status);
+        info.AddValue("senseData", _senseData);
+    }
 
-        /// <summary>
-        /// Gets the SCSI sense data (if any) associated with this exception.
-        /// </summary>
-        /// <returns>The SCSI sense data, or <c>null</c>.</returns>
-        public byte[] GetSenseData()
-        {
-            return _senseData;
-        }
+    /// <summary>
+    /// Gets the SCSI sense data (if any) associated with this exception.
+    /// </summary>
+    /// <returns>The SCSI sense data, or <c>null</c>.</returns>
+    public byte[] GetSenseData()
+    {
+        return _senseData;
     }
 }

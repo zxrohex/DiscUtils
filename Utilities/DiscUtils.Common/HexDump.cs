@@ -24,122 +24,121 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Common
+namespace DiscUtils.Common;
+
+/// <summary>
+/// Provides utility methods to produce hex dumps of binary data.
+/// </summary>
+public static class HexDump
 {
     /// <summary>
-    /// Provides utility methods to produce hex dumps of binary data.
+    /// Creates a hex dump from a byte array.
     /// </summary>
-    public static class HexDump
+    /// <param name="data">The buffer to generate the hex dump from.</param>
+    /// <param name="output">The destination for the hex dump.</param>
+    public static void Generate(byte[] data, TextWriter output)
     {
-        /// <summary>
-        /// Creates a hex dump from a byte array.
-        /// </summary>
-        /// <param name="data">The buffer to generate the hex dump from.</param>
-        /// <param name="output">The destination for the hex dump.</param>
-        public static void Generate(byte[] data, TextWriter output)
-        {
-            Generate(SparseStream.FromStream(new MemoryStream(data, false), Ownership.None), output);
-        }
+        Generate(SparseStream.FromStream(new MemoryStream(data, false), Ownership.None), output);
+    }
 
-        /// <summary>
-        /// Creates a hex dump from a byte array.
-        /// </summary>
-        /// <param name="data">The buffer to generate the hex dump from.</param>
-        /// <param name="offset">Offset of the first byte to hex dump.</param>
-        /// <param name="count">The number of bytes to hex dump</param>
-        /// <param name="output">The destination for the hex dump.</param>
-        public static void Generate(byte[] data, int offset, int count, TextWriter output)
-        {
-            byte[] tempBuffer = new byte[count];
-            Array.Copy(data, offset, tempBuffer, 0, count);
-            Generate(SparseStream.FromStream(new MemoryStream(tempBuffer, false), Ownership.None), output);
-        }
+    /// <summary>
+    /// Creates a hex dump from a byte array.
+    /// </summary>
+    /// <param name="data">The buffer to generate the hex dump from.</param>
+    /// <param name="offset">Offset of the first byte to hex dump.</param>
+    /// <param name="count">The number of bytes to hex dump</param>
+    /// <param name="output">The destination for the hex dump.</param>
+    public static void Generate(byte[] data, int offset, int count, TextWriter output)
+    {
+        var tempBuffer = new byte[count];
+        Array.Copy(data, offset, tempBuffer, 0, count);
+        Generate(SparseStream.FromStream(new MemoryStream(tempBuffer, false), Ownership.None), output);
+    }
 
-        /// <summary>
-        /// Creates a hex dump from a stream.
-        /// </summary>
-        /// <param name="stream">The stream to generate the hex dump from.</param>
-        /// <param name="output">The destination for the hex dump.</param>
-        public static void Generate(Stream stream, TextWriter output)
-        {
-            Generate(SparseStream.FromStream(stream, Ownership.None), output);
-        }
+    /// <summary>
+    /// Creates a hex dump from a stream.
+    /// </summary>
+    /// <param name="stream">The stream to generate the hex dump from.</param>
+    /// <param name="output">The destination for the hex dump.</param>
+    public static void Generate(Stream stream, TextWriter output)
+    {
+        Generate(SparseStream.FromStream(stream, Ownership.None), output);
+    }
 
-        /// <summary>
-        /// Creates a hex dump from a stream.
-        /// </summary>
-        /// <param name="stream">The stream to generate the hex dump from.</param>
-        /// <param name="output">The destination for the hex dump.</param>
-        public static void Generate(SparseStream stream, TextWriter output)
-        {
-            stream.Position = 0;
-            byte[] buffer = new byte[1024 * 1024];
+    /// <summary>
+    /// Creates a hex dump from a stream.
+    /// </summary>
+    /// <param name="stream">The stream to generate the hex dump from.</param>
+    /// <param name="output">The destination for the hex dump.</param>
+    public static void Generate(SparseStream stream, TextWriter output)
+    {
+        stream.Position = 0;
+        var buffer = new byte[1024 * 1024];
 
-            foreach(var block in StreamExtent.Blocks(stream.Extents, buffer.Length))
+        foreach(var block in StreamExtent.Blocks(stream.Extents, buffer.Length))
+        {
+            var startPos = block.Offset * (long)buffer.Length;
+            var endPos = Math.Min((block.Offset + block.Count) * (long)buffer.Length, stream.Length);
+            stream.Position = startPos;
+
+            while (stream.Position < endPos)
             {
-                long startPos = block.Offset * (long)buffer.Length;
-                long endPos = Math.Min((block.Offset + block.Count) * (long)buffer.Length, stream.Length);
-                stream.Position = startPos;
-
-                while (stream.Position < endPos)
+                var numLoaded = 0;
+                var readStart = stream.Position;
+                while (numLoaded < buffer.Length)
                 {
-                    int numLoaded = 0;
-                    long readStart = stream.Position;
-                    while (numLoaded < buffer.Length)
+                    var bytesRead = stream.Read(buffer, numLoaded, buffer.Length - numLoaded);
+                    if (bytesRead == 0)
                     {
-                        int bytesRead = stream.Read(buffer, numLoaded, buffer.Length - numLoaded);
-                        if (bytesRead == 0)
+                        break;
+                    }
+                    numLoaded += bytesRead;
+                }
+
+                for (var i = 0; i < numLoaded; i += 16)
+                {
+                    var foundVal = false;
+                    if (i > 0)
+                    {
+                        for (var j = 0; j < 16; j++)
                         {
-                            break;
+                            if (buffer[i + j] != buffer[i + j - 16])
+                            {
+                                foundVal = true;
+                                break;
+                            }
                         }
-                        numLoaded += bytesRead;
+                    }
+                    else
+                    {
+                        foundVal = true;
                     }
 
-                    for (int i = 0; i < numLoaded; i += 16)
+                    if (foundVal)
                     {
-                        bool foundVal = false;
-                        if (i > 0)
+                        output.Write("{0:x8}", i + readStart);
+
+                        for (var j = 0; j < 16; j++)
                         {
-                            for (int j = 0; j < 16; j++)
+                            if (j % 8 == 0)
                             {
-                                if (buffer[i + j] != buffer[i + j - 16])
-                                {
-                                    foundVal = true;
-                                    break;
-                                }
+                                output.Write(" ");
                             }
-                        }
-                        else
-                        {
-                            foundVal = true;
+                            output.Write(" {0:x2}", buffer[i + j]);
                         }
 
-                        if (foundVal)
+                        output.Write("  |");
+                        for (var j = 0; j < 16; j++)
                         {
-                            output.Write("{0:x8}", i + readStart);
-
-                            for (int j = 0; j < 16; j++)
+                            if (j % 8 == 0 && j != 0)
                             {
-                                if (j % 8 == 0)
-                                {
-                                    output.Write(" ");
-                                }
-                                output.Write(" {0:x2}", buffer[i + j]);
+                                output.Write(" ");
                             }
-
-                            output.Write("  |");
-                            for (int j = 0; j < 16; j++)
-                            {
-                                if (j % 8 == 0 && j != 0)
-                                {
-                                    output.Write(" ");
-                                }
-                                output.Write("{0}", (buffer[i + j] >= 32 && buffer[i + j] < 127) ? (char)buffer[i + j] : '.');
-                            }
-                            output.Write("|");
-
-                            output.WriteLine();
+                            output.Write("{0}", (buffer[i + j] >= 32 && buffer[i + j] < 127) ? (char)buffer[i + j] : '.');
                         }
+                        output.Write("|");
+
+                        output.WriteLine();
                     }
                 }
             }

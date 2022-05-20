@@ -22,69 +22,69 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using DiscUtils.Btrfs.Base;
 using DiscUtils.Btrfs.Base.Items;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Btrfs
+namespace DiscUtils.Btrfs;
+
+internal class Directory : File, IVfsDirectory<DirEntry, File>
 {
-    internal class Directory : File, IVfsDirectory<DirEntry, File>
+    public Directory(DirEntry dirEntry, Context context) : base(dirEntry, context)
     {
-        public Directory(DirEntry dirEntry, Context context) : base(dirEntry, context)
-        {
-            
-        }
+        
+    }
 
-        private Dictionary<string, DirEntry> _allEntries;
+    private Dictionary<string, DirEntry> _allEntries;
 
-        public ICollection<DirEntry> AllEntries
+    public IReadOnlyCollection<DirEntry> AllEntries
+    {
+        get
         {
-            get
+            if (_allEntries != null)
+                return _allEntries.Values;
+            var result = new Dictionary<string, DirEntry>();
+            var treeId = DirEntry.TreeId;
+            var objectId = DirEntry.ObjectId;
+            if (DirEntry.IsSubtree)
             {
-                if (_allEntries != null)
-                    return _allEntries.Values;
-                var result = new Dictionary<string, DirEntry>();
-                var treeId = DirEntry.TreeId;
-                ulong objectId = DirEntry.ObjectId;
-                if (DirEntry.IsSubtree)
-                {
-                    treeId = objectId;
-                    var rootItem = Context.RootTreeRoot.FindFirst<RootItem>(new Key(treeId, ItemType.RootItem), Context);
-                    objectId = rootItem.RootDirId;
-                }
-                var tree = Context.GetFsTree(treeId);
-                var items = tree.Find<DirIndex>(new Key(objectId, ItemType.DirIndex), Context);
-                foreach (var item in items)
-                {
-                    var inode = tree.FindFirst(item.ChildLocation, Context);
-                    result.Add(item.Name, new DirEntry(treeId, item, (InodeItem)inode));
-                }
-                _allEntries = result;
-                return result.Values;
+                treeId = objectId;
+                var rootItem = Context.RootTreeRoot.FindFirst<RootItem>(new Key(treeId, ItemType.RootItem), Context);
+                objectId = rootItem.RootDirId;
+            }
+            var tree = Context.GetFsTree(treeId);
+            var items = tree.Find<DirIndex>(new Key(objectId, ItemType.DirIndex), Context);
+            foreach (var item in items)
+            {
+                var inode = tree.FindFirst(item.ChildLocation, Context);
+                result.Add(item.Name, new DirEntry(treeId, item, (InodeItem)inode));
+            }
+            _allEntries = result;
+            return result.Values;
+        }
+    }
+
+    public DirEntry Self
+    {
+        get { return DirEntry; }
+    }
+
+    public DirEntry GetEntryByName(string name)
+    {
+        foreach (var entry in AllEntries)
+        {
+            if (entry.FileName == name)
+            {
+                return entry;
             }
         }
 
-        public DirEntry Self
-        {
-            get { return DirEntry; }
-        }
+        return null;
+    }
 
-        public DirEntry GetEntryByName(string name)
-        {
-            foreach (DirEntry entry in AllEntries)
-            {
-                if (entry.FileName == name)
-                {
-                    return entry;
-                }
-            }
-
-            return null;
-        }
-
-        public DirEntry CreateNewFile(string name)
-        {
-            throw new NotImplementedException();
-        }
+    public DirEntry CreateNewFile(string name)
+    {
+        throw new NotImplementedException();
     }
 }

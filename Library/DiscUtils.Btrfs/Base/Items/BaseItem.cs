@@ -23,27 +23,26 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base.Items
+namespace DiscUtils.Btrfs.Base.Items;
+
+/// <summary>
+/// Maps logical address to physical
+/// </summary>
+internal abstract class BaseItem : IByteArraySerializable
 {
-    /// <summary>
-    /// Maps logical address to physical
-    /// </summary>
-    internal abstract class BaseItem : IByteArraySerializable
+    public BaseItem(Key key)
     {
-        public BaseItem(Key key)
-        {
-            Key = key;
-        }
+        Key = key;
+    }
 
-        public Key Key { get; private set; }
+    public Key Key { get; private set; }
 
-        public abstract int Size { get; }
+    public abstract int Size { get; }
 
-        public abstract int ReadFrom(byte[] buffer, int offset);
+    public abstract int ReadFrom(byte[] buffer, int offset);
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -39,8 +39,8 @@ namespace LibraryTests.Fat
         [Fact]
         public void FormatFloppy()
         {
-            MemoryStream ms = new MemoryStream();
-            FatFileSystem fs = FatFileSystem.FormatFloppy(ms, FloppyDiskType.HighDensity, "KBFLOPPY   ");
+            var ms = new MemoryStream();
+            var fs = FatFileSystem.FormatFloppy(ms, FloppyDiskType.HighDensity, "KBFLOPPY   ");
         }
 
         [Fact(Skip = "Saving LFN not yet implemented")]
@@ -52,18 +52,18 @@ namespace LibraryTests.Fat
             SetupHelper.RegisterAssembly(typeof(FatFileSystem).GetTypeInfo().Assembly);
 #endif
 
-            string lowerDE = "\x0434";
-            string upperDE = "\x0414";
+            var lowerDE = "\x0434";
+            var upperDE = "\x0414";
 
-            MemoryStream ms = new MemoryStream();
-            using (FatFileSystem fs = FatFileSystem.FormatFloppy(ms, FloppyDiskType.HighDensity, "KBFLOPPY   "))
+            var ms = new MemoryStream();
+            using (var fs = FatFileSystem.FormatFloppy(ms, FloppyDiskType.HighDensity, "KBFLOPPY   "))
             {
                 fs.FatOptions.FileNameEncoding = Encoding.GetEncoding(855);
 
-                string name = lowerDE;
+                var name = lowerDE;
                 fs.CreateDirectory(name);
 
-                string[] dirs = fs.GetDirectories("").ToArray();
+                var dirs = fs.GetDirectories("").ToArray();
                 Assert.Single(dirs);
                 Assert.Equal(upperDE, fs.GetShortName(dirs[0])); // Uppercase
 
@@ -77,9 +77,9 @@ namespace LibraryTests.Fat
                 Assert.Single(fs.GetDirectories(""));
             }
 
-            FileSystemInfo[] detectDefaultFileSystems = FileSystemManager.DetectFileSystems(ms);
+            var detectDefaultFileSystems = FileSystemManager.DetectFileSystems(ms);
 
-            DiscFileSystem fs2 = detectDefaultFileSystems[0].Open(
+            var fs2 = detectDefaultFileSystems[0].Open(
                 ms,
                 new FileSystemParameters { FileNameEncoding = Encoding.GetEncoding(855) });
 
@@ -91,16 +91,16 @@ namespace LibraryTests.Fat
         [Fact]
         public void DefaultCodepage()
         {
-            string graphicChar = "\x255D";
+            var graphicChar = "\x255D";
 
-            MemoryStream ms = new MemoryStream();
-            FatFileSystem fs = FatFileSystem.FormatFloppy(ms, FloppyDiskType.HighDensity, "KBFLOPPY   ");
+            var ms = new MemoryStream();
+            var fs = FatFileSystem.FormatFloppy(ms, FloppyDiskType.HighDensity, "KBFLOPPY   ");
             fs.FatOptions.FileNameEncoding = Encoding.GetEncoding(855);
 
-            string name = graphicChar;
+            var name = graphicChar;
             fs.CreateDirectory(name);
 
-            string[] dirs = fs.GetDirectories("").ToArray();
+            var dirs = fs.GetDirectories("").ToArray();
             Assert.Single(dirs);
             Assert.Equal(graphicChar, dirs[0]); // Uppercase
 
@@ -110,21 +110,21 @@ namespace LibraryTests.Fat
         [Fact]
         public void FormatPartition()
         {
-            MemoryStream ms = new MemoryStream();
+            var ms = new MemoryStream();
 
-            Geometry g = Geometry.FromCapacity(1024 * 1024 * 32);
-            FatFileSystem fs = FatFileSystem.FormatPartition(ms, "KBPARTITION", g, 0, (int)g.TotalSectorsLong, 13);
+            var g = Geometry.FromCapacity(1024 * 1024 * 32);
+            var fs = FatFileSystem.FormatPartition(ms, "KBPARTITION", g, 0, (int)g.TotalSectorsLong, 13);
 
             fs.CreateDirectory(@"DIRB\DIRC");
 
-            FatFileSystem fs2 = new FatFileSystem(ms);
+            var fs2 = new FatFileSystem(ms);
             Assert.Single(fs2.Root.GetDirectories());
         }
 
         [Fact]
         public void CreateDirectory()
         {
-            FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
+            var fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
 
             fs.CreateDirectory(@"UnItTeSt");
             var entry = fs.Root.GetDirectories("UNITTEST").First();
@@ -142,14 +142,14 @@ namespace LibraryTests.Fat
         [Fact]
         public void CanWrite()
         {
-            FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
+            var fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
             Assert.True(fs.CanWrite);
         }
 
         [Fact]
         public void Label()
         {
-            FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
+            var fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
             Assert.Equal("FLOPPY_IMG ", fs.VolumeLabel);
 
             fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, null);
@@ -159,31 +159,31 @@ namespace LibraryTests.Fat
         [Fact]
         public void FileInfo()
         {
-            FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
-            DiscFileInfo fi = fs.GetFileInfo(@"SOMEDIR\SOMEFILE.TXT");
+            var fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
+            var fi = fs.GetFileInfo(@"SOMEDIR\SOMEFILE.TXT");
             Assert.NotNull(fi);
         }
 
         [Fact]
         public void DirectoryInfo()
         {
-            FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
-            DiscDirectoryInfo fi = fs.GetDirectoryInfo(@"SOMEDIR");
+            var fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
+            var fi = fs.GetDirectoryInfo(@"SOMEDIR");
             Assert.NotNull(fi);
         }
 
         [Fact]
         public void FileSystemInfo()
         {
-            FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
-            DiscFileSystemInfo fi = fs.GetFileSystemInfo(@"SOMEDIR\SOMEFILE");
+            var fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
+            var fi = fs.GetFileSystemInfo(@"SOMEDIR\SOMEFILE");
             Assert.NotNull(fi);
         }
 
         [Fact]
         public void Root()
         {
-            FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
+            var fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
             Assert.NotNull(fs.Root);
             Assert.True(fs.Root.Exists);
             Assert.Empty(fs.Root.Name);
@@ -194,11 +194,11 @@ namespace LibraryTests.Fat
         [Trait("Category", "ThrowsException")]
         public void OpenFileAsDir()
         {
-            FatFileSystem fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
+            var fs = FatFileSystem.FormatFloppy(new MemoryStream(), FloppyDiskType.HighDensity, "FLOPPY_IMG ");
 
             using (Stream s = fs.OpenFile("FOO.TXT", FileMode.Create, FileAccess.ReadWrite))
             {
-                StreamWriter w = new StreamWriter(s);
+                var w = new StreamWriter(s);
                 w.WriteLine("FOO - some sample text");
                 w.Flush();
             }
@@ -211,15 +211,15 @@ namespace LibraryTests.Fat
         {
             var sep = Path.DirectorySeparatorChar;
 
-            SparseMemoryStream diskStream = new SparseMemoryStream();
-            FatFileSystem fs = FatFileSystem.FormatFloppy(diskStream, FloppyDiskType.HighDensity, "FLOPPY_IMG ");
+            var diskStream = new SparseMemoryStream();
+            var fs = FatFileSystem.FormatFloppy(diskStream, FloppyDiskType.HighDensity, "FLOPPY_IMG ");
 
             fs.CreateDirectory(@"AAA");
             fs.CreateDirectory(@"BAR");
             using (Stream t = fs.OpenFile($"BAR{sep}AAA.TXT", FileMode.Create, FileAccess.ReadWrite)) { }
             using (Stream s = fs.OpenFile($"BAR{sep}FOO.TXT", FileMode.Create, FileAccess.ReadWrite))
             {
-                StreamWriter w = new StreamWriter(s);
+                var w = new StreamWriter(s);
                 w.WriteLine("FOO - some sample text");
                 w.Flush();
             }
@@ -227,19 +227,17 @@ namespace LibraryTests.Fat
             fs.SetLastAccessTimeUtc($"BAR{sep}FOO.TXT", new DateTime(1980, 1, 1));
 
             // Check we can access a file without any errors
-            SparseStream roDiskStream = SparseStream.ReadOnly(diskStream, Ownership.None);
-            FatFileSystem fatFs = new FatFileSystem(roDiskStream);
-            using (Stream fileStream = fatFs.OpenFile($"BAR{sep}FOO.TXT", FileMode.Open))
-            {
-                fileStream.ReadByte();
-            }
+            var roDiskStream = SparseStream.ReadOnly(diskStream, Ownership.None);
+            var fatFs = new FatFileSystem(roDiskStream);
+            using Stream fileStream = fatFs.OpenFile($"BAR{sep}FOO.TXT", FileMode.Open);
+            fileStream.ReadByte();
         }
 
         [Fact]
         public void InvalidImageThrowsException()
         {
-            SparseMemoryStream stream = new SparseMemoryStream();
-            byte[] buffer = new byte[1024 * 1024];
+            var stream = new SparseMemoryStream();
+            var buffer = new byte[1024 * 1024];
             stream.Write(buffer, 0, 1024 * 1024);
             stream.Position = 0;
             Assert.Throws<InvalidFileSystemException>(() => new FatFileSystem(stream));

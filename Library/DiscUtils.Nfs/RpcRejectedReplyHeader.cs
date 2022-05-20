@@ -22,64 +22,63 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public class RpcRejectedReplyHeader
 {
-    public class RpcRejectedReplyHeader
+    public RpcAuthenticationStatus AuthenticationStatus;
+    public RpcMismatchInfo MismatchInfo;
+    public RpcRejectedStatus Status;
+
+    public RpcRejectedReplyHeader()
     {
-        public RpcAuthenticationStatus AuthenticationStatus;
-        public RpcMismatchInfo MismatchInfo;
-        public RpcRejectedStatus Status;
+    }
 
-        public RpcRejectedReplyHeader()
+    public RpcRejectedReplyHeader(XdrDataReader reader)
+    {
+        Status = (RpcRejectedStatus)reader.ReadInt32();
+        if (Status == RpcRejectedStatus.RpcMismatch)
         {
+            MismatchInfo = new RpcMismatchInfo(reader);
+        }
+        else
+        {
+            AuthenticationStatus = (RpcAuthenticationStatus)reader.ReadInt32();
+        }
+    }
+
+    public void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)Status);
+        if (Status == RpcRejectedStatus.RpcMismatch)
+        {
+            MismatchInfo.Write(writer);
+        }
+        else
+        {
+            writer.Write((int)AuthenticationStatus);
+        }
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as RpcRejectedReplyHeader);
+    }
+
+    public bool Equals(RpcRejectedReplyHeader other)
+    {
+        if (other == null)
+        {
+            return false;
         }
 
-        public RpcRejectedReplyHeader(XdrDataReader reader)
-        {
-            Status = (RpcRejectedStatus)reader.ReadInt32();
-            if (Status == RpcRejectedStatus.RpcMismatch)
-            {
-                MismatchInfo = new RpcMismatchInfo(reader);
-            }
-            else
-            {
-                AuthenticationStatus = (RpcAuthenticationStatus)reader.ReadInt32();
-            }
-        }
+        return other.Status == Status
+            && object.Equals(other.MismatchInfo, MismatchInfo)
+            && other.AuthenticationStatus == AuthenticationStatus;
+    }
 
-        public void Write(XdrDataWriter writer)
-        {
-            writer.Write((int)Status);
-            if (Status == RpcRejectedStatus.RpcMismatch)
-            {
-                MismatchInfo.Write(writer);
-            }
-            else
-            {
-                writer.Write((int)AuthenticationStatus);
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as RpcRejectedReplyHeader);
-        }
-
-        public bool Equals(RpcRejectedReplyHeader other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other.Status == Status
-                && object.Equals(other.MismatchInfo, MismatchInfo)
-                && other.AuthenticationStatus == AuthenticationStatus;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Status, MismatchInfo, AuthenticationStatus);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Status, MismatchInfo, AuthenticationStatus);
     }
 }

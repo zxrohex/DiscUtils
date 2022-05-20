@@ -23,52 +23,53 @@
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vdi
+namespace DiscUtils.Vdi;
+
+internal class PreHeaderRecord
 {
-    internal class PreHeaderRecord
+    public const uint VdiSignature = 0xbeda107f;
+    public const int Size = 72;
+
+    public string FileInfo;
+    public uint Signature;
+    public FileVersion Version;
+
+    public static PreHeaderRecord Initialized()
     {
-        public const uint VdiSignature = 0xbeda107f;
-        public const int Size = 72;
-
-        public string FileInfo;
-        public uint Signature;
-        public FileVersion Version;
-
-        public static PreHeaderRecord Initialized()
+        var result = new PreHeaderRecord
         {
-            PreHeaderRecord result = new PreHeaderRecord();
-            result.FileInfo = "<<< Sun xVM VirtualBox Disk Image >>>\n";
-            result.Signature = VdiSignature;
-            result.Version = new FileVersion(0x00010001);
-            return result;
-        }
+            FileInfo = "<<< Sun xVM VirtualBox Disk Image >>>\n",
+            Signature = VdiSignature,
+            Version = new FileVersion(0x00010001)
+        };
+        return result;
+    }
 
-        public int Read(byte[] buffer, int offset)
-        {
-            FileInfo = EndianUtilities.BytesToString(buffer, offset + 0, 64).TrimEnd('\0');
-            Signature = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 64);
-            Version = new FileVersion(EndianUtilities.ToUInt32LittleEndian(buffer, offset + 68));
-            return Size;
-        }
+    public int Read(byte[] buffer, int offset)
+    {
+        FileInfo = EndianUtilities.BytesToString(buffer, offset + 0, 64).TrimEnd('\0');
+        Signature = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 64);
+        Version = new FileVersion(EndianUtilities.ToUInt32LittleEndian(buffer, offset + 68));
+        return Size;
+    }
 
-        public void Read(Stream s)
-        {
-            byte[] buffer = StreamUtilities.ReadExact(s, 72);
-            Read(buffer, 0);
-        }
+    public void Read(Stream s)
+    {
+        var buffer = StreamUtilities.ReadExact(s, 72);
+        Read(buffer, 0);
+    }
 
-        public void Write(Stream s)
-        {
-            byte[] buffer = new byte[Size];
-            Write(buffer, 0);
-            s.Write(buffer, 0, buffer.Length);
-        }
+    public void Write(Stream s)
+    {
+        var buffer = new byte[Size];
+        Write(buffer, 0);
+        s.Write(buffer, 0, buffer.Length);
+    }
 
-        public void Write(byte[] buffer, int offset)
-        {
-            EndianUtilities.StringToBytes(FileInfo, buffer, offset + 0, 64);
-            EndianUtilities.WriteBytesLittleEndian(Signature, buffer, offset + 64);
-            EndianUtilities.WriteBytesLittleEndian(Version.Value, buffer, offset + 68);
-        }
+    public void Write(byte[] buffer, int offset)
+    {
+        EndianUtilities.StringToBytes(FileInfo, buffer, offset + 0, 64);
+        EndianUtilities.WriteBytesLittleEndian(Signature, buffer, offset + 64);
+        EndianUtilities.WriteBytesLittleEndian(Version.Value, buffer, offset + 68);
     }
 }

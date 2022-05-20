@@ -24,74 +24,73 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3MountResult : Nfs3CallResult
 {
-    public sealed class Nfs3MountResult : Nfs3CallResult
+    internal Nfs3MountResult(XdrDataReader reader)
     {
-        internal Nfs3MountResult(XdrDataReader reader)
-        {
-            Status = (Nfs3Status)reader.ReadInt32();
+        Status = (Nfs3Status)reader.ReadInt32();
 
-            if (Status == Nfs3Status.Ok)
+        if (Status == Nfs3Status.Ok)
+        {
+            FileHandle = new Nfs3FileHandle(reader);
+            var numAuthFlavours = reader.ReadInt32();
+            AuthFlavours = new List<RpcAuthFlavour>(numAuthFlavours);
+            for (var i = 0; i < numAuthFlavours; ++i)
             {
-                FileHandle = new Nfs3FileHandle(reader);
-                int numAuthFlavours = reader.ReadInt32();
-                AuthFlavours = new List<RpcAuthFlavour>(numAuthFlavours);
-                for (int i = 0; i < numAuthFlavours; ++i)
-                {
-                    AuthFlavours.Add((RpcAuthFlavour)reader.ReadInt32());
-                }
-            }
-            else
-            {
-                throw new Nfs3Exception(Status);
+                AuthFlavours.Add((RpcAuthFlavour)reader.ReadInt32());
             }
         }
-
-        public Nfs3MountResult()
+        else
         {
+            throw new Nfs3Exception(Status);
         }
+    }
 
-        public List<RpcAuthFlavour> AuthFlavours { get; set; }
+    public Nfs3MountResult()
+    {
+    }
 
-        public Nfs3FileHandle FileHandle { get; set; }
+    public List<RpcAuthFlavour> AuthFlavours { get; set; }
 
-        public override void Write(XdrDataWriter writer)
+    public Nfs3FileHandle FileHandle { get; set; }
+
+    public override void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)Status);
+
+        if (Status == Nfs3Status.Ok)
         {
-            writer.Write((int)Status);
+            FileHandle.Write(writer);
 
-            if (Status == Nfs3Status.Ok)
+            writer.Write(AuthFlavours.Count);
+            for (var i = 0; i < AuthFlavours.Count; i++)
             {
-                FileHandle.Write(writer);
-
-                writer.Write(AuthFlavours.Count);
-                for (int i = 0; i < AuthFlavours.Count; i++)
-                {
-                    writer.Write((int)AuthFlavours[i]);
-                }
+                writer.Write((int)AuthFlavours[i]);
             }
         }
+    }
 
-        public override bool Equals(object obj)
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3MountResult);
+    }
+
+    public bool Equals(Nfs3MountResult other)
+    {
+        if (other == null)
         {
-            return Equals(obj as Nfs3MountResult);
+            return false;
         }
 
-        public bool Equals(Nfs3MountResult other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
+        return other.Status == Status
+            && Enumerable.SequenceEqual(other.AuthFlavours, AuthFlavours)
+            && object.Equals(other.FileHandle, FileHandle);
+    }
 
-            return other.Status == Status
-                && Enumerable.SequenceEqual(other.AuthFlavours, AuthFlavours)
-                && object.Equals(other.FileHandle, FileHandle);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Status, FileHandle, AuthFlavours);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Status, FileHandle, AuthFlavours);
     }
 }

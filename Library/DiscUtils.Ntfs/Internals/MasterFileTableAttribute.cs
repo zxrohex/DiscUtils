@@ -1,4 +1,3 @@
-namespace DiscUtils.Ntfs.Internals
-{
-    public sealed class MasterFileTableAttribute {}
-}
+namespace DiscUtils.Ntfs.Internals;
+
+public sealed class MasterFileTableAttribute {}

@@ -22,33 +22,32 @@
 
 using System.Text;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+/// <summary>
+/// EXT file system options.
+/// </summary>
+public sealed class ExtFileSystemOptions : DiscFileSystemOptions
 {
-    /// <summary>
-    /// EXT file system options.
-    /// </summary>
-    public sealed class ExtFileSystemOptions : DiscFileSystemOptions
+    internal ExtFileSystemOptions()
     {
-        internal ExtFileSystemOptions()
+        FileNameEncoding = Encoding.UTF8;
+    }
+
+    internal ExtFileSystemOptions(FileSystemParameters parameters)
+    {
+        if (parameters != null && parameters.FileNameEncoding != null)
+        {
+            FileNameEncoding = parameters.FileNameEncoding;
+        }
+        else
         {
             FileNameEncoding = Encoding.UTF8;
         }
-
-        internal ExtFileSystemOptions(FileSystemParameters parameters)
-        {
-            if (parameters != null && parameters.FileNameEncoding != null)
-            {
-                FileNameEncoding = parameters.FileNameEncoding;
-            }
-            else
-            {
-                FileNameEncoding = Encoding.UTF8;
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the character encoding used for file names.
-        /// </summary>
-        public Encoding FileNameEncoding { get; set; }
     }
+
+    /// <summary>
+    /// Gets or sets the character encoding used for file names.
+    /// </summary>
+    public Encoding FileNameEncoding { get; set; }
 }

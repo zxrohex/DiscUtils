@@ -27,71 +27,78 @@ using DiscUtils.Common;
 using DiscUtils.Ntfs;
 using DiscUtils.Streams;
 
-namespace NTFSDump
+namespace NTFSDump;
+
+class Program : ProgramBase
 {
-    class Program : ProgramBase
+    private CommandLineMultiParameter _diskFiles;
+    private CommandLineSwitch _showHidden;
+    private CommandLineSwitch _showSystem;
+    private CommandLineSwitch _showMeta;
+
+    static void Main(string[] args)
     {
-        private CommandLineMultiParameter _diskFiles;
-        private CommandLineSwitch _showHidden;
-        private CommandLineSwitch _showSystem;
-        private CommandLineSwitch _showMeta;
+        DiscUtils.Containers.SetupHelper.SetupContainers();
+        DiscUtils.Transports.SetupHelper.SetupTransports();
 
-        static void Main(string[] args)
+        var program = new Program();
+        program.Run(args);
+    }
+
+    protected override StandardSwitches DefineCommandLine(CommandLineParser parser)
+    {
+        _diskFiles = FileOrUriMultiParameter("disk", "Paths to the disks to inspect.", false);
+        _showHidden = new CommandLineSwitch("H", "hidden", null, "Don't hide files and directories with the hidden attribute set in the directory listing.");
+        _showSystem = new CommandLineSwitch("S", "system", null, "Don't hide files and directories with the system attribute set in the directory listing.");
+        _showMeta = new CommandLineSwitch("M", "meta", null, "Don't hide files and directories that are part of the file system itself in the directory listing.");
+
+        parser.AddMultiParameter(_diskFiles);
+        parser.AddSwitch(_showHidden);
+        parser.AddSwitch(_showSystem);
+        parser.AddSwitch(_showMeta);
+
+        return StandardSwitches.UserAndPassword | StandardSwitches.PartitionOrVolume;
+    }
+
+    protected override void DoRun()
+    {
+        var volMgr = new VolumeManager();
+        foreach (var path in _diskFiles.Values)
         {
-            DiscUtils.Containers.SetupHelper.SetupContainers();
-            DiscUtils.Transports.SetupHelper.SetupTransports();
+            var disk = VirtualDisk.OpenDisk(path, FileAccess.Read, UserName, Password);
 
-            Program program = new Program();
-            program.Run(args);
+            if (disk is null)
+            {
+                Console.Error.WriteLine($"Failed to open '{path}' as virtual disk.");
+                continue;
+            }
+
+            volMgr.AddDisk(disk);
         }
 
-        protected override StandardSwitches DefineCommandLine(CommandLineParser parser)
+        Stream partitionStream;
+        if (!string.IsNullOrEmpty(VolumeId))
         {
-            _diskFiles = FileOrUriMultiParameter("disk", "Paths to the disks to inspect.", false);
-            _showHidden = new CommandLineSwitch("H", "hidden", null, "Don't hide files and directories with the hidden attribute set in the directory listing.");
-            _showSystem = new CommandLineSwitch("S", "system", null, "Don't hide files and directories with the system attribute set in the directory listing.");
-            _showMeta = new CommandLineSwitch("M", "meta", null, "Don't hide files and directories that are part of the file system itself in the directory listing.");
-
-            parser.AddMultiParameter(_diskFiles);
-            parser.AddSwitch(_showHidden);
-            parser.AddSwitch(_showSystem);
-            parser.AddSwitch(_showMeta);
-
-            return StandardSwitches.UserAndPassword | StandardSwitches.PartitionOrVolume;
+            partitionStream = volMgr.GetVolume(VolumeId).Open();
+        }
+        else if (Partition >= 0)
+        {
+            partitionStream = volMgr.GetPhysicalVolumes()[Partition].Open();
+        }
+        else
+        {
+            partitionStream = volMgr.GetLogicalVolumes()[0].Open();
         }
 
-        protected override void DoRun()
-        {
-            VolumeManager volMgr = new VolumeManager();
-            foreach (string disk in _diskFiles.Values)
-            {
-                volMgr.AddDisk(VirtualDisk.OpenDisk(disk, FileAccess.Read, UserName, Password));
-            }
-            
-            Stream partitionStream = null;
-            if (!string.IsNullOrEmpty(VolumeId))
-            {
-                partitionStream = volMgr.GetVolume(VolumeId).Open();
-            }
-            else if (Partition >= 0)
-            {
-                partitionStream = volMgr.GetPhysicalVolumes()[Partition].Open();
-            }
-            else
-            {
-                partitionStream = volMgr.GetLogicalVolumes()[0].Open();
-            }
+        var cacheStream = SparseStream.FromStream(partitionStream, Ownership.None);
+        cacheStream = new BlockCacheStream(cacheStream, Ownership.None);
 
-            SparseStream cacheStream = SparseStream.FromStream(partitionStream, Ownership.None);
-            cacheStream = new BlockCacheStream(cacheStream, Ownership.None);
-
-            NtfsFileSystem fs = new NtfsFileSystem(cacheStream);
-            fs.NtfsOptions.HideHiddenFiles = !_showHidden.IsPresent;
-            fs.NtfsOptions.HideSystemFiles = !_showSystem.IsPresent;
-            fs.NtfsOptions.HideMetafiles = !_showMeta.IsPresent;
+        var fs = new NtfsFileSystem(cacheStream);
+        fs.NtfsOptions.HideHiddenFiles = !_showHidden.IsPresent;
+        fs.NtfsOptions.HideSystemFiles = !_showSystem.IsPresent;
+        fs.NtfsOptions.HideMetafiles = !_showMeta.IsPresent;
 
 
-            fs.Dump(Console.Out, "");
-        }
+        fs.Dump(Console.Out, "");
     }
 }

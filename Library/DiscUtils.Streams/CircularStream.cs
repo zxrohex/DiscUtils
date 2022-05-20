@@ -24,145 +24,144 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+/// <summary>
+/// Represents a stream that is circular, so reads and writes off the end of the stream wrap.
+/// </summary>
+public sealed class CircularStream : WrappingStream
 {
-    /// <summary>
-    /// Represents a stream that is circular, so reads and writes off the end of the stream wrap.
-    /// </summary>
-    public sealed class CircularStream : WrappingStream
+    public CircularStream(SparseStream toWrap, Ownership ownership)
+        : base(toWrap, ownership) {}
+
+    public override int Read(byte[] buffer, int offset, int count)
     {
-        public CircularStream(SparseStream toWrap, Ownership ownership)
-            : base(toWrap, ownership) {}
+        WrapPosition();
 
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            WrapPosition();
+        var read = base.Read(buffer, offset, (int)Math.Min(Length - Position, count));
 
-            int read = base.Read(buffer, offset, (int)Math.Min(Length - Position, count));
+        WrapPosition();
 
-            WrapPosition();
-
-            return read;
-        }
+        return read;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            WrapPosition();
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        WrapPosition();
 
-            int read = await base.ReadAsync(buffer, offset, (int)Math.Min(Length - Position, count), cancellationToken).ConfigureAwait(false);
+        var read = await base.ReadAsync(buffer, offset, (int)Math.Min(Length - Position, count), cancellationToken).ConfigureAwait(false);
 
-            WrapPosition();
+        WrapPosition();
 
-            return read;
-        }
+        return read;
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-        {
-            WrapPosition();
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        WrapPosition();
 
-            int read = await base.ReadAsync(buffer[..(int)Math.Min(Length - Position, buffer.Length)], cancellationToken).ConfigureAwait(false);
+        var read = await base.ReadAsync(buffer[..(int)Math.Min(Length - Position, buffer.Length)], cancellationToken).ConfigureAwait(false);
 
-            WrapPosition();
+        WrapPosition();
 
-            return read;
-        }
+        return read;
+    }
 
-        public override int Read(Span<byte> buffer)
-        {
-            WrapPosition();
+    public override int Read(Span<byte> buffer)
+    {
+        WrapPosition();
 
-            int read = base.Read(buffer[..(int)Math.Min(Length - Position, buffer.Length)]);
+        var read = base.Read(buffer[..(int)Math.Min(Length - Position, buffer.Length)]);
 
-            WrapPosition();
+        WrapPosition();
 
-            return read;
-        }
+        return read;
+    }
 #endif
 
-        public override void Write(byte[] buffer, int offset, int count)
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        WrapPosition();
+
+        var totalWritten = 0;
+        while (totalWritten < count)
         {
+            var toWrite = (int)Math.Min(count - totalWritten, Length - Position);
+
+            base.Write(buffer, offset + totalWritten, toWrite);
+
             WrapPosition();
 
-            int totalWritten = 0;
-            while (totalWritten < count)
-            {
-                int toWrite = (int)Math.Min(count - totalWritten, Length - Position);
-
-                base.Write(buffer, offset + totalWritten, toWrite);
-
-                WrapPosition();
-
-                totalWritten += toWrite;
-            }
+            totalWritten += toWrite;
         }
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        WrapPosition();
+
+        var totalWritten = 0;
+        while (totalWritten < count)
         {
+            var toWrite = (int)Math.Min(count - totalWritten, Length - Position);
+
+            await base.WriteAsync(buffer, offset + totalWritten, toWrite, cancellationToken).ConfigureAwait(false);
+
             WrapPosition();
 
-            int totalWritten = 0;
-            while (totalWritten < count)
-            {
-                int toWrite = (int)Math.Min(count - totalWritten, Length - Position);
-
-                await base.WriteAsync(buffer, offset + totalWritten, toWrite, cancellationToken).ConfigureAwait(false);
-
-                WrapPosition();
-
-                totalWritten += toWrite;
-            }
+            totalWritten += toWrite;
         }
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        WrapPosition();
+
+        var totalWritten = 0;
+        while (totalWritten < buffer.Length)
         {
+            var toWrite = (int)Math.Min(buffer.Length - totalWritten, Length - Position);
+
+            await base.WriteAsync(buffer.Slice(totalWritten, toWrite), cancellationToken).ConfigureAwait(false);
+
             WrapPosition();
 
-            int totalWritten = 0;
-            while (totalWritten < buffer.Length)
-            {
-                int toWrite = (int)Math.Min(buffer.Length - totalWritten, Length - Position);
-
-                await base.WriteAsync(buffer.Slice(totalWritten, toWrite), cancellationToken).ConfigureAwait(false);
-
-                WrapPosition();
-
-                totalWritten += toWrite;
-            }
+            totalWritten += toWrite;
         }
+    }
 
-        public override void Write(ReadOnlySpan<byte> buffer)
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        WrapPosition();
+
+        var totalWritten = 0;
+        while (totalWritten < buffer.Length)
         {
+            var toWrite = (int)Math.Min(buffer.Length - totalWritten, Length - Position);
+
+            base.Write(buffer.Slice(totalWritten, toWrite));
+
             WrapPosition();
 
-            int totalWritten = 0;
-            while (totalWritten < buffer.Length)
-            {
-                int toWrite = (int)Math.Min(buffer.Length - totalWritten, Length - Position);
-
-                base.Write(buffer.Slice(totalWritten, toWrite));
-
-                WrapPosition();
-
-                totalWritten += toWrite;
-            }
+            totalWritten += toWrite;
         }
+    }
 #endif
 
-        private void WrapPosition()
-        {
-            long pos = Position;
-            long length = Length;
+    private void WrapPosition()
+    {
+        var pos = Position;
+        var length = Length;
 
-            if (pos >= length)
-            {
-                Position = pos % length;
-            }
+        if (pos >= length)
+        {
+            Position = pos % length;
         }
     }
 }

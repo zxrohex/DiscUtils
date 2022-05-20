@@ -25,47 +25,46 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public abstract class BuilderExtent : IDisposable
 {
-    public abstract class BuilderExtent : IDisposable
+    public BuilderExtent(long start, long length)
     {
-        public BuilderExtent(long start, long length)
-        {
-            Start = start;
-            Length = length;
-        }
+        Start = start;
+        Length = length;
+    }
 
-        public long Length { get; }
+    public long Length { get; }
 
-        public long Start { get; }
+    public long Start { get; }
 
-        /// <summary>
-        /// Gets the parts of the stream that are stored.
-        /// </summary>
-        /// <remarks>This may be an empty enumeration if all bytes are zero.</remarks>
-        public virtual IEnumerable<StreamExtent> StreamExtents
-        {
-            get { return new[] { new StreamExtent(Start, Length) }; }
-        }
+    /// <summary>
+    /// Gets the parts of the stream that are stored.
+    /// </summary>
+    /// <remarks>This may be an empty enumeration if all bytes are zero.</remarks>
+    public virtual IEnumerable<StreamExtent> StreamExtents
+    {
+        get { yield return new StreamExtent(Start, Length); }
+    }
 
-        public abstract void Dispose();
+    public abstract void Dispose();
 
-        public abstract void PrepareForRead();
+    public abstract void PrepareForRead();
 
-        public abstract int Read(long diskOffset, byte[] block, int offset, int count);
+    public abstract int Read(long diskOffset, byte[] block, int offset, int count);
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public virtual Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
-            Task.FromResult(Read(diskOffset, block, offset, count));
+    public virtual Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
+        Task.FromResult(Read(diskOffset, block, offset, count));
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public abstract int Read(long diskOffset, Span<byte> block);
+    public abstract int Read(long diskOffset, Span<byte> block);
 
-        public virtual ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken) =>
-            new(Read(diskOffset, block.Span));
+    public virtual ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken) =>
+        new(Read(diskOffset, block.Span));
 #endif
 
-        public abstract void DisposeReadState();
-    }
+    public abstract void DisposeReadState();
 }

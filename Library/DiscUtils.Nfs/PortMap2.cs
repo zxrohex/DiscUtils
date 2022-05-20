@@ -22,46 +22,45 @@
 
 using System.IO;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+internal sealed class PortMap2 : RpcProgram
 {
-    internal sealed class PortMap2 : RpcProgram
+    public const int ProgramIdentifier = 100000;
+    public const int ProgramVersion = 2;
+
+    public PortMap2(RpcClient client)
+        : base(client) {}
+
+    public override int Identifier
     {
-        public const int ProgramIdentifier = 100000;
-        public const int ProgramVersion = 2;
+        get { return ProgramIdentifier; }
+    }
 
-        public PortMap2(RpcClient client)
-            : base(client) {}
+    public override int Version
+    {
+        get { return ProgramVersion; }
+    }
 
-        public override int Identifier
+    public int GetPort(int program, int version, PortMap2Protocol protocol)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, null, PortMapProc2.GetPort);
+
+        new PortMap2Mapping()
         {
-            get { return ProgramIdentifier; }
-        }
+            Program = program,
+            Version = version,
+            Protocol = protocol,
+            Port = 0
+        }.Write(writer);
 
-        public override int Version
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
         {
-            get { return ProgramVersion; }
+            var port = new PortMap2Port(reply.BodyReader);
+            return (int)reply.BodyReader.ReadUInt32();
         }
-
-        public int GetPort(int program, int version, PortMap2Protocol protocol)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, null, PortMapProc2.GetPort);
-
-            new PortMap2Mapping()
-            {
-                Program = program,
-                Version = version,
-                Protocol = protocol,
-                Port = 0
-            }.Write(writer);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                var port = new PortMap2Port(reply.BodyReader);
-                return (int)reply.BodyReader.ReadUInt32();
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
+        throw new RpcException(reply.Header.ReplyHeader);
     }
 }

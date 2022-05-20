@@ -33,7 +33,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            Nfs3WeakCacheConsistency consistency = new Nfs3WeakCacheConsistency()
+            var consistency = new Nfs3WeakCacheConsistency()
             {
                 Before = new Nfs3WeakCacheConsistencyAttr()
                 {
@@ -62,13 +62,13 @@ namespace LibraryTests.Nfs
 
             Nfs3WeakCacheConsistency clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 consistency.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new Nfs3WeakCacheConsistency(reader);
             }
 

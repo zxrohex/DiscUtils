@@ -1,21 +1,20 @@
 ﻿using System.Text;
 
-namespace DiscUtils.CoreCompat
+namespace DiscUtils.CoreCompat;
+
+internal static class EncodingHelper
 {
-    internal static class EncodingHelper
+    private static bool _registered;
+
+    public static void RegisterEncodings()
     {
-        private static bool _registered;
+        if (_registered)
+            return;
 
-        public static void RegisterEncodings()
-        {
-            if (_registered)
-                return;
-
-            _registered = true;
+        _registered = true;
 
 #if NETSTANDARD || NETCOREAPP
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 #endif
-        }
     }
 }

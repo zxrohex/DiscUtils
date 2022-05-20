@@ -31,7 +31,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            RpcMismatchInfo info = new RpcMismatchInfo()
+            var info = new RpcMismatchInfo()
             {
                  High = 1,
                  Low = 2
@@ -39,13 +39,13 @@ namespace LibraryTests.Nfs
 
             RpcMismatchInfo clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 info.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new RpcMismatchInfo(reader);
             }
 

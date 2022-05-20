@@ -25,23 +25,22 @@ using System.Text;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Btrfs
-{
-    internal class Symlink : File, IVfsSymlink<DirEntry, File>
-    {
-        public Symlink(DirEntry dirEntry, Context context) : base(dirEntry, context)
-        {
-            
-        }
+namespace DiscUtils.Btrfs;
 
-        public string TargetPath
+internal class Symlink : File, IVfsSymlink<DirEntry, File>
+{
+    public Symlink(DirEntry dirEntry, Context context) : base(dirEntry, context)
+    {
+        
+    }
+
+    public string TargetPath
+    {
+        get
         {
-            get
-            {
-                IBuffer content = FileContent;
-                byte[] data = StreamUtilities.ReadExact(content, 0, (int)content.Capacity);
-                return Encoding.UTF8.GetString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
-            }
+            var content = FileContent;
+            var data = StreamUtilities.ReadExact(content, 0, (int)content.Capacity);
+            return Encoding.UTF8.GetString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
         }
     }
 }

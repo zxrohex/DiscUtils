@@ -20,25 +20,24 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vdi
+namespace DiscUtils.Vdi;
+
+internal struct FileVersion
 {
-    internal struct FileVersion
+    public FileVersion(uint value)
     {
-        public FileVersion(uint value)
-        {
-            Value = value;
-        }
-
-        public int Major
-        {
-            get { return (int)(Value >> 16); }
-        }
-
-        public int Minor
-        {
-            get { return (int)(Value & 0xFFFF); }
-        }
-
-        public uint Value { get; }
+        Value = value;
     }
+
+    public int Major
+    {
+        get { return (int)(Value >> 16); }
+    }
+
+    public int Minor
+    {
+        get { return (int)(Value & 0xFFFF); }
+    }
+
+    public uint Value { get; }
 }

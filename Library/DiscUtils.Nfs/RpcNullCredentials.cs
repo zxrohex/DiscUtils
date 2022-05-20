@@ -20,18 +20,17 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
-{
-    /// <summary>
-    /// Null RPC credentials, for use with anonymous services / procedures.
-    /// </summary>
-    public sealed class RpcNullCredentials : RpcCredentials
-    {
-        internal override RpcAuthFlavour AuthFlavour
-        {
-            get { return RpcAuthFlavour.Null; }
-        }
+namespace DiscUtils.Nfs;
 
-        internal override void Write(XdrDataWriter writer) {}
+/// <summary>
+/// Null RPC credentials, for use with anonymous services / procedures.
+/// </summary>
+public sealed class RpcNullCredentials : RpcCredentials
+{
+    internal override RpcAuthFlavour AuthFlavour
+    {
+        get { return RpcAuthFlavour.Null; }
     }
+
+    internal override void Write(XdrDataWriter writer) {}
 }

@@ -22,70 +22,70 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal class Directory : File, IVfsDirectory<DirectoryEntry, File>
 {
-    internal class Directory : File, IVfsDirectory<DirectoryEntry, File>
+    private readonly IDirectoryInode _dirInode;
+
+    public Directory(Context context, Inode inode, MetadataRef inodeRef)
+        : base(context, inode, inodeRef)
     {
-        private readonly IDirectoryInode _dirInode;
-
-        public Directory(Context context, Inode inode, MetadataRef inodeRef)
-            : base(context, inode, inodeRef)
+        _dirInode = inode as IDirectoryInode;
+        if (_dirInode == null)
         {
-            _dirInode = inode as IDirectoryInode;
-            if (_dirInode == null)
-            {
-                throw new ArgumentException("Inode is not a directory", nameof(inode));
-            }
+            throw new ArgumentException("Inode is not a directory", nameof(inode));
         }
+    }
 
-        public ICollection<DirectoryEntry> AllEntries
+    public IReadOnlyCollection<DirectoryEntry> AllEntries
+    {
+        get
         {
-            get
+            var records = new List<DirectoryEntry>();
+
+            var reader = Context.DirectoryReader;
+            reader.SetPosition(_dirInode.StartBlock, _dirInode.Offset);
+
+            // For some reason, always 3 greater than actual..
+            while (reader.DistanceFrom(_dirInode.StartBlock, _dirInode.Offset) < _dirInode.FileSize - 3)
             {
-                List<DirectoryEntry> records = new List<DirectoryEntry>();
+                var header = DirectoryHeader.ReadFrom(reader);
 
-                MetablockReader reader = Context.DirectoryReader;
-                reader.SetPosition(_dirInode.StartBlock, _dirInode.Offset);
-
-                // For some reason, always 3 greater than actual..
-                while (reader.DistanceFrom(_dirInode.StartBlock, _dirInode.Offset) < _dirInode.FileSize - 3)
+                for (var i = 0; i < header.Count + 1; ++i)
                 {
-                    DirectoryHeader header = DirectoryHeader.ReadFrom(reader);
-
-                    for (int i = 0; i < header.Count + 1; ++i)
-                    {
-                        DirectoryRecord record = DirectoryRecord.ReadFrom(reader);
-                        records.Add(new DirectoryEntry(header, record));
-                    }
-                }
-
-                return records;
-            }
-        }
-
-        public DirectoryEntry Self
-        {
-            get { return null; }
-        }
-
-        public DirectoryEntry GetEntryByName(string name)
-        {
-            foreach (DirectoryEntry entry in AllEntries)
-            {
-                if (entry.FileName == name)
-                {
-                    return entry;
+                    var record = DirectoryRecord.ReadFrom(reader);
+                    records.Add(new DirectoryEntry(header, record));
                 }
             }
 
-            return null;
+            return records;
+        }
+    }
+
+    public DirectoryEntry Self
+    {
+        get { return null; }
+    }
+
+    public DirectoryEntry GetEntryByName(string name)
+    {
+        foreach (var entry in AllEntries)
+        {
+            if (entry.FileName == name)
+            {
+                return entry;
+            }
         }
 
-        public DirectoryEntry CreateNewFile(string name)
-        {
-            throw new NotSupportedException();
-        }
+        return null;
+    }
+
+    public DirectoryEntry CreateNewFile(string name)
+    {
+        throw new NotSupportedException();
     }
 }

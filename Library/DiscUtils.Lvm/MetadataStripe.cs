@@ -20,22 +20,21 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using System;
+
+internal class MetadataStripe
 {
-    using System;
+    public string PhysicalVolumeName;
+    public ulong StartExtentNumber;
 
-    internal class MetadataStripe
+    internal void Parse(string line)
     {
-        public string PhysicalVolumeName;
-        public ulong StartExtentNumber;
-
-        internal void Parse(string line)
-        {
-            var parts = line.Split(',');
-            if (parts.Length != 2)
-                throw new ArgumentException("invalid stripe format", line);
-            PhysicalVolumeName = Metadata.ParseStringValue(parts[0]);
-            StartExtentNumber = Metadata.ParseNumericValue(parts[1]);
-        }
+        var parts = line.Split(',');
+        if (parts.Length != 2)
+            throw new ArgumentException("invalid stripe format", line);
+        PhysicalVolumeName = Metadata.ParseStringValue(parts[0]);
+        StartExtentNumber = Metadata.ParseNumericValue(parts[1]);
     }
 }

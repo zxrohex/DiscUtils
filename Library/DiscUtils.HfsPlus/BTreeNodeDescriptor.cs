@@ -23,37 +23,36 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class BTreeNodeDescriptor : IByteArraySerializable
 {
-    internal sealed class BTreeNodeDescriptor : IByteArraySerializable
+    public uint BackwardLink;
+    public uint ForwardLink;
+    public byte Height;
+    public BTreeNodeKind Kind;
+    public ushort NumRecords;
+    public ushort Reserved;
+
+    public int Size
     {
-        public uint BackwardLink;
-        public uint ForwardLink;
-        public byte Height;
-        public BTreeNodeKind Kind;
-        public ushort NumRecords;
-        public ushort Reserved;
+        get { return 14; }
+    }
 
-        public int Size
-        {
-            get { return 14; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        ForwardLink = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
+        BackwardLink = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
+        Kind = (BTreeNodeKind)buffer[offset + 8];
+        Height = buffer[offset + 9];
+        NumRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 10);
+        Reserved = EndianUtilities.ToUInt16BigEndian(buffer, offset + 12);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            ForwardLink = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-            BackwardLink = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-            Kind = (BTreeNodeKind)buffer[offset + 8];
-            Height = buffer[offset + 9];
-            NumRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 10);
-            Reserved = EndianUtilities.ToUInt16BigEndian(buffer, offset + 12);
+        return 14;
+    }
 
-            return 14;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

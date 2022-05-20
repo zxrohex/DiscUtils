@@ -23,47 +23,48 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class TextRequest
 {
-    internal class TextRequest
+    private uint _commandSequenceNumber; // Per-session
+    private readonly Connection _connection;
+
+    private bool _continue;
+    private uint _expectedStatusSequenceNumber; // Per-connection (ack)
+
+    private readonly uint _targetTransferTag = 0xFFFFFFFF;
+
+    public TextRequest(Connection connection)
     {
-        private uint _commandSequenceNumber; // Per-session
-        private readonly Connection _connection;
+        _connection = connection;
+    }
 
-        private bool _continue;
-        private uint _expectedStatusSequenceNumber; // Per-connection (ack)
-        private ulong _lun;
-        private readonly uint _targetTransferTag = 0xFFFFFFFF;
-
-        public TextRequest(Connection connection)
+    public byte[] GetBytes(ulong lun, byte[] data, int offset, int count, bool isFinalData)
+    {
+        var _basicHeader = new BasicHeaderSegment
         {
-            _connection = connection;
-        }
+            Immediate = true,
+            OpCode = OpCode.TextRequest,
+            FinalPdu = isFinalData,
+            TotalAhsLength = 0,
+            DataSegmentLength = count,
+            InitiatorTaskTag = _connection.Session.CurrentTaskTag
+        };
 
-        public byte[] GetBytes(ulong lun, byte[] data, int offset, int count, bool isFinalData)
-        {
-            BasicHeaderSegment _basicHeader = new BasicHeaderSegment();
-            _basicHeader.Immediate = true;
-            _basicHeader.OpCode = OpCode.TextRequest;
-            _basicHeader.FinalPdu = isFinalData;
-            _basicHeader.TotalAhsLength = 0;
-            _basicHeader.DataSegmentLength = count;
-            _basicHeader.InitiatorTaskTag = _connection.Session.CurrentTaskTag;
+        _continue = !isFinalData;
+        
+        _commandSequenceNumber = _connection.Session.CommandSequenceNumber;
+        _expectedStatusSequenceNumber = _connection.ExpectedStatusSequenceNumber;
 
-            _continue = !isFinalData;
-            _lun = lun;
-            _commandSequenceNumber = _connection.Session.CommandSequenceNumber;
-            _expectedStatusSequenceNumber = _connection.ExpectedStatusSequenceNumber;
-
-            byte[] buffer = new byte[MathUtilities.RoundUp(48 + count, 4)];
-            _basicHeader.WriteTo(buffer, 0);
-            buffer[1] |= (byte)(_continue ? 0x40 : 0x00);
-            EndianUtilities.WriteBytesBigEndian(lun, buffer, 8);
-            EndianUtilities.WriteBytesBigEndian(_targetTransferTag, buffer, 20);
-            EndianUtilities.WriteBytesBigEndian(_commandSequenceNumber, buffer, 24);
-            EndianUtilities.WriteBytesBigEndian(_expectedStatusSequenceNumber, buffer, 28);
-            Array.Copy(data, offset, buffer, 48, count);
-            return buffer;
-        }
+        var buffer = new byte[MathUtilities.RoundUp(48 + count, 4)];
+        _basicHeader.WriteTo(buffer, 0);
+        buffer[1] |= (byte)(_continue ? 0x40 : 0x00);
+        EndianUtilities.WriteBytesBigEndian(lun, buffer, 8);
+        EndianUtilities.WriteBytesBigEndian(_targetTransferTag, buffer, 20);
+        EndianUtilities.WriteBytesBigEndian(_commandSequenceNumber, buffer, 24);
+        EndianUtilities.WriteBytesBigEndian(_expectedStatusSequenceNumber, buffer, 28);
+        Array.Copy(data, offset, buffer, 48, count);
+        return buffer;
     }
 }

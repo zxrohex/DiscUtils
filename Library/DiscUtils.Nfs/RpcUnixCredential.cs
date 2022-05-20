@@ -22,74 +22,73 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+/// <summary>
+/// RPC credentials used for accessing an access-controlled server.
+/// </summary>
+/// <remarks>Note there is no server-side authentication with these credentials,
+/// instead the client is assumed to be trusted.</remarks>
+public sealed class RpcUnixCredential : RpcCredentials
 {
     /// <summary>
-    /// RPC credentials used for accessing an access-controlled server.
+    /// Default credentials (nobody).
     /// </summary>
-    /// <remarks>Note there is no server-side authentication with these credentials,
-    /// instead the client is assumed to be trusted.</remarks>
-    public sealed class RpcUnixCredential : RpcCredentials
+    /// <remarks>
+    /// There is no standard UID/GID for nobody.  This default credential
+    /// assumes 65534 for both the user and group.
+    /// </remarks>
+    public static readonly RpcUnixCredential Default = new RpcUnixCredential(65534, 65534);
+
+    private readonly int _gid;
+    private readonly int[] _gids;
+
+    private readonly string _machineName;
+    private readonly int _uid;
+
+    /// <summary>
+    /// Initializes a new instance of the RpcUnixCredential class.
+    /// </summary>
+    /// <param name="user">The user's unique id (UID).</param>
+    /// <param name="primaryGroup">The user's primary group id (GID).</param>
+    public RpcUnixCredential(int user, int primaryGroup)
+        : this(user, primaryGroup, Array.Empty<int>()) {}
+
+    /// <summary>
+    /// Initializes a new instance of the RpcUnixCredential class.
+    /// </summary>
+    /// <param name="user">The user's unique id (UID).</param>
+    /// <param name="primaryGroup">The user's primary group id (GID).</param>
+    /// <param name="groups">The user's supplementary group ids.</param>
+    public RpcUnixCredential(int user, int primaryGroup, int[] groups)
     {
-        /// <summary>
-        /// Default credentials (nobody).
-        /// </summary>
-        /// <remarks>
-        /// There is no standard UID/GID for nobody.  This default credential
-        /// assumes 65534 for both the user and group.
-        /// </remarks>
-        public static readonly RpcUnixCredential Default = new RpcUnixCredential(65534, 65534);
+        _machineName = Environment.MachineName;
+        _uid = user;
+        _gid = primaryGroup;
+        _gids = groups;
+    }
 
-        private readonly int _gid;
-        private readonly int[] _gids;
+    internal override RpcAuthFlavour AuthFlavour
+    {
+        get { return RpcAuthFlavour.Unix; }
+    }
 
-        private readonly string _machineName;
-        private readonly int _uid;
-
-        /// <summary>
-        /// Initializes a new instance of the RpcUnixCredential class.
-        /// </summary>
-        /// <param name="user">The user's unique id (UID).</param>
-        /// <param name="primaryGroup">The user's primary group id (GID).</param>
-        public RpcUnixCredential(int user, int primaryGroup)
-            : this(user, primaryGroup, new int[] { }) {}
-
-        /// <summary>
-        /// Initializes a new instance of the RpcUnixCredential class.
-        /// </summary>
-        /// <param name="user">The user's unique id (UID).</param>
-        /// <param name="primaryGroup">The user's primary group id (GID).</param>
-        /// <param name="groups">The user's supplementary group ids.</param>
-        public RpcUnixCredential(int user, int primaryGroup, int[] groups)
-        {
-            _machineName = Environment.MachineName;
-            _uid = user;
-            _gid = primaryGroup;
-            _gids = groups;
-        }
-
-        internal override RpcAuthFlavour AuthFlavour
-        {
-            get { return RpcAuthFlavour.Unix; }
-        }
-
-        internal override void Write(XdrDataWriter writer)
+    internal override void Write(XdrDataWriter writer)
+    {
+        writer.Write(0);
+        writer.Write(_machineName);
+        writer.Write(_uid);
+        writer.Write(_gid);
+        if (_gids == null)
         {
             writer.Write(0);
-            writer.Write(_machineName);
-            writer.Write(_uid);
-            writer.Write(_gid);
-            if (_gids == null)
+        }
+        else
+        {
+            writer.Write(_gids.Length);
+            for (var i = 0; i < _gids.Length; ++i)
             {
-                writer.Write(0);
-            }
-            else
-            {
-                writer.Write(_gids.Length);
-                for (int i = 0; i < _gids.Length; ++i)
-                {
-                    writer.Write(_gids[i]);
-                }
+                writer.Write(_gids[i]);
             }
         }
     }

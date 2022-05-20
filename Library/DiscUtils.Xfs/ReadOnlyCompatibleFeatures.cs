@@ -20,38 +20,37 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+
+/// <summary>
+/// Feature flags for features backwards compatible with read-only mounting.
+/// </summary>
+[Flags]
+internal enum ReadOnlyCompatibleFeatures : uint
 {
-    using System;
+    /// <summary>
+    /// Free inode B+tree. Each allocation group contains a
+    /// B+tree to track inode chunks containing free inodes.
+    /// This is a performance optimization to reduce the
+    /// time required to allocate inodes.
+    /// </summary>
+    FINOBT = (1 << 0),
 
     /// <summary>
-    /// Feature flags for features backwards compatible with read-only mounting.
+    /// Reverse mapping B+tree. Each allocation group
+    /// contains a B+tree containing records mapping AG
+    /// blocks to their owners.
     /// </summary>
-    [Flags]
-    internal enum ReadOnlyCompatibleFeatures : uint
-    {
-        /// <summary>
-        /// Free inode B+tree. Each allocation group contains a
-        /// B+tree to track inode chunks containing free inodes.
-        /// This is a performance optimization to reduce the
-        /// time required to allocate inodes.
-        /// </summary>
-        FINOBT = (1 << 0),
+    RMAPBT = (1 << 1),
 
-        /// <summary>
-        /// Reverse mapping B+tree. Each allocation group
-        /// contains a B+tree containing records mapping AG
-        /// blocks to their owners.
-        /// </summary>
-        RMAPBT = (1 << 1),
+    /// <summary>
+    /// Reference count B+tree. Each allocation group
+    /// contains a B+tree to track the reference counts of AG
+    /// blocks. This enables files to share data blocks safely.
+    /// </summary>
+    REFLINK = (1 << 2),
 
-        /// <summary>
-        /// Reference count B+tree. Each allocation group
-        /// contains a B+tree to track the reference counts of AG
-        /// blocks. This enables files to share data blocks safely.
-        /// </summary>
-        REFLINK = (1 << 2),
-
-        ALL = FINOBT | RMAPBT | REFLINK,
-    }
+    ALL = FINOBT | RMAPBT | REFLINK,
 }

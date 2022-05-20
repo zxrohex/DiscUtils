@@ -20,49 +20,48 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Compression
+namespace DiscUtils.Compression;
+
+internal class MoveToFront
 {
-    internal class MoveToFront
+    private readonly byte[] _buffer;
+
+    public MoveToFront()
+        : this(256, false) {}
+
+    public MoveToFront(int size, bool autoInit)
     {
-        private readonly byte[] _buffer;
+        _buffer = new byte[size];
 
-        public MoveToFront()
-            : this(256, false) {}
-
-        public MoveToFront(int size, bool autoInit)
+        if (autoInit)
         {
-            _buffer = new byte[size];
-
-            if (autoInit)
+            for (byte i = 0; i < size; ++i)
             {
-                for (byte i = 0; i < size; ++i)
-                {
-                    _buffer[i] = i;
-                }
+                _buffer[i] = i;
             }
         }
+    }
 
-        public byte Head
+    public byte Head
+    {
+        get { return _buffer[0]; }
+    }
+
+    public void Set(int pos, byte val)
+    {
+        _buffer[pos] = val;
+    }
+
+    public byte GetAndMove(int pos)
+    {
+        var val = _buffer[pos];
+
+        for (var i = pos; i > 0; --i)
         {
-            get { return _buffer[0]; }
+            _buffer[i] = _buffer[i - 1];
         }
 
-        public void Set(int pos, byte val)
-        {
-            _buffer[pos] = val;
-        }
-
-        public byte GetAndMove(int pos)
-        {
-            byte val = _buffer[pos];
-
-            for (int i = pos; i > 0; --i)
-            {
-                _buffer[i] = _buffer[i - 1];
-            }
-
-            _buffer[0] = val;
-            return val;
-        }
+        _buffer[0] = val;
+        return val;
     }
 }

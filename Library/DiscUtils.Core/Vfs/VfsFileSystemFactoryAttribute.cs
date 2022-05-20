@@ -22,11 +22,10 @@
 
 using System;
 
-namespace DiscUtils.Vfs
-{
-    /// <summary>
-    /// Attribute identifying file system factory classes.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Class)]
-    public sealed class VfsFileSystemFactoryAttribute : Attribute {}
-}
+namespace DiscUtils.Vfs;
+
+/// <summary>
+/// Attribute identifying file system factory classes.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class VfsFileSystemFactoryAttribute : Attribute {}

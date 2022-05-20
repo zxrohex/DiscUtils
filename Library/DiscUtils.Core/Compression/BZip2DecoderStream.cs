@@ -31,421 +31,420 @@ using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Compression
+namespace DiscUtils.Compression;
+
+/// <summary>
+/// Implementation of a BZip2 decoder.
+/// </summary>
+public sealed class BZip2DecoderStream : Stream
 {
+    private readonly BitStream _bitstream;
+
+    private readonly byte[] _blockBuffer;
+    private uint _blockCrc;
+    private readonly BZip2BlockDecoder _blockDecoder;
+    private Crc32 _calcBlockCrc;
+    private uint _calcCompoundCrc;
+    private uint _compoundCrc;
+    private Stream _compressedStream;
+
+    private bool _eof;
+    private readonly Ownership _ownsCompressed;
+    private long _position;
+    private BZip2RleStream _rleStream;
+
     /// <summary>
-    /// Implementation of a BZip2 decoder.
+    /// Initializes a new instance of the BZip2DecoderStream class.
     /// </summary>
-    public sealed class BZip2DecoderStream : Stream
+    /// <param name="stream">The compressed input stream.</param>
+    /// <param name="ownsStream">Whether ownership of stream passes to the new instance.</param>
+    public BZip2DecoderStream(Stream stream, Ownership ownsStream)
     {
-        private readonly BitStream _bitstream;
+        _compressedStream = stream;
+        _ownsCompressed = ownsStream;
 
-        private readonly byte[] _blockBuffer;
-        private uint _blockCrc;
-        private readonly BZip2BlockDecoder _blockDecoder;
-        private Crc32 _calcBlockCrc;
-        private uint _calcCompoundCrc;
-        private uint _compoundCrc;
-        private Stream _compressedStream;
+        _bitstream = new BigEndianBitStream(new BufferedStream(stream));
 
-        private bool _eof;
-        private readonly Ownership _ownsCompressed;
-        private long _position;
-        private BZip2RleStream _rleStream;
-
-        /// <summary>
-        /// Initializes a new instance of the BZip2DecoderStream class.
-        /// </summary>
-        /// <param name="stream">The compressed input stream.</param>
-        /// <param name="ownsStream">Whether ownership of stream passes to the new instance.</param>
-        public BZip2DecoderStream(Stream stream, Ownership ownsStream)
+        // The Magic BZh
+        Span<byte> magic = stackalloc byte[3];
+        magic[0] = (byte)_bitstream.Read(8);
+        magic[1] = (byte)_bitstream.Read(8);
+        magic[2] = (byte)_bitstream.Read(8);
+        if (magic[0] != 0x42 || magic[1] != 0x5A || magic[2] != 0x68)
         {
-            _compressedStream = stream;
-            _ownsCompressed = ownsStream;
+            throw new InvalidDataException("Bad magic at start of stream");
+        }
 
-            _bitstream = new BigEndianBitStream(new BufferedStream(stream));
+        // The size of the decompression blocks in multiples of 100,000
+        var blockSize = (int)_bitstream.Read(8) - 0x30;
+        if (blockSize < 1 || blockSize > 9)
+        {
+            throw new InvalidDataException("Unexpected block size in header: " + blockSize);
+        }
 
-            // The Magic BZh
-            byte[] magic = new byte[3];
-            magic[0] = (byte)_bitstream.Read(8);
-            magic[1] = (byte)_bitstream.Read(8);
-            magic[2] = (byte)_bitstream.Read(8);
-            if (magic[0] != 0x42 || magic[1] != 0x5A || magic[2] != 0x68)
+        blockSize *= 100000;
+
+        _rleStream = new BZip2RleStream();
+        _blockDecoder = new BZip2BlockDecoder(blockSize);
+        _blockBuffer = new byte[blockSize];
+
+        if (ReadBlock() == 0)
+        {
+            _eof = true;
+        }
+    }
+
+    /// <summary>
+    /// Gets an indication of whether read access is permitted.
+    /// </summary>
+    public override bool CanRead
+    {
+        get { return true; }
+    }
+
+    /// <summary>
+    /// Gets an indication of whether seeking is permitted.
+    /// </summary>
+    public override bool CanSeek
+    {
+        get { return false; }
+    }
+
+    /// <summary>
+    /// Gets an indication of whether write access is permitted.
+    /// </summary>
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
+
+    /// <summary>
+    /// Gets the length of the stream (the capacity of the underlying buffer).
+    /// </summary>
+    public override long Length
+    {
+        get { throw new NotSupportedException(); }
+    }
+
+    /// <summary>
+    /// Gets and sets the current position within the stream.
+    /// </summary>
+    public override long Position
+    {
+        get { return _position; }
+        set { throw new NotSupportedException(); }
+    }
+
+    /// <summary>
+    /// Flushes all data to the underlying storage.
+    /// </summary>
+    public override void Flush()
+    {
+        throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Reads a number of bytes from the stream.
+    /// </summary>
+    /// <param name="buffer">The destination buffer.</param>
+    /// <param name="offset">The start offset within the destination buffer.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The number of bytes read.</returns>
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        if (buffer == null)
+        {
+            throw new ArgumentNullException(nameof(buffer));
+        }
+
+        if (buffer.Length < offset + count)
+        {
+            throw new ArgumentException("Buffer smaller than declared");
+        }
+
+        if (offset < 0)
+        {
+            throw new ArgumentException("Offset less than zero", nameof(offset));
+        }
+
+        if (count < 0)
+        {
+            throw new ArgumentException("Count less than zero", nameof(count));
+        }
+
+        if (_eof)
+        {
+            return 0;
+        }
+
+        if (count == 0)
+        {
+            return 0;
+        }
+
+        var numRead = _rleStream.Read(buffer, offset, count);
+        if (numRead == 0)
+        {
+            // If there was an existing block, check it's crc.
+            if (_calcBlockCrc != null)
             {
-                throw new InvalidDataException("Bad magic at start of stream");
+                if (_blockCrc != _calcBlockCrc.Value)
+                {
+                    throw new InvalidDataException("Decompression failed - block CRC mismatch");
+                }
+
+                _calcCompoundCrc = ((_calcCompoundCrc << 1) | (_calcCompoundCrc >> 31)) ^ _blockCrc;
             }
 
-            // The size of the decompression blocks in multiples of 100,000
-            int blockSize = (int)_bitstream.Read(8) - 0x30;
-            if (blockSize < 1 || blockSize > 9)
-            {
-                throw new InvalidDataException("Unexpected block size in header: " + blockSize);
-            }
-
-            blockSize *= 100000;
-
-            _rleStream = new BZip2RleStream();
-            _blockDecoder = new BZip2BlockDecoder(blockSize);
-            _blockBuffer = new byte[blockSize];
-
+            // Read a new block (if any), if none - check the overall CRC before returning
             if (ReadBlock() == 0)
             {
                 _eof = true;
-            }
-        }
+                if (_calcCompoundCrc != _compoundCrc)
+                {
+                    throw new InvalidDataException("Decompression failed - compound CRC");
+                }
 
-        /// <summary>
-        /// Gets an indication of whether read access is permitted.
-        /// </summary>
-        public override bool CanRead
-        {
-            get { return true; }
-        }
-
-        /// <summary>
-        /// Gets an indication of whether seeking is permitted.
-        /// </summary>
-        public override bool CanSeek
-        {
-            get { return false; }
-        }
-
-        /// <summary>
-        /// Gets an indication of whether write access is permitted.
-        /// </summary>
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
-
-        /// <summary>
-        /// Gets the length of the stream (the capacity of the underlying buffer).
-        /// </summary>
-        public override long Length
-        {
-            get { throw new NotSupportedException(); }
-        }
-
-        /// <summary>
-        /// Gets and sets the current position within the stream.
-        /// </summary>
-        public override long Position
-        {
-            get { return _position; }
-            set { throw new NotSupportedException(); }
-        }
-
-        /// <summary>
-        /// Flushes all data to the underlying storage.
-        /// </summary>
-        public override void Flush()
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <summary>
-        /// Reads a number of bytes from the stream.
-        /// </summary>
-        /// <param name="buffer">The destination buffer.</param>
-        /// <param name="offset">The start offset within the destination buffer.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The number of bytes read.</returns>
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
-            if (buffer.Length < offset + count)
-            {
-                throw new ArgumentException("Buffer smaller than declared");
-            }
-
-            if (offset < 0)
-            {
-                throw new ArgumentException("Offset less than zero", nameof(offset));
-            }
-
-            if (count < 0)
-            {
-                throw new ArgumentException("Count less than zero", nameof(count));
-            }
-
-            if (_eof)
-            {
                 return 0;
             }
 
-            if (count == 0)
-            {
-                return 0;
-            }
-
-            int numRead = _rleStream.Read(buffer, offset, count);
-            if (numRead == 0)
-            {
-                // If there was an existing block, check it's crc.
-                if (_calcBlockCrc != null)
-                {
-                    if (_blockCrc != _calcBlockCrc.Value)
-                    {
-                        throw new InvalidDataException("Decompression failed - block CRC mismatch");
-                    }
-
-                    _calcCompoundCrc = ((_calcCompoundCrc << 1) | (_calcCompoundCrc >> 31)) ^ _blockCrc;
-                }
-
-                // Read a new block (if any), if none - check the overall CRC before returning
-                if (ReadBlock() == 0)
-                {
-                    _eof = true;
-                    if (_calcCompoundCrc != _compoundCrc)
-                    {
-                        throw new InvalidDataException("Decompression failed - compound CRC");
-                    }
-
-                    return 0;
-                }
-
-                numRead = _rleStream.Read(buffer, offset, count);
-            }
-
-            _calcBlockCrc.Process(buffer, offset, numRead);
-
-            // Pre-read next block, so a client that knows the decompressed length will still
-            // have the overall CRC calculated.
-            if (_rleStream.AtEof)
-            {
-                // If there was an existing block, check it's crc.
-                if (_calcBlockCrc != null)
-                {
-                    if (_blockCrc != _calcBlockCrc.Value)
-                    {
-                        throw new InvalidDataException("Decompression failed - block CRC mismatch");
-                    }
-                }
-
-                _calcCompoundCrc = ((_calcCompoundCrc << 1) | (_calcCompoundCrc >> 31)) ^ _blockCrc;
-                if (ReadBlock() == 0)
-                {
-                    _eof = true;
-                    if (_calcCompoundCrc != _compoundCrc)
-                    {
-                        throw new InvalidDataException("Decompression failed - compound CRC mismatch");
-                    }
-
-                    return numRead;
-                }
-            }
-
-            _position += numRead;
-            return numRead;
+            numRead = _rleStream.Read(buffer, offset, count);
         }
+
+        _calcBlockCrc.Process(buffer, offset, numRead);
+
+        // Pre-read next block, so a client that knows the decompressed length will still
+        // have the overall CRC calculated.
+        if (_rleStream.AtEof)
+        {
+            // If there was an existing block, check it's crc.
+            if (_calcBlockCrc != null)
+            {
+                if (_blockCrc != _calcBlockCrc.Value)
+                {
+                    throw new InvalidDataException("Decompression failed - block CRC mismatch");
+                }
+            }
+
+            _calcCompoundCrc = ((_calcCompoundCrc << 1) | (_calcCompoundCrc >> 31)) ^ _blockCrc;
+            if (ReadBlock() == 0)
+            {
+                _eof = true;
+                if (_calcCompoundCrc != _compoundCrc)
+                {
+                    throw new InvalidDataException("Decompression failed - compound CRC mismatch");
+                }
+
+                return numRead;
+            }
+        }
+
+        _position += numRead;
+        return numRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
-            ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+    public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+        ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
 
-        public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
+    public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
 
-        public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (buffer == null)
         {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
+            throw new ArgumentNullException(nameof(buffer));
+        }
 
-            if (buffer.Length < offset + count)
-            {
-                throw new ArgumentException("Buffer smaller than declared");
-            }
+        if (buffer.Length < offset + count)
+        {
+            throw new ArgumentException("Buffer smaller than declared");
+        }
 
-            if (offset < 0)
-            {
-                throw new ArgumentException("Offset less than zero", nameof(offset));
-            }
+        if (offset < 0)
+        {
+            throw new ArgumentException("Offset less than zero", nameof(offset));
+        }
 
-            if (count < 0)
-            {
-                throw new ArgumentException("Count less than zero", nameof(count));
-            }
+        if (count < 0)
+        {
+            throw new ArgumentException("Count less than zero", nameof(count));
+        }
 
-            if (_eof)
-            {
-                return 0;
-            }
+        if (_eof)
+        {
+            return 0;
+        }
 
-            if (count == 0)
-            {
-                return 0;
-            }
+        if (count == 0)
+        {
+            return 0;
+        }
 
-            int numRead = await _rleStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-            if (numRead == 0)
+        var numRead = await _rleStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        if (numRead == 0)
+        {
+            // If there was an existing block, check it's crc.
+            if (_calcBlockCrc != null)
             {
-                // If there was an existing block, check it's crc.
-                if (_calcBlockCrc != null)
+                if (_blockCrc != _calcBlockCrc.Value)
                 {
-                    if (_blockCrc != _calcBlockCrc.Value)
-                    {
-                        throw new InvalidDataException("Decompression failed - block CRC mismatch");
-                    }
-
-                    _calcCompoundCrc = ((_calcCompoundCrc << 1) | (_calcCompoundCrc >> 31)) ^ _blockCrc;
-                }
-
-                // Read a new block (if any), if none - check the overall CRC before returning
-                if (ReadBlock() == 0)
-                {
-                    _eof = true;
-                    if (_calcCompoundCrc != _compoundCrc)
-                    {
-                        throw new InvalidDataException("Decompression failed - compound CRC");
-                    }
-
-                    return 0;
-                }
-
-                numRead = await _rleStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-            }
-
-            _calcBlockCrc.Process(buffer, offset, numRead);
-
-            // Pre-read next block, so a client that knows the decompressed length will still
-            // have the overall CRC calculated.
-            if (_rleStream.AtEof)
-            {
-                // If there was an existing block, check it's crc.
-                if (_calcBlockCrc != null)
-                {
-                    if (_blockCrc != _calcBlockCrc.Value)
-                    {
-                        throw new InvalidDataException("Decompression failed - block CRC mismatch");
-                    }
+                    throw new InvalidDataException("Decompression failed - block CRC mismatch");
                 }
 
                 _calcCompoundCrc = ((_calcCompoundCrc << 1) | (_calcCompoundCrc >> 31)) ^ _blockCrc;
-                if (ReadBlock() == 0)
-                {
-                    _eof = true;
-                    if (_calcCompoundCrc != _compoundCrc)
-                    {
-                        throw new InvalidDataException("Decompression failed - compound CRC mismatch");
-                    }
+            }
 
-                    return numRead;
+            // Read a new block (if any), if none - check the overall CRC before returning
+            if (ReadBlock() == 0)
+            {
+                _eof = true;
+                if (_calcCompoundCrc != _compoundCrc)
+                {
+                    throw new InvalidDataException("Decompression failed - compound CRC");
+                }
+
+                return 0;
+            }
+
+            numRead = await _rleStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        }
+
+        _calcBlockCrc.Process(buffer, offset, numRead);
+
+        // Pre-read next block, so a client that knows the decompressed length will still
+        // have the overall CRC calculated.
+        if (_rleStream.AtEof)
+        {
+            // If there was an existing block, check it's crc.
+            if (_calcBlockCrc != null)
+            {
+                if (_blockCrc != _calcBlockCrc.Value)
+                {
+                    throw new InvalidDataException("Decompression failed - block CRC mismatch");
                 }
             }
 
-            _position += numRead;
-            return numRead;
+            _calcCompoundCrc = ((_calcCompoundCrc << 1) | (_calcCompoundCrc >> 31)) ^ _blockCrc;
+            if (ReadBlock() == 0)
+            {
+                _eof = true;
+                if (_calcCompoundCrc != _compoundCrc)
+                {
+                    throw new InvalidDataException("Decompression failed - compound CRC mismatch");
+                }
+
+                return numRead;
+            }
         }
+
+        _position += numRead;
+        return numRead;
+    }
 
 #endif
 
-        /// <summary>
-        /// Changes the current stream position.
-        /// </summary>
-        /// <param name="offset">The origin-relative stream position.</param>
-        /// <param name="origin">The origin for the stream position.</param>
-        /// <returns>The new stream position.</returns>
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            throw new NotSupportedException();
-        }
+    /// <summary>
+    /// Changes the current stream position.
+    /// </summary>
+    /// <param name="offset">The origin-relative stream position.</param>
+    /// <param name="origin">The origin for the stream position.</param>
+    /// <returns>The new stream position.</returns>
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        throw new NotSupportedException();
+    }
 
-        /// <summary>
-        /// Sets the length of the stream (the underlying buffer's capacity).
-        /// </summary>
-        /// <param name="value">The new length of the stream.</param>
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
+    /// <summary>
+    /// Sets the length of the stream (the underlying buffer's capacity).
+    /// </summary>
+    /// <param name="value">The new length of the stream.</param>
+    public override void SetLength(long value)
+    {
+        throw new NotSupportedException();
+    }
 
-        /// <summary>
-        /// Writes a buffer to the stream.
-        /// </summary>
-        /// <param name="buffer">The buffer to write.</param>
-        /// <param name="offset">The starting offset within buffer.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
+    /// <summary>
+    /// Writes a buffer to the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to write.</param>
+    /// <param name="offset">The starting offset within buffer.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
 
-        /// <summary>
-        /// Releases underlying resources.
-        /// </summary>
-        /// <param name="disposing">Whether this method is called from Dispose.</param>
-        protected override void Dispose(bool disposing)
+    /// <summary>
+    /// Releases underlying resources.
+    /// </summary>
+    /// <param name="disposing">Whether this method is called from Dispose.</param>
+    protected override void Dispose(bool disposing)
+    {
+        try
         {
-            try
+            if (disposing)
             {
-                if (disposing)
+                if (_compressedStream != null && _ownsCompressed == Ownership.Dispose)
                 {
-                    if (_compressedStream != null && _ownsCompressed == Ownership.Dispose)
-                    {
-                        _compressedStream.Dispose();
-                    }
+                    _compressedStream.Dispose();
+                }
 
-                    _compressedStream = null;
+                _compressedStream = null;
 
-                    if (_rleStream != null)
-                    {
-                        _rleStream.Dispose();
-                        _rleStream = null;
-                    }
+                if (_rleStream != null)
+                {
+                    _rleStream.Dispose();
+                    _rleStream = null;
                 }
             }
-            finally
-            {
-                base.Dispose(disposing);
-            }
         }
-
-        private int ReadBlock()
+        finally
         {
-            ulong marker = ReadMarker();
-            if (marker == 0x314159265359)
-            {
-                int blockSize = _blockDecoder.Process(_bitstream, _blockBuffer, 0);
-                _rleStream.Reset(_blockBuffer, 0, blockSize);
-                _blockCrc = _blockDecoder.Crc;
-                _calcBlockCrc = new Crc32BigEndian(Crc32Algorithm.Common);
-                return blockSize;
-            }
-            if (marker == 0x177245385090)
-            {
-                _compoundCrc = ReadUint();
-                return 0;
-            }
-            throw new InvalidDataException("Found invalid marker in stream");
+            base.Dispose(disposing);
         }
+    }
 
-        private uint ReadUint()
+    private int ReadBlock()
+    {
+        var marker = ReadMarker();
+        if (marker == 0x314159265359)
         {
-            uint val = 0;
-
-            for (int i = 0; i < 4; ++i)
-            {
-                val = (val << 8) | _bitstream.Read(8);
-            }
-
-            return val;
+            var blockSize = _blockDecoder.Process(_bitstream, _blockBuffer, 0);
+            _rleStream.Reset(_blockBuffer, 0, blockSize);
+            _blockCrc = _blockDecoder.Crc;
+            _calcBlockCrc = new Crc32BigEndian(Crc32Algorithm.Common);
+            return blockSize;
         }
-
-        private ulong ReadMarker()
+        if (marker == 0x177245385090)
         {
-            ulong marker = 0;
-
-            for (int i = 0; i < 6; ++i)
-            {
-                marker = (marker << 8) | _bitstream.Read(8);
-            }
-
-            return marker;
+            _compoundCrc = ReadUint();
+            return 0;
         }
+        throw new InvalidDataException("Found invalid marker in stream");
+    }
+
+    private uint ReadUint()
+    {
+        uint val = 0;
+
+        for (var i = 0; i < 4; ++i)
+        {
+            val = (val << 8) | _bitstream.Read(8);
+        }
+
+        return val;
+    }
+
+    private ulong ReadMarker()
+    {
+        ulong marker = 0;
+
+        for (var i = 0; i < 6; ++i)
+        {
+            marker = (marker << 8) | _bitstream.Read(8);
+        }
+
+        return marker;
     }
 }

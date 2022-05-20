@@ -22,40 +22,39 @@
 
 using System;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class ScsiRawCommand : ScsiCommand
 {
-    internal class ScsiRawCommand : ScsiCommand
+    private readonly byte[] _buffer;
+    private readonly int _length;
+    private readonly int _offset;
+
+    public ScsiRawCommand(ulong targetLun, byte[] buffer, int offset, int length)
+        : base(targetLun)
     {
-        private readonly byte[] _buffer;
-        private readonly int _length;
-        private readonly int _offset;
+        _buffer = buffer;
+        _offset = offset;
+        _length = length;
+    }
 
-        public ScsiRawCommand(ulong targetLun, byte[] buffer, int offset, int length)
-            : base(targetLun)
-        {
-            _buffer = buffer;
-            _offset = offset;
-            _length = length;
-        }
+    public override int Size
+    {
+        get { return _length; }
+    }
 
-        public override int Size
-        {
-            get { return _length; }
-        }
+    public override TaskAttributes TaskAttributes
+    {
+        get { return TaskAttributes.Simple; }
+    }
 
-        public override TaskAttributes TaskAttributes
-        {
-            get { return TaskAttributes.Simple; }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            Array.Copy(_buffer, _offset, buffer, offset, _length);
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        Array.Copy(_buffer, _offset, buffer, offset, _length);
     }
 }

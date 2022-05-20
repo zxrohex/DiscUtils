@@ -3,7 +3,7 @@
   <!-- Package related stuff -->
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <TargetFrameworks>net45;net48;net6.0</TargetFrameworks>
+    <TargetFrameworks>net46;net48;net6.0</TargetFrameworks>
     <RollForward>LatestMajor</RollForward>
     <LangVersion>Latest</LangVersion>
     <SignAssembly>true</SignAssembly>

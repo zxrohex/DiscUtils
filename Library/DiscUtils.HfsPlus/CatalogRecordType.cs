@@ -20,14 +20,13 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal enum CatalogRecordType : short
 {
-    internal enum CatalogRecordType : short
-    {
-        None = 0x0000,
-        FolderRecord = 0x0001,
-        FileRecord = 0x0002,
-        FolderThreadRecord = 0x0003,
-        FileThreadRecord = 0x0004
-    }
+    None = 0x0000,
+    FolderRecord = 0x0001,
+    FileRecord = 0x0002,
+    FolderThreadRecord = 0x0003,
+    FileThreadRecord = 0x0004
 }

@@ -20,35 +20,34 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class BooleanElementValue : ElementValue
 {
-    internal class BooleanElementValue : ElementValue
+    private readonly bool _value;
+
+    public BooleanElementValue(byte[] value)
     {
-        private readonly bool _value;
+        _value = value[0] != 0;
+    }
 
-        public BooleanElementValue(byte[] value)
-        {
-            _value = value[0] != 0;
-        }
+    public BooleanElementValue(bool value)
+    {
+        _value = value;
+    }
 
-        public BooleanElementValue(bool value)
-        {
-            _value = value;
-        }
+    public override ElementFormat Format
+    {
+        get { return ElementFormat.Boolean; }
+    }
 
-        public override ElementFormat Format
-        {
-            get { return ElementFormat.Boolean; }
-        }
+    public override string ToString()
+    {
+        return _value ? "True" : "False";
+    }
 
-        public override string ToString()
-        {
-            return _value ? "True" : "False";
-        }
-
-        internal byte[] GetBytes()
-        {
-            return new[] { _value ? (byte)1 : (byte)0 };
-        }
+    internal byte[] GetBytes()
+    {
+        return new[] { _value ? (byte)1 : (byte)0 };
     }
 }

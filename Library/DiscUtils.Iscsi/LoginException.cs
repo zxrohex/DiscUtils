@@ -22,52 +22,51 @@
 
 using System;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+using System.Runtime.Serialization;
+
+/// <summary>
+/// Exception thrown when an authentication exception occurs.
+/// </summary>
+[Serializable]
+public class LoginException : IscsiException
 {
-    using System.Runtime.Serialization;
+    /// <summary>
+    /// Initializes a new instance of the LoginException class.
+    /// </summary>
+    public LoginException() {}
 
     /// <summary>
-    /// Exception thrown when an authentication exception occurs.
+    /// Initializes a new instance of the LoginException class.
     /// </summary>
-    [Serializable]
-    public class LoginException : IscsiException
+    /// <param name="message">The reason for the exception.</param>
+    public LoginException(string message)
+        : base(message) {}
+
+    /// <summary>
+    /// Initializes a new instance of the LoginException class.
+    /// </summary>
+    /// <param name="message">The reason for the exception.</param>
+    /// <param name="innerException">The inner exception.</param>
+    public LoginException(string message, Exception innerException)
+        : base(message, innerException) {}
+
+    /// <summary>
+    /// Initializes a new instance of the LoginException class.
+    /// </summary>
+    /// <param name="message">The reason for the exception.</param>
+    /// <param name="code">The target-indicated reason for the exception.</param>
+    public LoginException(string message, LoginStatusCode code)
+        : base("iSCSI login failure (" + code + "):" + message) {}
+
+    /// <summary>
+    /// Initializes a new instance of the LoginException class.
+    /// </summary>
+    /// <param name="info">The serialization info.</param>
+    /// <param name="context">Ther context.</param>
+    protected LoginException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
     {
-        /// <summary>
-        /// Initializes a new instance of the LoginException class.
-        /// </summary>
-        public LoginException() {}
-
-        /// <summary>
-        /// Initializes a new instance of the LoginException class.
-        /// </summary>
-        /// <param name="message">The reason for the exception.</param>
-        public LoginException(string message)
-            : base(message) {}
-
-        /// <summary>
-        /// Initializes a new instance of the LoginException class.
-        /// </summary>
-        /// <param name="message">The reason for the exception.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public LoginException(string message, Exception innerException)
-            : base(message, innerException) {}
-
-        /// <summary>
-        /// Initializes a new instance of the LoginException class.
-        /// </summary>
-        /// <param name="message">The reason for the exception.</param>
-        /// <param name="code">The target-indicated reason for the exception.</param>
-        public LoginException(string message, LoginStatusCode code)
-            : base("iSCSI login failure (" + code + "):" + message) {}
-
-        /// <summary>
-        /// Initializes a new instance of the LoginException class.
-        /// </summary>
-        /// <param name="info">The serialization info.</param>
-        /// <param name="context">Ther context.</param>
-        protected LoginException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
     }
 }

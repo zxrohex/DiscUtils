@@ -21,33 +21,35 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal class FragmentRecord : IByteArraySerializable
 {
-    internal class FragmentRecord : IByteArraySerializable
+    public const int RecordSize = 16;
+    public int CompressedSize;
+
+    public long StartBlock;
+
+    public int Size
     {
-        public const int RecordSize = 16;
-        public int CompressedSize;
+        get { return RecordSize; }
+    }
 
-        public long StartBlock;
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        StartBlock = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0);
+        CompressedSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8);
+        return RecordSize;
+    }
 
-        public int Size
-        {
-            get { return RecordSize; }
-        }
+    public void WriteTo(byte[] buffer, int offset) => WriteTo(buffer.AsSpan(offset));
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            StartBlock = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0);
-            CompressedSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8);
-            return RecordSize;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer, offset + 0);
-            EndianUtilities.WriteBytesLittleEndian(CompressedSize, buffer, offset + 8);
-            EndianUtilities.WriteBytesLittleEndian(0, buffer, offset + 12);
-        }
+    public void WriteTo(Span<byte> buffer)
+    {
+        EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer);
+        EndianUtilities.WriteBytesLittleEndian(CompressedSize, buffer.Slice(8));
+        EndianUtilities.WriteBytesLittleEndian(0, buffer.Slice(12));
     }
 }

@@ -20,88 +20,87 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+
+[Flags]
+internal enum InodeFlags : ushort
 {
-    using System;
-    
-    [Flags]
-    internal enum InodeFlags : ushort
-    {
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// The inode's data is located on the real-time device.
-        /// </summary>
-        Realtime = (1 << 0),
+    /// <summary>
+    /// The inode's data is located on the real-time device.
+    /// </summary>
+    Realtime = (1 << 0),
 
-        /// <summary>
-        /// The inode's extents have been preallocated.
-        /// </summary>
-        Prealloc = (1 << 1),
+    /// <summary>
+    /// The inode's extents have been preallocated.
+    /// </summary>
+    Prealloc = (1 << 1),
 
-        /// <summary>
-        /// Specifies the sb_rbmino uses the new real-time bitmap format
-        /// </summary>
-        NewRtBitmap = (1 << 2),
+    /// <summary>
+    /// Specifies the sb_rbmino uses the new real-time bitmap format
+    /// </summary>
+    NewRtBitmap = (1 << 2),
 
-        /// <summary>
-        /// Specifies the inode cannot be modified.
-        /// </summary>
-        Immutable = (1 << 3),
+    /// <summary>
+    /// Specifies the inode cannot be modified.
+    /// </summary>
+    Immutable = (1 << 3),
 
-        /// <summary>
-        /// The inode is in append only mode.
-        /// </summary>
-        Append = (1 << 4),
+    /// <summary>
+    /// The inode is in append only mode.
+    /// </summary>
+    Append = (1 << 4),
 
-        /// <summary>
-        /// The inode is written synchronously.
-        /// </summary>
-        Sync = (1 << 5),
+    /// <summary>
+    /// The inode is written synchronously.
+    /// </summary>
+    Sync = (1 << 5),
 
-        /// <summary>
-        /// The inode's di_atime is not updated.
-        /// </summary>
-        NoAtime = (1 << 6),
+    /// <summary>
+    /// The inode's di_atime is not updated.
+    /// </summary>
+    NoAtime = (1 << 6),
 
-        /// <summary>
-        /// Specifies the inode is to be ignored by xfsdump.
-        /// </summary>
-        NoDump = (1 << 7),
+    /// <summary>
+    /// Specifies the inode is to be ignored by xfsdump.
+    /// </summary>
+    NoDump = (1 << 7),
 
-        /// <summary>
-        /// For directory inodes, new inodes inherit the XFS_DIFLAG_REALTIME bit.
-        ///  </summary>
-        RtInherit = (1 << 8),
+    /// <summary>
+    /// For directory inodes, new inodes inherit the XFS_DIFLAG_REALTIME bit.
+    ///  </summary>
+    RtInherit = (1 << 8),
 
-        /// <summary>
-        /// For directory inodes, new inodes inherit the <see cref="Inode.ProjectId"/> value.
-        /// </summary>
-        ProjInherit = (1 << 9),
+    /// <summary>
+    /// For directory inodes, new inodes inherit the <see cref="Inode.ProjectId"/> value.
+    /// </summary>
+    ProjInherit = (1 << 9),
 
-        /// <summary>
-        /// For directory inodes, symlinks cannot be created.
-        /// </summary>
-        NoSymlinks = (1 << 10),
+    /// <summary>
+    /// For directory inodes, symlinks cannot be created.
+    /// </summary>
+    NoSymlinks = (1 << 10),
 
-        /// <summary>
-        /// Specifies the extent size for real-time files or a and extent size hint for regular files.
-        /// </summary>
-        ExtentSize = (1 << 11),
+    /// <summary>
+    /// Specifies the extent size for real-time files or a and extent size hint for regular files.
+    /// </summary>
+    ExtentSize = (1 << 11),
 
-        /// <summary>
-        /// For directory inodes, new inodes inherit the <see cref="Inode.ExtentSize"/> value.
-        /// </summary>
-        ExtentSizeInherit = (1 << 12),
+    /// <summary>
+    /// For directory inodes, new inodes inherit the <see cref="Inode.ExtentSize"/> value.
+    /// </summary>
+    ExtentSizeInherit = (1 << 12),
 
-        /// <summary>
-        /// Specifies the inode is to be ignored when defragmenting the filesystem.
-        /// </summary>
-        NoDefrag = (1 << 13),
+    /// <summary>
+    /// Specifies the inode is to be ignored when defragmenting the filesystem.
+    /// </summary>
+    NoDefrag = (1 << 13),
 
-        /// <summary>
-        /// use filestream allocator
-        /// </summary>
-        Filestream = (1 << 14)
-    }
+    /// <summary>
+    /// use filestream allocator
+    /// </summary>
+    Filestream = (1 << 14)
 }

@@ -27,272 +27,269 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Xva
-{
 #if NETSTANDARD || NETCOREAPP || NET461_OR_GREATER
-    internal class HashStreamCore : Stream
+internal class HashStreamCore : Stream
+{
+    private readonly IncrementalHash _hashAlg;
+    private readonly Ownership _ownWrapped;
+
+    private long _hashPos;
+    private Stream _wrapped;
+
+    public HashStreamCore(Stream wrapped, Ownership ownsWrapped, IncrementalHash hashAlg)
     {
-        private readonly IncrementalHash _hashAlg;
-        private readonly Ownership _ownWrapped;
+        _wrapped = wrapped;
+        _ownWrapped = ownsWrapped;
+        _hashAlg = hashAlg;
+    }
 
-        private long _hashPos;
-        private Stream _wrapped;
+    public override bool CanRead
+    {
+        get { return _wrapped.CanRead; }
+    }
 
-        public HashStreamCore(Stream wrapped, Ownership ownsWrapped, IncrementalHash hashAlg)
+    public override bool CanSeek
+    {
+        get { return _wrapped.CanSeek; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return _wrapped.CanWrite; }
+    }
+
+    public override long Length
+    {
+        get { return _wrapped.Length; }
+    }
+
+    public override long Position
+    {
+        get { return _wrapped.Position; }
+
+        set { _wrapped.Position = value; }
+    }
+
+    public override void Flush()
+    {
+        _wrapped.Flush();
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        if (Position != _hashPos)
         {
-            _wrapped = wrapped;
-            _ownWrapped = ownsWrapped;
-            _hashAlg = hashAlg;
+            throw new InvalidOperationException("Reads must be contiguous");
         }
 
-        public override bool CanRead
+        int numRead = _wrapped.Read(buffer, offset, count);
+
+        _hashAlg.AppendData(buffer, offset, numRead);
+        _hashPos += numRead;
+
+        return numRead;
+    }
+
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (Position != _hashPos)
         {
-            get { return _wrapped.CanRead; }
+            throw new InvalidOperationException("Reads must be contiguous");
         }
 
-        public override bool CanSeek
-        {
-            get { return _wrapped.CanSeek; }
-        }
+        int numRead = await _wrapped.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
 
-        public override bool CanWrite
-        {
-            get { return _wrapped.CanWrite; }
-        }
+        _hashAlg.AppendData(buffer, offset, numRead);
+        _hashPos += numRead;
 
-        public override long Length
-        {
-            get { return _wrapped.Length; }
-        }
-
-        public override long Position
-        {
-            get { return _wrapped.Position; }
-
-            set { _wrapped.Position = value; }
-        }
-
-        public override void Flush()
-        {
-            _wrapped.Flush();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (Position != _hashPos)
-            {
-                throw new InvalidOperationException("Reads must be contiguous");
-            }
-
-            int numRead = _wrapped.Read(buffer, offset, count);
-
-            _hashAlg.AppendData(buffer, offset, numRead);
-            _hashPos += numRead;
-
-            return numRead;
-        }
-
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            if (Position != _hashPos)
-            {
-                throw new InvalidOperationException("Reads must be contiguous");
-            }
-
-            int numRead = await _wrapped.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-
-            _hashAlg.AppendData(buffer, offset, numRead);
-            _hashPos += numRead;
-
-            return numRead;
-        }
+        return numRead;
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (Position != _hashPos)
         {
-            if (Position != _hashPos)
-            {
-                throw new InvalidOperationException("Reads must be contiguous");
-            }
-
-            int numRead = await _wrapped.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-
-            _hashAlg.AppendData(buffer.Span[..numRead]);
-            _hashPos += numRead;
-
-            return numRead;
+            throw new InvalidOperationException("Reads must be contiguous");
         }
 
-        public override int Read(Span<byte> buffer)
+        int numRead = await _wrapped.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+
+        _hashAlg.AppendData(buffer.Span[..numRead]);
+        _hashPos += numRead;
+
+        return numRead;
+    }
+
+    public override int Read(Span<byte> buffer)
+    {
+        if (Position != _hashPos)
         {
-            if (Position != _hashPos)
-            {
-                throw new InvalidOperationException("Reads must be contiguous");
-            }
-
-            int numRead = _wrapped.Read(buffer);
-
-            _hashAlg.AppendData(buffer[..numRead]);
-            _hashPos += numRead;
-
-            return numRead;
+            throw new InvalidOperationException("Reads must be contiguous");
         }
+
+        int numRead = _wrapped.Read(buffer);
+
+        _hashAlg.AppendData(buffer[..numRead]);
+        _hashPos += numRead;
+
+        return numRead;
+    }
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return _wrapped.Seek(offset, origin);
-        }
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        return _wrapped.Seek(offset, origin);
+    }
 
-        public override void SetLength(long value)
-        {
-            _wrapped.SetLength(value);
-        }
+    public override void SetLength(long value)
+    {
+        _wrapped.SetLength(value);
+    }
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            _wrapped.Write(buffer, offset, count);
-        }
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        _wrapped.Write(buffer, offset, count);
+    }
 
-        protected override void Dispose(bool disposing)
+    protected override void Dispose(bool disposing)
+    {
+        try
         {
-            try
+            if (disposing && _ownWrapped == Ownership.Dispose && _wrapped != null)
             {
-                if (disposing && _ownWrapped == Ownership.Dispose && _wrapped != null)
-                {
-                    _wrapped.Dispose();
-                    _wrapped = null;
-                }
+                _wrapped.Dispose();
+                _wrapped = null;
             }
-            finally
-            {
-                base.Dispose(disposing);
-            }
+        }
+        finally
+        {
+            base.Dispose(disposing);
         }
     }
+}
 #else
-        internal class HashStreamDotnet : Stream
+internal class HashStreamDotnet : Stream
+{
+    private Stream _wrapped;
+    private Ownership _ownWrapped;
+
+    private HashAlgorithm _hashAlg;
+
+    private long _hashPos;
+
+    public HashStreamDotnet(Stream wrapped, Ownership ownsWrapped, HashAlgorithm hashAlg)
     {
-        private Stream _wrapped;
-        private Ownership _ownWrapped;
+        _wrapped = wrapped;
+        _ownWrapped = ownsWrapped;
+        _hashAlg = hashAlg;
+    }
 
-        private HashAlgorithm _hashAlg;
+    public override bool CanRead
+    {
+        get { return _wrapped.CanRead; }
+    }
 
-        private long _hashPos;
+    public override bool CanSeek
+    {
+        get { return _wrapped.CanSeek; }
+    }
 
-        public HashStreamDotnet(Stream wrapped, Ownership ownsWrapped, HashAlgorithm hashAlg)
+    public override bool CanWrite
+    {
+        get { return _wrapped.CanWrite; }
+    }
+
+    public override long Length
+    {
+        get { return _wrapped.Length; }
+    }
+
+    public override long Position
+    {
+        get
         {
-            _wrapped = wrapped;
-            _ownWrapped = ownsWrapped;
-            _hashAlg = hashAlg;
+            return _wrapped.Position;
         }
 
-        public override bool CanRead
+        set
         {
-            get { return _wrapped.CanRead; }
+            _wrapped.Position = value;
+        }
+    }
+
+    public override void Flush()
+    {
+        _wrapped.Flush();
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        if (Position != _hashPos)
+        {
+            throw new InvalidOperationException("Reads must be contiguous");
         }
 
-        public override bool CanSeek
-        {
-            get { return _wrapped.CanSeek; }
-        }
+        int numRead = _wrapped.Read(buffer, offset, count);
 
-        public override bool CanWrite
-        {
-            get { return _wrapped.CanWrite; }
-        }
+        _hashAlg.TransformBlock(buffer, offset, numRead, buffer, offset);
+        _hashPos += numRead;
 
-        public override long Length
-        {
-            get { return _wrapped.Length; }
-        }
+        return numRead;
+    }
 
-        public override long Position
-        {
-            get
-            {
-                return _wrapped.Position;
-            }
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        return _wrapped.Seek(offset, origin);
+    }
 
-            set
-            {
-                _wrapped.Position = value;
-            }
-        }
+    public override void SetLength(long value)
+    {
+        _wrapped.SetLength(value);
+    }
 
-        public override void Flush()
-        {
-            _wrapped.Flush();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (Position != _hashPos)
-            {
-                throw new InvalidOperationException("Reads must be contiguous");
-            }
-
-            int numRead = _wrapped.Read(buffer, offset, count);
-
-            _hashAlg.TransformBlock(buffer, offset, numRead, buffer, offset);
-            _hashPos += numRead;
-
-            return numRead;
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return _wrapped.Seek(offset, origin);
-        }
-
-        public override void SetLength(long value)
-        {
-            _wrapped.SetLength(value);
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            _wrapped.Write(buffer, offset, count);
-        }
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        _wrapped.Write(buffer, offset, count);
+    }
 
 #if NET45_OR_GREATER
-        public override Task FlushAsync(CancellationToken cancellationToken) =>
-            _wrapped.FlushAsync(cancellationToken);
+    public override Task FlushAsync(CancellationToken cancellationToken) =>
+        _wrapped.FlushAsync(cancellationToken);
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (Position != _hashPos)
         {
-            if (Position != _hashPos)
-            {
-                throw new InvalidOperationException("Reads must be contiguous");
-            }
-
-            int numRead = await _wrapped.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-
-            _hashAlg.TransformBlock(buffer, offset, numRead, buffer, offset);
-            _hashPos += numRead;
-
-            return numRead;
+            throw new InvalidOperationException("Reads must be contiguous");
         }
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-            _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
+        int numRead = await _wrapped.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+
+        _hashAlg.TransformBlock(buffer, offset, numRead, buffer, offset);
+        _hashPos += numRead;
+
+        return numRead;
+    }
+
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+        _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
 #endif
 
-        protected override void Dispose(bool disposing)
+    protected override void Dispose(bool disposing)
+    {
+        try
         {
-            try
+            if (disposing && _ownWrapped == Ownership.Dispose && _wrapped != null)
             {
-                if (disposing && _ownWrapped == Ownership.Dispose && _wrapped != null)
-                {
-                    _wrapped.Dispose();
-                    _wrapped = null;
-                }
+                _wrapped.Dispose();
+                _wrapped = null;
             }
-            finally
-            {
-                base.Dispose(disposing);
-            }
+        }
+        finally
+        {
+            base.Dispose(disposing);
         }
     }
-#endif
 }
+#endif

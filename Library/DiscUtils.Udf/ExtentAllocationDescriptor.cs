@@ -23,33 +23,32 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal sealed class ExtentAllocationDescriptor : IByteArraySerializable
 {
-    internal sealed class ExtentAllocationDescriptor : IByteArraySerializable
+    public uint ExtentLength;
+    public uint ExtentLocation;
+
+    public int Size
     {
-        public uint ExtentLength;
-        public uint ExtentLocation;
+        get { return 8; }
+    }
 
-        public int Size
-        {
-            get { return 8; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        ExtentLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
+        ExtentLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+        return 8;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            ExtentLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-            ExtentLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-            return 8;
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string ToString()
-        {
-            return ExtentLocation + ":+" + ExtentLength;
-        }
+    public override string ToString()
+    {
+        return ExtentLocation + ":+" + ExtentLength;
     }
 }

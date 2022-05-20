@@ -22,269 +22,268 @@
 
 using System.IO;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+internal sealed class Nfs3 : RpcProgram
 {
-    internal sealed class Nfs3 : RpcProgram
+    public const int ProgramIdentifier = RpcIdentifiers.Nfs3ProgramIdentifier;
+    public const int ProgramVersion = RpcIdentifiers.Nfs3ProgramVersion;
+
+    public const int MaxFileHandleSize = 64;
+    public const int CookieVerifierSize = 8;
+    public const int CreateVerifierSize = 8;
+    public const int WriteVerifierSize = 8;
+
+    public Nfs3(IRpcClient client)
+        : base(client) {}
+
+    public override int Identifier
     {
-        public const int ProgramIdentifier = RpcIdentifiers.Nfs3ProgramIdentifier;
-        public const int ProgramVersion = RpcIdentifiers.Nfs3ProgramVersion;
+        get { return ProgramIdentifier; }
+    }
 
-        public const int MaxFileHandleSize = 64;
-        public const int CookieVerifierSize = 8;
-        public const int CreateVerifierSize = 8;
-        public const int WriteVerifierSize = 8;
+    public override int Version
+    {
+        get { return ProgramVersion; }
+    }
 
-        public Nfs3(IRpcClient client)
-            : base(client) {}
+    public Nfs3GetAttributesResult GetAttributes(Nfs3FileHandle handle)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.GetAttr);
+        handle.Write(writer);
+        writer.Write(false);
 
-        public override int Identifier
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
         {
-            get { return ProgramIdentifier; }
+            return new Nfs3GetAttributesResult(reply.BodyReader);
         }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
 
-        public override int Version
+    public Nfs3ModifyResult SetAttributes(Nfs3FileHandle handle, Nfs3SetAttributes newAttributes)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.SetAttr);
+        handle.Write(writer);
+        newAttributes.Write(writer);
+        writer.Write(false);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
         {
-            get { return ProgramVersion; }
+            return new Nfs3ModifyResult(reply.BodyReader);
         }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
 
-        public Nfs3GetAttributesResult GetAttributes(Nfs3FileHandle handle)
+    public Nfs3LookupResult Lookup(Nfs3FileHandle dir, string name)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Lookup);
+        dir.Write(writer);
+        writer.Write(name);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
         {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.GetAttr);
-            handle.Write(writer);
-            writer.Write(false);
+            return new Nfs3LookupResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
 
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
+    public Nfs3AccessResult Access(Nfs3FileHandle handle, Nfs3AccessPermissions requested)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Access);
+        handle.Write(writer);
+        writer.Write((int)requested);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3AccessResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3ReadResult Read(Nfs3FileHandle handle, long position, int count)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Read);
+        handle.Write(writer);
+        writer.Write(position);
+        writer.Write(count);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3ReadResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3WriteResult Write(Nfs3FileHandle handle, long position, byte[] buffer, int bufferOffset, int count)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Write);
+        handle.Write(writer);
+        writer.Write(position);
+        writer.Write(count);
+        writer.Write((int)Nfs3StableHow.Unstable);
+        writer.WriteBuffer(buffer, bufferOffset, count);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3WriteResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3CreateResult Create(Nfs3FileHandle dirHandle, string name, bool createNew,
+                                   Nfs3SetAttributes attributes)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Create);
+        dirHandle.Write(writer);
+        writer.Write(name);
+        writer.Write(createNew ? 1 : 0);
+        attributes.Write(writer);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3CreateResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3CreateResult MakeDirectory(Nfs3FileHandle dirHandle, string name, Nfs3SetAttributes attributes)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Mkdir);
+        dirHandle.Write(writer);
+        writer.Write(name);
+        attributes.Write(writer);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3CreateResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3ModifyResult Remove(Nfs3FileHandle dirHandle, string name)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Remove);
+        dirHandle.Write(writer);
+        writer.Write(name);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3ModifyResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3ModifyResult RemoveDirectory(Nfs3FileHandle dirHandle, string name)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Rmdir);
+        dirHandle.Write(writer);
+        writer.Write(name);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3ModifyResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3RenameResult Rename(Nfs3FileHandle fromDirHandle, string fromName, Nfs3FileHandle toDirHandle,
+                                   string toName)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Rename);
+        fromDirHandle.Write(writer);
+        writer.Write(fromName);
+        toDirHandle.Write(writer);
+        writer.Write(toName);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3RenameResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3ReadDirPlusResult ReadDirPlus(Nfs3FileHandle dir, ulong cookie, ulong cookieVerifier, uint dirCount,
+                                             uint maxCount)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.ReadDirPlus);
+        dir.Write(writer);
+        writer.Write(cookie);
+        writer.Write(cookieVerifier);
+        writer.Write(dirCount);
+        writer.Write(maxCount);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3ReadDirPlusResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3FileSystemInfoResult FileSystemInfo(Nfs3FileHandle fileHandle)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Fsinfo);
+        fileHandle.Write(writer);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            var fsiReply = new Nfs3FileSystemInfoResult(reply.BodyReader);
+            if (fsiReply.Status == Nfs3Status.Ok)
             {
-                return new Nfs3GetAttributesResult(reply.BodyReader);
+                return fsiReply;
             }
-            throw new RpcException(reply.Header.ReplyHeader);
+            throw new Nfs3Exception(fsiReply.Status);
         }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
 
-        public Nfs3ModifyResult SetAttributes(Nfs3FileHandle handle, Nfs3SetAttributes newAttributes)
+    public Nfs3FileSystemStatResult FileSystemStat(Nfs3FileHandle fileHandle)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Fsstat);
+        fileHandle.Write(writer);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
         {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.SetAttr);
-            handle.Write(writer);
-            newAttributes.Write(writer);
-            writer.Write(false);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
+            var statReply = new Nfs3FileSystemStatResult(reply.BodyReader);
+            if (statReply.Status == Nfs3Status.Ok)
             {
-                return new Nfs3ModifyResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3LookupResult Lookup(Nfs3FileHandle dir, string name)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Lookup);
-            dir.Write(writer);
-            writer.Write(name);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3LookupResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3AccessResult Access(Nfs3FileHandle handle, Nfs3AccessPermissions requested)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Access);
-            handle.Write(writer);
-            writer.Write((int)requested);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3AccessResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3ReadResult Read(Nfs3FileHandle handle, long position, int count)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Read);
-            handle.Write(writer);
-            writer.Write(position);
-            writer.Write(count);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3ReadResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3WriteResult Write(Nfs3FileHandle handle, long position, byte[] buffer, int bufferOffset, int count)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Write);
-            handle.Write(writer);
-            writer.Write(position);
-            writer.Write(count);
-            writer.Write((int)Nfs3StableHow.Unstable);
-            writer.WriteBuffer(buffer, bufferOffset, count);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3WriteResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3CreateResult Create(Nfs3FileHandle dirHandle, string name, bool createNew,
-                                       Nfs3SetAttributes attributes)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Create);
-            dirHandle.Write(writer);
-            writer.Write(name);
-            writer.Write(createNew ? 1 : 0);
-            attributes.Write(writer);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3CreateResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3CreateResult MakeDirectory(Nfs3FileHandle dirHandle, string name, Nfs3SetAttributes attributes)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Mkdir);
-            dirHandle.Write(writer);
-            writer.Write(name);
-            attributes.Write(writer);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3CreateResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3ModifyResult Remove(Nfs3FileHandle dirHandle, string name)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Remove);
-            dirHandle.Write(writer);
-            writer.Write(name);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3ModifyResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3ModifyResult RemoveDirectory(Nfs3FileHandle dirHandle, string name)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Rmdir);
-            dirHandle.Write(writer);
-            writer.Write(name);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3ModifyResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3RenameResult Rename(Nfs3FileHandle fromDirHandle, string fromName, Nfs3FileHandle toDirHandle,
-                                       string toName)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Rename);
-            fromDirHandle.Write(writer);
-            writer.Write(fromName);
-            toDirHandle.Write(writer);
-            writer.Write(toName);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3RenameResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3ReadDirPlusResult ReadDirPlus(Nfs3FileHandle dir, ulong cookie, ulong cookieVerifier, uint dirCount,
-                                                 uint maxCount)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.ReadDirPlus);
-            dir.Write(writer);
-            writer.Write(cookie);
-            writer.Write(cookieVerifier);
-            writer.Write(dirCount);
-            writer.Write(maxCount);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                return new Nfs3ReadDirPlusResult(reply.BodyReader);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3FileSystemInfoResult FileSystemInfo(Nfs3FileHandle fileHandle)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Fsinfo);
-            fileHandle.Write(writer);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                Nfs3FileSystemInfoResult fsiReply = new Nfs3FileSystemInfoResult(reply.BodyReader);
-                if (fsiReply.Status == Nfs3Status.Ok)
-                {
-                    return fsiReply;
-                }
-                throw new Nfs3Exception(fsiReply.Status);
-            }
-            throw new RpcException(reply.Header.ReplyHeader);
-        }
-
-        public Nfs3FileSystemStatResult FileSystemStat(Nfs3FileHandle fileHandle)
-        {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Fsstat);
-            fileHandle.Write(writer);
-
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess)
-            {
-                Nfs3FileSystemStatResult statReply = new Nfs3FileSystemStatResult(reply.BodyReader);
-                if (statReply.Status == Nfs3Status.Ok)
-                {
-                    return statReply;
-                }
-                else
-                {
-                    throw new Nfs3Exception(statReply.Status);
-                }
+                return statReply;
             }
             else
             {
-                throw new RpcException(reply.Header.ReplyHeader);
+                throw new Nfs3Exception(statReply.Status);
             }
+        }
+        else
+        {
+            throw new RpcException(reply.Header.ReplyHeader);
         }
     }
 }

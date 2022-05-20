@@ -22,19 +22,18 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+internal class CompressedGrainHeader
 {
-    internal class CompressedGrainHeader
+    public const int Size = 12;
+    public int DataSize;
+
+    public long LogicalBlockAddress;
+
+    public void Read(byte[] buffer, int offset)
     {
-        public const int Size = 12;
-        public int DataSize;
-
-        public long LogicalBlockAddress;
-
-        public void Read(byte[] buffer, int offset)
-        {
-            LogicalBlockAddress = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0);
-            DataSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8);
-        }
+        LogicalBlockAddress = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0);
+        DataSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8);
     }
 }

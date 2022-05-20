@@ -20,11 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum RpcReplyStatus
 {
-    public enum RpcReplyStatus
-    {
-        Accepted = 0,
-        Denied = 1
-    }
+    Accepted = 0,
+    Denied = 1
 }

@@ -23,46 +23,47 @@
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Wim
+namespace DiscUtils.Wim;
+
+internal class AlternateStreamEntry
 {
-    internal class AlternateStreamEntry
+    public byte[] Hash;
+    public long Length;
+    public string Name;
+
+    public static AlternateStreamEntry ReadFrom(DataReader reader)
     {
-        public byte[] Hash;
-        public long Length;
-        public string Name;
+        var startPos = reader.Position;
 
-        public static AlternateStreamEntry ReadFrom(DataReader reader)
+        var length = reader.ReadInt64();
+        if (length == 0)
         {
-            long startPos = reader.Position;
-
-            long length = reader.ReadInt64();
-            if (length == 0)
-            {
-                return null;
-            }
-
-            reader.Skip(8);
-
-            AlternateStreamEntry result = new AlternateStreamEntry();
-            result.Length = length;
-            result.Hash = reader.ReadBytes(20);
-            int nameLength = reader.ReadUInt16();
-            if (nameLength > 0)
-            {
-                result.Name = Encoding.Unicode.GetString(reader.ReadBytes(nameLength + 2)).TrimEnd('\0');
-            }
-            else
-            {
-                result.Name = string.Empty;
-            }
-
-            if (startPos + length > reader.Position)
-            {
-                int toRead = (int)(startPos + length - reader.Position);
-                reader.Skip(toRead);
-            }
-
-            return result;
+            return null;
         }
+
+        reader.Skip(8);
+
+        var result = new AlternateStreamEntry
+        {
+            Length = length,
+            Hash = reader.ReadBytes(20)
+        };
+        int nameLength = reader.ReadUInt16();
+        if (nameLength > 0)
+        {
+            result.Name = Encoding.Unicode.GetString(reader.ReadBytes(nameLength + 2)).TrimEnd('\0');
+        }
+        else
+        {
+            result.Name = string.Empty;
+        }
+
+        if (startPos + length > reader.Position)
+        {
+            var toRead = (int)(startPos + length - reader.Position);
+            reader.Skip(toRead);
+        }
+
+        return result;
     }
 }

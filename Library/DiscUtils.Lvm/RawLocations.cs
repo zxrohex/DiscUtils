@@ -20,35 +20,34 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using DiscUtils.Streams;
+using System;
+
+internal class RawLocation : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
+    public ulong Offset;
+    public ulong Length;
+    public uint Checksum;
+    public RawLocationFlags Flags;
+    
+    /// <inheritdoc />
+    public int Size { get { return 0x18; } }
 
-    internal class RawLocation : IByteArraySerializable
+    /// <inheritdoc />
+    public int ReadFrom(byte[] buffer, int offset)
     {
-        public ulong Offset;
-        public ulong Length;
-        public uint Checksum;
-        public RawLocationFlags Flags;
-        
-        /// <inheritdoc />
-        public int Size { get { return 0x18; } }
+        Offset = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+        Length = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
+        Checksum = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x10);
+        Flags = (RawLocationFlags) EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x14);
+        return Size;
+    }
 
-        /// <inheritdoc />
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Offset = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-            Length = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-            Checksum = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x10);
-            Flags = (RawLocationFlags) EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x14);
-            return Size;
-        }
-
-        /// <inheritdoc />
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    /// <inheritdoc />
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

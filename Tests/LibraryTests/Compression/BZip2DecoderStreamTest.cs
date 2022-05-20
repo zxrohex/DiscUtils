@@ -61,43 +61,43 @@ namespace LibraryTests.Compression
         [Fact]
         public void TestValidStream()
         {
-            BZip2DecoderStream decoder = new BZip2DecoderStream(new MemoryStream(ValidData), Ownership.Dispose);
+            var decoder = new BZip2DecoderStream(new MemoryStream(ValidData), Ownership.Dispose);
 
-            byte[] buffer = new byte[1024];
-            int numRead = decoder.Read(buffer, 0, 1024);
+            var buffer = new byte[1024];
+            var numRead = decoder.Read(buffer, 0, 1024);
             Assert.Equal(21, numRead);
 
             // Reading beyond the end of the stream will return 0 bytes
             Assert.Equal(0, decoder.Read(buffer, numRead, 1024 - numRead));
 
-            string s = Encoding.ASCII.GetString(buffer, 0, numRead);
+            var s = Encoding.ASCII.GetString(buffer, 0, numRead);
             Assert.Equal("This is a test string", s);
         }
 
         [Fact]
         public void TestInvalidBlockCrcStream()
         {
-            BZip2DecoderStream decoder = new BZip2DecoderStream(new MemoryStream(InvalidBlockCrcData), Ownership.Dispose);
+            var decoder = new BZip2DecoderStream(new MemoryStream(InvalidBlockCrcData), Ownership.Dispose);
 
-            byte[] buffer = new byte[1024];
+            var buffer = new byte[1024];
             Assert.Throws<InvalidDataException>(() => decoder.Read(buffer, 0, 1024));
         }
 
         [Fact]
         public void TestCombinedCrcStream()
         {
-            BZip2DecoderStream decoder = new BZip2DecoderStream(new MemoryStream(InvalidCombinedCrcData), Ownership.Dispose);
+            var decoder = new BZip2DecoderStream(new MemoryStream(InvalidCombinedCrcData), Ownership.Dispose);
 
-            byte[] buffer = new byte[1024];
+            var buffer = new byte[1024];
             Assert.Throws<InvalidDataException>(() => decoder.Read(buffer, 0, 1024));
         }
 
         [Fact]
         public void TestCombinedCrcStream_ExactLengthRead()
         {
-            BZip2DecoderStream decoder = new BZip2DecoderStream(new MemoryStream(InvalidCombinedCrcData), Ownership.Dispose);
+            var decoder = new BZip2DecoderStream(new MemoryStream(InvalidCombinedCrcData), Ownership.Dispose);
 
-            byte[] buffer = new byte[21];
+            var buffer = new byte[21];
             Assert.Throws<InvalidDataException>(() => decoder.Read(buffer, 0, 21));
         }
     }

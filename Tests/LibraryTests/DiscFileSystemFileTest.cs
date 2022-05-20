@@ -33,14 +33,14 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreateFile(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            using (Stream s = fs.GetFileInfo("foo.txt").Open(FileMode.Create, FileAccess.ReadWrite))
+            using (var s = fs.GetFileInfo("foo.txt").Open(FileMode.Create, FileAccess.ReadWrite))
             {
                 s.WriteByte(1);
             }
 
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
+            var fi = fs.GetFileInfo("foo.txt");
 
             Assert.True(fi.Exists);
             Assert.Equal(FileAttributes.Archive, fi.Attributes);
@@ -57,14 +57,12 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void CreateFileInvalid_Long(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Throws<IOException>(() =>
             {
-                using (Stream s = fs.GetFileInfo(new string('X', 256)).Open(FileMode.Create, FileAccess.ReadWrite))
-                {
-                    s.WriteByte(1);
-                }
+                using var s = fs.GetFileInfo(new string('X', 256)).Open(FileMode.Create, FileAccess.ReadWrite);
+                s.WriteByte(1);
             });
         }
 
@@ -73,14 +71,12 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void CreateFileInvalid_Characters(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Throws<IOException>(() =>
             {
-                using (Stream s = fs.GetFileInfo("A\0File").Open(FileMode.Create, FileAccess.ReadWrite))
-                {
-                    s.WriteByte(1);
-                }
+                using var s = fs.GetFileInfo("A\0File").Open(FileMode.Create, FileAccess.ReadWrite);
+                s.WriteByte(1);
             });
         }
 
@@ -88,13 +84,13 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void DeleteFile(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            using (Stream s = fs.GetFileInfo("foo.txt").Open(FileMode.Create, FileAccess.ReadWrite)) { }
+            using (var s = fs.GetFileInfo("foo.txt").Open(FileMode.Create, FileAccess.ReadWrite)) { }
 
             Assert.Single(fs.Root.GetFiles());
 
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
+            var fi = fs.GetFileInfo("foo.txt");
 
             fi.Delete();
 
@@ -105,9 +101,9 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Length(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            using (Stream s = fs.GetFileInfo("foo.txt").Open(FileMode.Create, FileAccess.ReadWrite))
+            using (var s = fs.GetFileInfo("foo.txt").Open(FileMode.Create, FileAccess.ReadWrite))
             {
                 s.SetLength(3128);
             }
@@ -126,8 +122,8 @@ namespace LibraryTests
             {
                 s.SetLength(3333);
 
-                byte[] buffer = new byte[512];
-                for (int i = 0; i < buffer.Length; ++i)
+                var buffer = new byte[512];
+                for (var i = 0; i < buffer.Length; ++i)
                 {
                     buffer[i] = (byte)i;
                 }
@@ -145,16 +141,16 @@ namespace LibraryTests
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Open, FileAccess.ReadWrite))
             {
-                byte[] buffer = new byte[512];
-                int numRead = s.Read(buffer, 0, buffer.Length);
-                int totalRead = 0;
+                var buffer = new byte[512];
+                var numRead = s.Read(buffer, 0, buffer.Length);
+                var totalRead = 0;
                 while (numRead != 0)
                 {
                     totalRead += numRead;
                     numRead = s.Read(buffer, totalRead, buffer.Length - totalRead);
                 }
 
-                for (int i = 0; i < buffer.Length; ++i)
+                for (var i = 0; i < buffer.Length; ++i)
                 {
                     Assert.Equal((byte)i, buffer[i]);
                 }
@@ -166,16 +162,13 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void Open_FileNotFound(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo di = fs.GetFileInfo("foo.txt");
+            var di = fs.GetFileInfo("foo.txt");
 
             Assert.Throws<FileNotFoundException>(() =>
             {
-                using (Stream s = di.Open(FileMode.Open))
-                {
-
-                }
+                using var s = di.Open(FileMode.Open);
             });
         }
 
@@ -184,17 +177,14 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void Open_FileExists(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo di = fs.GetFileInfo("foo.txt");
-            using (Stream s = di.Open(FileMode.Create)) { s.WriteByte(1); }
+            var di = fs.GetFileInfo("foo.txt");
+            using (var s = di.Open(FileMode.Create)) { s.WriteByte(1); }
 
             Assert.Throws<IOException>(() =>
             {
-                using (Stream s = di.Open(FileMode.CreateNew))
-                {
-
-                }
+                using var s = di.Open(FileMode.CreateNew);
             });
 
         }
@@ -204,11 +194,11 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void Open_DirExists(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             fs.CreateDirectory("FOO.TXT");
 
-            DiscFileInfo di = fs.GetFileInfo("foo.txt");
+            var di = fs.GetFileInfo("foo.txt");
             Assert.Throws<IOException>(() => di.Open(FileMode.Create));
         }
 
@@ -216,16 +206,16 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Open_Read(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo di = fs.GetFileInfo("foo.txt");
+            var di = fs.GetFileInfo("foo.txt");
 
-            using (Stream s = di.Open(FileMode.Create))
+            using (var s = di.Open(FileMode.Create))
             {
                 s.WriteByte(1);
             }
 
-            using (Stream s = di.Open(FileMode.Open, FileAccess.Read))
+            using (var s = di.Open(FileMode.Open, FileAccess.Read))
             {
                 Assert.False(s.CanWrite);
                 Assert.True(s.CanRead);
@@ -239,28 +229,24 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void Open_Read_Fail(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo di = fs.GetFileInfo("foo.txt");
-            using (Stream s = di.Open(FileMode.Create, FileAccess.Read))
-            {
-                Assert.Throws<IOException>(() => s.WriteByte(1));
-            }
+            var di = fs.GetFileInfo("foo.txt");
+            using var s = di.Open(FileMode.Create, FileAccess.Read);
+            Assert.Throws<IOException>(() => s.WriteByte(1));
         }
 
         [Theory]
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Open_Write(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo di = fs.GetFileInfo("foo.txt");
-            using (Stream s = di.Open(FileMode.Create, FileAccess.Write))
-            {
-                Assert.True(s.CanWrite);
-                Assert.False(s.CanRead);
-                s.WriteByte(1);
-            }
+            var di = fs.GetFileInfo("foo.txt");
+            using var s = di.Open(FileMode.Create, FileAccess.Write);
+            Assert.True(s.CanWrite);
+            Assert.False(s.CanRead);
+            s.WriteByte(1);
         }
 
         [Theory]
@@ -268,15 +254,15 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void Open_Write_Fail(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo di = fs.GetFileInfo("foo.txt");
-            using (Stream s = di.Open(FileMode.Create, FileAccess.ReadWrite))
+            var di = fs.GetFileInfo("foo.txt");
+            using (var s = di.Open(FileMode.Create, FileAccess.ReadWrite))
             {
                 s.WriteByte(1);
             }
 
-            using (Stream s = di.Open(FileMode.Open, FileAccess.Write))
+            using (var s = di.Open(FileMode.Open, FileAccess.Write))
             {
                 Assert.True(s.CanWrite);
                 Assert.False(s.CanRead);
@@ -289,7 +275,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Name(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             var sep = Path.DirectorySeparatorChar;
 
@@ -302,16 +288,16 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Attributes(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
-            using (Stream s = fi.Open(FileMode.Create)) { }
+            var fi = fs.GetFileInfo("foo.txt");
+            using (var s = fi.Open(FileMode.Create)) { }
 
             // Check default attributes
             Assert.Equal(FileAttributes.Archive, fi.Attributes);
 
             // Check round-trip
-            FileAttributes newAttrs = FileAttributes.Hidden | FileAttributes.ReadOnly | FileAttributes.System;
+            var newAttrs = FileAttributes.Hidden | FileAttributes.ReadOnly | FileAttributes.System;
             fi.Attributes = newAttrs;
             Assert.Equal(newAttrs, fi.Attributes);
 
@@ -324,10 +310,10 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void Attributes_ChangeType(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
-            using (Stream s = fi.Open(FileMode.Create)) { }
+            var fi = fs.GetFileInfo("foo.txt");
+            using (var s = fi.Open(FileMode.Create)) { }
 
             Assert.Throws<ArgumentException>(() => fi.Attributes = fi.Attributes | FileAttributes.Directory);
         }
@@ -336,13 +322,13 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Exists(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
+            var fi = fs.GetFileInfo("foo.txt");
 
             Assert.False(fi.Exists);
 
-            using (Stream s = fi.Open(FileMode.Create)) { }
+            using (var s = fi.Open(FileMode.Create)) { }
             Assert.True(fi.Exists);
 
             fs.CreateDirectory("dir.txt");
@@ -353,7 +339,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreationTimeUtc(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Create)) { }
 
@@ -365,7 +351,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CreationTime(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Create)) { }
 
@@ -377,12 +363,12 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void LastAccessTime(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Create)) { }
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
+            var fi = fs.GetFileInfo("foo.txt");
 
-            DateTime baseTime = DateTime.Now - TimeSpan.FromDays(2);
+            var baseTime = DateTime.Now - TimeSpan.FromDays(2);
             fi.LastAccessTime = baseTime;
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Open, FileAccess.Read)) { }
@@ -394,12 +380,12 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void LastWriteTime(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Create)) { }
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
+            var fi = fs.GetFileInfo("foo.txt");
 
-            DateTime baseTime = DateTime.Now - TimeSpan.FromMinutes(10);
+            var baseTime = DateTime.Now - TimeSpan.FromMinutes(10);
             fi.LastWriteTime = baseTime;
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Open)) { s.WriteByte(1); }
@@ -411,7 +397,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Delete(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Create)) { }
             fs.GetFileInfo("foo.txt").Delete();
@@ -424,7 +410,7 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void Delete_Dir(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             fs.CreateDirectory("foo.txt");
 
@@ -436,7 +422,7 @@ namespace LibraryTests
         [Trait("Category", "ThrowsException")]
         public void Delete_NoFile(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Throws<FileNotFoundException>(() => fs.GetFileInfo("foo.txt").Delete());
         }
@@ -445,13 +431,13 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void CopyFile(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
+            var fi = fs.GetFileInfo("foo.txt");
 
-            using (Stream s = fi.Create())
+            using (var s = fi.Create())
             {
-                for (int i = 0; i < 10; ++i)
+                for (var i = 0; i < 10; ++i)
                 {
                     s.Write(new byte[111], 0, 111);
                 }
@@ -481,13 +467,13 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void MoveFile(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
+            var fi = fs.GetFileInfo("foo.txt");
 
-            using (Stream s = fi.Create())
+            using (var s = fi.Create())
             {
-                for (int i = 0; i < 10; ++i)
+                for (var i = 0; i < 10; ++i)
                 {
                     s.Write(new byte[111], 0, 111);
                 }
@@ -509,16 +495,16 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void MoveFile_Overwrite(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            DiscFileInfo fi = fs.GetFileInfo("foo.txt");
-            using (Stream s = fi.Create())
+            var fi = fs.GetFileInfo("foo.txt");
+            using (var s = fi.Create())
             {
                 s.WriteByte(1);
             }
 
-            DiscFileInfo fi2 = fs.GetFileInfo("foo2.txt");
-            using (Stream s = fi2.Create())
+            var fi2 = fs.GetFileInfo("foo2.txt");
+            using (var s = fi2.Create())
             {
             }
 
@@ -533,7 +519,7 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void FileInfo_Equals(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             Assert.Equal(fs.GetFileInfo("foo.txt"), fs.GetFileInfo("foo.txt"));
         }
@@ -542,14 +528,14 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void Parent(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
             var sep = Path.DirectorySeparatorChar;
 
             fs.CreateDirectory($"SOMEDIR{sep}ADIR");
             using (Stream s = fs.OpenFile($"SOMEDIR{sep}ADIR{sep}FILE.TXT", FileMode.Create)) { }
 
-            DiscFileInfo fi = fs.GetFileInfo($"SOMEDIR{sep}ADIR{sep}FILE.TXT");
+            var fi = fs.GetFileInfo($"SOMEDIR{sep}ADIR{sep}FILE.TXT");
             Assert.Equal(fs.GetDirectoryInfo($"SOMEDIR{sep}ADIR"), fi.Parent);
             Assert.Equal(fs.GetDirectoryInfo($"SOMEDIR{sep}ADIR"), fi.Directory);
         }
@@ -558,9 +544,9 @@ namespace LibraryTests
         [MemberData(nameof(FileSystemSource.ReadWriteFileSystems), MemberType = typeof(FileSystemSource))]
         public void VolumeLabel(NewFileSystemDelegate fsFactory)
         {
-            DiscFileSystem fs = fsFactory();
+            var fs = fsFactory();
 
-            string volLabel = fs.VolumeLabel;
+            var volLabel = fs.VolumeLabel;
             Assert.NotNull(volLabel);
         }
     }

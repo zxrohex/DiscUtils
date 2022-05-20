@@ -25,89 +25,88 @@ using System.Collections.Generic;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal class PathTable : BuilderExtent
 {
-    internal class PathTable : BuilderExtent
+    private readonly bool _byteSwap;
+    private readonly List<BuildDirectoryInfo> _dirs;
+    private readonly Encoding _enc;
+    private readonly Dictionary<BuildDirectoryMember, uint> _locations;
+
+    private byte[] _readCache;
+
+    public PathTable(bool byteSwap, Encoding enc, List<BuildDirectoryInfo> dirs,
+                     Dictionary<BuildDirectoryMember, uint> locations, long start)
+        : base(start, CalcLength(enc, dirs))
     {
-        private readonly bool _byteSwap;
-        private readonly List<BuildDirectoryInfo> _dirs;
-        private readonly Encoding _enc;
-        private readonly Dictionary<BuildDirectoryMember, uint> _locations;
+        _byteSwap = byteSwap;
+        _enc = enc;
+        _dirs = dirs;
+        _locations = locations;
+    }
 
-        private byte[] _readCache;
+    public override void Dispose() {}
 
-        public PathTable(bool byteSwap, Encoding enc, List<BuildDirectoryInfo> dirs,
-                         Dictionary<BuildDirectoryMember, uint> locations, long start)
-            : base(start, CalcLength(enc, dirs))
+    public override void PrepareForRead()
+    {
+        _readCache = new byte[Length];
+        int pos = 0;
+
+        List<BuildDirectoryInfo> sortedList = new List<BuildDirectoryInfo>(_dirs);
+        sortedList.Sort(BuildDirectoryInfo.PathTableSortComparison);
+
+        Dictionary<BuildDirectoryInfo, ushort> dirNumbers = new Dictionary<BuildDirectoryInfo, ushort>(_dirs.Count);
+        ushort i = 1;
+        foreach (BuildDirectoryInfo di in sortedList)
         {
-            _byteSwap = byteSwap;
-            _enc = enc;
-            _dirs = dirs;
-            _locations = locations;
+            dirNumbers[di] = i++;
+            PathTableRecord ptr = new PathTableRecord();
+            ptr.DirectoryIdentifier = di.PickName(null, _enc);
+            ptr.LocationOfExtent = _locations[di];
+            ptr.ParentDirectoryNumber = dirNumbers[di.Parent];
+
+            pos += ptr.Write(_byteSwap, _enc, _readCache, pos);
         }
+    }
 
-        public override void Dispose() {}
+    public override int Read(long diskOffset, byte[] buffer, int offset, int count)
+    {
+        long relPos = diskOffset - Start;
 
-        public override void PrepareForRead()
-        {
-            _readCache = new byte[Length];
-            int pos = 0;
+        int numRead = (int)Math.Min(count, _readCache.Length - relPos);
 
-            List<BuildDirectoryInfo> sortedList = new List<BuildDirectoryInfo>(_dirs);
-            sortedList.Sort(BuildDirectoryInfo.PathTableSortComparison);
+        Array.Copy(_readCache, (int)relPos, buffer, offset, numRead);
 
-            Dictionary<BuildDirectoryInfo, ushort> dirNumbers = new Dictionary<BuildDirectoryInfo, ushort>(_dirs.Count);
-            ushort i = 1;
-            foreach (BuildDirectoryInfo di in sortedList)
-            {
-                dirNumbers[di] = i++;
-                PathTableRecord ptr = new PathTableRecord();
-                ptr.DirectoryIdentifier = di.PickName(null, _enc);
-                ptr.LocationOfExtent = _locations[di];
-                ptr.ParentDirectoryNumber = dirNumbers[di.Parent];
-
-                pos += ptr.Write(_byteSwap, _enc, _readCache, pos);
-            }
-        }
-
-        public override int Read(long diskOffset, byte[] buffer, int offset, int count)
-        {
-            long relPos = diskOffset - Start;
-
-            int numRead = (int)Math.Min(count, _readCache.Length - relPos);
-
-            Array.Copy(_readCache, (int)relPos, buffer, offset, numRead);
-
-            return numRead;
-        }
+        return numRead;
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override int Read(long diskOffset, Span<byte> buffer)
-        {
-            long relPos = diskOffset - Start;
+    public override int Read(long diskOffset, Span<byte> buffer)
+    {
+        long relPos = diskOffset - Start;
 
-            int numRead = (int)Math.Min(buffer.Length, _readCache.Length - relPos);
+        int numRead = (int)Math.Min(buffer.Length, _readCache.Length - relPos);
 
-            _readCache.AsSpan((int)relPos, numRead).CopyTo(buffer);
+        _readCache.AsSpan((int)relPos, numRead).CopyTo(buffer);
 
-            return numRead;
-        }
+        return numRead;
+    }
 #endif
 
-        public override void DisposeReadState()
+    public override void DisposeReadState()
+    {
+        _readCache = null;
+    }
+
+    private static uint CalcLength(Encoding enc, List<BuildDirectoryInfo> dirs)
+    {
+        uint length = 0;
+        foreach (BuildDirectoryInfo di in dirs)
         {
-            _readCache = null;
+            length += di.GetPathTableEntrySize(enc);
         }
 
-        private static uint CalcLength(Encoding enc, List<BuildDirectoryInfo> dirs)
-        {
-            uint length = 0;
-            foreach (BuildDirectoryInfo di in dirs)
-            {
-                length += di.GetPathTableEntrySize(enc);
-            }
-
-            return length;
-        }
+        return length;
     }
 }

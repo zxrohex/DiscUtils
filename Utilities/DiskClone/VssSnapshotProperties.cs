@@ -23,41 +23,40 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace DiskClone
+namespace DiskClone;
+
+[StructLayout(LayoutKind.Sequential)]
+public class VssSnapshotProperties
 {
-    [StructLayout(LayoutKind.Sequential)]
-    public class VssSnapshotProperties
-    {
-        public Guid SnapshotId;
+    public Guid SnapshotId;
 
-        public Guid SnapshotSetId;
+    public Guid SnapshotSetId;
 
-        public int SnapshotsCount;
+    public int SnapshotsCount;
 
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string SnapshotDeviceObject;
+    [MarshalAs(UnmanagedType.LPWStr)]
+    public string SnapshotDeviceObject;
 
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string OriginalVolumeName;
+    [MarshalAs(UnmanagedType.LPWStr)]
+    public string OriginalVolumeName;
 
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string OriginatingMachine;
+    [MarshalAs(UnmanagedType.LPWStr)]
+    public string OriginatingMachine;
 
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string ServiceMachine;
+    [MarshalAs(UnmanagedType.LPWStr)]
+    public string ServiceMachine;
 
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string ExposedName;
+    [MarshalAs(UnmanagedType.LPWStr)]
+    public string ExposedName;
 
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string ExposedPath;
+    [MarshalAs(UnmanagedType.LPWStr)]
+    public string ExposedPath;
 
-        public Guid ProviderId;
+    public Guid ProviderId;
 
-        public int SnapshotAttributes;
+    public int SnapshotAttributes;
 
-        public long CreationTimestamp;
+    public long CreationTimestamp;
 
-        public int SnapshotState;
-    }
+    public int SnapshotState;
 }

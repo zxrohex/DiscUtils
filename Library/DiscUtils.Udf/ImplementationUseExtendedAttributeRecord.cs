@@ -23,26 +23,25 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal sealed class ImplementationUseExtendedAttributeRecord : ExtendedAttributeRecord
 {
-    internal sealed class ImplementationUseExtendedAttributeRecord : ExtendedAttributeRecord
+    public ImplementationEntityIdentifier ImplementationIdentifier;
+    public byte[] ImplementationUseData;
+
+    public override int ReadFrom(byte[] buffer, int offset)
     {
-        public ImplementationEntityIdentifier ImplementationIdentifier;
-        public byte[] ImplementationUseData;
+        var read = base.ReadFrom(buffer, offset);
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            int read = base.ReadFrom(buffer, offset);
+        var iuSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 12);
 
-            int iuSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 12);
+        ImplementationIdentifier = new ImplementationEntityIdentifier();
+        ImplementationIdentifier.ReadFrom(buffer, offset + 16);
 
-            ImplementationIdentifier = new ImplementationEntityIdentifier();
-            ImplementationIdentifier.ReadFrom(buffer, offset + 16);
+        ImplementationUseData = new byte[iuSize];
+        Array.Copy(buffer, offset + 48, ImplementationUseData, 0, iuSize);
 
-            ImplementationUseData = new byte[iuSize];
-            Array.Copy(buffer, offset + 48, ImplementationUseData, 0, iuSize);
-
-            return read;
-        }
+        return read;
     }
 }

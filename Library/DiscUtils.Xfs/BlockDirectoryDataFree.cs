@@ -20,33 +20,32 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+using System.IO;
+
+internal class BlockDirectoryDataFree : IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
-    using System.IO;
+    public ushort Offset { get; private set; }
 
-    internal class BlockDirectoryDataFree : IByteArraySerializable
+    public ushort Length { get; private set; }
+
+    public int Size
     {
-        public ushort Offset { get; private set; }
+        get { return 0x4; }
+    }
 
-        public ushort Length { get; private set; }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Offset = EndianUtilities.ToUInt16BigEndian(buffer, offset);
+        Length = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
+        return Size;
+    }
 
-        public int Size
-        {
-            get { return 0x4; }
-        }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Offset = EndianUtilities.ToUInt16BigEndian(buffer, offset);
-            Length = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
-            return Size;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

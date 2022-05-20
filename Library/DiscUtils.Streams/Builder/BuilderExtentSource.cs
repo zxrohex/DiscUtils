@@ -20,12 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Streams
-{
-    public abstract class BuilderExtentSource
-    {
-        public abstract long Length { get; }
+namespace DiscUtils.Streams;
 
-        public abstract BuilderExtent Fix(long pos);
-    }
+public abstract class BuilderExtentSource
+{
+    public abstract long Length { get; }
+
+    public abstract BuilderExtent Fix(long pos);
 }

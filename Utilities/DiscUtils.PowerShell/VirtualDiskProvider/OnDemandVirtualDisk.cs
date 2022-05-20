@@ -25,274 +25,241 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.PowerShell.VirtualDiskProvider
+namespace DiscUtils.PowerShell.VirtualDiskProvider;
+
+internal sealed class OnDemandVirtualDisk : VirtualDisk
 {
-    internal sealed class OnDemandVirtualDisk : VirtualDisk
+    private DiscFileSystem _fileSystem;
+    private string _path;
+    private FileAccess _access;
+
+    public OnDemandVirtualDisk(string path, FileAccess access)
+    {
+        _path = path;
+        _access = access;
+    }
+
+    public OnDemandVirtualDisk(DiscFileSystem fileSystem, string path, FileAccess access)
+    {
+        _fileSystem = fileSystem;
+        _path = path;
+        _access = access;
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the layer data is opened for writing.
+    /// </summary>
+    public override bool CanWrite => _access.HasFlag(FileAccess.Write);
+
+    public bool IsValid
+    {
+        get
+        {
+            try
+            {
+                using var disk = OpenDisk();
+                return disk != null;
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+        }
+    }
+
+    public override Geometry Geometry
+    {
+        get
+        {
+            using var disk = OpenDisk();
+            return disk.Geometry;
+        }
+    }
+
+    public override VirtualDiskClass DiskClass
+    {
+        get
+        {
+            using var disk = OpenDisk();
+            return disk.DiskClass;
+        }
+    }
+
+    public override long Capacity
+    {
+        get
+        {
+            using var disk = OpenDisk();
+            return disk.Capacity;
+        }
+    }
+
+    public override VirtualDiskParameters Parameters
+    {
+        get
+        {
+            using var disk = OpenDisk();
+            return disk.Parameters;
+        }
+    }
+
+    public override SparseStream Content
+    {
+        get { return new StreamWrapper(_fileSystem, _path, _access); }
+    }
+
+    public override IEnumerable<VirtualDiskLayer> Layers
+    {
+        get { throw new NotSupportedException("Access to virtual disk layers is not implemented for on-demand disks"); }
+    }
+
+    public override VirtualDiskTypeInfo DiskTypeInfo
+    {
+        get {
+            using var disk = OpenDisk();
+            return disk.DiskTypeInfo;
+        }
+    }
+
+    public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path)
+    {
+        using var disk = OpenDisk();
+        return disk.CreateDifferencingDisk(fileSystem, path);
+    }
+
+    public override VirtualDisk CreateDifferencingDisk(string path)
+    {
+        using var disk = OpenDisk();
+        return disk.CreateDifferencingDisk(path);
+    }
+
+    private VirtualDisk OpenDisk()
+    {
+        return VirtualDisk.OpenDisk(_fileSystem, _path, _access);
+    }
+
+    private class StreamWrapper : SparseStream
     {
         private DiscFileSystem _fileSystem;
         private string _path;
         private FileAccess _access;
+        private long _position;
 
-        public OnDemandVirtualDisk(string path, FileAccess access)
-        {
-            _path = path;
-            _access = access;
-        }
-
-        public OnDemandVirtualDisk(DiscFileSystem fileSystem, string path, FileAccess access)
+        public StreamWrapper(DiscFileSystem fileSystem, string path, FileAccess access)
         {
             _fileSystem = fileSystem;
             _path = path;
             _access = access;
         }
 
-        /// <summary>
-        /// Gets a value indicating whether the layer data is opened for writing.
-        /// </summary>
-        public override bool CanWrite => _access.HasFlag(FileAccess.Write);
-
-        public bool IsValid
+        public override IEnumerable<StreamExtent> Extents
         {
             get
             {
-                try
-                {
-                    using (VirtualDisk disk = OpenDisk())
-                    {
-                        return disk != null;
-                    }
-                }
-                catch (IOException)
-                {
-                    return false;
-                }
+                using var disk = OpenDisk();
+                return new List<StreamExtent>(disk.Content.Extents);
             }
         }
 
-        public override Geometry Geometry
+        public override bool CanRead
         {
             get
             {
-                using (VirtualDisk disk = OpenDisk())
-                {
-                    return disk.Geometry;
-                }
+                using var disk = OpenDisk();
+                return disk.Content.CanRead;
             }
         }
 
-        public override VirtualDiskClass DiskClass
+        public override bool CanSeek
         {
             get
             {
-                using (VirtualDisk disk = OpenDisk())
-                {
-                    return disk.DiskClass;
-                }
+                using var disk = OpenDisk();
+                return disk.Content.CanSeek;
             }
         }
 
-        public override long Capacity
+        public override bool CanWrite
         {
             get
             {
-                using (VirtualDisk disk = OpenDisk())
-                {
-                    return disk.Capacity;
-                }
+                using var disk = OpenDisk();
+                return disk.Content.CanWrite;
             }
         }
 
-        public override VirtualDiskParameters Parameters
+        public override void Flush()
+        {
+        }
+
+        public override long Length
         {
             get
             {
-                using (VirtualDisk disk = OpenDisk())
-                {
-                    return disk.Parameters;
-                }
+                using var disk = OpenDisk();
+                return disk.Content.Length;
             }
         }
 
-        public override SparseStream Content
+        public override long Position
         {
-            get { return new StreamWrapper(_fileSystem, _path, _access); }
-        }
-
-        public override IEnumerable<VirtualDiskLayer> Layers
-        {
-            get { throw new NotSupportedException("Access to virtual disk layers is not implemented for on-demand disks"); }
-        }
-
-        public override VirtualDiskTypeInfo DiskTypeInfo
-        {
-            get {
-                using (VirtualDisk disk = OpenDisk())
-                {
-                    return disk.DiskTypeInfo;
-                }
-            }
-        }
-
-        public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path)
-        {
-            using (VirtualDisk disk = OpenDisk())
+            get
             {
-                return disk.CreateDifferencingDisk(fileSystem, path);
+                return _position;
+            }
+            set
+            {
+                _position = value;
             }
         }
 
-        public override VirtualDisk CreateDifferencingDisk(string path)
+        public override int Read(byte[] buffer, int offset, int count)
         {
-            using (VirtualDisk disk = OpenDisk())
+            using var disk = OpenDisk();
+            disk.Content.Position = _position;
+            return disk.Content.Read(buffer, offset, count);
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            var effectiveOffset = offset;
+            if (origin == SeekOrigin.Current)
             {
-                return disk.CreateDifferencingDisk(path);
+                effectiveOffset += _position;
             }
+            else if (origin == SeekOrigin.End)
+            {
+                effectiveOffset += Length;
+            }
+
+            if (effectiveOffset < 0)
+            {
+                throw new IOException("Attempt to move before beginning of disk");
+            }
+            else
+            {
+                _position = effectiveOffset;
+                return _position;
+            }
+        }
+
+        public override void SetLength(long value)
+        {
+            using var disk = OpenDisk();
+            disk.Content.SetLength(value);
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            using var disk = OpenDisk();
+            disk.Content.Position = _position;
+            disk.Content.Write(buffer, offset, count);
         }
 
         private VirtualDisk OpenDisk()
         {
             return VirtualDisk.OpenDisk(_fileSystem, _path, _access);
         }
-
-        private class StreamWrapper : SparseStream
-        {
-            private DiscFileSystem _fileSystem;
-            private string _path;
-            private FileAccess _access;
-            private long _position;
-
-            public StreamWrapper(DiscFileSystem fileSystem, string path, FileAccess access)
-            {
-                _fileSystem = fileSystem;
-                _path = path;
-                _access = access;
-            }
-
-            public override IEnumerable<StreamExtent> Extents
-            {
-                get
-                {
-                    using (VirtualDisk disk = OpenDisk())
-                    {
-                        return new List<StreamExtent>(disk.Content.Extents);
-                    }
-                }
-            }
-
-            public override bool CanRead
-            {
-                get
-                {
-                    using (VirtualDisk disk = OpenDisk())
-                    {
-                        return disk.Content.CanRead;
-                    }
-                }
-            }
-
-            public override bool CanSeek
-            {
-                get
-                {
-                    using (VirtualDisk disk = OpenDisk())
-                    {
-                        return disk.Content.CanSeek;
-                    }
-                }
-            }
-
-            public override bool CanWrite
-            {
-                get
-                {
-                    using (VirtualDisk disk = OpenDisk())
-                    {
-                        return disk.Content.CanWrite;
-                    }
-                }
-            }
-
-            public override void Flush()
-            {
-            }
-
-            public override long Length
-            {
-                get
-                {
-                    using (VirtualDisk disk = OpenDisk())
-                    {
-                        return disk.Content.Length;
-                    }
-                }
-            }
-
-            public override long Position
-            {
-                get
-                {
-                    return _position;
-                }
-                set
-                {
-                    _position = value;
-                }
-            }
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                using (VirtualDisk disk = OpenDisk())
-                {
-                    disk.Content.Position = _position;
-                    return disk.Content.Read(buffer, offset, count);
-                }
-            }
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                long effectiveOffset = offset;
-                if (origin == SeekOrigin.Current)
-                {
-                    effectiveOffset += _position;
-                }
-                else if (origin == SeekOrigin.End)
-                {
-                    effectiveOffset += Length;
-                }
-
-                if (effectiveOffset < 0)
-                {
-                    throw new IOException("Attempt to move before beginning of disk");
-                }
-                else
-                {
-                    _position = effectiveOffset;
-                    return _position;
-                }
-            }
-
-            public override void SetLength(long value)
-            {
-                using (VirtualDisk disk = OpenDisk())
-                {
-                    disk.Content.SetLength(value);
-                }
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                using (VirtualDisk disk = OpenDisk())
-                {
-                    disk.Content.Position = _position;
-                    disk.Content.Write(buffer, offset, count);
-                }
-            }
-
-            private VirtualDisk OpenDisk()
-            {
-                return VirtualDisk.OpenDisk(_fileSystem, _path, _access);
-            }
-        }
     }
-
 }
+

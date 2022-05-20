@@ -22,45 +22,44 @@
 
 using System;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+public class CookedDataRun
 {
-    public class CookedDataRun
+    internal CookedDataRun(DataRun raw, long startVcn, long prevLcn, NonResidentAttributeRecord attributeExtent)
     {
-        internal CookedDataRun(DataRun raw, long startVcn, long prevLcn, NonResidentAttributeRecord attributeExtent)
+        DataRun = raw;
+        StartVcn = startVcn;
+        StartLcn = prevLcn + raw.RunOffset;
+        AttributeExtent = attributeExtent;
+
+        if (startVcn < 0)
         {
-            DataRun = raw;
-            StartVcn = startVcn;
-            StartLcn = prevLcn + raw.RunOffset;
-            AttributeExtent = attributeExtent;
-
-            if (startVcn < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(startVcn), startVcn, "VCN must be >= 0");
-            }
-
-            if (StartLcn < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(prevLcn), prevLcn, "LCN must be >= 0");
-            }
+            throw new ArgumentOutOfRangeException(nameof(startVcn), startVcn, "VCN must be >= 0");
         }
 
-        internal NonResidentAttributeRecord AttributeExtent { get; }
-
-        public DataRun DataRun { get; }
-
-        public bool IsSparse
+        if (StartLcn < 0)
         {
-            get { return DataRun.IsSparse; }
+            throw new ArgumentOutOfRangeException(nameof(prevLcn), prevLcn, "LCN must be >= 0");
         }
-
-        public long Length
-        {
-            get { return DataRun.RunLength; }
-            set { DataRun.RunLength = value; }
-        }
-
-        public long StartLcn { get; set; }
-
-        public long StartVcn { get; }
     }
+
+    internal NonResidentAttributeRecord AttributeExtent { get; }
+
+    public DataRun DataRun { get; }
+
+    public bool IsSparse
+    {
+        get { return DataRun.IsSparse; }
+    }
+
+    public long Length
+    {
+        get { return DataRun.RunLength; }
+        set { DataRun.RunLength = value; }
+    }
+
+    public long StartLcn { get; set; }
+
+    public long StartVcn { get; }
 }

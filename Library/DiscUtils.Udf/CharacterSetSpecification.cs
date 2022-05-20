@@ -23,28 +23,27 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class CharacterSetSpecification : IByteArraySerializable
 {
-    internal class CharacterSetSpecification : IByteArraySerializable
+    public byte[] Information;
+    public CharacterSetType Type;
+
+    public int Size
     {
-        public byte[] Information;
-        public CharacterSetType Type;
+        get { return 64; }
+    }
 
-        public int Size
-        {
-            get { return 64; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Type = (CharacterSetType)buffer[offset];
+        Information = EndianUtilities.ToByteArray(buffer, offset + 1, 63);
+        return 64;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Type = (CharacterSetType)buffer[offset];
-            Information = EndianUtilities.ToByteArray(buffer, offset + 1, 63);
-            return 64;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

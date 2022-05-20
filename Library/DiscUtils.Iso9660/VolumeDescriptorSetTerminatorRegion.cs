@@ -20,23 +20,22 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal class VolumeDescriptorSetTerminatorRegion : VolumeDescriptorDiskRegion
 {
-    internal class VolumeDescriptorSetTerminatorRegion : VolumeDescriptorDiskRegion
+    private readonly VolumeDescriptorSetTerminator _descriptor;
+
+    public VolumeDescriptorSetTerminatorRegion(VolumeDescriptorSetTerminator descriptor, long start)
+        : base(start)
     {
-        private readonly VolumeDescriptorSetTerminator _descriptor;
+        _descriptor = descriptor;
+    }
 
-        public VolumeDescriptorSetTerminatorRegion(VolumeDescriptorSetTerminator descriptor, long start)
-            : base(start)
-        {
-            _descriptor = descriptor;
-        }
-
-        protected override byte[] GetBlockData()
-        {
-            byte[] buffer = new byte[IsoUtilities.SectorSize];
-            _descriptor.WriteTo(buffer, 0);
-            return buffer;
-        }
+    protected override byte[] GetBlockData()
+    {
+        var buffer = new byte[IsoUtilities.SectorSize];
+        _descriptor.WriteTo(buffer, 0);
+        return buffer;
     }
 }

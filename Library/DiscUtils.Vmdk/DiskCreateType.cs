@@ -20,86 +20,85 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+/// <summary>
+/// Enumeration of VMDK disk types.
+/// </summary>
+public enum DiskCreateType
 {
     /// <summary>
-    /// Enumeration of VMDK disk types.
+    /// None - do not use.
     /// </summary>
-    public enum DiskCreateType
-    {
-        /// <summary>
-        /// None - do not use.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// VMware Workstation single-file dynamic disk.
-        /// </summary>
-        MonolithicSparse = 1,
+    /// <summary>
+    /// VMware Workstation single-file dynamic disk.
+    /// </summary>
+    MonolithicSparse = 1,
 
-        /// <summary>
-        /// ESX Dynamic Disk.
-        /// </summary>
-        VmfsSparse = 2,
+    /// <summary>
+    /// ESX Dynamic Disk.
+    /// </summary>
+    VmfsSparse = 2,
 
-        /// <summary>
-        /// VMware Workstation single-extent pre-allocated disk.
-        /// </summary>
-        MonolithicFlat = 3,
+    /// <summary>
+    /// VMware Workstation single-extent pre-allocated disk.
+    /// </summary>
+    MonolithicFlat = 3,
 
-        /// <summary>
-        /// ESX pre-allocated disk.
-        /// </summary>
-        Vmfs = 4,
+    /// <summary>
+    /// ESX pre-allocated disk.
+    /// </summary>
+    Vmfs = 4,
 
-        /// <summary>
-        /// VMware Workstation multi-extent dynamic disk.
-        /// </summary>
-        TwoGbMaxExtentSparse = 5,
+    /// <summary>
+    /// VMware Workstation multi-extent dynamic disk.
+    /// </summary>
+    TwoGbMaxExtentSparse = 5,
 
-        /// <summary>
-        /// VMware Workstation multi-extent pre-allocated disk.
-        /// </summary>
-        TwoGbMaxExtentFlat = 6,
+    /// <summary>
+    /// VMware Workstation multi-extent pre-allocated disk.
+    /// </summary>
+    TwoGbMaxExtentFlat = 6,
 
-        /// <summary>
-        /// Full device disk.
-        /// </summary>
-        FullDevice = 7,
+    /// <summary>
+    /// Full device disk.
+    /// </summary>
+    FullDevice = 7,
 
-        /// <summary>
-        /// ESX raw disk.
-        /// </summary>
-        VmfsRaw = 8,
+    /// <summary>
+    /// ESX raw disk.
+    /// </summary>
+    VmfsRaw = 8,
 
-        /// <summary>
-        /// Partition disk.
-        /// </summary>
-        PartitionedDevice = 9,
+    /// <summary>
+    /// Partition disk.
+    /// </summary>
+    PartitionedDevice = 9,
 
-        /// <summary>
-        /// ESX RDM disk.
-        /// </summary>
-        VmfsRawDeviceMap = 10,
+    /// <summary>
+    /// ESX RDM disk.
+    /// </summary>
+    VmfsRawDeviceMap = 10,
 
-        /// <summary>
-        /// ESX Passthrough RDM disk.
-        /// </summary>
-        VmfsPassthroughRawDeviceMap = 11,
+    /// <summary>
+    /// ESX Passthrough RDM disk.
+    /// </summary>
+    VmfsPassthroughRawDeviceMap = 11,
 
-        /// <summary>
-        /// A streaming-optimized disk.
-        /// </summary>
-        StreamOptimized = 12,
+    /// <summary>
+    /// A streaming-optimized disk.
+    /// </summary>
+    StreamOptimized = 12,
 
-        /// <summary>
-        /// ESX SeSparse disk.
-        /// </summary>
-        SeSparse = 13,
+    /// <summary>
+    /// ESX SeSparse disk.
+    /// </summary>
+    SeSparse = 13,
 
-        /// <summary>
-        /// ESX VsanSparse disk.
-        /// </summary>
-        VsanSparse = 14
-    }
+    /// <summary>
+    /// ESX VsanSparse disk.
+    /// </summary>
+    VsanSparse = 14
 }

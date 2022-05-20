@@ -20,45 +20,44 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal sealed class DirectoryEntry
 {
-    internal sealed class DirectoryEntry
+    private readonly Directory _directory;
+
+    public DirectoryEntry(Directory directory, FileRecordReference fileReference, FileNameRecord fileDetails)
     {
-        private readonly Directory _directory;
+        _directory = directory;
+        Reference = fileReference;
+        Details = fileDetails;
+    }
 
-        public DirectoryEntry(Directory directory, FileRecordReference fileReference, FileNameRecord fileDetails)
+    public FileNameRecord Details { get; }
+
+    public bool IsDirectory
+    {
+        get { return (Details.Flags & FileAttributeFlags.Directory) != 0; }
+    }
+
+    public FileRecordReference Reference { get; }
+
+    public string SearchName
+    {
+        get
         {
-            _directory = directory;
-            Reference = fileReference;
-            Details = fileDetails;
-        }
-
-        public FileNameRecord Details { get; }
-
-        public bool IsDirectory
-        {
-            get { return (Details.Flags & FileAttributeFlags.Directory) != 0; }
-        }
-
-        public FileRecordReference Reference { get; }
-
-        public string SearchName
-        {
-            get
+            var fileName = Details.FileName;
+            if (fileName.IndexOf('.') == -1)
             {
-                string fileName = Details.FileName;
-                if (fileName.IndexOf('.') == -1)
-                {
-                    return fileName + ".";
-                }
-                return fileName;
+                return fileName + ".";
             }
+            return fileName;
         }
+    }
 
-        internal void UpdateFrom(File file)
-        {
-            file.FreshenFileName(Details, true);
-            _directory.UpdateEntry(this);
-        }
+    internal void UpdateFrom(File file)
+    {
+        file.FreshenFileName(Details, true);
+        _directory.UpdateEntry(this);
     }
 }

@@ -33,8 +33,8 @@ namespace LibraryTests.Registry
         [Fact]//(Skip = "Issue #14")]
         public void Create()
         {
-            MemoryStream ms = new MemoryStream();
-            RegistryHive hive = RegistryHive.Create(ms);
+            var ms = new MemoryStream();
+            var hive = RegistryHive.Create(ms);
             Assert.Null(hive.Root.Parent);
             Assert.Equal(0, hive.Root.ValueCount);
             Assert.Equal(0, hive.Root.SubKeyCount);

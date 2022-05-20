@@ -33,7 +33,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            Nfs3ReadDirResult result = new Nfs3ReadDirResult()
+            var result = new Nfs3ReadDirResult()
             {
                 Status = Nfs3Status.Ok,
                 Eof = false,
@@ -67,13 +67,13 @@ namespace LibraryTests.Nfs
 
             Nfs3ReadDirResult clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 result.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new Nfs3ReadDirResult(reader);
             }
 

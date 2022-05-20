@@ -23,33 +23,32 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class ExtendedAttributeRecord : IByteArraySerializable
 {
-    internal class ExtendedAttributeRecord : IByteArraySerializable
+    public byte[] AttributeData;
+    public byte AttributeSubType;
+    public uint AttributeType;
+
+    public int Size
     {
-        public byte[] AttributeData;
-        public byte AttributeSubType;
-        public uint AttributeType;
+        get { return 12 + AttributeData.Length; }
+    }
 
-        public int Size
-        {
-            get { return 12 + AttributeData.Length; }
-        }
+    public virtual int ReadFrom(byte[] buffer, int offset)
+    {
+        AttributeType = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+        AttributeSubType = buffer[offset + 4];
+        var dataLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8) - 12;
+        AttributeData = new byte[dataLength];
+        Array.Copy(buffer, offset + 12, AttributeData, 0, dataLength);
 
-        public virtual int ReadFrom(byte[] buffer, int offset)
-        {
-            AttributeType = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-            AttributeSubType = buffer[offset + 4];
-            int dataLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8) - 12;
-            AttributeData = new byte[dataLength];
-            Array.Copy(buffer, offset + 12, AttributeData, 0, dataLength);
+        return 12 + dataLength;
+    }
 
-            return 12 + dataLength;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

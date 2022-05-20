@@ -22,6 +22,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using DiscUtils.Registry;
 using Xunit;
 
@@ -67,11 +68,11 @@ namespace LibraryTests.Registry
         [Fact]
         public void SetLargeValue()
         {
-            byte[] buffer = new byte[64 * 1024];
+            var buffer = new byte[64 * 1024];
             buffer[5232] = 0xAD;
             hive.Root.SetValue("bigvalue", buffer);
 
-            byte[] readVal = (byte[])hive.Root.GetValue("bigvalue");
+            var readVal = (byte[])hive.Root.GetValue("bigvalue");
             Assert.Equal(buffer.Length, readVal.Length);
             Assert.Equal(0xAD, readVal[5232]);
         }
@@ -101,7 +102,7 @@ namespace LibraryTests.Registry
         {
             hive.Root.SetValue("value", new byte[] { 1, 2, 3, 4 });
             Assert.Equal(RegistryValueType.Binary, hive.Root.GetValueType("value"));
-            byte[] readVal = (byte[])hive.Root.GetValue("value");
+            var readVal = (byte[])hive.Root.GetValue("value");
             Assert.Equal(4, readVal.Length);
             Assert.Equal(3, readVal[2]);
         }
@@ -111,7 +112,7 @@ namespace LibraryTests.Registry
         {
             hive.Root.SetValue("value", new string[] { "A", "B", "C" });
             Assert.Equal(RegistryValueType.MultiString, hive.Root.GetValueType("value"));
-            string[] readVal = (string[])hive.Root.GetValue("value");
+            var readVal = (string[])hive.Root.GetValue("value");
             Assert.Equal(3, readVal.Length);
             Assert.Equal("C", readVal[2]);
         }
@@ -178,7 +179,7 @@ namespace LibraryTests.Registry
             hive.Root.SetValue(@"A", "");
             hive.Root.SetValue(@"B", "");
 
-            string[] names = hive.Root.GetValueNames();
+            var names = hive.Root.GetValueNames().ToArray();
             Assert.Equal(3, names.Length);
             Assert.Equal("A", names[0]);
             Assert.Equal("B", names[1]);
@@ -188,7 +189,7 @@ namespace LibraryTests.Registry
         [Fact]
         public void CreateKey()
         {
-            RegistryKey newKey = hive.Root.CreateSubKey(@"Child\Grandchild");
+            var newKey = hive.Root.CreateSubKey(@"Child\Grandchild");
             Assert.NotNull(newKey);
             Assert.Equal(1, hive.Root.SubKeyCount);
             Assert.Equal(1, hive.Root.OpenSubKey("cHiLd").SubKeyCount);
@@ -197,7 +198,7 @@ namespace LibraryTests.Registry
         [Fact]
         public void CreateExistingKey()
         {
-            RegistryKey newKey = hive.Root.CreateSubKey(@"Child");
+            var newKey = hive.Root.CreateSubKey(@"Child");
             Assert.NotNull(newKey);
             Assert.Equal(1, hive.Root.SubKeyCount);
 
@@ -209,7 +210,7 @@ namespace LibraryTests.Registry
         [Fact]
         public void DeleteKey()
         {
-            RegistryKey newKey = hive.Root.CreateSubKey(@"Child");
+            var newKey = hive.Root.CreateSubKey(@"Child");
             hive.Root.OpenSubKey(@"Child").SetValue("value", "a value");
             Assert.Equal(1, hive.Root.SubKeyCount);
             hive.Root.DeleteSubKey("cHiLd");
@@ -219,14 +220,14 @@ namespace LibraryTests.Registry
         [Fact]
         public void DeleteNonEmptyKey()
         {
-            RegistryKey newKey = hive.Root.CreateSubKey(@"Child\Grandchild");
+            var newKey = hive.Root.CreateSubKey(@"Child\Grandchild");
             Assert.Throws<InvalidOperationException>(() => hive.Root.DeleteSubKey("Child"));
         }
 
         [Fact]
         public void DeleteKeyTree()
         {
-            RegistryKey newKey = hive.Root.CreateSubKey(@"Child\Grandchild");
+            var newKey = hive.Root.CreateSubKey(@"Child\Grandchild");
             Assert.Equal(1, hive.Root.SubKeyCount);
             hive.Root.DeleteSubKeyTree("cHiLd");
             Assert.Equal(0, hive.Root.SubKeyCount);
@@ -239,7 +240,7 @@ namespace LibraryTests.Registry
             hive.Root.CreateSubKey(@"A");
             hive.Root.CreateSubKey(@"B");
 
-            string[] names = hive.Root.GetSubKeyNames();
+            var names = hive.Root.GetSubKeyNames().ToArray();
             Assert.Equal(3, names.Length);
             Assert.Equal("A", names[0]);
             Assert.Equal("B", names[1]);

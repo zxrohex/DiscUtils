@@ -31,7 +31,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            RpcAcceptedReplyHeader header = new RpcAcceptedReplyHeader()
+            var header = new RpcAcceptedReplyHeader()
             {
                 AcceptStatus = RpcAcceptStatus.ProgramVersionMismatch,
                 MismatchInfo = new RpcMismatchInfo()
@@ -46,13 +46,13 @@ namespace LibraryTests.Nfs
 
             RpcAcceptedReplyHeader clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 header.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new RpcAcceptedReplyHeader(reader);
             }
 

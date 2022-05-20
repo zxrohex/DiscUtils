@@ -20,20 +20,19 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class NullAuthenticator : Authenticator
 {
-    internal class NullAuthenticator : Authenticator
+    public override string Identifier
     {
-        public override string Identifier
-        {
-            get { return "None"; }
-        }
-
-        public override bool GetParameters(TextBuffer textBuffer)
-        {
-            return true;
-        }
-
-        public override void SetParameters(TextBuffer textBuffer) {}
+        get { return "None"; }
     }
+
+    public override bool GetParameters(TextBuffer textBuffer)
+    {
+        return true;
+    }
+
+    public override void SetParameters(TextBuffer textBuffer) {}
 }

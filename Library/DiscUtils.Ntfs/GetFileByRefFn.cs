@@ -1,4 +1,3 @@
-namespace DiscUtils.Ntfs
-{
-    internal delegate File GetFileByRefFn(FileRecordReference reference);
-}
+namespace DiscUtils.Ntfs;
+
+internal delegate File GetFileByRefFn(FileRecordReference reference);

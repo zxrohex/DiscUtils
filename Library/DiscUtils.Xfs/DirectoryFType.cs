@@ -20,54 +20,53 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+
+/// <summary>
+/// Inode type
+/// </summary>
+[Flags]
+internal enum DirectoryFType : byte
 {
-    using System;
+    /// <summary>
+    /// Entry points to a file.
+    /// </summary>
+    File = 1,
 
     /// <summary>
-    /// Inode type
+    /// Entry points to another directory.
     /// </summary>
-    [Flags]
-    internal enum DirectoryFType : byte
-    {
-        /// <summary>
-        /// Entry points to a file.
-        /// </summary>
-        File = 1,
+    Directory = 2,
 
-        /// <summary>
-        /// Entry points to another directory.
-        /// </summary>
-        Directory = 2,
+    /// <summary>
+    /// Entry points to a character device.
+    /// </summary>
+    CharDevice = 3,
 
-        /// <summary>
-        /// Entry points to a character device.
-        /// </summary>
-        CharDevice = 3,
+    /// <summary>
+    /// Entry points to a block device.
+    /// </summary>
+    BlockDevice = 4,
 
-        /// <summary>
-        /// Entry points to a block device.
-        /// </summary>
-        BlockDevice = 4,
+    /// <summary>
+    /// Entry points to a FIFO.
+    /// </summary>
+    Fifo = 5,
 
-        /// <summary>
-        /// Entry points to a FIFO.
-        /// </summary>
-        Fifo = 5,
+    /// <summary>
+    /// Entry points to a socket.
+    /// </summary>
+    Socket = 6,
 
-        /// <summary>
-        /// Entry points to a socket.
-        /// </summary>
-        Socket = 6,
+    /// <summary>
+    /// Entry points to a symbolic link.
+    /// </summary>
+    Symlink = 7,
 
-        /// <summary>
-        /// Entry points to a symbolic link.
-        /// </summary>
-        Symlink = 7,
-
-        /// <summary>
-        /// Entry points to an overlayfs whiteout file.
-        /// </summary>
-        Whiteout = 8,
-    }
+    /// <summary>
+    /// Entry points to an overlayfs whiteout file.
+    /// </summary>
+    Whiteout = 8,
 }

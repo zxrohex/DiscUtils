@@ -25,34 +25,33 @@ using System.Management.Automation;
 using DiscUtils.Registry;
 using DiscUtils.Streams;
 
-namespace DiscUtils.PowerShell.VirtualRegistryProvider
+namespace DiscUtils.PowerShell.VirtualRegistryProvider;
+
+public sealed class VirtualRegistryPSDriveInfo : PSDriveInfo
 {
-    public sealed class VirtualRegistryPSDriveInfo : PSDriveInfo
+    private Stream _hiveStream;
+    private RegistryHive _hive;
+
+    public VirtualRegistryPSDriveInfo(PSDriveInfo toCopy, string root, Stream stream)
+        : base(toCopy.Name, toCopy.Provider, root, toCopy.Description, toCopy.Credential)
     {
-        private Stream _hiveStream;
-        private RegistryHive _hive;
+        _hiveStream = stream;
+        _hive = new RegistryHive(_hiveStream, Ownership.Dispose);
+    }
 
-        public VirtualRegistryPSDriveInfo(PSDriveInfo toCopy, string root, Stream stream)
-            : base(toCopy.Name, toCopy.Provider, root, toCopy.Description, toCopy.Credential)
+
+    internal void Close()
+    {
+        if (_hive != null)
         {
-            _hiveStream = stream;
-            _hive = new RegistryHive(_hiveStream, Ownership.Dispose);
-        }
-
-
-        internal void Close()
-        {
-            if (_hive != null)
-            {
-                _hive.Dispose();
-                _hive = null;
-            }
-        }
-
-        internal RegistryHive Hive
-        {
-            get { return _hive; }
+            _hive.Dispose();
+            _hive = null;
         }
     }
 
+    internal RegistryHive Hive
+    {
+        get { return _hive; }
+    }
 }
+

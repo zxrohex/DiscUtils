@@ -28,168 +28,167 @@ using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal sealed class ReaderDirEntry : VfsDirEntry
 {
-    internal sealed class ReaderDirEntry : VfsDirEntry
+    private readonly IsoContext _context;
+    private readonly string _fileName;
+    private readonly DirectoryRecord _record;
+
+    public ReaderDirEntry(IsoContext context, DirectoryRecord dirRecord)
     {
-        private readonly IsoContext _context;
-        private readonly string _fileName;
-        private readonly DirectoryRecord _record;
+        _context = context;
+        _record = dirRecord;
+        _fileName = _record.FileIdentifier;
 
-        public ReaderDirEntry(IsoContext context, DirectoryRecord dirRecord)
+        var rockRidge = !string.IsNullOrEmpty(_context.RockRidgeIdentifier);
+
+        if (context.SuspDetected && _record.SystemUseData != null)
         {
-            _context = context;
-            _record = dirRecord;
-            _fileName = _record.FileIdentifier;
+            SuspRecords = new SuspRecords(_context, _record.SystemUseData, 0);
+        }
 
-            bool rockRidge = !string.IsNullOrEmpty(_context.RockRidgeIdentifier);
-
-            if (context.SuspDetected && _record.SystemUseData != null)
+        if (rockRidge && SuspRecords != null)
+        {
+            // The full name is taken from this record, even if it's a child-link record
+            var nameEntries = SuspRecords.GetEntries(_context.RockRidgeIdentifier, "NM");
+            var rrName = new StringBuilder();
+            if (nameEntries != null && nameEntries.Count > 0)
             {
-                SuspRecords = new SuspRecords(_context, _record.SystemUseData, 0);
-            }
-
-            if (rockRidge && SuspRecords != null)
-            {
-                // The full name is taken from this record, even if it's a child-link record
-                List<SystemUseEntry> nameEntries = SuspRecords.GetEntries(_context.RockRidgeIdentifier, "NM");
-                StringBuilder rrName = new StringBuilder();
-                if (nameEntries != null && nameEntries.Count > 0)
+                foreach (PosixNameSystemUseEntry nameEntry in nameEntries)
                 {
-                    foreach (PosixNameSystemUseEntry nameEntry in nameEntries)
-                    {
-                        rrName.Append(nameEntry.NameData);
-                    }
-
-                    _fileName = rrName.ToString();
+                    rrName.Append(nameEntry.NameData);
                 }
 
-                // If this is a Rock Ridge child link, replace the dir record with that from the 'self' record
-                // in the child directory.
-                ChildLinkSystemUseEntry clEntry =
-                    SuspRecords.GetEntry<ChildLinkSystemUseEntry>(_context.RockRidgeIdentifier, "CL");
-                if (clEntry != null)
-                {
-                    _context.DataStream.Position = clEntry.ChildDirLocation * _context.VolumeDescriptor.LogicalBlockSize;
-                    byte[] firstSector = StreamUtilities.ReadExact(_context.DataStream,
-                        _context.VolumeDescriptor.LogicalBlockSize);
-
-                    DirectoryRecord.ReadFrom(firstSector, 0, _context.VolumeDescriptor.CharacterEncoding, out _record);
-                    if (_record.SystemUseData != null)
-                    {
-                        SuspRecords = new SuspRecords(_context, _record.SystemUseData, 0);
-                    }
-                }
+                _fileName = rrName.ToString();
             }
 
-            LastAccessTimeUtc = _record.RecordingDateAndTime;
-            LastWriteTimeUtc = _record.RecordingDateAndTime;
-            CreationTimeUtc = _record.RecordingDateAndTime;
-
-            if (rockRidge && SuspRecords != null)
+            // If this is a Rock Ridge child link, replace the dir record with that from the 'self' record
+            // in the child directory.
+            var clEntry =
+                SuspRecords.GetEntry<ChildLinkSystemUseEntry>(_context.RockRidgeIdentifier, "CL");
+            if (clEntry != null)
             {
-                FileTimeSystemUseEntry tfEntry =
-                    SuspRecords.GetEntry<FileTimeSystemUseEntry>(_context.RockRidgeIdentifier, "TF");
+                _context.DataStream.Position = clEntry.ChildDirLocation * _context.VolumeDescriptor.LogicalBlockSize;
+                var firstSector = StreamUtilities.ReadExact(_context.DataStream,
+                    _context.VolumeDescriptor.LogicalBlockSize);
 
-                if (tfEntry != null)
+                DirectoryRecord.ReadFrom(firstSector, 0, _context.VolumeDescriptor.CharacterEncoding, out _record);
+                if (_record.SystemUseData != null)
                 {
-                    if ((tfEntry.TimestampsPresent & FileTimeSystemUseEntry.Timestamps.Access) != 0)
-                    {
-                        LastAccessTimeUtc = tfEntry.AccessTime;
-                    }
-
-                    if ((tfEntry.TimestampsPresent & FileTimeSystemUseEntry.Timestamps.Modify) != 0)
-                    {
-                        LastWriteTimeUtc = tfEntry.ModifyTime;
-                    }
-
-                    if ((tfEntry.TimestampsPresent & FileTimeSystemUseEntry.Timestamps.Creation) != 0)
-                    {
-                        CreationTimeUtc = tfEntry.CreationTime;
-                    }
+                    SuspRecords = new SuspRecords(_context, _record.SystemUseData, 0);
                 }
             }
         }
 
-        public override DateTime CreationTimeUtc { get; }
+        LastAccessTimeUtc = _record.RecordingDateAndTime;
+        LastWriteTimeUtc = _record.RecordingDateAndTime;
+        CreationTimeUtc = _record.RecordingDateAndTime;
 
-        public override FileAttributes FileAttributes
+        if (rockRidge && SuspRecords != null)
         {
-            get
+            var tfEntry =
+                SuspRecords.GetEntry<FileTimeSystemUseEntry>(_context.RockRidgeIdentifier, "TF");
+
+            if (tfEntry != null)
             {
-                FileAttributes attrs = 0;
-
-                if (!string.IsNullOrEmpty(_context.RockRidgeIdentifier))
+                if ((tfEntry.TimestampsPresent & FileTimeSystemUseEntry.Timestamps.Access) != 0)
                 {
-                    // If Rock Ridge PX info is present, derive the attributes from the RR info.
-                    PosixFileInfoSystemUseEntry pfi =
-                        SuspRecords.GetEntry<PosixFileInfoSystemUseEntry>(_context.RockRidgeIdentifier, "PX");
-                    if (pfi != null)
-                    {
-                        attrs = Utilities.FileAttributesFromUnixFileType((UnixFileType)((pfi.FileMode >> 12) & 0xF));
-                    }
-
-                    if (_fileName.StartsWith(".", StringComparison.Ordinal))
-                    {
-                        attrs |= FileAttributes.Hidden;
-                    }
+                    LastAccessTimeUtc = tfEntry.AccessTime;
                 }
 
-                attrs |= FileAttributes.ReadOnly;
-
-                if ((_record.Flags & FileFlags.Directory) != 0)
+                if ((tfEntry.TimestampsPresent & FileTimeSystemUseEntry.Timestamps.Modify) != 0)
                 {
-                    attrs |= FileAttributes.Directory;
+                    LastWriteTimeUtc = tfEntry.ModifyTime;
                 }
 
-                if ((_record.Flags & FileFlags.Hidden) != 0)
+                if ((tfEntry.TimestampsPresent & FileTimeSystemUseEntry.Timestamps.Creation) != 0)
+                {
+                    CreationTimeUtc = tfEntry.CreationTime;
+                }
+            }
+        }
+    }
+
+    public override DateTime CreationTimeUtc { get; }
+
+    public override FileAttributes FileAttributes
+    {
+        get
+        {
+            FileAttributes attrs = 0;
+
+            if (!string.IsNullOrEmpty(_context.RockRidgeIdentifier))
+            {
+                // If Rock Ridge PX info is present, derive the attributes from the RR info.
+                var pfi =
+                    SuspRecords.GetEntry<PosixFileInfoSystemUseEntry>(_context.RockRidgeIdentifier, "PX");
+                if (pfi != null)
+                {
+                    attrs = Utilities.FileAttributesFromUnixFileType((UnixFileType)((pfi.FileMode >> 12) & 0xF));
+                }
+
+                if (_fileName.StartsWith(".", StringComparison.Ordinal))
                 {
                     attrs |= FileAttributes.Hidden;
                 }
-
-                return attrs;
             }
+
+            attrs |= FileAttributes.ReadOnly;
+
+            if ((_record.Flags & FileFlags.Directory) != 0)
+            {
+                attrs |= FileAttributes.Directory;
+            }
+
+            if ((_record.Flags & FileFlags.Hidden) != 0)
+            {
+                attrs |= FileAttributes.Hidden;
+            }
+
+            return attrs;
         }
+    }
 
-        public override string FileName
-        {
-            get { return _fileName; }
-        }
+    public override string FileName
+    {
+        get { return _fileName; }
+    }
 
-        public override bool HasVfsFileAttributes
-        {
-            get { return true; }
-        }
+    public override bool HasVfsFileAttributes
+    {
+        get { return true; }
+    }
 
-        public override bool HasVfsTimeInfo
-        {
-            get { return true; }
-        }
+    public override bool HasVfsTimeInfo
+    {
+        get { return true; }
+    }
 
-        public override bool IsDirectory
-        {
-            get { return (_record.Flags & FileFlags.Directory) != 0; }
-        }
+    public override bool IsDirectory
+    {
+        get { return (_record.Flags & FileFlags.Directory) != 0; }
+    }
 
-        public override bool IsSymlink
-        {
-            get { return false; }
-        }
+    public override bool IsSymlink
+    {
+        get { return false; }
+    }
 
-        public override DateTime LastAccessTimeUtc { get; }
+    public override DateTime LastAccessTimeUtc { get; }
 
-        public override DateTime LastWriteTimeUtc { get; }
+    public override DateTime LastWriteTimeUtc { get; }
 
-        public DirectoryRecord Record
-        {
-            get { return _record; }
-        }
+    public DirectoryRecord Record
+    {
+        get { return _record; }
+    }
 
-        public SuspRecords SuspRecords { get; }
+    public SuspRecords SuspRecords { get; }
 
-        public override long UniqueCacheId
-        {
-            get { return ((long)_record.LocationOfExtent << 32) | _record.DataLength; }
-        }
+    public override long UniqueCacheId
+    {
+        get { return ((long)_record.LocationOfExtent << 32) | _record.DataLength; }
     }
 }

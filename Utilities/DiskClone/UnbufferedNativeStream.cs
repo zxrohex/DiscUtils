@@ -27,178 +27,174 @@ using System.Runtime.InteropServices;
 using DiscUtils.Streams;
 using Microsoft.Win32.SafeHandles;
 
-namespace DiskClone
+namespace DiskClone;
+
+/// <summary>
+/// A stream implementation that honours the alignment rules for unbuffered streams.
+/// </summary>
+/// <remarks>
+/// To support the stream interface, which permits unaligned access, all accesses
+/// are routed through an appropriately aligned buffer.
+/// </remarks>
+public class UnbufferedNativeStream : SparseStream
 {
-    /// <summary>
-    /// A stream implementation that honours the alignment rules for unbuffered streams.
-    /// </summary>
-    /// <remarks>
-    /// To support the stream interface, which permits unaligned access, all accesses
-    /// are routed through an appropriately aligned buffer.
-    /// </remarks>
-    public class UnbufferedNativeStream : SparseStream
+    private const int BufferSize = 64 * 1024;
+    private const int Alignment = 512;
+
+    private long _position;
+    private SafeFileHandle _handle;
+    private IntPtr _bufferAllocHandle;
+    private IntPtr _buffer;
+
+    public UnbufferedNativeStream(SafeFileHandle handle)
     {
-        private const int BufferSize = 64 * 1024;
-        private const int Alignment = 512;
+        _handle = handle;
 
-        private long _position;
-        private SafeFileHandle _handle;
-        private IntPtr _bufferAllocHandle;
-        private IntPtr _buffer;
+        _bufferAllocHandle = Marshal.AllocHGlobal(BufferSize + Alignment);
+        _buffer = new IntPtr(((_bufferAllocHandle.ToInt64() + Alignment - 1) / Alignment) * Alignment);
 
-        public UnbufferedNativeStream(SafeFileHandle handle)
+        _position = 0;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (_bufferAllocHandle != IntPtr.Zero)
         {
-            _handle = handle;
-
-            _bufferAllocHandle = Marshal.AllocHGlobal(BufferSize + Alignment);
-            _buffer = new IntPtr(((_bufferAllocHandle.ToInt64() + Alignment - 1) / Alignment) * Alignment);
-
-            _position = 0;
+            Marshal.FreeHGlobal(_bufferAllocHandle);
+            _bufferAllocHandle = IntPtr.Zero;
+            _bufferAllocHandle = IntPtr.Zero;
         }
 
-        protected override void Dispose(bool disposing)
+        if (!_handle.IsClosed)
         {
-            if (_bufferAllocHandle != IntPtr.Zero)
-            {
-                Marshal.FreeHGlobal(_bufferAllocHandle);
-                _bufferAllocHandle = IntPtr.Zero;
-                _bufferAllocHandle = IntPtr.Zero;
-            }
-
-            if (!_handle.IsClosed)
-            {
-                _handle.Close();
-            }
-
-            base.Dispose(disposing);
+            _handle.Close();
         }
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
+        base.Dispose(disposing);
+    }
 
-        public override bool CanSeek
-        {
-            get { return true; }
-        }
+    public override bool CanRead
+    {
+        get { return true; }
+    }
 
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
+    public override bool CanSeek
+    {
+        get { return true; }
+    }
 
-        public override void Flush()
-        {
-        }
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
 
-        public override long Length
+    public override void Flush()
+    {
+    }
+
+    public override long Length
+    {
+        get
         {
-            get
+            if (NativeMethods.GetFileSizeEx(_handle, out var result))
             {
-                long result;
-                if (NativeMethods.GetFileSizeEx(_handle, out result))
-                {
-                    return result;
-                }
-                else
-                {
-                    throw Win32Wrapper.GetIOExceptionForLastError();
-                }
-            }
-        }
-
-        public override long Position
-        {
-            get
-            {
-                return _position;
-            }
-            set
-            {
-                _position = value;
-            }
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            int totalBytesRead = 0;
-            long length = Length;
-
-            while (totalBytesRead < count)
-            {
-                long alignedStart = (_position / Alignment) * Alignment;
-                int alignmentOffset = (int)(_position - alignedStart);
-
-                long newPos;
-                if (!NativeMethods.SetFilePointerEx(_handle, alignedStart, out newPos, 0))
-                {
-                    throw Win32Wrapper.GetIOExceptionForLastError();
-                }
-
-                int toRead = (int)Math.Min(length - alignedStart, BufferSize);
-                int numRead;
-                if (!NativeMethods.ReadFile(_handle, _buffer, toRead, out numRead, IntPtr.Zero))
-                {
-                    throw Win32Wrapper.GetIOExceptionForLastError();
-                }
-
-                int usefulData = numRead - alignmentOffset;
-                if (usefulData <= 0)
-                {
-                    return totalBytesRead;
-                }
-
-                int toCopy = Math.Min(count - totalBytesRead, usefulData);
-
-                Marshal.Copy(_buffer + alignmentOffset, buffer, offset + totalBytesRead, toCopy);
-
-                totalBytesRead += toCopy;
-                _position += toCopy;
-            }
-
-            return totalBytesRead;
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            long effectiveOffset = offset;
-            if (origin == SeekOrigin.Current)
-            {
-                effectiveOffset += _position;
-            }
-            else if (origin == SeekOrigin.End)
-            {
-                effectiveOffset += Length;
-            }
-
-            if (effectiveOffset < 0)
-            {
-                throw new IOException("Attempt to move before beginning of disk");
+                return result;
             }
             else
             {
-                _position = effectiveOffset;
-                return _position;
+                throw Win32Wrapper.GetIOExceptionForLastError();
             }
         }
+    }
 
-        public override void SetLength(long value)
+    public override long Position
+    {
+        get
         {
-            throw new NotSupportedException();
+            return _position;
         }
-
-        public override void Write(byte[] buffer, int offset, int count)
+        set
         {
-            throw new NotSupportedException();
+            _position = value;
         }
+    }
 
-        public override IEnumerable<StreamExtent> Extents
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        var totalBytesRead = 0;
+        var length = Length;
+
+        while (totalBytesRead < count)
         {
-            get
+            var alignedStart = (_position / Alignment) * Alignment;
+            var alignmentOffset = (int)(_position - alignedStart);
+
+            if (!NativeMethods.SetFilePointerEx(_handle, alignedStart, out var newPos, 0))
             {
-                return new StreamExtent[] { new StreamExtent(0, Length) };
+                throw Win32Wrapper.GetIOExceptionForLastError();
             }
+
+            var toRead = (int)Math.Min(length - alignedStart, BufferSize);
+            if (!NativeMethods.ReadFile(_handle, _buffer, toRead, out var numRead, IntPtr.Zero))
+            {
+                throw Win32Wrapper.GetIOExceptionForLastError();
+            }
+
+            var usefulData = numRead - alignmentOffset;
+            if (usefulData <= 0)
+            {
+                return totalBytesRead;
+            }
+
+            var toCopy = Math.Min(count - totalBytesRead, usefulData);
+
+            Marshal.Copy(_buffer + alignmentOffset, buffer, offset + totalBytesRead, toCopy);
+
+            totalBytesRead += toCopy;
+            _position += toCopy;
+        }
+
+        return totalBytesRead;
+    }
+
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        var effectiveOffset = offset;
+        if (origin == SeekOrigin.Current)
+        {
+            effectiveOffset += _position;
+        }
+        else if (origin == SeekOrigin.End)
+        {
+            effectiveOffset += Length;
+        }
+
+        if (effectiveOffset < 0)
+        {
+            throw new IOException("Attempt to move before beginning of disk");
+        }
+        else
+        {
+            _position = effectiveOffset;
+            return _position;
+        }
+    }
+
+    public override void SetLength(long value)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get
+        {
+            return new StreamExtent[] { new StreamExtent(0, Length) };
         }
     }
 }

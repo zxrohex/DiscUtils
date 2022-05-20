@@ -22,49 +22,48 @@
 
 using System;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal abstract class BuilderNode
 {
-    internal abstract class BuilderNode
+    protected bool _written;
+
+    public BuilderNode()
     {
-        protected bool _written;
+        ModificationTime = DateTime.Now;
+    }
 
-        public BuilderNode()
-        {
-            ModificationTime = DateTime.Now;
-        }
+    public int GroupId { get; set; }
 
-        public int GroupId { get; set; }
+    public abstract Inode Inode { get; }
 
-        public abstract Inode Inode { get; }
+    public int InodeNumber { get; set; }
 
-        public int InodeNumber { get; set; }
+    public MetadataRef InodeRef { get; set; }
 
-        public MetadataRef InodeRef { get; set; }
+    public UnixFilePermissions Mode { get; set; }
 
-        public UnixFilePermissions Mode { get; set; }
+    public DateTime ModificationTime { get; set; }
 
-        public DateTime ModificationTime { get; set; }
+    public int NumLinks { get; set; }
 
-        public int NumLinks { get; set; }
+    public int UserId { get; set; }
 
-        public int UserId { get; set; }
+    public virtual void Reset()
+    {
+        _written = false;
+    }
 
-        public virtual void Reset()
-        {
-            _written = false;
-        }
+    public abstract void Write(BuilderContext context);
 
-        public abstract void Write(BuilderContext context);
-
-        protected void FillCommonInodeData(BuilderContext context)
-        {
-            Inode.Mode = (ushort)Mode;
-            Inode.UidKey = context.AllocateId(UserId);
-            Inode.GidKey = context.AllocateId(GroupId);
-            Inode.ModificationTime = ModificationTime;
-            InodeNumber = (int)context.AllocateInode();
-            Inode.InodeNumber = (uint)InodeNumber;
-            Inode.NumLinks = NumLinks;
-        }
+    protected void FillCommonInodeData(BuilderContext context)
+    {
+        Inode.Mode = (ushort)Mode;
+        Inode.UidKey = context.AllocateId(UserId);
+        Inode.GidKey = context.AllocateId(GroupId);
+        Inode.ModificationTime = ModificationTime;
+        InodeNumber = (int)context.AllocateInode();
+        Inode.InodeNumber = (uint)InodeNumber;
+        Inode.NumLinks = NumLinks;
     }
 }

@@ -22,152 +22,150 @@
 
 using System;
 using System.IO;
+using System.Linq;
 
-namespace DiscUtils.Common
+namespace DiscUtils.Common;
+
+public class CommandLineSwitch
 {
-    public class CommandLineSwitch
+    private string[] _shortSwitches;
+    private string _fullSwitch;
+    private string _paramName;
+    private string _description;
+    private bool _isPresent;
+    private string _paramValue;
+
+    public CommandLineSwitch(string fullSwitch, string paramName, string description)
     {
-        private string[] _shortSwitches;
-        private string _fullSwitch;
-        private string _paramName;
-        private string _description;
-        private bool _isPresent;
-        private string _paramValue;
+        _shortSwitches = Array.Empty<string>();
+        _fullSwitch = fullSwitch;
+        _paramName = paramName;
+        _description = description;
+    }
 
-        public CommandLineSwitch(string fullSwitch, string paramName, string description)
+    public CommandLineSwitch(string shortSwitch, string fullSwitch, string paramName, string description)
+    {
+        _shortSwitches = new string[] { shortSwitch };
+        _fullSwitch = fullSwitch;
+        _paramName = paramName;
+        _description = description;
+    }
+
+    public CommandLineSwitch(string[] shortSwitches, string fullSwitch, string paramName, string description)
+    {
+        _shortSwitches = shortSwitches;
+        _fullSwitch = fullSwitch;
+        _paramName = paramName;
+        _description = description;
+    }
+
+    public string ParameterName
+    {
+        get { return _paramName; }
+    }
+
+    public string FullSwitchName
+    {
+        get { return _fullSwitch; }
+    }
+
+    public virtual string FullDescription
+    {
+        get { return _description; }
+    }
+
+    public bool IsPresent
+    {
+        get { return _isPresent; }
+    }
+
+    public string Value
+    {
+        get { return _paramValue; }
+    }
+
+    internal void WriteDescription(TextWriter writer, string lineTemplate, int perLineDescWidth)
+    {
+        string[] switches;
+        switches = BuildSwitchInfo(_shortSwitches, _fullSwitch, _paramName, out var ignore);
+
+        var text = Utilities.WordWrap(FullDescription, perLineDescWidth).ToArray();
+
+        for (var i = 0; i < Math.Max(switches.Length, text.Length); ++i)
         {
-            _shortSwitches = new string[0];
-            _fullSwitch = fullSwitch;
-            _paramName = paramName;
-            _description = description;
+            writer.WriteLine(lineTemplate, ((i < switches.Length) ? switches[i] : ""), ((i < text.Length) ? text[i] : ""));
         }
+    }
 
-        public CommandLineSwitch(string shortSwitch, string fullSwitch, string paramName, string description)
+    internal int SwitchDisplayLength
+    {
+        get
         {
-            _shortSwitches = new string[] { shortSwitch };
-            _fullSwitch = fullSwitch;
-            _paramName = paramName;
-            _description = description;
+            BuildSwitchInfo(_shortSwitches, _fullSwitch, _paramName, out var maxLen);
+            return maxLen;
         }
+    }
 
-        public CommandLineSwitch(string[] shortSwitches, string fullSwitch, string paramName, string description)
+    private static string[] BuildSwitchInfo(string[] shortSwitches, string fullSwitch, string param, out int maxLen)
+    {
+        maxLen = 0;
+
+        var result = new string[shortSwitches.Length + 1];
+
+        for (var i = 0; i < shortSwitches.Length; ++i)
         {
-            _shortSwitches = shortSwitches;
-            _fullSwitch = fullSwitch;
-            _paramName = paramName;
-            _description = description;
-        }
-
-        public string ParameterName
-        {
-            get { return _paramName; }
-        }
-
-        public string FullSwitchName
-        {
-            get { return _fullSwitch; }
-        }
-
-        public virtual string FullDescription
-        {
-            get { return _description; }
-        }
-
-        public bool IsPresent
-        {
-            get { return _isPresent; }
-        }
-
-        public string Value
-        {
-            get { return _paramValue; }
-        }
-
-        internal void WriteDescription(TextWriter writer, string lineTemplate, int perLineDescWidth)
-        {
-            string[] switches;
-            int ignore;
-            switches = BuildSwitchInfo(_shortSwitches, _fullSwitch, _paramName, out ignore);
-
-            string[] text = Utilities.WordWrap(FullDescription, perLineDescWidth);
-
-            for (int i = 0; i < Math.Max(switches.Length, text.Length); ++i)
-            {
-                writer.WriteLine(lineTemplate, ((i < switches.Length) ? switches[i] : ""), ((i < text.Length) ? text[i] : ""));
-            }
-        }
-
-        internal int SwitchDisplayLength
-        {
-            get
-            {
-                int maxLen;
-                BuildSwitchInfo(_shortSwitches, _fullSwitch, _paramName, out maxLen);
-                return maxLen;
-            }
-        }
-
-        private static string[] BuildSwitchInfo(string[] shortSwitches, string fullSwitch, string param, out int maxLen)
-        {
-            maxLen = 0;
-
-            string[] result = new string[shortSwitches.Length + 1];
-
-            for (int i = 0; i < shortSwitches.Length; ++i)
-            {
-                result[i] = "-" + shortSwitches[i];
-                if (param != null)
-                {
-                    result[i] += " <" + param + ">";
-                }
-                maxLen = Math.Max(result[i].Length, maxLen);
-            }
-
-            result[result.Length - 1] = "-" + fullSwitch;
+            result[i] = "-" + shortSwitches[i];
             if (param != null)
             {
-                result[result.Length - 1] += " <" + param + ">";
+                result[i] += " <" + param + ">";
             }
-            maxLen = Math.Max(result[result.Length - 1].Length, maxLen);
-
-            return result;
+            maxLen = Math.Max(result[i].Length, maxLen);
         }
 
-        internal bool Matches(string switchName)
+        result[result.Length - 1] = "-" + fullSwitch;
+        if (param != null)
         {
-            if (switchName == _fullSwitch)
+            result[result.Length - 1] += " <" + param + ">";
+        }
+        maxLen = Math.Max(result[result.Length - 1].Length, maxLen);
+
+        return result;
+    }
+
+    internal bool Matches(string switchName)
+    {
+        if (switchName == _fullSwitch)
+        {
+            return true;
+        }
+
+        foreach (var sw in _shortSwitches)
+        {
+            if (sw == switchName)
             {
                 return true;
             }
-
-            foreach (string sw in _shortSwitches)
-            {
-                if (sw == switchName)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
+        return false;
+    }
 
-        internal virtual int Process(string[] args, int pos)
+
+    internal virtual int Process(string[] args, int pos)
+    {
+        _isPresent = true;
+
+        if (!string.IsNullOrEmpty(_paramName))
         {
-            _isPresent = true;
-
-            if (!string.IsNullOrEmpty(_paramName))
+            if (pos >= args.Length)
             {
-                if (pos >= args.Length)
-                {
-                    throw new Exception(string.Format("Command-line switch {0} is missing value", _fullSwitch));
-                }
-
-                _paramValue = args[pos];
-                ++pos;
+                throw new Exception($"Command-line switch {_fullSwitch} is missing value");
             }
 
-            return pos;
+            _paramValue = args[pos];
+            ++pos;
         }
+
+        return pos;
     }
 }

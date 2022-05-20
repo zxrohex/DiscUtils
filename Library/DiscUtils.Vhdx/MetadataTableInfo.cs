@@ -25,139 +25,138 @@ using System.Collections;
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+/// <summary>
+/// Class representing the table of file metadata.
+/// </summary>
+public sealed class MetadataTableInfo : ICollection<MetadataInfo>
 {
-    /// <summary>
-    /// Class representing the table of file metadata.
-    /// </summary>
-    public sealed class MetadataTableInfo : ICollection<MetadataInfo>
+    private readonly MetadataTable _table;
+
+    internal MetadataTableInfo(MetadataTable table)
     {
-        private readonly MetadataTable _table;
+        _table = table;
+    }
 
-        internal MetadataTableInfo(MetadataTable table)
+    private IEnumerable<MetadataInfo> Entries
+    {
+        get
         {
-            _table = table;
-        }
-
-        private IEnumerable<MetadataInfo> Entries
-        {
-            get
+            foreach (var entry in _table.Entries)
             {
-                foreach (KeyValuePair<MetadataEntryKey, MetadataEntry> entry in _table.Entries)
-                {
-                    yield return new MetadataInfo(entry.Value);
-                }
+                yield return new MetadataInfo(entry.Value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the signature of the metadata table.
+    /// </summary>
+    public string Signature
+    {
+        get
+        {
+            Span<byte> buffer = stackalloc byte[8];
+            EndianUtilities.WriteBytesLittleEndian(_table.Signature, buffer);
+            return EndianUtilities.BytesToString(buffer);
+        }
+    }
+
+    /// <summary>
+    /// Gets the number of metadata items present.
+    /// </summary>
+    public int Count
+    {
+        get { return _table.EntryCount; }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether this table is read-only (always true).
+    /// </summary>
+    public bool IsReadOnly
+    {
+        get { return true; }
+    }
+
+    /// <summary>
+    /// Always throws InvalidOperationException.
+    /// </summary>
+    /// <param name="item">The item to add.</param>
+    public void Add(MetadataInfo item)
+    {
+        throw new InvalidOperationException();
+    }
+
+    /// <summary>
+    /// Always throws InvalidOperationException.
+    /// </summary>
+    public void Clear()
+    {
+        throw new InvalidOperationException();
+    }
+
+    /// <summary>
+    /// Determines if the specified metadata item is present already.
+    /// </summary>
+    /// <param name="item">The item to look for.</param>
+    /// <returns><c>true</c> if present, else <c>false</c>.</returns>
+    /// <remarks>The comparison is based on the metadata item identity, not the value.</remarks>
+    public bool Contains(MetadataInfo item)
+    {
+        foreach (var entry in _table.Entries)
+        {
+            if (entry.Key.ItemId == item.ItemId
+                && entry.Key.IsUser == item.IsUser)
+            {
+                return true;
             }
         }
 
-        /// <summary>
-        /// Gets the signature of the metadata table.
-        /// </summary>
-        public string Signature
-        {
-            get
-            {
-                byte[] buffer = new byte[8];
-                EndianUtilities.WriteBytesLittleEndian(_table.Signature, buffer, 0);
-                return EndianUtilities.BytesToString(buffer, 0, 8);
-            }
-        }
+        return false;
+    }
 
-        /// <summary>
-        /// Gets the number of metadata items present.
-        /// </summary>
-        public int Count
+    /// <summary>
+    /// Copies this metadata table to an array.
+    /// </summary>
+    /// <param name="array">The destination array.</param>
+    /// <param name="arrayIndex">The index of the first item to populate in the array.</param>
+    public void CopyTo(MetadataInfo[] array, int arrayIndex)
+    {
+        var offset = 0;
+        foreach (var entry in _table.Entries)
         {
-            get { return _table.EntryCount; }
+            array[arrayIndex + offset] = new MetadataInfo(entry.Value);
+            ++offset;
         }
+    }
 
-        /// <summary>
-        /// Gets a value indicating whether this table is read-only (always true).
-        /// </summary>
-        public bool IsReadOnly
-        {
-            get { return true; }
-        }
+    /// <summary>
+    /// Removes an item from the table.
+    /// </summary>
+    /// <param name="item">The item to remove.</param>
+    /// <returns><c>true</c> if the item was removed, else <c>false</c>.</returns>
+    /// <remarks>Always throws InvalidOperationException as the table is read-only.</remarks>
+    public bool Remove(MetadataInfo item)
+    {
+        throw new InvalidOperationException();
+    }
 
-        /// <summary>
-        /// Always throws InvalidOperationException.
-        /// </summary>
-        /// <param name="item">The item to add.</param>
-        public void Add(MetadataInfo item)
-        {
-            throw new InvalidOperationException();
-        }
+    /// <summary>
+    /// Gets an enumerator for the metadata items.
+    /// </summary>
+    /// <returns>A new enumerator.</returns>
+    public IEnumerator<MetadataInfo> GetEnumerator()
+    {
+        return Entries.GetEnumerator();
+    }
 
-        /// <summary>
-        /// Always throws InvalidOperationException.
-        /// </summary>
-        public void Clear()
-        {
-            throw new InvalidOperationException();
-        }
-
-        /// <summary>
-        /// Determines if the specified metadata item is present already.
-        /// </summary>
-        /// <param name="item">The item to look for.</param>
-        /// <returns><c>true</c> if present, else <c>false</c>.</returns>
-        /// <remarks>The comparison is based on the metadata item identity, not the value.</remarks>
-        public bool Contains(MetadataInfo item)
-        {
-            foreach (KeyValuePair<MetadataEntryKey, MetadataEntry> entry in _table.Entries)
-            {
-                if (entry.Key.ItemId == item.ItemId
-                    && entry.Key.IsUser == item.IsUser)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Copies this metadata table to an array.
-        /// </summary>
-        /// <param name="array">The destination array.</param>
-        /// <param name="arrayIndex">The index of the first item to populate in the array.</param>
-        public void CopyTo(MetadataInfo[] array, int arrayIndex)
-        {
-            int offset = 0;
-            foreach (KeyValuePair<MetadataEntryKey, MetadataEntry> entry in _table.Entries)
-            {
-                array[arrayIndex + offset] = new MetadataInfo(entry.Value);
-                ++offset;
-            }
-        }
-
-        /// <summary>
-        /// Removes an item from the table.
-        /// </summary>
-        /// <param name="item">The item to remove.</param>
-        /// <returns><c>true</c> if the item was removed, else <c>false</c>.</returns>
-        /// <remarks>Always throws InvalidOperationException as the table is read-only.</remarks>
-        public bool Remove(MetadataInfo item)
-        {
-            throw new InvalidOperationException();
-        }
-
-        /// <summary>
-        /// Gets an enumerator for the metadata items.
-        /// </summary>
-        /// <returns>A new enumerator.</returns>
-        public IEnumerator<MetadataInfo> GetEnumerator()
-        {
-            return Entries.GetEnumerator();
-        }
-
-        /// <summary>
-        /// Gets an enumerator for the metadata items.
-        /// </summary>
-        /// <returns>A new enumerator.</returns>
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return Entries.GetEnumerator();
-        }
+    /// <summary>
+    /// Gets an enumerator for the metadata items.
+    /// </summary>
+    /// <returns>A new enumerator.</returns>
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return Entries.GetEnumerator();
     }
 }

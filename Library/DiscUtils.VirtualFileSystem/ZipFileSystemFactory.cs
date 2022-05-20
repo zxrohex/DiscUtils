@@ -21,27 +21,25 @@
 //
 
 using System.Collections.Generic;
-using System.IO;
+using DiscUtils;
 using DiscUtils.Vfs;
+using DiscUtils.VirtualFileSystem;
 
-namespace DiscUtils.VirtualFileSystem
-{
 #if NET45 || NETSTANDARD2_0
-    [VfsFileSystemFactory]
-    internal class ZipFileSystemFactory : VfsFileSystemFactory
+[VfsFileSystemFactory]
+internal class ZipFileSystemFactory : VfsFileSystemFactory
+{
+    public override IEnumerable<FileSystemInfo> Detect(System.IO.Stream stream, VolumeInfo volume)
     {
-        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+        if (ZipFileSystem.Detect(stream))
         {
-            if (ZipFileSystem.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("ZIP", "ZIP", Open);
-            }
-        }
-
-        private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
-        {
-            return new ZipFileSystem(stream, "ZIP", ownsStream: true);
+            yield return new VfsFileSystemInfo("ZIP", "ZIP", Open);
         }
     }
-#endif
+
+    private DiscFileSystem Open(System.IO.Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new ZipFileSystem(stream, "ZIP", ownsStream: true);
+    }
 }
+#endif

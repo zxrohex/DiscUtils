@@ -34,43 +34,43 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void CanWrite()
         {
-            CDBuilder builder = new CDBuilder();
-            CDReader fs = new CDReader(builder.Build(), false);
+            var builder = new CDBuilder();
+            var fs = new CDReader(builder.Build(), false);
             Assert.False(fs.CanWrite);
         }
 
         [Fact]
         public void FileInfo()
         {
-            CDBuilder builder = new CDBuilder();
-            CDReader fs = new CDReader(builder.Build(), false);
-            DiscFileInfo fi = fs.GetFileInfo(@"SOMEDIR\SOMEFILE.TXT");
+            var builder = new CDBuilder();
+            var fs = new CDReader(builder.Build(), false);
+            var fi = fs.GetFileInfo(@"SOMEDIR\SOMEFILE.TXT");
             Assert.NotNull(fi);
         }
 
         [Fact]
         public void DirectoryInfo()
         {
-            CDBuilder builder = new CDBuilder();
-            CDReader fs = new CDReader(builder.Build(), false);
-            DiscDirectoryInfo fi = fs.GetDirectoryInfo(@"SOMEDIR");
+            var builder = new CDBuilder();
+            var fs = new CDReader(builder.Build(), false);
+            var fi = fs.GetDirectoryInfo(@"SOMEDIR");
             Assert.NotNull(fi);
         }
 
         [Fact]
         public void FileSystemInfo()
         {
-            CDBuilder builder = new CDBuilder();
-            CDReader fs = new CDReader(builder.Build(), false);
-            DiscFileSystemInfo fi = fs.GetFileSystemInfo(@"SOMEDIR\SOMEFILE");
+            var builder = new CDBuilder();
+            var fs = new CDReader(builder.Build(), false);
+            var fi = fs.GetFileSystemInfo(@"SOMEDIR\SOMEFILE");
             Assert.NotNull(fi);
         }
 
         [Fact]
         public void Root()
         {
-            CDBuilder builder = new CDBuilder();
-            CDReader fs = new CDReader(builder.Build(), false);
+            var builder = new CDBuilder();
+            var fs = new CDReader(builder.Build(), false);
             Assert.NotNull(fs.Root);
             Assert.True(fs.Root.Exists);
             Assert.Empty(fs.Root.Name);
@@ -80,15 +80,17 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void LargeDirectory()
         {
-            CDBuilder builder = new CDBuilder();
-            builder.UseJoliet = true;
-
-            for (int i = 0; i < 3000; ++i)
+            var builder = new CDBuilder
             {
-                builder.AddFile("FILE" + i + ".TXT", new byte[] { });
+                UseJoliet = true
+            };
+
+            for (var i = 0; i < 3000; ++i)
+            {
+                builder.AddFile("FILE" + i + ".TXT", new byte[0]);
             }
 
-            CDReader reader = new CDReader(builder.Build(), true);
+            var reader = new CDReader(builder.Build(), true);
 
             Assert.Equal(3000, reader.Root.GetFiles().Count());
         }
@@ -96,16 +98,18 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void HideVersions()
         {
-            CDBuilder builder = new CDBuilder();
-            builder.UseJoliet = true;
-            builder.AddFile("FILE.TXT;1", new byte[] { });
+            var builder = new CDBuilder
+            {
+                UseJoliet = true
+            };
+            builder.AddFile("FILE.TXT;1", new byte[0]);
 
-            MemoryStream ms = new MemoryStream();
+            var ms = new MemoryStream();
             SparseStream.Pump(builder.Build(), ms);
 
             var sep = Path.DirectorySeparatorChar;
 
-            CDReader reader = new CDReader(ms, true, false);
+            var reader = new CDReader(ms, true, false);
             Assert.Equal($"{sep}FILE.TXT;1", reader.GetFiles("").First());
             Assert.Equal($"{sep}FILE.TXT;1", reader.GetFileSystemEntries("").First());
 

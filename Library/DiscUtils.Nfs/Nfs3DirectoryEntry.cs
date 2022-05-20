@@ -23,96 +23,93 @@
 using System;
 using System.IO;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3DirectoryEntry
 {
-    public sealed class Nfs3DirectoryEntry
+    internal Nfs3DirectoryEntry(XdrDataReader reader)
     {
-        internal Nfs3DirectoryEntry(XdrDataReader reader)
+        FileId = reader.ReadUInt64();
+        Name = reader.ReadString();
+        Cookie = reader.ReadUInt64();
+        if (reader.ReadBool())
         {
-            FileId = reader.ReadUInt64();
-            Name = reader.ReadString();
-            Cookie = reader.ReadUInt64();
-            if (reader.ReadBool())
-            {
-                FileAttributes = new Nfs3FileAttributes(reader);
-            }
-
-            if (reader.ReadBool())
-            {
-                FileHandle = new Nfs3FileHandle(reader);
-            }
+            FileAttributes = new Nfs3FileAttributes(reader);
         }
 
-        public Nfs3DirectoryEntry()
+        if (reader.ReadBool())
         {
+            FileHandle = new Nfs3FileHandle(reader);
+        }
+    }
+
+    public Nfs3DirectoryEntry()
+    {
+    }
+
+    public ulong Cookie { get; set; }
+
+    public Nfs3FileAttributes FileAttributes { get; set; }
+
+    public Nfs3FileHandle FileHandle { get; set; }
+
+    public ulong FileId { get; set; }
+
+    public string Name { get; set; }
+
+    internal void Write(XdrDataWriter writer)
+    {
+        writer.Write(FileId);
+        writer.Write(Name);
+        writer.Write(Cookie);
+
+        writer.Write(FileAttributes != null);
+        if (FileAttributes != null)
+        {
+            FileAttributes.Write(writer);
         }
 
-        public ulong Cookie { get; set; }
-
-        public Nfs3FileAttributes FileAttributes { get; set; }
-
-        public Nfs3FileHandle FileHandle { get; set; }
-
-        public ulong FileId { get; set; }
-
-        public string Name { get; set; }
-
-        internal void Write(XdrDataWriter writer)
+        writer.Write(FileHandle != null);
+        if (FileHandle != null)
         {
-            writer.Write(FileId);
-            writer.Write(Name);
-            writer.Write(Cookie);
+            FileHandle.Write(writer);
+        }
+    }
 
-            writer.Write(FileAttributes != null);
-            if (FileAttributes != null)
-            {
-                FileAttributes.Write(writer);
-            }
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3DirectoryEntry);
+    }
 
-            writer.Write(FileHandle != null);
-            if (FileHandle != null)
-            {
-                FileHandle.Write(writer);
-            }
+    public bool Equals(Nfs3DirectoryEntry other)
+    {
+        if (other == null)
+        {
+            return false;
         }
 
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Nfs3DirectoryEntry);
-        }
+        return other.Cookie == Cookie
+            && object.Equals(other.FileAttributes, FileAttributes)
+            && object.Equals(other.FileHandle, FileHandle)
+            && other.FileId == FileId
+            && object.Equals(other.Name, Name);
+    }
 
-        public bool Equals(Nfs3DirectoryEntry other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Cookie, FileAttributes, FileHandle, FileId, Name);
+    }
 
-            return other.Cookie == Cookie
-                && object.Equals(other.FileAttributes, FileAttributes)
-                && object.Equals(other.FileHandle, FileHandle)
-                && other.FileId == FileId
-                && object.Equals(other.Name, Name);
-        }
+    public override string ToString()
+    {
+        return this.Name;
+    }
 
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Cookie, FileAttributes, FileHandle, FileId, Name);
-        }
-
-        public override string ToString()
-        {
-            return this.Name;
-        }
-
-        public long GetSize()
-        {
-            using (MemoryStream stream = new MemoryStream())
-            {
-                XdrDataWriter writer = new XdrDataWriter(stream);
-                Write(writer);
-                return stream.Length;
-            }
-        }
+    public long GetSize()
+    {
+        using var stream = new MemoryStream();
+        var writer = new XdrDataWriter(stream);
+        Write(writer);
+        return stream.Length;
     }
 }

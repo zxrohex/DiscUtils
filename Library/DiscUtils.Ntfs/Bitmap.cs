@@ -21,209 +21,231 @@
 //
 
 using System;
+using System.Buffers;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal sealed class Bitmap : IDisposable
 {
-    internal sealed class Bitmap : IDisposable
+    private BlockCacheStream _bitmap;
+    private readonly long _maxIndex;
+
+    private long _nextAvailable;
+    private readonly Stream _stream;
+
+    public Bitmap(Stream stream, long maxIndex)
     {
-        private BlockCacheStream _bitmap;
-        private readonly long _maxIndex;
+        _stream = stream;
+        _maxIndex = maxIndex;
+        _bitmap = new BlockCacheStream(SparseStream.FromStream(stream, Ownership.None), Ownership.None);
+    }
 
-        private long _nextAvailable;
-        private readonly Stream _stream;
-
-        public Bitmap(Stream stream, long maxIndex)
+    public void Dispose()
+    {
+        if (_bitmap != null)
         {
-            _stream = stream;
-            _maxIndex = maxIndex;
-            _bitmap = new BlockCacheStream(SparseStream.FromStream(stream, Ownership.None), Ownership.None);
+            _bitmap.Dispose();
+            _bitmap = null;
+        }
+    }
+
+    public bool IsPresent(long index)
+    {
+        var byteIdx = index / 8;
+        var mask = 1 << (int)(index % 8);
+        return (GetByte(byteIdx) & mask) != 0;
+    }
+
+    public void MarkPresent(long index)
+    {
+        var byteIdx = index / 8;
+        var mask = (byte)(1 << (byte)(index % 8));
+
+        if (byteIdx >= _bitmap.Length)
+        {
+            _bitmap.Position = MathUtilities.RoundUp(byteIdx + 1, 8) - 1;
+            _bitmap.WriteByte(0);
         }
 
-        public void Dispose()
+        SetByte(byteIdx, (byte)(GetByte(byteIdx) | mask));
+    }
+
+    public void MarkPresentRange(long index, long count)
+    {
+        if (count <= 0)
         {
-            if (_bitmap != null)
-            {
-                _bitmap.Dispose();
-                _bitmap = null;
-            }
+            return;
         }
 
-        public bool IsPresent(long index)
+        var firstByte = index / 8;
+        var lastByte = (index + count - 1) / 8;
+
+        if (lastByte >= _bitmap.Length)
         {
-            long byteIdx = index / 8;
-            int mask = 1 << (int)(index % 8);
-            return (GetByte(byteIdx) & mask) != 0;
+            _bitmap.Position = MathUtilities.RoundUp(lastByte + 1, 8) - 1;
+            _bitmap.WriteByte(0);
         }
 
-        public void MarkPresent(long index)
+        var bufferSize = (int)(lastByte - firstByte + 1);
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
         {
-            long byteIdx = index / 8;
-            byte mask = (byte)(1 << (byte)(index % 8));
+            Array.Clear(buffer, 0, bufferSize);
 
-            if (byteIdx >= _bitmap.Length)
-            {
-                _bitmap.Position = MathUtilities.RoundUp(byteIdx + 1, 8) - 1;
-                _bitmap.WriteByte(0);
-            }
-
-            SetByte(byteIdx, (byte)(GetByte(byteIdx) | mask));
-        }
-
-        public void MarkPresentRange(long index, long count)
-        {
-            if (count <= 0)
-            {
-                return;
-            }
-
-            long firstByte = index / 8;
-            long lastByte = (index + count - 1) / 8;
-
-            if (lastByte >= _bitmap.Length)
-            {
-                _bitmap.Position = MathUtilities.RoundUp(lastByte + 1, 8) - 1;
-                _bitmap.WriteByte(0);
-            }
-
-            byte[] buffer = new byte[lastByte - firstByte + 1];
             buffer[0] = GetByte(firstByte);
-            if (buffer.Length != 1)
+            
+            if (bufferSize != 1)
             {
-                buffer[buffer.Length - 1] = GetByte(lastByte);
+                buffer[bufferSize - 1] = GetByte(lastByte);
             }
 
-            for (long i = index; i < index + count; ++i)
+            for (var i = index; i < index + count; ++i)
             {
-                long byteIdx = i / 8 - firstByte;
-                byte mask = (byte)(1 << (byte)(i % 8));
+                var byteIdx = i / 8 - firstByte;
+                var mask = (byte)(1 << (byte)(i % 8));
 
                 buffer[byteIdx] |= mask;
             }
 
-            SetBytes(firstByte, buffer);
+            SetBytes(firstByte, buffer, 0, bufferSize);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    public void MarkAbsent(long index)
+    {
+        var byteIdx = index / 8;
+        var mask = (byte)(1 << (byte)(index % 8));
+
+        if (byteIdx < _stream.Length)
+        {
+            SetByte(byteIdx, (byte)(GetByte(byteIdx) & ~mask));
         }
 
-        public void MarkAbsent(long index)
+        if (index < _nextAvailable)
         {
-            long byteIdx = index / 8;
-            byte mask = (byte)(1 << (byte)(index % 8));
+            _nextAvailable = index;
+        }
+    }
 
-            if (byteIdx < _stream.Length)
-            {
-                SetByte(byteIdx, (byte)(GetByte(byteIdx) & ~mask));
-            }
-
-            if (index < _nextAvailable)
-            {
-                _nextAvailable = index;
-            }
+    internal void MarkAbsentRange(long index, long count)
+    {
+        if (count <= 0)
+        {
+            return;
         }
 
-        internal void MarkAbsentRange(long index, long count)
+        var firstByte = index / 8;
+        var lastByte = (index + count - 1) / 8;
+        if (lastByte >= _bitmap.Length)
         {
-            if (count <= 0)
-            {
-                return;
-            }
+            _bitmap.Position = MathUtilities.RoundUp(lastByte + 1, 8) - 1;
+            _bitmap.WriteByte(0);
+        }
 
-            long firstByte = index / 8;
-            long lastByte = (index + count - 1) / 8;
-            if (lastByte >= _bitmap.Length)
-            {
-                _bitmap.Position = MathUtilities.RoundUp(lastByte + 1, 8) - 1;
-                _bitmap.WriteByte(0);
-            }
-
-            byte[] buffer = new byte[lastByte - firstByte + 1];
+        var bufferLength = (int)(lastByte - firstByte + 1);
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferLength);
+        try
+        {
             buffer[0] = GetByte(firstByte);
-            if (buffer.Length != 1)
+            if (bufferLength != 1)
             {
-                buffer[buffer.Length - 1] = GetByte(lastByte);
+                buffer[bufferLength - 1] = GetByte(lastByte);
             }
 
-            for (long i = index; i < index + count; ++i)
+            for (var i = index; i < index + count; ++i)
             {
-                long byteIdx = i / 8 - firstByte;
-                byte mask = (byte)(1 << (byte)(i % 8));
+                var byteIdx = i / 8 - firstByte;
+                var mask = (byte)(1 << (byte)(i % 8));
 
                 buffer[byteIdx] &= (byte)~mask;
             }
 
-            SetBytes(firstByte, buffer);
-
-            if (index < _nextAvailable)
-            {
-                _nextAvailable = index;
-            }
+            SetBytes(firstByte, buffer, 0, bufferLength);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
 
-        internal long AllocateFirstAvailable(long minValue)
+        if (index < _nextAvailable)
         {
-            long i = Math.Max(minValue, _nextAvailable);
-            while (IsPresent(i) && i < _maxIndex)
-            {
-                ++i;
-            }
+            _nextAvailable = index;
+        }
+    }
 
-            if (i < _maxIndex)
-            {
-                MarkPresent(i);
-                _nextAvailable = i + 1;
-                return i;
-            }
-            return -1;
+    internal long AllocateFirstAvailable(long minValue)
+    {
+        var i = Math.Max(minValue, _nextAvailable);
+        while (IsPresent(i) && i < _maxIndex)
+        {
+            ++i;
         }
 
-        internal long SetTotalEntries(long numEntries)
+        if (i < _maxIndex)
         {
-            long length = MathUtilities.RoundUp(MathUtilities.Ceil(numEntries, 8), 8);
-            _stream.SetLength(length);
-            return length * 8;
+            MarkPresent(i);
+            _nextAvailable = i + 1;
+            return i;
         }
+        return -1;
+    }
 
-        internal long Size { get { return _bitmap.Length; } }
+    internal long SetTotalEntries(long numEntries)
+    {
+        var length = MathUtilities.RoundUp(MathUtilities.Ceil(numEntries, 8), 8);
+        _stream.SetLength(length);
+        return length * 8;
+    }
 
-        internal byte GetByte(long index)
+    internal long Size { get { return _bitmap.Length; } }
+
+    internal byte GetByte(long index)
+    {
+        if (index >= _bitmap.Length)
         {
-            if (index >= _bitmap.Length)
-            {
-                return 0;
-            }
-
-            byte[] buffer = new byte[1];
-            _bitmap.Position = index;
-            if (_bitmap.Read(buffer, 0, 1) != 0)
-            {
-                return buffer[0];
-            }
             return 0;
         }
-        
-        internal int GetBytes(long index, byte[] buffer, int offset, int count)
+
+        _bitmap.Position = index;
+
+        var buffer = _bitmap.ReadByte();
+
+        if (buffer >= 0)
         {
-            if (index + count >= _bitmap.Length)
-                count = (int)(_bitmap.Length - index);
-            if (count <= 0)
-                return 0;
-            _bitmap.Position = index;
-            return _bitmap.Read(buffer, offset, count);
+            return (byte)buffer;
         }
 
-        private void SetByte(long index, byte value)
-        {
-            byte[] buffer = { value };
-            _bitmap.Position = index;
-            _bitmap.Write(buffer, 0, 1);
-            _bitmap.Flush();
-        }
+        return 0;
+    }
+    
+    internal int GetBytes(long index, byte[] buffer, int offset, int count)
+    {
+        if (index + count >= _bitmap.Length)
+            count = (int)(_bitmap.Length - index);
+        if (count <= 0)
+            return 0;
+        _bitmap.Position = index;
+        return _bitmap.Read(buffer, offset, count);
+    }
 
-        private void SetBytes(long index, byte[] buffer)
-        {
-            _bitmap.Position = index;
-            _bitmap.Write(buffer, 0, buffer.Length);
-            _bitmap.Flush();
-        }
+    private void SetByte(long index, byte value)
+    {
+        byte[] buffer = { value };
+        _bitmap.Position = index;
+        _bitmap.Write(buffer, 0, 1);
+        _bitmap.Flush();
+    }
+
+    private void SetBytes(long index, byte[] buffer, int offset, int count)
+    {
+        _bitmap.Position = index;
+        _bitmap.Write(buffer, offset, count);
+        _bitmap.Flush();
     }
 }

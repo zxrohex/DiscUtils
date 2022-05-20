@@ -22,86 +22,85 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base.Items
+namespace DiscUtils.Btrfs.Base.Items;
+
+/// <summary>
+/// Maps logical address to physical
+/// </summary>
+internal class ChunkItem : BaseItem
 {
+    public ChunkItem(Key key) : base(key) {}
+
     /// <summary>
-    /// Maps logical address to physical
+    /// size of chunk (bytes)
     /// </summary>
-    internal class ChunkItem : BaseItem
+    public ulong ChunkSize { get; private set; }
+
+    /// <summary>
+    /// root referencing this chunk (2)
+    /// </summary>
+    public ulong ObjectId { get; private set; }
+
+    /// <summary>
+    /// stripe length
+    /// </summary>
+    public ulong StripeLength { get; private set; }
+
+    /// <summary>
+    /// type (same as flags for block group?)
+    /// </summary>
+    public BlockGroupFlag Type { get; private set; }
+
+    /// <summary>
+    /// optimal io alignment
+    /// </summary>
+    public uint OptimalIoAlignment { get; private set; }
+
+    /// <summary>
+    /// optimal io width
+    /// </summary>
+    public uint OptimalIoWidth { get; private set; }
+
+    /// <summary>
+    /// minimal io size (sector size)
+    /// </summary>
+    public uint MinimalIoSize { get; private set; }
+
+    /// <summary>
+    /// number of stripes
+    /// </summary>
+    public ushort StripeCount { get; private set; }
+
+    /// <summary>
+    /// sub stripes
+    /// </summary>
+    public ushort SubStripes { get; private set; }
+
+    public Stripe[] Stripes { get; private set; }
+
+    public override int Size
     {
-        public ChunkItem(Key key) : base(key) {}
+        get { return 0x30 + StripeCount * Stripe.Length; }
+    }
 
-        /// <summary>
-        /// size of chunk (bytes)
-        /// </summary>
-        public ulong ChunkSize { get; private set; }
-
-        /// <summary>
-        /// root referencing this chunk (2)
-        /// </summary>
-        public ulong ObjectId { get; private set; }
-
-        /// <summary>
-        /// stripe length
-        /// </summary>
-        public ulong StripeLength { get; private set; }
-
-        /// <summary>
-        /// type (same as flags for block group?)
-        /// </summary>
-        public BlockGroupFlag Type { get; private set; }
-
-        /// <summary>
-        /// optimal io alignment
-        /// </summary>
-        public uint OptimalIoAlignment { get; private set; }
-
-        /// <summary>
-        /// optimal io width
-        /// </summary>
-        public uint OptimalIoWidth { get; private set; }
-
-        /// <summary>
-        /// minimal io size (sector size)
-        /// </summary>
-        public uint MinimalIoSize { get; private set; }
-
-        /// <summary>
-        /// number of stripes
-        /// </summary>
-        public ushort StripeCount { get; private set; }
-
-        /// <summary>
-        /// sub stripes
-        /// </summary>
-        public ushort SubStripes { get; private set; }
-
-        public Stripe[] Stripes { get; private set; }
-
-        public override int Size
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        ChunkSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+        ObjectId = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
+        StripeLength = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x10);
+        Type = (BlockGroupFlag)EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x18);
+        OptimalIoAlignment = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x20);
+        OptimalIoWidth = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x24);
+        MinimalIoSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x28);
+        StripeCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x2c);
+        SubStripes = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x2e);
+        Stripes = new Stripe[StripeCount];
+        offset += 0x30;
+        for (var i = 0; i < StripeCount; i++)
         {
-            get { return 0x30 + StripeCount * Stripe.Length; }
+            Stripes[i] = new Stripe();
+            offset += Stripes[i].ReadFrom(buffer, offset);
         }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            ChunkSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-            ObjectId = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-            StripeLength = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x10);
-            Type = (BlockGroupFlag)EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x18);
-            OptimalIoAlignment = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x20);
-            OptimalIoWidth = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x24);
-            MinimalIoSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x28);
-            StripeCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x2c);
-            SubStripes = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x2e);
-            Stripes = new Stripe[StripeCount];
-            offset += 0x30;
-            for (int i = 0; i < StripeCount; i++)
-            {
-                Stripes[i] = new Stripe();
-                offset += Stripes[i].ReadFrom(buffer, offset);
-            }
-            return Size;
-        }
+        return Size;
     }
 }

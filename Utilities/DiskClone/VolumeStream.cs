@@ -22,24 +22,23 @@
 
 using Microsoft.Win32.SafeHandles;
 
-namespace DiskClone
+namespace DiskClone;
+
+internal sealed class VolumeStream : UnbufferedNativeStream
 {
-    internal sealed class VolumeStream : UnbufferedNativeStream
+    private long _length;
+
+    public VolumeStream(SafeFileHandle handle)
+        : base(handle)
     {
-        private long _length;
-
-        public VolumeStream(SafeFileHandle handle)
-            : base(handle)
-        {
-            var volInfo = Win32Wrapper.GetNtfsVolumeData(handle);
-            _length = volInfo.TotalClusters * volInfo.BytesPerCluster;
-        }
-
-
-        public override long Length
-        {
-            get { return _length; }
-        }
-
+        var volInfo = Win32Wrapper.GetNtfsVolumeData(handle);
+        _length = volInfo.TotalClusters * volInfo.BytesPerCluster;
     }
+
+
+    public override long Length
+    {
+        get { return _length; }
+    }
+
 }

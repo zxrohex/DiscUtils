@@ -22,44 +22,43 @@
 
 using System;
 
-namespace DiscUtils.Registry
+namespace DiscUtils.Registry;
+
+using System.Runtime.Serialization;
+
+/// <summary>
+/// Exception thrown when some corruption is found in the registry hive.
+/// </summary>
+[Serializable]
+public class RegistryCorruptException : Exception
 {
-    using System.Runtime.Serialization;
+    /// <summary>
+    /// Initializes a new instance of the RegistryCorruptException class.
+    /// </summary>
+    public RegistryCorruptException() {}
 
     /// <summary>
-    /// Exception thrown when some corruption is found in the registry hive.
+    /// Initializes a new instance of the RegistryCorruptException class.
     /// </summary>
-    [Serializable]
-    public class RegistryCorruptException : Exception
+    /// <param name="message">The exception message.</param>
+    public RegistryCorruptException(string message)
+        : base(message) {}
+
+    /// <summary>
+    /// Initializes a new instance of the RegistryCorruptException class.
+    /// </summary>
+    /// <param name="message">The exception message.</param>
+    /// <param name="innerException">The inner exception.</param>
+    public RegistryCorruptException(string message, Exception innerException)
+        : base(message, innerException) {}
+
+    /// <summary>
+    /// Initializes a new instance of the RegistryCorruptException class.
+    /// </summary>
+    /// <param name="info">The serialization info.</param>
+    /// <param name="context">The streaming context.</param>
+    protected RegistryCorruptException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
     {
-        /// <summary>
-        /// Initializes a new instance of the RegistryCorruptException class.
-        /// </summary>
-        public RegistryCorruptException() {}
-
-        /// <summary>
-        /// Initializes a new instance of the RegistryCorruptException class.
-        /// </summary>
-        /// <param name="message">The exception message.</param>
-        public RegistryCorruptException(string message)
-            : base(message) {}
-
-        /// <summary>
-        /// Initializes a new instance of the RegistryCorruptException class.
-        /// </summary>
-        /// <param name="message">The exception message.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public RegistryCorruptException(string message, Exception innerException)
-            : base(message, innerException) {}
-
-        /// <summary>
-        /// Initializes a new instance of the RegistryCorruptException class.
-        /// </summary>
-        /// <param name="info">The serialization info.</param>
-        /// <param name="context">The streaming context.</param>
-        protected RegistryCorruptException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
     }
 }

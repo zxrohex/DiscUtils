@@ -20,11 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum RpcRejectedStatus
 {
-    public enum RpcRejectedStatus
-    {
-        RpcMismatch = 0,
-        AuthError = 1
-    }
+    RpcMismatch = 0,
+    AuthError = 1
 }

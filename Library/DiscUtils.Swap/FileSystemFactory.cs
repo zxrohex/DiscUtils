@@ -24,22 +24,21 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Swap
-{
-    [VfsFileSystemFactory]
-    internal class FileSystemFactory : VfsFileSystemFactory
-    {
-        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
-        {
-            if (SwapFileSystem.Detect(stream))
-            {
-                yield return  new VfsFileSystemInfo("Swap", "Linux Swap", Open);
-            }
-        }
+namespace DiscUtils.Swap;
 
-        private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+[VfsFileSystemFactory]
+internal class FileSystemFactory : VfsFileSystemFactory
+{
+    public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+    {
+        if (SwapFileSystem.Detect(stream))
         {
-            return new SwapFileSystem(stream);
+            yield return  new VfsFileSystemInfo("Swap", "Linux Swap", Open);
         }
+    }
+
+    private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new SwapFileSystem(stream);
     }
 }

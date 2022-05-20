@@ -26,141 +26,142 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Implements the (conventional) unicast DNS protocol.
+/// </summary>
+public sealed class UnicastDnsClient : DnsClient
 {
+    private ushort _nextTransId;
+    private readonly IPEndPoint[] _servers;
+    private readonly int maxRetries = 3;
+
+    private readonly int responseTimeout = 2000;
+
     /// <summary>
-    /// Implements the (conventional) unicast DNS protocol.
+    /// Initializes a new instance of the UnicastDnsClient class.
     /// </summary>
-    public sealed class UnicastDnsClient : DnsClient
+    /// <remarks>
+    /// This constructor attempts to detect the DNS servers in use by the local
+    /// OS, and use those servers.
+    /// </remarks>
+    public UnicastDnsClient()
+        : this(GetDefaultDnsServers()) {}
+
+    /// <summary>
+    /// Initializes a new instance of the UnicastDnsClient class, using nominated DNS servers.
+    /// </summary>
+    /// <param name="servers">The servers to use (non-standard ports may be specified).</param>
+    public UnicastDnsClient(params IPEndPoint[] servers)
     {
-        private ushort _nextTransId;
-        private readonly IPEndPoint[] _servers;
-        private readonly int maxRetries = 3;
+        _nextTransId = (ushort)new Random().Next();
+        _servers = servers;
+    }
 
-        private readonly int responseTimeout = 2000;
-
-        /// <summary>
-        /// Initializes a new instance of the UnicastDnsClient class.
-        /// </summary>
-        /// <remarks>
-        /// This constructor attempts to detect the DNS servers in use by the local
-        /// OS, and use those servers.
-        /// </remarks>
-        public UnicastDnsClient()
-            : this(GetDefaultDnsServers()) {}
-
-        /// <summary>
-        /// Initializes a new instance of the UnicastDnsClient class, using nominated DNS servers.
-        /// </summary>
-        /// <param name="servers">The servers to use (non-standard ports may be specified).</param>
-        public UnicastDnsClient(params IPEndPoint[] servers)
+    /// <summary>
+    /// Initializes a new instance of the UnicastDnsClient class, using nominated DNS servers.
+    /// </summary>
+    /// <param name="servers">The servers to use (the default DNS port, 53, is used).</param>
+    public UnicastDnsClient(params IPAddress[] servers)
+    {
+        _nextTransId = (ushort)new Random().Next();
+        _servers = new IPEndPoint[servers.Length];
+        for (var i = 0; i < servers.Length; ++i)
         {
-            _nextTransId = (ushort)new Random().Next();
-            _servers = servers;
+            _servers[i] = new IPEndPoint(servers[i], 53);
         }
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the UnicastDnsClient class, using nominated DNS servers.
-        /// </summary>
-        /// <param name="servers">The servers to use (the default DNS port, 53, is used).</param>
-        public UnicastDnsClient(params IPAddress[] servers)
+    /// <summary>
+    /// Flushes any cached DNS records.
+    /// </summary>
+    public override void FlushCache()
+    {
+        // Nothing to do.
+    }
+
+    /// <summary>
+    /// Looks up a record in DNS.
+    /// </summary>
+    /// <param name="name">The name to lookup.</param>
+    /// <param name="type">The type of record requested.</param>
+    /// <returns>The records returned by the DNS server, if any.</returns>
+    public override List<ResourceRecord> Lookup(string name, RecordType type)
+    {
+        var transactionId = _nextTransId++;
+        var normName = NormalizeDomainName(name);
+
+        using (var udpClient = new UdpClient(0))
         {
-            _nextTransId = (ushort)new Random().Next();
-            _servers = new IPEndPoint[servers.Length];
-            for (int i = 0; i < servers.Length; ++i)
+            var result = udpClient.BeginReceive(null, null);
+
+            var writer = new PacketWriter(1800);
+            var msg = new Message
             {
-                _servers[i] = new IPEndPoint(servers[i], 53);
+                TransactionId = transactionId,
+                Flags = new MessageFlags(false, OpCode.Query, false, false, false, false, ResponseCode.Success)
+            };
+            msg.Questions.Add(new Question { Name = normName, Type = type, Class = RecordClass.Internet });
+
+            msg.WriteTo(writer);
+
+            var msgBytes = writer.GetBytes();
+
+            foreach (var server in _servers)
+            {
+                udpClient.Send(msgBytes, msgBytes.Length, server);
             }
-        }
 
-        /// <summary>
-        /// Flushes any cached DNS records.
-        /// </summary>
-        public override void FlushCache()
-        {
-            // Nothing to do.
-        }
-
-        /// <summary>
-        /// Looks up a record in DNS.
-        /// </summary>
-        /// <param name="name">The name to lookup.</param>
-        /// <param name="type">The type of record requested.</param>
-        /// <returns>The records returned by the DNS server, if any.</returns>
-        public override List<ResourceRecord> Lookup(string name, RecordType type)
-        {
-            ushort transactionId = _nextTransId++;
-            string normName = NormalizeDomainName(name);
-
-            using (UdpClient udpClient = new UdpClient(0))
+            for (var i = 0; i < maxRetries; ++i)
             {
-                IAsyncResult result = udpClient.BeginReceive(null, null);
-
-                PacketWriter writer = new PacketWriter(1800);
-                Message msg = new Message();
-                msg.TransactionId = transactionId;
-                msg.Flags = new MessageFlags(false, OpCode.Query, false, false, false, false, ResponseCode.Success);
-                msg.Questions.Add(new Question { Name = normName, Type = type, Class = RecordClass.Internet });
-
-                msg.WriteTo(writer);
-
-                byte[] msgBytes = writer.GetBytes();
-
-                foreach (IPEndPoint server in _servers)
+                var now = DateTime.UtcNow;
+                while (result.AsyncWaitHandle.WaitOne(Math.Max(responseTimeout - (DateTime.UtcNow - now).Milliseconds, 0)))
                 {
-                    udpClient.Send(msgBytes, msgBytes.Length, server);
-                }
-
-                for (int i = 0; i < maxRetries; ++i)
-                {
-                    DateTime now = DateTime.UtcNow;
-                    while (result.AsyncWaitHandle.WaitOne(Math.Max(responseTimeout - (DateTime.UtcNow - now).Milliseconds, 0)))
+                    try
                     {
-                        try
-                        {
-                            IPEndPoint sourceEndPoint = null;
-                            byte[] packetBytes = udpClient.EndReceive(result, ref sourceEndPoint);
-                            PacketReader reader = new PacketReader(packetBytes);
+                        IPEndPoint sourceEndPoint = null;
+                        var packetBytes = udpClient.EndReceive(result, ref sourceEndPoint);
+                        var reader = new PacketReader(packetBytes);
 
-                            Message response = Message.Read(reader);
+                        var response = Message.Read(reader);
 
-                            if (response.TransactionId == transactionId)
-                            {
-                                return response.Answers;
-                            }
-                        }
-                        catch
+                        if (response.TransactionId == transactionId)
                         {
-                            // Do nothing - bad packet (probably...)
+                            return response.Answers;
                         }
+                    }
+                    catch
+                    {
+                        // Do nothing - bad packet (probably...)
                     }
                 }
             }
-
-            return null;
         }
 
-        private static IPAddress[] GetDefaultDnsServers()
-        {
-            Dictionary<IPAddress, object> addresses = new Dictionary<IPAddress, object>();
+        return null;
+    }
 
-            foreach (NetworkInterface nic in NetworkInterface.GetAllNetworkInterfaces())
+    private static IPAddress[] GetDefaultDnsServers()
+    {
+        var addresses = new Dictionary<IPAddress, object>();
+
+        foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (nic.OperationalStatus == OperationalStatus.Up)
             {
-                if (nic.OperationalStatus == OperationalStatus.Up)
+                foreach (var address in nic.GetIPProperties().DnsAddresses)
                 {
-                    foreach (IPAddress address in nic.GetIPProperties().DnsAddresses)
+                    if (address.AddressFamily == AddressFamily.InterNetwork && !addresses.ContainsKey(address))
                     {
-                        if (address.AddressFamily == AddressFamily.InterNetwork && !addresses.ContainsKey(address))
-                        {
-                            addresses.Add(address, null);
-                        }
+                        addresses.Add(address, null);
                     }
                 }
             }
-
-            IPAddress[] addressArray = new IPAddress[addresses.Count];
-            addresses.Keys.CopyTo(addressArray, 0);
-            return addressArray;
         }
+
+        var addressArray = new IPAddress[addresses.Count];
+        addresses.Keys.CopyTo(addressArray, 0);
+        return addressArray;
     }
 }

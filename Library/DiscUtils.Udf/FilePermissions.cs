@@ -22,92 +22,91 @@
 
 using System;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+/// <summary>
+/// Standard Unix-style file system permissions.
+/// </summary>
+[Flags]
+internal enum FilePermissions
 {
     /// <summary>
-    /// Standard Unix-style file system permissions.
+    /// No permissions.
     /// </summary>
-    [Flags]
-    internal enum FilePermissions
-    {
-        /// <summary>
-        /// No permissions.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// Any user execute permission.
-        /// </summary>
-        OthersExecute = 0x0001,
+    /// <summary>
+    /// Any user execute permission.
+    /// </summary>
+    OthersExecute = 0x0001,
 
-        /// <summary>
-        /// Any user write permission.
-        /// </summary>
-        OthersWrite = 0x0002,
+    /// <summary>
+    /// Any user write permission.
+    /// </summary>
+    OthersWrite = 0x0002,
 
-        /// <summary>
-        /// Any user read permission.
-        /// </summary>
-        OthersRead = 0x0004,
+    /// <summary>
+    /// Any user read permission.
+    /// </summary>
+    OthersRead = 0x0004,
 
-        /// <summary>
-        /// Any user change attributes permission.
-        /// </summary>
-        OthersChangeAttributes = 0x0008,
+    /// <summary>
+    /// Any user change attributes permission.
+    /// </summary>
+    OthersChangeAttributes = 0x0008,
 
-        /// <summary>
-        /// Any user delete permission.
-        /// </summary>
-        OthersDelete = 0x0010,
+    /// <summary>
+    /// Any user delete permission.
+    /// </summary>
+    OthersDelete = 0x0010,
 
-        /// <summary>
-        /// Group execute permission.
-        /// </summary>
-        GroupExecute = 0x0020,
+    /// <summary>
+    /// Group execute permission.
+    /// </summary>
+    GroupExecute = 0x0020,
 
-        /// <summary>
-        /// Group write permission.
-        /// </summary>
-        GroupWrite = 0x0040,
+    /// <summary>
+    /// Group write permission.
+    /// </summary>
+    GroupWrite = 0x0040,
 
-        /// <summary>
-        /// Group read permission.
-        /// </summary>
-        GroupRead = 0x0080,
+    /// <summary>
+    /// Group read permission.
+    /// </summary>
+    GroupRead = 0x0080,
 
-        /// <summary>
-        /// Group change attributes permission.
-        /// </summary>
-        GroupChangeAttributes = 0x0100,
+    /// <summary>
+    /// Group change attributes permission.
+    /// </summary>
+    GroupChangeAttributes = 0x0100,
 
-        /// <summary>
-        /// Group delete permission.
-        /// </summary>
-        GroupDelete = 0x0200,
+    /// <summary>
+    /// Group delete permission.
+    /// </summary>
+    GroupDelete = 0x0200,
 
-        /// <summary>
-        /// Owner execute permission.
-        /// </summary>
-        OwnerExecute = 0x0400,
+    /// <summary>
+    /// Owner execute permission.
+    /// </summary>
+    OwnerExecute = 0x0400,
 
-        /// <summary>
-        /// Owner write permission.
-        /// </summary>
-        OwnerWrite = 0x0800,
+    /// <summary>
+    /// Owner write permission.
+    /// </summary>
+    OwnerWrite = 0x0800,
 
-        /// <summary>
-        /// Owner read permission.
-        /// </summary>
-        OwnerRead = 0x1000,
+    /// <summary>
+    /// Owner read permission.
+    /// </summary>
+    OwnerRead = 0x1000,
 
-        /// <summary>
-        /// Owner change attributes permission.
-        /// </summary>
-        OwnerChangeAttributes = 0x2000,
+    /// <summary>
+    /// Owner change attributes permission.
+    /// </summary>
+    OwnerChangeAttributes = 0x2000,
 
-        /// <summary>
-        /// Owner delete permission.
-        /// </summary>
-        OwnerDelete = 0x4000
-    }
+    /// <summary>
+    /// Owner delete permission.
+    /// </summary>
+    OwnerDelete = 0x4000
 }

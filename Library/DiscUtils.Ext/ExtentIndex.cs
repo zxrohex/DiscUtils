@@ -23,35 +23,34 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal class ExtentIndex : IByteArraySerializable
 {
-    internal class ExtentIndex : IByteArraySerializable
+    public uint FirstLogicalBlock;
+    public ushort LeafPhysicalBlockHi;
+    public uint LeafPhysicalBlockLo;
+
+    public long LeafPhysicalBlock
     {
-        public uint FirstLogicalBlock;
-        public ushort LeafPhysicalBlockHi;
-        public uint LeafPhysicalBlockLo;
+        get { return LeafPhysicalBlockLo | ((long)LeafPhysicalBlockHi << 32); }
+    }
 
-        public long LeafPhysicalBlock
-        {
-            get { return LeafPhysicalBlockLo | ((long)LeafPhysicalBlockHi << 32); }
-        }
+    public int Size
+    {
+        get { return 12; }
+    }
 
-        public int Size
-        {
-            get { return 12; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        FirstLogicalBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+        LeafPhysicalBlockLo = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+        LeafPhysicalBlockHi = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 8);
+        return 12;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            FirstLogicalBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-            LeafPhysicalBlockLo = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-            LeafPhysicalBlockHi = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 8);
-            return 12;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

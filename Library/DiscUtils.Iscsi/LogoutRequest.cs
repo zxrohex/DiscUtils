@@ -22,34 +22,35 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class LogoutRequest
 {
-    internal class LogoutRequest
+    private readonly Connection _connection;
+
+    public LogoutRequest(Connection connection)
     {
-        private readonly Connection _connection;
+        _connection = connection;
+    }
 
-        public LogoutRequest(Connection connection)
+    public byte[] GetBytes(LogoutReason reason)
+    {
+        var _basicHeader = new BasicHeaderSegment
         {
-            _connection = connection;
-        }
+            Immediate = true,
+            OpCode = OpCode.LogoutRequest,
+            FinalPdu = true,
+            TotalAhsLength = 0,
+            DataSegmentLength = 0,
+            InitiatorTaskTag = _connection.Session.CurrentTaskTag
+        };
 
-        public byte[] GetBytes(LogoutReason reason)
-        {
-            BasicHeaderSegment _basicHeader = new BasicHeaderSegment();
-            _basicHeader.Immediate = true;
-            _basicHeader.OpCode = OpCode.LogoutRequest;
-            _basicHeader.FinalPdu = true;
-            _basicHeader.TotalAhsLength = 0;
-            _basicHeader.DataSegmentLength = 0;
-            _basicHeader.InitiatorTaskTag = _connection.Session.CurrentTaskTag;
-
-            byte[] buffer = new byte[MathUtilities.RoundUp(48, 4)];
-            _basicHeader.WriteTo(buffer, 0);
-            buffer[1] |= (byte)((byte)reason & 0x7F);
-            EndianUtilities.WriteBytesBigEndian(_connection.Id, buffer, 20);
-            EndianUtilities.WriteBytesBigEndian(_connection.Session.CommandSequenceNumber, buffer, 24);
-            EndianUtilities.WriteBytesBigEndian(_connection.ExpectedStatusSequenceNumber, buffer, 28);
-            return buffer;
-        }
+        var buffer = new byte[MathUtilities.RoundUp(48, 4)];
+        _basicHeader.WriteTo(buffer, 0);
+        buffer[1] |= (byte)((byte)reason & 0x7F);
+        EndianUtilities.WriteBytesBigEndian(_connection.Id, buffer, 20);
+        EndianUtilities.WriteBytesBigEndian(_connection.Session.CommandSequenceNumber, buffer, 24);
+        EndianUtilities.WriteBytesBigEndian(_connection.ExpectedStatusSequenceNumber, buffer, 28);
+        return buffer;
     }
 }

@@ -22,79 +22,80 @@
 
 using System.IO;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+internal abstract class RpcProgram
 {
-    internal abstract class RpcProgram
+    public const uint RpcVersion = 2;
+
+    protected IRpcClient _client;
+
+    protected RpcProgram(IRpcClient client)
     {
-        public const uint RpcVersion = 2;
+        _client = client;
+    }
 
-        protected IRpcClient _client;
+    public abstract int Identifier { get; }
 
-        protected RpcProgram(IRpcClient client)
+    public abstract int Version { get; }
+
+    public void NullProc()
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, null, NfsProc3.Null);
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess) { }
+        else
         {
-            _client = client;
+            throw new RpcException(reply.Header.ReplyHeader);
         }
+    }
 
-        public abstract int Identifier { get; }
+    protected RpcReply DoSend(MemoryStream ms)
+    {
+        var transport = _client.GetTransport(Identifier, Version);
 
-        public abstract int Version { get; }
+        var buffer = ms.ToArray();
+        buffer = transport.SendAndReceive(buffer);
 
-        public void NullProc()
+        var reader = new XdrDataReader(new MemoryStream(buffer));
+        var header = new RpcMessageHeader(reader);
+        return new RpcReply { Header = header, BodyReader = reader };
+    }
+
+    protected XdrDataWriter StartCallMessage(MemoryStream ms, RpcCredentials credentials, PortMapProc2 procedure)
+    {
+        return StartCallMessage(ms, credentials, (int)procedure);
+    }
+
+    protected XdrDataWriter StartCallMessage(MemoryStream ms, RpcCredentials credentials, MountProc3 procedure)
+    {
+        return StartCallMessage(ms, credentials, (int)procedure);
+    }
+
+    protected XdrDataWriter StartCallMessage(MemoryStream ms, RpcCredentials credentials, NfsProc3 procedure)
+    {
+        return StartCallMessage(ms, credentials, (int)procedure);
+    }
+
+    protected XdrDataWriter StartCallMessage(MemoryStream ms, RpcCredentials credentials, int procedure)
+    {
+        var writer = new XdrDataWriter(ms);
+
+        writer.Write(_client.NextTransactionId());
+        writer.Write((int)RpcMessageType.Call);
+
+        var hdr = new RpcCallHeader
         {
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = StartCallMessage(ms, null, NfsProc3.Null);
-            RpcReply reply = DoSend(ms);
-            if (reply.Header.IsSuccess) { }
-            else
-            {
-                throw new RpcException(reply.Header.ReplyHeader);
-            }
-        }
+            RpcVersion = RpcVersion,
+            Program = (uint)Identifier,
+            Version = (uint)Version,
+            Proc = procedure,
+            Credentials = new RpcAuthentication(credentials ?? new RpcNullCredentials()),
+            Verifier = RpcAuthentication.Null()
+        };
+        hdr.Write(writer);
 
-        protected RpcReply DoSend(MemoryStream ms)
-        {
-            IRpcTransport transport = _client.GetTransport(Identifier, Version);
-
-            byte[] buffer = ms.ToArray();
-            buffer = transport.SendAndReceive(buffer);
-
-            XdrDataReader reader = new XdrDataReader(new MemoryStream(buffer));
-            RpcMessageHeader header = new RpcMessageHeader(reader);
-            return new RpcReply { Header = header, BodyReader = reader };
-        }
-
-        protected XdrDataWriter StartCallMessage(MemoryStream ms, RpcCredentials credentials, PortMapProc2 procedure)
-        {
-            return StartCallMessage(ms, credentials, (int)procedure);
-        }
-
-        protected XdrDataWriter StartCallMessage(MemoryStream ms, RpcCredentials credentials, MountProc3 procedure)
-        {
-            return StartCallMessage(ms, credentials, (int)procedure);
-        }
-
-        protected XdrDataWriter StartCallMessage(MemoryStream ms, RpcCredentials credentials, NfsProc3 procedure)
-        {
-            return StartCallMessage(ms, credentials, (int)procedure);
-        }
-
-        protected XdrDataWriter StartCallMessage(MemoryStream ms, RpcCredentials credentials, int procedure)
-        {
-            XdrDataWriter writer = new XdrDataWriter(ms);
-
-            writer.Write(_client.NextTransactionId());
-            writer.Write((int)RpcMessageType.Call);
-
-            RpcCallHeader hdr = new RpcCallHeader();
-            hdr.RpcVersion = RpcVersion;
-            hdr.Program = (uint)Identifier;
-            hdr.Version = (uint)Version;
-            hdr.Proc = procedure;
-            hdr.Credentials = new RpcAuthentication(credentials ?? new RpcNullCredentials());
-            hdr.Verifier = RpcAuthentication.Null();
-            hdr.Write(writer);
-
-            return writer;
-        }
+        return writer;
     }
 }

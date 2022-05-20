@@ -25,89 +25,88 @@ using System.Management.Automation;
 using DiscUtils.Ntfs;
 using DiscUtils.PowerShell.VirtualDiskProvider;
 
-namespace DiscUtils.PowerShell
+namespace DiscUtils.PowerShell;
+
+public enum FileSystemType
 {
-    public enum FileSystemType
+    Ntfs = 0
+}
+
+[Cmdlet(VerbsCommon.Format, "Volume")]
+public class FormatVolumeCommand : PSCmdlet
+{
+    [Parameter(ValueFromPipeline = true)]
+    public PSObject InputObject { get; set; }
+
+    [Parameter(Position = 0)]
+    public string LiteralPath { get; set; }
+
+    [Parameter]
+    public FileSystemType Filesystem { get; set; }
+
+    [Parameter]
+    public string Label { get; set; }
+
+    public FormatVolumeCommand()
     {
-        Ntfs = 0
     }
 
-    [Cmdlet(VerbsCommon.Format, "Volume")]
-    public class FormatVolumeCommand : PSCmdlet
+    protected override void ProcessRecord()
     {
-        [Parameter(ValueFromPipeline = true)]
-        public PSObject InputObject { get; set; }
+        PSObject volInfoObj = null;
+        VolumeInfo volInfo = null;
 
-        [Parameter(Position = 0)]
-        public string LiteralPath { get; set; }
-
-        [Parameter]
-        public FileSystemType Filesystem { get; set; }
-
-        [Parameter]
-        public string Label { get; set; }
-
-        public FormatVolumeCommand()
+        if (InputObject != null)
         {
+            volInfoObj = InputObject;
+            volInfo = volInfoObj.BaseObject as VolumeInfo;
+        }
+        if (volInfo == null && string.IsNullOrEmpty(LiteralPath))
+        {
+            WriteError(new ErrorRecord(
+                new ArgumentException("No volume specified"),
+                "NoVolumeSpecified",
+                ErrorCategory.InvalidArgument,
+                null));
+            return;
         }
 
-        protected override void ProcessRecord()
+        if (Filesystem != FileSystemType.Ntfs)
         {
-            PSObject volInfoObj = null;
-            VolumeInfo volInfo = null;
-
-            if (InputObject != null)
-            {
-                volInfoObj = InputObject;
-                volInfo = volInfoObj.BaseObject as VolumeInfo;
-            }
-            if (volInfo == null && string.IsNullOrEmpty(LiteralPath))
-            {
-                WriteError(new ErrorRecord(
-                    new ArgumentException("No volume specified"),
-                    "NoVolumeSpecified",
-                    ErrorCategory.InvalidArgument,
-                    null));
-                return;
-            }
-
-            if (Filesystem != FileSystemType.Ntfs)
-            {
-                WriteError(new ErrorRecord(
-                    new ArgumentException("Unknown filesystem type"),
-                    "BadFilesystem",
-                    ErrorCategory.InvalidArgument,
-                    null));
-                return;
-            }
-
-            if (volInfo == null)
-            {
-                volInfoObj = SessionState.InvokeProvider.Item.Get(LiteralPath)[0];
-                volInfo = volInfoObj.BaseObject as VolumeInfo;
-            }
-
-            if (volInfo == null)
-            {
-                WriteError(new ErrorRecord(
-                    new ArgumentException("Path specified is not a disk volume"),
-                    "BadVolumeSpecified",
-                    ErrorCategory.InvalidArgument,
-                    null));
-                return;
-            }
-
-            var driveProp = volInfoObj.Properties["PSDrive"];
-            if (driveProp != null)
-            {
-                var drive = driveProp.Value as VirtualDiskPSDriveInfo;
-                if (drive != null)
-                {
-                    drive.UncacheFileSystem(volInfo.Identity);
-                }
-            }
-
-            NtfsFileSystem.Format(volInfo, Label);
+            WriteError(new ErrorRecord(
+                new ArgumentException("Unknown filesystem type"),
+                "BadFilesystem",
+                ErrorCategory.InvalidArgument,
+                null));
+            return;
         }
+
+        if (volInfo == null)
+        {
+            volInfoObj = SessionState.InvokeProvider.Item.Get(LiteralPath)[0];
+            volInfo = volInfoObj.BaseObject as VolumeInfo;
+        }
+
+        if (volInfo == null)
+        {
+            WriteError(new ErrorRecord(
+                new ArgumentException("Path specified is not a disk volume"),
+                "BadVolumeSpecified",
+                ErrorCategory.InvalidArgument,
+                null));
+            return;
+        }
+
+        var driveProp = volInfoObj.Properties["PSDrive"];
+        if (driveProp != null)
+        {
+            var drive = driveProp.Value as VirtualDiskPSDriveInfo;
+            if (drive != null)
+            {
+                drive.UncacheFileSystem(volInfo.Identity);
+            }
+        }
+
+        NtfsFileSystem.Format(volInfo, Label);
     }
 }

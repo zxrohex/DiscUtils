@@ -22,15 +22,14 @@
 
 using System;
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+[Flags]
+internal enum HostedSparseExtentFlags : uint
 {
-    [Flags]
-    internal enum HostedSparseExtentFlags : uint
-    {
-        None = 0x00000000,
-        ValidLineDetectionTest = 0x00000001,
-        RedundantGrainTable = 0x00000002,
-        CompressedGrains = 0x00010000,
-        MarkersInUse = 0x00020000
-    }
+    None = 0x00000000,
+    ValidLineDetectionTest = 0x00000001,
+    RedundantGrainTable = 0x00000002,
+    CompressedGrains = 0x00010000,
+    MarkersInUse = 0x00020000
 }

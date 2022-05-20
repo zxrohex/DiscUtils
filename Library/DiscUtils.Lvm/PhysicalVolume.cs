@@ -20,128 +20,124 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using System.IO;
+using System.Linq;
+using DiscUtils.Partitions;
+using DiscUtils.Streams;
+
+internal class PhysicalVolume
 {
-    using System.IO;
-    using System.Linq;
-    using DiscUtils.Partitions;
-    using DiscUtils.Streams;
+    public const ushort SECTOR_SIZE = 512;
+    private const uint INITIAL_CRC = 0xf597a6cf;
 
-    internal class PhysicalVolume
+    public readonly PhysicalVolumeLabel PhysicalVolumeLabel;
+    public readonly PvHeader PvHeader;
+    public readonly VolumeGroupMetadata VgMetadata;
+    public Stream Content { get; private set; }
+
+    public PhysicalVolume(PhysicalVolumeLabel physicalVolumeLabel, Stream content)
     {
-        public const ushort SECTOR_SIZE = 512;
-        private const uint INITIAL_CRC = 0xf597a6cf;
-
-        public readonly PhysicalVolumeLabel PhysicalVolumeLabel;
-        public readonly PvHeader PvHeader;
-        public readonly VolumeGroupMetadata VgMetadata;
-        public Stream Content { get; private set; }
-
-        public PhysicalVolume(PhysicalVolumeLabel physicalVolumeLabel, Stream content)
+        PhysicalVolumeLabel = physicalVolumeLabel;
+        PvHeader = new PvHeader();
+        content.Position = (long) (physicalVolumeLabel.Sector * SECTOR_SIZE);
+        var buffer = StreamUtilities.ReadExact(content, SECTOR_SIZE);
+        PvHeader.ReadFrom(buffer, (int) physicalVolumeLabel.Offset);
+        if (PvHeader.MetadataDiskAreas.Any())
         {
-            PhysicalVolumeLabel = physicalVolumeLabel;
-            PvHeader = new PvHeader();
-            content.Position = (long) (physicalVolumeLabel.Sector * SECTOR_SIZE);
-            var buffer = StreamUtilities.ReadExact(content, SECTOR_SIZE);
-            PvHeader.ReadFrom(buffer, (int) physicalVolumeLabel.Offset);
-            if (PvHeader.MetadataDiskAreas.Any())
+            var area = PvHeader.MetadataDiskAreas[0];
+            var metadata = new VolumeGroupMetadata();
+            content.Position = (long) area.Offset;
+            buffer = StreamUtilities.ReadExact(content, (int) area.Length);
+            metadata.ReadFrom(buffer, 0x0);
+            VgMetadata = metadata;
+        }
+
+        Content = content;
+    }
+
+    public static bool TryOpen(PartitionInfo volumeInfo, out PhysicalVolume pv)
+    {
+        var content = volumeInfo.Open();
+        return TryOpen(content, out pv);
+    }
+
+    public static bool TryOpen(Stream content, out PhysicalVolume pv)
+    {
+        pv = null;
+        if (!SearchLabel(content, out var label)) return false;
+        pv = new PhysicalVolume(label, content);
+        
+        return true;
+    }
+
+    public static bool CanOpen(PartitionInfo volumeInfo)
+    {
+        using var content = volumeInfo.Open();
+        return SearchLabel(content, out _);
+    }
+
+    private static bool SearchLabel(Stream content, out PhysicalVolumeLabel pvLabel)
+    {
+        pvLabel = null;
+        content.Position = 0;
+        var buffer = new byte[SECTOR_SIZE];
+        for (uint i = 0; i < 4; i++)
+        {
+            if (StreamUtilities.ReadMaximum(content, buffer, 0, SECTOR_SIZE) != SECTOR_SIZE)
             {
-                var area = PvHeader.MetadataDiskAreas[0];
-                var metadata = new VolumeGroupMetadata();
-                content.Position = (long) area.Offset;
-                buffer = StreamUtilities.ReadExact(content, (int) area.Length);
-                metadata.ReadFrom(buffer, 0x0);
-                VgMetadata = metadata;
+                return false;
             }
 
-            Content = content;
-        }
-
-        public static bool TryOpen(PartitionInfo volumeInfo, out PhysicalVolume pv)
-        {
-            var content = volumeInfo.Open();
-            return TryOpen(content, out pv);
-        }
-
-        public static bool TryOpen(Stream content, out PhysicalVolume pv)
-        {
-            PhysicalVolumeLabel label;
-            pv = null;
-            if (!SearchLabel(content, out label)) return false;
-            pv = new PhysicalVolume(label, content);
-            
-            return true;
-        }
-
-        public static bool CanOpen(PartitionInfo volumeInfo)
-        {
-            using (var content = volumeInfo.Open())
+            var label = EndianUtilities.BytesToString(buffer, 0x0, 0x8);
+            if (label == PhysicalVolumeLabel.LABEL_ID)
             {
-                return SearchLabel(content, out _);
-            }
-        }
-
-        private static bool SearchLabel(Stream content, out PhysicalVolumeLabel pvLabel)
-        {
-            pvLabel = null;
-            content.Position = 0;
-            byte[] buffer = new byte[SECTOR_SIZE];
-            for (uint i = 0; i < 4; i++)
-            {
-                if (StreamUtilities.ReadMaximum(content, buffer, 0, SECTOR_SIZE) != SECTOR_SIZE)
+                pvLabel = new PhysicalVolumeLabel();
+                pvLabel.ReadFrom(buffer, 0x0);
+                if (pvLabel.Sector != i)
                 {
+                    //Invalid PV Sector;
                     return false;
                 }
-
-                var label = EndianUtilities.BytesToString(buffer, 0x0, 0x8);
-                if (label == PhysicalVolumeLabel.LABEL_ID)
+                if (pvLabel.Crc != pvLabel.CalculatedCrc)
                 {
-                    pvLabel = new PhysicalVolumeLabel();
-                    pvLabel.ReadFrom(buffer, 0x0);
-                    if (pvLabel.Sector != i)
-                    {
-                        //Invalid PV Sector;
-                        return false;
-                    }
-                    if (pvLabel.Crc != pvLabel.CalculatedCrc)
-                    {
-                        //Invalid PV CRC
-                        return false;
-                    }
-                    if (pvLabel.Label2 != PhysicalVolumeLabel.LVM2_LABEL)
-                    {
-                        //Invalid LVM2 Label
-                        return false;
-                    }
-                    return true;
+                    //Invalid PV CRC
+                    return false;
                 }
+                if (pvLabel.Label2 != PhysicalVolumeLabel.LVM2_LABEL)
+                {
+                    //Invalid LVM2 Label
+                    return false;
+                }
+                return true;
             }
-            return false;
         }
+        return false;
+    }
 
-        /// <summary>
-        /// LVM2.2.02.79:lib/misc/crc.c:_calc_crc_old()
-        /// </summary>
-        internal static uint CalcCrc(byte[] buffer, int offset, int length)
+    /// <summary>
+    /// LVM2.2.02.79:lib/misc/crc.c:_calc_crc_old()
+    /// </summary>
+    internal static uint CalcCrc(byte[] buffer, int offset, int length)
+    {
+        var crc = INITIAL_CRC;
+        var crctab = new uint[]
         {
-            uint crc = INITIAL_CRC;
-            var crctab = new uint[]
-            {
-                0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
-                0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
-                0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
-                0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
-            };
-            var i = offset;
-            while (i < offset + length)
-            {
-                crc ^= buffer[i];
-                crc = (crc >> 4) ^ crctab[crc & 0xf];
-                crc = (crc >> 4) ^ crctab[crc & 0xf];
-                i++;
-            }
-            return crc;
-
+            0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
+            0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
+            0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
+            0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
+        };
+        var i = offset;
+        while (i < offset + length)
+        {
+            crc ^= buffer[i];
+            crc = (crc >> 4) ^ crctab[crc & 0xf];
+            crc = (crc >> 4) ^ crctab[crc & 0xf];
+            i++;
         }
+        return crc;
+
     }
 }

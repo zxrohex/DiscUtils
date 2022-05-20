@@ -22,43 +22,42 @@
 
 using System.Collections;
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+
+internal class BTreeInodeRecord: IByteArraySerializable
 {
-    using DiscUtils.Streams;
-    using System;
+    /// <summary>
+    /// specifies the starting inode number for the chunk
+    /// </summary>
+    public uint StartInode { get; private set; }
 
-    internal class BTreeInodeRecord: IByteArraySerializable
+    /// <summary>
+    /// specifies the number of free entries in the chuck
+    /// </summary>
+    public uint FreeCount { get; private set; }
+
+    /// <summary>
+    /// 64 element bit array specifying which entries are free in the chunk
+    /// </summary>
+    public BitArray Free { get; private set; }
+    public int Size
     {
-        /// <summary>
-        /// specifies the starting inode number for the chunk
-        /// </summary>
-        public uint StartInode { get; private set; }
+        get { return 0x10; }
+    }
 
-        /// <summary>
-        /// specifies the number of free entries in the chuck
-        /// </summary>
-        public uint FreeCount { get; private set; }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        StartInode = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        FreeCount = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x4);
+        Free = new BitArray(EndianUtilities.ToByteArray(buffer, offset + 0x8, 0x8));
+        return Size;
+    }
 
-        /// <summary>
-        /// 64 element bit array specifying which entries are free in the chunk
-        /// </summary>
-        public BitArray Free { get; private set; }
-        public int Size
-        {
-            get { return 0x10; }
-        }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            StartInode = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            FreeCount = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x4);
-            Free = new BitArray(EndianUtilities.ToByteArray(buffer, offset + 0x8, 0x8));
-            return Size;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

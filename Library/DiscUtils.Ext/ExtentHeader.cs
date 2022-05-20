@@ -23,36 +23,35 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal class ExtentHeader : IByteArraySerializable
 {
-    internal class ExtentHeader : IByteArraySerializable
+    public const ushort HeaderMagic = 0xf30a;
+    public ushort Depth;
+    public ushort Entries;
+    public uint Generation;
+
+    public ushort Magic;
+    public ushort MaxEntries;
+
+    public int Size
     {
-        public const ushort HeaderMagic = 0xf30a;
-        public ushort Depth;
-        public ushort Entries;
-        public uint Generation;
+        get { return 12; }
+    }
 
-        public ushort Magic;
-        public ushort MaxEntries;
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Magic = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0);
+        Entries = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
+        MaxEntries = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
+        Depth = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
+        Generation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
+        return 12;
+    }
 
-        public int Size
-        {
-            get { return 12; }
-        }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Magic = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0);
-            Entries = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
-            MaxEntries = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-            Depth = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
-            Generation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
-            return 12;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

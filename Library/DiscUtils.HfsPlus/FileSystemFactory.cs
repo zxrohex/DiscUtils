@@ -24,22 +24,21 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.HfsPlus
-{
-    [VfsFileSystemFactory]
-    internal class FileSystemFactory : VfsFileSystemFactory
-    {
-        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
-        {
-            if (HfsPlusFileSystem.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("HFS+", "Apple HFS+", Open);
-            }
-        }
+namespace DiscUtils.HfsPlus;
 
-        private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+[VfsFileSystemFactory]
+internal class FileSystemFactory : VfsFileSystemFactory
+{
+    public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+    {
+        if (HfsPlusFileSystem.Detect(stream))
         {
-            return new HfsPlusFileSystem(stream);
+            yield return new VfsFileSystemInfo("HFS+", "Apple HFS+", Open);
         }
+    }
+
+    private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new HfsPlusFileSystem(stream);
     }
 }

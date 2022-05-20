@@ -32,13 +32,13 @@ namespace LibraryTests.SquashFs
         [Fact]
         public void SingleFile()
         {
-            MemoryStream fsImage = new MemoryStream();
+            var fsImage = new MemoryStream();
 
-            SquashFileSystemBuilder builder = new SquashFileSystemBuilder();
+            var builder = new SquashFileSystemBuilder();
             builder.AddFile("file", new MemoryStream(new byte[] { 1, 2, 3, 4 }));
             builder.Build(fsImage);
 
-            SquashFileSystemReader reader = new SquashFileSystemReader(fsImage);
+            var reader = new SquashFileSystemReader(fsImage);
             Assert.Single(reader.GetFileSystemEntries("\\"));
             Assert.Equal(4, reader.GetFileLength("file"));
             Assert.True(reader.FileExists("file"));
@@ -51,13 +51,13 @@ namespace LibraryTests.SquashFs
         {
             var sep = Path.DirectorySeparatorChar;
 
-            MemoryStream fsImage = new MemoryStream();
+            var fsImage = new MemoryStream();
 
-            SquashFileSystemBuilder builder = new SquashFileSystemBuilder();
+            var builder = new SquashFileSystemBuilder();
             builder.AddFile($"{sep}adir{sep}anotherdir{sep}file", new MemoryStream(new byte[] { 1, 2, 3, 4 }));
             builder.Build(fsImage);
 
-            SquashFileSystemReader reader = new SquashFileSystemReader(fsImage);
+            var reader = new SquashFileSystemReader(fsImage);
             Assert.True(reader.DirectoryExists($"adir"));
             Assert.True(reader.DirectoryExists($"adir{sep}anotherdir"));
             Assert.True(reader.FileExists($"adir{sep}anotherdir{sep}file"));
@@ -66,9 +66,9 @@ namespace LibraryTests.SquashFs
         [Fact]
         public void Defaults()
         {
-            MemoryStream fsImage = new MemoryStream();
+            var fsImage = new MemoryStream();
 
-            SquashFileSystemBuilder builder = new SquashFileSystemBuilder();
+            var builder = new SquashFileSystemBuilder();
             builder.AddFile(@"file", new MemoryStream(new byte[] { 1, 2, 3, 4 }));
             builder.AddDirectory(@"dir");
 
@@ -82,7 +82,7 @@ namespace LibraryTests.SquashFs
 
             builder.Build(fsImage);
 
-            SquashFileSystemReader reader = new SquashFileSystemReader(fsImage);
+            var reader = new SquashFileSystemReader(fsImage);
 
             Assert.Equal(0, reader.GetUnixFileInfo("file").UserId);
             Assert.Equal(0, reader.GetUnixFileInfo("file").GroupId);
@@ -104,54 +104,50 @@ namespace LibraryTests.SquashFs
         [Fact]
         public void FragmentData()
         {
-            MemoryStream fsImage = new MemoryStream();
+            var fsImage = new MemoryStream();
 
-            SquashFileSystemBuilder builder = new SquashFileSystemBuilder();
+            var builder = new SquashFileSystemBuilder();
             builder.AddFile(@"file", new MemoryStream(new byte[] { 1, 2, 3, 4 }));
             builder.Build(fsImage);
 
-            SquashFileSystemReader reader = new SquashFileSystemReader(fsImage);
+            var reader = new SquashFileSystemReader(fsImage);
 
-            using (Stream fs = reader.OpenFile("file", FileMode.Open))
-            {
-                byte[] buffer = new byte[100];
-                int numRead = fs.Read(buffer, 0, 100);
+            using Stream fs = reader.OpenFile("file", FileMode.Open);
+            var buffer = new byte[100];
+            var numRead = fs.Read(buffer, 0, 100);
 
-                Assert.Equal(4, numRead);
-                Assert.Equal(1, buffer[0]);
-                Assert.Equal(2, buffer[1]);
-                Assert.Equal(3, buffer[2]);
-                Assert.Equal(4, buffer[3]);
-            }
+            Assert.Equal(4, numRead);
+            Assert.Equal(1, buffer[0]);
+            Assert.Equal(2, buffer[1]);
+            Assert.Equal(3, buffer[2]);
+            Assert.Equal(4, buffer[3]);
         }
 
         [Fact]
         public void BlockData()
         {
-            byte[] testData = new byte[(512 * 1024) + 21];
-            for (int i = 0; i < testData.Length; ++i)
+            var testData = new byte[(512 * 1024) + 21];
+            for (var i = 0; i < testData.Length; ++i)
             {
                 testData[i] = (byte)(i % 33);
             }
 
-            MemoryStream fsImage = new MemoryStream();
+            var fsImage = new MemoryStream();
 
-            SquashFileSystemBuilder builder = new SquashFileSystemBuilder();
+            var builder = new SquashFileSystemBuilder();
             builder.AddFile(@"file", new MemoryStream(testData));
             builder.Build(fsImage);
 
-            SquashFileSystemReader reader = new SquashFileSystemReader(fsImage);
+            var reader = new SquashFileSystemReader(fsImage);
 
-            using (Stream fs = reader.OpenFile("file", FileMode.Open))
+            using Stream fs = reader.OpenFile("file", FileMode.Open);
+            var buffer = new byte[(512 * 1024) + 1024];
+            var numRead = fs.Read(buffer, 0, buffer.Length);
+
+            Assert.Equal(testData.Length, numRead);
+            for (var i = 0; i < testData.Length; ++i)
             {
-                byte[] buffer = new byte[(512 * 1024) + 1024];
-                int numRead = fs.Read(buffer, 0, buffer.Length);
-
-                Assert.Equal(testData.Length, numRead);
-                for (int i = 0; i < testData.Length; ++i)
-                {
-                    Assert.Equal(testData[i], buffer[i] /*, "Data differs at index " + i*/);
-                }
+                Assert.Equal(testData[i], buffer[i] /*, "Data differs at index " + i*/);
             }
         }
     }

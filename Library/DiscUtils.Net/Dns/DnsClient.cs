@@ -20,34 +20,34 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.CoreCompat;
 using System;
 using System.Collections.Generic;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Base class for DNS clients.
+/// </summary>
+public abstract class DnsClient
 {
     /// <summary>
-    /// Base class for DNS clients.
+    /// Flushes any cached DNS records.
     /// </summary>
-    public abstract class DnsClient
+    public abstract void FlushCache();
+
+    /// <summary>
+    /// Looks up a record in DNS.
+    /// </summary>
+    /// <param name="name">The name to lookup.</param>
+    /// <param name="type">The type of record requested.</param>
+    /// <returns>The records returned by the DNS server, if any.</returns>
+    public abstract List<ResourceRecord> Lookup(string name, RecordType type);
+
+    internal static string NormalizeDomainName(string name)
     {
-        /// <summary>
-        /// Flushes any cached DNS records.
-        /// </summary>
-        public abstract void FlushCache();
+        var labels = name.Split('.', StringSplitOptions.RemoveEmptyEntries);
 
-        /// <summary>
-        /// Looks up a record in DNS.
-        /// </summary>
-        /// <param name="name">The name to lookup.</param>
-        /// <param name="type">The type of record requested.</param>
-        /// <returns>The records returned by the DNS server, if any.</returns>
-        public abstract List<ResourceRecord> Lookup(string name, RecordType type);
-
-        internal static string NormalizeDomainName(string name)
-        {
-            string[] labels = name.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-
-            return string.Join(".", labels) + ".";
-        }
+        return $"{string.Join(".", labels)}.";
     }
 }

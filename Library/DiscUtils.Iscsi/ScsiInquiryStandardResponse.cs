@@ -22,49 +22,48 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class ScsiInquiryStandardResponse : ScsiResponse
 {
-    internal class ScsiInquiryStandardResponse : ScsiResponse
+    private bool _truncated;
+
+    public LunClass DeviceType { get; private set; }
+
+    public override uint NeededDataLength
     {
-        private bool _truncated;
+        get { return 36; }
+    }
 
-        public LunClass DeviceType { get; private set; }
+    public string ProductId { get; private set; }
 
-        public override uint NeededDataLength
+    public string ProductRevision { get; private set; }
+
+    public bool Removable { get; private set; }
+
+    public byte SpecificationVersion { get; private set; }
+
+    public override bool Truncated
+    {
+        get { return _truncated; }
+    }
+
+    public string VendorId { get; private set; }
+
+    public override void ReadFrom(byte[] buffer, int offset, int count)
+    {
+        if (count < 36)
         {
-            get { return 36; }
+            _truncated = true;
+            return;
         }
 
-        public string ProductId { get; private set; }
+        DeviceType = (LunClass)(buffer[0] & 0x1F);
+        Removable = (buffer[1] & 0x80) != 0;
+        SpecificationVersion = buffer[2];
 
-        public string ProductRevision { get; private set; }
-
-        public bool Removable { get; private set; }
-
-        public byte SpecificationVersion { get; private set; }
-
-        public override bool Truncated
-        {
-            get { return _truncated; }
-        }
-
-        public string VendorId { get; private set; }
-
-        public override void ReadFrom(byte[] buffer, int offset, int count)
-        {
-            if (count < 36)
-            {
-                _truncated = true;
-                return;
-            }
-
-            DeviceType = (LunClass)(buffer[0] & 0x1F);
-            Removable = (buffer[1] & 0x80) != 0;
-            SpecificationVersion = buffer[2];
-
-            VendorId = EndianUtilities.BytesToString(buffer, 8, 8);
-            ProductId = EndianUtilities.BytesToString(buffer, 16, 16);
-            ProductRevision = EndianUtilities.BytesToString(buffer, 32, 4);
-        }
+        VendorId = EndianUtilities.BytesToString(buffer, 8, 8);
+        ProductId = EndianUtilities.BytesToString(buffer, 16, 16);
+        ProductRevision = EndianUtilities.BytesToString(buffer, 32, 4);
     }
 }

@@ -24,70 +24,69 @@ using System;
 using System.IO;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal class DirEntry : VfsDirEntry
 {
-    internal class DirEntry : VfsDirEntry
+    public DirEntry(DirectoryRecord record)
     {
-        public DirEntry(DirectoryRecord record)
-        {
-            Record = record;
-        }
+        Record = record;
+    }
 
-        public override DateTime CreationTimeUtc
-        {
-            get { throw new NotSupportedException(); }
-        }
+    public override DateTime CreationTimeUtc
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public override FileAttributes FileAttributes
-        {
-            get { throw new NotSupportedException(); }
-        }
+    public override FileAttributes FileAttributes
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public override string FileName
-        {
-            get { return Record.Name; }
-        }
+    public override string FileName
+    {
+        get { return Record.Name; }
+    }
 
-        public override bool HasVfsFileAttributes
-        {
-            get { return false; }
-        }
+    public override bool HasVfsFileAttributes
+    {
+        get { return false; }
+    }
 
-        public override bool HasVfsTimeInfo
-        {
-            get { return false; }
-        }
+    public override bool HasVfsTimeInfo
+    {
+        get { return false; }
+    }
 
-        public override bool IsDirectory
-        {
-            get { return Record.FileType == DirectoryRecord.FileTypeDirectory; }
-        }
+    public override bool IsDirectory
+    {
+        get { return Record.FileType == DirectoryRecord.FileTypeDirectory; }
+    }
 
-        public override bool IsSymlink
-        {
-            get { return Record.FileType == DirectoryRecord.FileTypeSymlink; }
-        }
+    public override bool IsSymlink
+    {
+        get { return Record.FileType == DirectoryRecord.FileTypeSymlink; }
+    }
 
-        public override DateTime LastAccessTimeUtc
-        {
-            get { throw new NotSupportedException(); }
-        }
+    public override DateTime LastAccessTimeUtc
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public override DateTime LastWriteTimeUtc
-        {
-            get { throw new NotSupportedException(); }
-        }
+    public override DateTime LastWriteTimeUtc
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public DirectoryRecord Record { get; }
+    public DirectoryRecord Record { get; }
 
-        public override long UniqueCacheId
-        {
-            get { return Record.Inode; }
-        }
+    public override long UniqueCacheId
+    {
+        get { return Record.Inode; }
+    }
 
-        public override string ToString()
-        {
-            return Record.Name ?? "(no name)";
-        }
+    public override string ToString()
+    {
+        return Record.Name ?? "(no name)";
     }
 }

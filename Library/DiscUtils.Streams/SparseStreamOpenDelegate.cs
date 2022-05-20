@@ -1,4 +1,3 @@
-namespace DiscUtils.Streams
-{
-    public delegate SparseStream SparseStreamOpenDelegate();
-}
+namespace DiscUtils.Streams;
+
+public delegate SparseStream SparseStreamOpenDelegate();

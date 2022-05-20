@@ -22,70 +22,69 @@
 
 using System;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Base class for all resource records (DNS RRs).
+/// </summary>
+public class ResourceRecord
 {
-    /// <summary>
-    /// Base class for all resource records (DNS RRs).
-    /// </summary>
-    public class ResourceRecord
+    internal ResourceRecord(string name, RecordType type, RecordClass rClass, DateTime expiry)
     {
-        internal ResourceRecord(string name, RecordType type, RecordClass rClass, DateTime expiry)
+        Name = name;
+        RecordType = type;
+        Class = rClass;
+        Expiry = expiry;
+    }
+
+    /// <summary>
+    /// Gets the class of record.
+    /// </summary>
+    public RecordClass Class { get; }
+
+    /// <summary>
+    /// Gets the expiry time of the record.
+    /// </summary>
+    public DateTime Expiry { get; }
+
+    /// <summary>
+    /// Gets the name of the resource (domain).
+    /// </summary>
+    public string Name { get; }
+
+    /// <summary>
+    /// Gets the type of record.
+    /// </summary>
+    public RecordType RecordType { get; }
+
+    internal static ResourceRecord ReadFrom(PacketReader reader)
+    {
+        var name = reader.ReadName();
+        var type = (RecordType)reader.ReadUShort();
+        var rClass = (RecordClass)reader.ReadUShort();
+        var expiry = DateTime.UtcNow + TimeSpan.FromSeconds(reader.ReadInt());
+
+        switch (type)
         {
-            Name = name;
-            RecordType = type;
-            Class = rClass;
-            Expiry = expiry;
-        }
+            case RecordType.Pointer:
+                return new PointerRecord(name, type, rClass, expiry, reader);
 
-        /// <summary>
-        /// Gets the class of record.
-        /// </summary>
-        public RecordClass Class { get; }
+            case RecordType.CanonicalName:
+                return new CanonicalNameRecord(name, type, rClass, expiry, reader);
 
-        /// <summary>
-        /// Gets the expiry time of the record.
-        /// </summary>
-        public DateTime Expiry { get; }
+            case RecordType.Address:
+                return new IP4AddressRecord(name, type, rClass, expiry, reader);
 
-        /// <summary>
-        /// Gets the name of the resource (domain).
-        /// </summary>
-        public string Name { get; }
+            case RecordType.Text:
+                return new TextRecord(name, type, rClass, expiry, reader);
 
-        /// <summary>
-        /// Gets the type of record.
-        /// </summary>
-        public RecordType RecordType { get; }
+            case RecordType.Service:
+                return new ServiceRecord(name, type, rClass, expiry, reader);
 
-        internal static ResourceRecord ReadFrom(PacketReader reader)
-        {
-            string name = reader.ReadName();
-            RecordType type = (RecordType)reader.ReadUShort();
-            RecordClass rClass = (RecordClass)reader.ReadUShort();
-            DateTime expiry = DateTime.UtcNow + TimeSpan.FromSeconds(reader.ReadInt());
-
-            switch (type)
-            {
-                case RecordType.Pointer:
-                    return new PointerRecord(name, type, rClass, expiry, reader);
-
-                case RecordType.CanonicalName:
-                    return new CanonicalNameRecord(name, type, rClass, expiry, reader);
-
-                case RecordType.Address:
-                    return new IP4AddressRecord(name, type, rClass, expiry, reader);
-
-                case RecordType.Text:
-                    return new TextRecord(name, type, rClass, expiry, reader);
-
-                case RecordType.Service:
-                    return new ServiceRecord(name, type, rClass, expiry, reader);
-
-                default:
-                    int len = reader.ReadUShort();
-                    reader.Position += len;
-                    return new ResourceRecord(name, type, rClass, expiry);
-            }
+            default:
+                int len = reader.ReadUShort();
+                reader.Position += len;
+                return new ResourceRecord(name, type, rClass, expiry);
         }
     }
 }

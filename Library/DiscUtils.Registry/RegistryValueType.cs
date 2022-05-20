@@ -20,71 +20,70 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Registry
+namespace DiscUtils.Registry;
+
+/// <summary>
+/// The types of registry values.
+/// </summary>
+public enum RegistryValueType
 {
     /// <summary>
-    /// The types of registry values.
+    /// Unknown type.
     /// </summary>
-    public enum RegistryValueType
-    {
-        /// <summary>
-        /// Unknown type.
-        /// </summary>
-        None = 0x00,
+    None = 0x00,
 
-        /// <summary>
-        /// A unicode string.
-        /// </summary>
-        String = 0x01,
+    /// <summary>
+    /// A unicode string.
+    /// </summary>
+    String = 0x01,
 
-        /// <summary>
-        /// A string containing environment variables.
-        /// </summary>
-        ExpandString = 0x02,
+    /// <summary>
+    /// A string containing environment variables.
+    /// </summary>
+    ExpandString = 0x02,
 
-        /// <summary>
-        /// Binary data.
-        /// </summary>
-        Binary = 0x03,
+    /// <summary>
+    /// Binary data.
+    /// </summary>
+    Binary = 0x03,
 
-        /// <summary>
-        /// A 32-bit integer.
-        /// </summary>
-        Dword = 0x04,
+    /// <summary>
+    /// A 32-bit integer.
+    /// </summary>
+    Dword = 0x04,
 
-        /// <summary>
-        /// A 32-bit integer.
-        /// </summary>
-        DwordBigEndian = 0x05,
+    /// <summary>
+    /// A 32-bit integer.
+    /// </summary>
+    DwordBigEndian = 0x05,
 
-        /// <summary>
-        /// A registry link.
-        /// </summary>
-        Link = 0x06,
+    /// <summary>
+    /// A registry link.
+    /// </summary>
+    Link = 0x06,
 
-        /// <summary>
-        /// A multistring.
-        /// </summary>
-        MultiString = 0x07,
+    /// <summary>
+    /// A multistring.
+    /// </summary>
+    MultiString = 0x07,
 
-        /// <summary>
-        /// An unknown binary format.
-        /// </summary>
-        ResourceList = 0x08,
+    /// <summary>
+    /// An unknown binary format.
+    /// </summary>
+    ResourceList = 0x08,
 
-        /// <summary>
-        /// An unknown binary format.
-        /// </summary>
-        FullResourceDescriptor = 0x09,
+    /// <summary>
+    /// An unknown binary format.
+    /// </summary>
+    FullResourceDescriptor = 0x09,
 
-        /// <summary>
-        /// An unknown binary format.
-        /// </summary>
-        ResourceRequirementsList = 0x0A,
+    /// <summary>
+    /// An unknown binary format.
+    /// </summary>
+    ResourceRequirementsList = 0x0A,
 
-        /// <summary>
-        /// A 64-bit integer.
-        /// </summary>
-        QWord = 0x0B
-    }
+    /// <summary>
+    /// A 64-bit integer.
+    /// </summary>
+    QWord = 0x0B
 }

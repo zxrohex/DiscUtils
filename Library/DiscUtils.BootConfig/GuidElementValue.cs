@@ -20,30 +20,29 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class GuidElementValue : ElementValue
 {
-    internal class GuidElementValue : ElementValue
+    private readonly string _value;
+
+    public GuidElementValue(string value)
     {
-        private readonly string _value;
+        _value = value;
+    }
 
-        public GuidElementValue(string value)
+    public override ElementFormat Format
+    {
+        get { return ElementFormat.Guid; }
+    }
+
+    public override string ToString()
+    {
+        if (string.IsNullOrEmpty(_value))
         {
-            _value = value;
+            return "<none>";
         }
 
-        public override ElementFormat Format
-        {
-            get { return ElementFormat.Guid; }
-        }
-
-        public override string ToString()
-        {
-            if (string.IsNullOrEmpty(_value))
-            {
-                return "<none>";
-            }
-
-            return _value;
-        }
+        return _value;
     }
 }

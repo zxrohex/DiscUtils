@@ -22,52 +22,52 @@
 
 using System;
 using System.Text;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+internal sealed class PacketWriter
 {
-    internal sealed class PacketWriter
+    private readonly byte[] _data;
+    private int _pos;
+
+    public PacketWriter(int maxSize)
     {
-        private readonly byte[] _data;
-        private int _pos;
+        _data = new byte[maxSize];
+    }
 
-        public PacketWriter(int maxSize)
+    public void WriteName(string name)
+    {
+        // TODO: Implement compression
+        var labels = name.Split('.', StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var label in labels)
         {
-            _data = new byte[maxSize];
-        }
-
-        public void WriteName(string name)
-        {
-            // TODO: Implement compression
-            string[] labels = name.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (string label in labels)
+            var labelBytes = Encoding.UTF8.GetBytes(label);
+            if (labelBytes.Length > 63)
             {
-                byte[] labelBytes = Encoding.UTF8.GetBytes(label);
-                if (labelBytes.Length > 63)
-                {
-                    throw new ArgumentException("Invalid DNS label - more than 63 octets '" + label + "' in '" + name + "'", "name");
-                }
-
-                _data[_pos++] = (byte)labelBytes.Length;
-                Array.Copy(labelBytes, 0, _data, _pos, labelBytes.Length);
-                _pos += labelBytes.Length;
+                throw new ArgumentException("Invalid DNS label - more than 63 octets '" + label + "' in '" + name + "'", "name");
             }
 
-            _data[_pos++] = 0;
+            _data[_pos++] = (byte)labelBytes.Length;
+            Array.Copy(labelBytes, 0, _data, _pos, labelBytes.Length);
+            _pos += labelBytes.Length;
         }
 
-        public void Write(ushort val)
-        {
-            EndianUtilities.WriteBytesBigEndian(val, _data, _pos);
-            _pos += 2;
-        }
+        _data[_pos++] = 0;
+    }
 
-        public byte[] GetBytes()
-        {
-            byte[] result = new byte[_pos];
-            Array.Copy(_data, 0, result, 0, _pos);
-            return result;
-        }
+    public void Write(ushort val)
+    {
+        EndianUtilities.WriteBytesBigEndian(val, _data, _pos);
+        _pos += 2;
+    }
+
+    public byte[] GetBytes()
+    {
+        var result = new byte[_pos];
+        Array.Copy(_data, 0, result, 0, _pos);
+        return result;
     }
 }

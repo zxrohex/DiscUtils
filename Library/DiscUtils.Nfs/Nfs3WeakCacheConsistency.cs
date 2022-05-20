@@ -22,65 +22,64 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class Nfs3WeakCacheConsistency
 {
-    public sealed class Nfs3WeakCacheConsistency
+    internal Nfs3WeakCacheConsistency(XdrDataReader reader)
     {
-        internal Nfs3WeakCacheConsistency(XdrDataReader reader)
+        if (reader.ReadBool())
         {
-            if (reader.ReadBool())
-            {
-                Before = new Nfs3WeakCacheConsistencyAttr(reader);
-            }
-
-            if (reader.ReadBool())
-            {
-                After = new Nfs3FileAttributes(reader);
-            }
+            Before = new Nfs3WeakCacheConsistencyAttr(reader);
         }
 
-        public Nfs3WeakCacheConsistency()
+        if (reader.ReadBool())
         {
+            After = new Nfs3FileAttributes(reader);
+        }
+    }
+
+    public Nfs3WeakCacheConsistency()
+    {
+    }
+
+    public Nfs3FileAttributes After { get; set; }
+
+    public Nfs3WeakCacheConsistencyAttr Before { get; set; }
+
+    internal void Write(XdrDataWriter writer)
+    {
+        writer.Write(Before != null);
+        if (Before != null)
+        {
+            Before.Write(writer);
         }
 
-        public Nfs3FileAttributes After { get; set; }
-
-        public Nfs3WeakCacheConsistencyAttr Before { get; set; }
-
-        internal void Write(XdrDataWriter writer)
+        writer.Write(After != null);
+        if (After != null)
         {
-            writer.Write(Before != null);
-            if (Before != null)
-            {
-                Before.Write(writer);
-            }
+            After.Write(writer);
+        }
+    }
 
-            writer.Write(After != null);
-            if (After != null)
-            {
-                After.Write(writer);
-            }
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as Nfs3WeakCacheConsistency);
+    }
+
+    public bool Equals(Nfs3WeakCacheConsistency other)
+    {
+        if (other == null)
+        {
+            return false;
         }
 
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Nfs3WeakCacheConsistency);
-        }
+        return object.Equals(other.After, After)
+            && object.Equals(other.Before, Before);
+    }
 
-        public bool Equals(Nfs3WeakCacheConsistency other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return object.Equals(other.After, After)
-                && object.Equals(other.Before, Before);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(After, Before);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(After, Before);
     }
 }

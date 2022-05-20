@@ -23,48 +23,47 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public class RpcMismatchInfo
 {
-    public class RpcMismatchInfo
+    public uint High;
+    public uint Low;
+
+    public RpcMismatchInfo()
     {
-        public uint High;
-        public uint Low;
+    }
 
-        public RpcMismatchInfo()
+    public RpcMismatchInfo(XdrDataReader reader)
+    {
+        Low = reader.ReadUInt32();
+        High = reader.ReadUInt32();
+    }
+
+    public void Write(XdrDataWriter writer)
+    {
+        writer.Write(Low);
+        writer.Write(High);
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as RpcMismatchInfo);
+    }
+
+    public bool Equals(RpcMismatchInfo other)
+    {
+        if (other == null)
         {
+            return false;
         }
 
-        public RpcMismatchInfo(XdrDataReader reader)
-        {
-            Low = reader.ReadUInt32();
-            High = reader.ReadUInt32();
-        }
+        return other.High == High
+            && other.Low == Low;
+    }
 
-        public void Write(XdrDataWriter writer)
-        {
-            writer.Write(Low);
-            writer.Write(High);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as RpcMismatchInfo);
-        }
-
-        public bool Equals(RpcMismatchInfo other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other.High == High
-                && other.Low == Low;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(High, Low);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(High, Low);
     }
 }

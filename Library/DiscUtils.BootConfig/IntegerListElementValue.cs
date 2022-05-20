@@ -23,61 +23,60 @@
 using System.Globalization;
 using DiscUtils.Streams;
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class IntegerListElementValue : ElementValue
 {
-    internal class IntegerListElementValue : ElementValue
+    private readonly ulong[] _values;
+
+    public IntegerListElementValue(byte[] value)
     {
-        private readonly ulong[] _values;
-
-        public IntegerListElementValue(byte[] value)
+        _values = new ulong[value.Length / 8];
+        for (var i = 0; i < _values.Length; ++i)
         {
-            _values = new ulong[value.Length / 8];
-            for (int i = 0; i < _values.Length; ++i)
-            {
-                _values[i] = EndianUtilities.ToUInt64LittleEndian(value, i * 8);
-            }
+            _values[i] = EndianUtilities.ToUInt64LittleEndian(value, i * 8);
+        }
+    }
+
+    public IntegerListElementValue(ulong[] values)
+    {
+        _values = values;
+    }
+
+    public override ElementFormat Format
+    {
+        get { return ElementFormat.IntegerList; }
+    }
+
+    public override string ToString()
+    {
+        if (_values == null || _values.Length == 0)
+        {
+            return "<none>";
         }
 
-        public IntegerListElementValue(ulong[] values)
+        var result = string.Empty;
+        for (var i = 0; i < _values.Length; ++i)
         {
-            _values = values;
-        }
-
-        public override ElementFormat Format
-        {
-            get { return ElementFormat.IntegerList; }
-        }
-
-        public override string ToString()
-        {
-            if (_values == null || _values.Length == 0)
+            if (i != 0)
             {
-                return "<none>";
-            }
-
-            string result = string.Empty;
-            for (int i = 0; i < _values.Length; ++i)
-            {
-                if (i != 0)
-                {
-                    result += " ";
-                }
-
-                result += _values[i].ToString("X16", CultureInfo.InvariantCulture);
+                result += " ";
             }
 
-            return result;
+            result += _values[i].ToString("X16", CultureInfo.InvariantCulture);
         }
 
-        internal byte[] GetBytes()
+        return result;
+    }
+
+    internal byte[] GetBytes()
+    {
+        var bytes = new byte[_values.Length * 8];
+        for (var i = 0; i < _values.Length; ++i)
         {
-            byte[] bytes = new byte[_values.Length * 8];
-            for (int i = 0; i < _values.Length; ++i)
-            {
-                EndianUtilities.WriteBytesLittleEndian(_values[i], bytes, i * 8);
-            }
-
-            return bytes;
+            EndianUtilities.WriteBytesLittleEndian(_values[i], bytes, i * 8);
         }
+
+        return bytes;
     }
 }

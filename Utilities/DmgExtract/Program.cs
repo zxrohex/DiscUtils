@@ -27,87 +27,88 @@ using System;
 using System.IO;
 using DiscUtils.Setup;
 
-namespace DmgExtract
+namespace DmgExtract;
+
+class Program : ProgramBase
 {
-    class Program : ProgramBase
+    CommandLineParameter _dmg;
+    CommandLineParameter _folder;
+    CommandLineSwitch _recursive;
+
+    static void Main(string[] args)
     {
-        CommandLineParameter _dmg;
-        CommandLineParameter _folder;
-        CommandLineSwitch _recursive;
+        SetupHelper.RegisterAssembly(typeof(HfsPlusFileSystem).Assembly);
 
-        static void Main(string[] args)
+        var program = new Program();
+        program.Run(args);
+    }
+
+    protected override StandardSwitches DefineCommandLine(CommandLineParser parser)
+    {
+        _dmg = new CommandLineParameter("dmg", "Path to the .dmg file from which to extract the files", isOptional: false);
+        _folder = new CommandLineParameter("folder", "Paths to the folders from which to extract the files.", isOptional: false);
+        _recursive = new CommandLineSwitch("r", "recursive", null, "Include all subfolders of the folder specified");
+
+        parser.AddParameter(_dmg);
+        parser.AddParameter(_folder);
+        parser.AddSwitch(_recursive);
+
+        return StandardSwitches.Default;
+    }
+
+    protected override void DoRun()
+    {
+        using var disk = VirtualDisk.OpenDisk(_dmg.Value, FileAccess.Read);
+        if (disk is null)
         {
-            SetupHelper.RegisterAssembly(typeof(HfsPlusFileSystem).Assembly);
-
-            Program program = new Program();
-            program.Run(args);
+            Console.Error.WriteLine($"Failed to open '{_dmg.Value}' as virtual disk.");
+            return;
         }
 
-        protected override StandardSwitches DefineCommandLine(CommandLineParser parser)
+        // Find the first (and supposedly, only, HFS partition)
+
+        foreach (var volume in VolumeManager.GetPhysicalVolumes(disk))
         {
-            _dmg = new CommandLineParameter("dmg", "Path to the .dmg file from which to extract the files", isOptional: false);
-            _folder = new CommandLineParameter("folder", "Paths to the folders from which to extract the files.", isOptional: false);
-            _recursive = new CommandLineSwitch("r", "recursive", null, "Include all subfolders of the folder specified");
-
-            parser.AddParameter(_dmg);
-            parser.AddParameter(_folder);
-            parser.AddSwitch(_recursive);
-
-            return StandardSwitches.Default;
-        }
-
-        protected override void DoRun()
-        {
-            using (var disk = VirtualDisk.OpenDisk(_dmg.Value, FileAccess.Read))
+            foreach (var fileSystem in FileSystemManager.DetectFileSystems(volume))
             {
-                // Find the first (and supposedly, only, HFS partition)
-
-                foreach (var volume in VolumeManager.GetPhysicalVolumes(disk))
+                if (fileSystem.Name == "HFS+")
                 {
-                    foreach (var fileSystem in FileSystemManager.DetectFileSystems(volume))
+                    using var hfs = (HfsPlusFileSystem)fileSystem.Open(volume);
+                    var source = hfs.GetDirectoryInfo(_folder.Value);
+                    var target = new DirectoryInfo(Path.Combine(Environment.CurrentDirectory, source.Name));
+
+                    if (target.Exists)
                     {
-                        if (fileSystem.Name == "HFS+")
-                        {
-                            using (HfsPlusFileSystem hfs = (HfsPlusFileSystem)fileSystem.Open(volume))
-                            {
-                                var source = hfs.GetDirectoryInfo(_folder.Value);
-                                var target = new DirectoryInfo(Path.Combine(Environment.CurrentDirectory, source.Name));
-
-                                if (target.Exists)
-                                {
-                                    target.Delete(true);
-                                }
-
-                                target.Create();
-
-                                CopyDirectory(source, target, _recursive.IsPresent);
-                            }
-                            break;
-                        }
+                        target.Delete(true);
                     }
+
+                    target.Create();
+
+                    CopyDirectory(source, target, _recursive.IsPresent);
+                    break;
                 }
             }
         }
+    }
 
-        private void CopyDirectory(DiscDirectoryInfo source, DirectoryInfo target, bool recurse)
+    private void CopyDirectory(DiscDirectoryInfo source, DirectoryInfo target, bool recurse)
+    {
+        if (recurse)
         {
-            if (recurse)
+            foreach (var childDiscDirectory in source.GetDirectories())
             {
-                foreach (var childDiscDirectory in source.GetDirectories())
-                {
-                    DirectoryInfo childDirectory = target.CreateSubdirectory(childDiscDirectory.Name);
-                    CopyDirectory(childDiscDirectory, childDirectory, recurse);
-                }
+                var childDirectory = target.CreateSubdirectory(childDiscDirectory.Name);
+                CopyDirectory(childDiscDirectory, childDirectory, recurse);
             }
+        }
 
-            Console.WriteLine("{0}", source.Name);
+        Console.WriteLine("{0}", source.Name);
 
-            foreach (var childFile in source.GetFiles())
-            {
-                using var sourceStream = childFile.OpenRead();
-                using var targetStream = File.OpenWrite(Path.Combine(target.FullName, childFile.Name));
-                sourceStream.CopyTo(targetStream);
-            }
+        foreach (var childFile in source.GetFiles())
+        {
+            using var sourceStream = childFile.OpenRead();
+            using var targetStream = File.OpenWrite(Path.Combine(target.FullName, childFile.Name));
+            sourceStream.CopyTo(targetStream);
         }
     }
 }

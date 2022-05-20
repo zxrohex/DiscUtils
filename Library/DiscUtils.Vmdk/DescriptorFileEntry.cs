@@ -20,68 +20,63 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.CoreCompat;
 using System;
 using System.Globalization;
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+internal class DescriptorFileEntry
 {
-    internal class DescriptorFileEntry
+    private readonly DescriptorFileEntryType _type;
+
+    public DescriptorFileEntry(string key, string value, DescriptorFileEntryType type)
     {
-        private readonly DescriptorFileEntryType _type;
+        Key = key;
+        Value = value;
+        _type = type;
+    }
 
-        public DescriptorFileEntry(string key, string value, DescriptorFileEntryType type)
+    public string Key { get; }
+
+    public string Value { get; set; }
+
+    public static DescriptorFileEntry Parse(string value)
+    {
+        var parts = value.Split('=', 2);
+
+        for (var i = 0; i < parts.Length; ++i)
         {
-            Key = key;
-            Value = value;
-            _type = type;
+            parts[i] = parts[i].Trim();
         }
 
-        public string Key { get; }
-
-        public string Value { get; set; }
-
-        public static DescriptorFileEntry Parse(string value)
+        if (parts.Length > 1)
         {
-            string[] parts = value.Split(new[] { '=' }, 2);
-
-            for (int i = 0; i < parts.Length; ++i)
+            if (parts[1].StartsWith("\"", StringComparison.Ordinal))
             {
-                parts[i] = parts[i].Trim();
+                return new DescriptorFileEntry(parts[0], parts[1].Trim('\"'), DescriptorFileEntryType.Quoted);
             }
-
-            if (parts.Length > 1)
-            {
-                if (parts[1].StartsWith("\"", StringComparison.Ordinal))
-                {
-                    return new DescriptorFileEntry(parts[0], parts[1].Trim('\"'), DescriptorFileEntryType.Quoted);
-                }
-                return new DescriptorFileEntry(parts[0], parts[1], DescriptorFileEntryType.Plain);
-            }
-            return new DescriptorFileEntry(parts[0], string.Empty, DescriptorFileEntryType.NoValue);
+            return new DescriptorFileEntry(parts[0], parts[1], DescriptorFileEntryType.Plain);
         }
+        return new DescriptorFileEntry(parts[0], string.Empty, DescriptorFileEntryType.NoValue);
+    }
 
-        public override string ToString()
+    public override string ToString()
+    {
+        return ToString(true);
+    }
+
+    public string ToString(bool spaceOut)
+    {
+        // VMware workstation appears to be sensitive to spaces, wants them for 'header' values, not for DiskDataBase...
+        var sep = spaceOut ? " " : string.Empty;
+
+        return _type switch
         {
-            return ToString(true);
-        }
-
-        public string ToString(bool spaceOut)
-        {
-            // VMware workstation appears to be sensitive to spaces, wants them for 'header' values, not for DiskDataBase...
-            string sep = spaceOut ? " " : string.Empty;
-
-            switch (_type)
-            {
-                case DescriptorFileEntryType.NoValue:
-                    return Key;
-                case DescriptorFileEntryType.Plain:
-                    return Key + sep + "=" + sep + Value;
-                case DescriptorFileEntryType.Quoted:
-                    return Key + sep + "=" + sep + "\"" + Value + "\"";
-                default:
-                    throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "Unknown type: {0}",
-                        _type));
-            }
-        }
+            DescriptorFileEntryType.NoValue => Key,
+            DescriptorFileEntryType.Plain => Key + sep + "=" + sep + Value,
+            DescriptorFileEntryType.Quoted => Key + sep + "=" + sep + "\"" + Value + "\"",
+            _ => throw new InvalidOperationException($"Unknown type: {_type}"),
+        };
     }
 }

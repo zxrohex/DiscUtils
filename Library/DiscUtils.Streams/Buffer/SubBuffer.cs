@@ -25,275 +25,274 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+/// <summary>
+/// Class representing a portion of an existing buffer.
+/// </summary>
+public class SubBuffer : Buffer
 {
+    private readonly long _first;
+    private readonly long _length;
+
+    private readonly IBuffer _parent;
+
     /// <summary>
-    /// Class representing a portion of an existing buffer.
+    /// Initializes a new instance of the SubBuffer class.
     /// </summary>
-    public class SubBuffer : Buffer
+    /// <param name="parent">The parent buffer.</param>
+    /// <param name="first">The first byte in <paramref name="parent"/> represented by this sub-buffer.</param>
+    /// <param name="length">The number of bytes of <paramref name="parent"/> represented by this sub-buffer.</param>
+    public SubBuffer(IBuffer parent, long first, long length)
     {
-        private readonly long _first;
-        private readonly long _length;
+        _parent = parent;
+        _first = first;
+        _length = length;
 
-        private readonly IBuffer _parent;
-
-        /// <summary>
-        /// Initializes a new instance of the SubBuffer class.
-        /// </summary>
-        /// <param name="parent">The parent buffer.</param>
-        /// <param name="first">The first byte in <paramref name="parent"/> represented by this sub-buffer.</param>
-        /// <param name="length">The number of bytes of <paramref name="parent"/> represented by this sub-buffer.</param>
-        public SubBuffer(IBuffer parent, long first, long length)
+        if (_first + _length > _parent.Capacity)
         {
-            _parent = parent;
-            _first = first;
-            _length = length;
+            throw new ArgumentException("Substream extends beyond end of parent stream");
+        }
+    }
 
-            if (_first + _length > _parent.Capacity)
-            {
-                throw new ArgumentException("Substream extends beyond end of parent stream");
-            }
+    /// <summary>
+    /// Can this buffer be read.
+    /// </summary>
+    public override bool CanRead
+    {
+        get { return _parent.CanRead; }
+    }
+
+    /// <summary>
+    /// Can this buffer be modified.
+    /// </summary>
+    public override bool CanWrite
+    {
+        get { return _parent.CanWrite; }
+    }
+
+    /// <summary>
+    /// Gets the current capacity of the buffer, in bytes.
+    /// </summary>
+    public override long Capacity
+    {
+        get { return _length; }
+    }
+
+    /// <summary>
+    /// Gets the parts of the buffer that are stored.
+    /// </summary>
+    /// <remarks>This may be an empty enumeration if all bytes are zero.</remarks>
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get { return OffsetExtents(_parent.GetExtentsInRange(_first, _length)); }
+    }
+
+    /// <summary>
+    /// Flushes all data to the underlying storage.
+    /// </summary>
+    public override void Flush()
+    {
+        _parent.Flush();
+    }
+
+    /// <summary>
+    /// Reads from the buffer into a byte array.
+    /// </summary>
+    /// <param name="pos">The offset within the buffer to start reading.</param>
+    /// <param name="buffer">The destination byte array.</param>
+    /// <param name="offset">The start offset within the destination buffer.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The actual number of bytes read.</returns>
+    public override int Read(long pos, byte[] buffer, int offset, int count)
+    {
+        if (count < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to read negative bytes");
         }
 
-        /// <summary>
-        /// Can this buffer be read.
-        /// </summary>
-        public override bool CanRead
+        if (pos >= _length)
         {
-            get { return _parent.CanRead; }
+            return 0;
         }
 
-        /// <summary>
-        /// Can this buffer be modified.
-        /// </summary>
-        public override bool CanWrite
-        {
-            get { return _parent.CanWrite; }
-        }
-
-        /// <summary>
-        /// Gets the current capacity of the buffer, in bytes.
-        /// </summary>
-        public override long Capacity
-        {
-            get { return _length; }
-        }
-
-        /// <summary>
-        /// Gets the parts of the buffer that are stored.
-        /// </summary>
-        /// <remarks>This may be an empty enumeration if all bytes are zero.</remarks>
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get { return OffsetExtents(_parent.GetExtentsInRange(_first, _length)); }
-        }
-
-        /// <summary>
-        /// Flushes all data to the underlying storage.
-        /// </summary>
-        public override void Flush()
-        {
-            _parent.Flush();
-        }
-
-        /// <summary>
-        /// Reads from the buffer into a byte array.
-        /// </summary>
-        /// <param name="pos">The offset within the buffer to start reading.</param>
-        /// <param name="buffer">The destination byte array.</param>
-        /// <param name="offset">The start offset within the destination buffer.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The actual number of bytes read.</returns>
-        public override int Read(long pos, byte[] buffer, int offset, int count)
-        {
-            if (count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to read negative bytes");
-            }
-
-            if (pos >= _length)
-            {
-                return 0;
-            }
-
-            return _parent.Read(pos + _first, buffer, offset,
-                (int)Math.Min(count, Math.Min(_length - pos, int.MaxValue)));
-        }
+        return _parent.Read(pos + _first, buffer, offset,
+            (int)Math.Min(count, Math.Min(_length - pos, int.MaxValue)));
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        /// <summary>
-        /// Reads from the buffer into a byte array.
-        /// </summary>
-        /// <param name="pos">The offset within the buffer to start reading.</param>
-        /// <param name="buffer">The destination byte array.</param>
-        /// <param name="offset">The start offset within the destination buffer.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The actual number of bytes read.</returns>
-        public override Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    /// <summary>
+    /// Reads from the buffer into a byte array.
+    /// </summary>
+    /// <param name="pos">The offset within the buffer to start reading.</param>
+    /// <param name="buffer">The destination byte array.</param>
+    /// <param name="offset">The start offset within the destination buffer.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The actual number of bytes read.</returns>
+    public override Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (count < 0)
         {
-            if (count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to read negative bytes");
-            }
-
-            if (pos >= _length)
-            {
-                return Task.FromResult(0);
-            }
-
-            return _parent.ReadAsync(pos + _first, buffer, offset,
-                (int)Math.Min(count, Math.Min(_length - pos, int.MaxValue)), cancellationToken);
+            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to read negative bytes");
         }
+
+        if (pos >= _length)
+        {
+            return Task.FromResult(0);
+        }
+
+        return _parent.ReadAsync(pos + _first, buffer, offset,
+            (int)Math.Min(count, Math.Min(_length - pos, int.MaxValue)), cancellationToken);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        /// <summary>
-        /// Reads from the buffer into a byte array.
-        /// </summary>
-        /// <param name="pos">The offset within the buffer to start reading.</param>
-        /// <param name="buffer">The destination byte array.</param>
-        /// <param name="offset">The start offset within the destination buffer.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The actual number of bytes read.</returns>
-        public override ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    /// <summary>
+    /// Reads from the buffer into a byte array.
+    /// </summary>
+    /// <param name="pos">The offset within the buffer to start reading.</param>
+    /// <param name="buffer">The destination byte array.</param>
+    /// <param name="offset">The start offset within the destination buffer.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The actual number of bytes read.</returns>
+    public override ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (pos >= _length)
         {
-            if (pos >= _length)
-            {
-                return new(0);
-            }
-
-            return _parent.ReadAsync(pos + _first, buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))], cancellationToken);
+            return new(0);
         }
 
-        /// <summary>
-        /// Reads from the buffer into a byte array.
-        /// </summary>
-        /// <param name="pos">The offset within the buffer to start reading.</param>
-        /// <param name="buffer">The destination byte array.</param>
-        /// <param name="offset">The start offset within the destination buffer.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns>The actual number of bytes read.</returns>
-        public override int Read(long pos, Span<byte> buffer)
-        {
-            if (pos >= _length)
-            {
-                return 0;
-            }
+        return _parent.ReadAsync(pos + _first, buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))], cancellationToken);
+    }
 
-            return _parent.Read(pos + _first, buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))]);
+    /// <summary>
+    /// Reads from the buffer into a byte array.
+    /// </summary>
+    /// <param name="pos">The offset within the buffer to start reading.</param>
+    /// <param name="buffer">The destination byte array.</param>
+    /// <param name="offset">The start offset within the destination buffer.</param>
+    /// <param name="count">The number of bytes to read.</param>
+    /// <returns>The actual number of bytes read.</returns>
+    public override int Read(long pos, Span<byte> buffer)
+    {
+        if (pos >= _length)
+        {
+            return 0;
         }
+
+        return _parent.Read(pos + _first, buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))]);
+    }
 #endif
 
-        /// <summary>
-        /// Writes a byte array into the buffer.
-        /// </summary>
-        /// <param name="pos">The start offset within the buffer.</param>
-        /// <param name="buffer">The source byte array.</param>
-        /// <param name="offset">The start offset within the source byte array.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override void Write(long pos, byte[] buffer, int offset, int count)
+    /// <summary>
+    /// Writes a byte array into the buffer.
+    /// </summary>
+    /// <param name="pos">The start offset within the buffer.</param>
+    /// <param name="buffer">The source byte array.</param>
+    /// <param name="offset">The start offset within the source byte array.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override void Write(long pos, byte[] buffer, int offset, int count)
+    {
+        if (count < 0)
         {
-            if (count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write negative bytes");
-            }
-
-            if (pos + count > _length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write beyond end of substream");
-            }
-
-            _parent.Write(pos + _first, buffer, offset, count);
+            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write negative bytes");
         }
+
+        if (pos + count > _length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write beyond end of substream");
+        }
+
+        _parent.Write(pos + _first, buffer, offset, count);
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        /// <summary>
-        /// Writes a byte array into the buffer.
-        /// </summary>
-        /// <param name="pos">The start offset within the buffer.</param>
-        /// <param name="buffer">The source byte array.</param>
-        /// <param name="offset">The start offset within the source byte array.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    /// <summary>
+    /// Writes a byte array into the buffer.
+    /// </summary>
+    /// <param name="pos">The start offset within the buffer.</param>
+    /// <param name="buffer">The source byte array.</param>
+    /// <param name="offset">The start offset within the source byte array.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (count < 0)
         {
-            if (count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write negative bytes");
-            }
-
-            if (pos + count > _length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write beyond end of substream");
-            }
-
-            return _parent.WriteAsync(pos + _first, buffer, offset, count, cancellationToken);
+            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write negative bytes");
         }
+
+        if (pos + count > _length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write beyond end of substream");
+        }
+
+        return _parent.WriteAsync(pos + _first, buffer, offset, count, cancellationToken);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        /// <summary>
-        /// Writes a byte array into the buffer.
-        /// </summary>
-        /// <param name="pos">The start offset within the buffer.</param>
-        /// <param name="buffer">The source byte array.</param>
-        /// <param name="offset">The start offset within the source byte array.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    /// <summary>
+    /// Writes a byte array into the buffer.
+    /// </summary>
+    /// <param name="pos">The start offset within the buffer.</param>
+    /// <param name="buffer">The source byte array.</param>
+    /// <param name="offset">The start offset within the source byte array.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (pos + buffer.Length > _length)
         {
-            if (pos + buffer.Length > _length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(buffer.Length), "Attempt to write beyond end of substream");
-            }
-
-            return _parent.WriteAsync(pos + _first, buffer, cancellationToken);
+            throw new ArgumentOutOfRangeException(nameof(buffer.Length), "Attempt to write beyond end of substream");
         }
 
-        /// <summary>
-        /// Writes a byte array into the buffer.
-        /// </summary>
-        /// <param name="pos">The start offset within the buffer.</param>
-        /// <param name="buffer">The source byte array.</param>
-        /// <param name="offset">The start offset within the source byte array.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public override void Write(long pos, ReadOnlySpan<byte> buffer)
-        {
-            if (pos + buffer.Length > _length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(buffer.Length), "Attempt to write beyond end of substream");
-            }
+        return _parent.WriteAsync(pos + _first, buffer, cancellationToken);
+    }
 
-            _parent.Write(pos + _first, buffer);
+    /// <summary>
+    /// Writes a byte array into the buffer.
+    /// </summary>
+    /// <param name="pos">The start offset within the buffer.</param>
+    /// <param name="buffer">The source byte array.</param>
+    /// <param name="offset">The start offset within the source byte array.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public override void Write(long pos, ReadOnlySpan<byte> buffer)
+    {
+        if (pos + buffer.Length > _length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(buffer.Length), "Attempt to write beyond end of substream");
         }
+
+        _parent.Write(pos + _first, buffer);
+    }
 #endif
 
-        /// <summary>
-        /// Sets the capacity of the buffer, truncating if appropriate.
-        /// </summary>
-        /// <param name="value">The desired capacity of the buffer.</param>
-        public override void SetCapacity(long value)
-        {
-            throw new NotSupportedException("Attempt to change length of a subbuffer");
-        }
+    /// <summary>
+    /// Sets the capacity of the buffer, truncating if appropriate.
+    /// </summary>
+    /// <param name="value">The desired capacity of the buffer.</param>
+    public override void SetCapacity(long value)
+    {
+        throw new NotSupportedException("Attempt to change length of a subbuffer");
+    }
 
-        /// <summary>
-        /// Gets the parts of a buffer that are stored, within a specified range.
-        /// </summary>
-        /// <param name="start">The offset of the first byte of interest.</param>
-        /// <param name="count">The number of bytes of interest.</param>
-        /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
-        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
-        {
-            long absStart = _first + start;
-            long absEnd = Math.Min(absStart + count, _first + _length);
-            return OffsetExtents(_parent.GetExtentsInRange(absStart, absEnd - absStart));
-        }
+    /// <summary>
+    /// Gets the parts of a buffer that are stored, within a specified range.
+    /// </summary>
+    /// <param name="start">The offset of the first byte of interest.</param>
+    /// <param name="count">The number of bytes of interest.</param>
+    /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
+    public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    {
+        var absStart = _first + start;
+        var absEnd = Math.Min(absStart + count, _first + _length);
+        return OffsetExtents(_parent.GetExtentsInRange(absStart, absEnd - absStart));
+    }
 
-        private IEnumerable<StreamExtent> OffsetExtents(IEnumerable<StreamExtent> src)
+    private IEnumerable<StreamExtent> OffsetExtents(IEnumerable<StreamExtent> src)
+    {
+        foreach (var e in src)
         {
-            foreach (StreamExtent e in src)
-            {
-                yield return new StreamExtent(e.Start - _first, e.Length);
-            }
+            yield return new StreamExtent(e.Start - _first, e.Length);
         }
     }
 }

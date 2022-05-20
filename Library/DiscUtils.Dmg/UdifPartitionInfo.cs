@@ -24,57 +24,56 @@ using System;
 using DiscUtils.Streams;
 using DiscUtils.Partitions;
 
-namespace DiscUtils.Dmg
+namespace DiscUtils.Dmg;
+
+internal class UdifPartitionInfo : PartitionInfo
 {
-    internal class UdifPartitionInfo : PartitionInfo
+    private readonly CompressedBlock _block;
+    private readonly Disk _disk;
+
+    public UdifPartitionInfo(Disk disk, CompressedBlock block)
     {
-        private readonly CompressedBlock _block;
-        private readonly Disk _disk;
+        _block = block;
+        _disk = disk;
+    }
 
-        public UdifPartitionInfo(Disk disk, CompressedBlock block)
-        {
-            _block = block;
-            _disk = disk;
-        }
+    public override byte BiosType
+    {
+        get { return 0; }
+    }
 
-        public override byte BiosType
-        {
-            get { return 0; }
-        }
+    public override long FirstSector
+    {
+        get { return _block.FirstSector; }
+    }
 
-        public override long FirstSector
-        {
-            get { return _block.FirstSector; }
-        }
+    public override Guid GuidType
+    {
+        get { return Guid.Empty; }
+    }
 
-        public override Guid GuidType
-        {
-            get { return Guid.Empty; }
-        }
+    public override long LastSector
+    {
+        get { return _block.FirstSector + _block.SectorCount; }
+    }
 
-        public override long LastSector
-        {
-            get { return _block.FirstSector + _block.SectorCount; }
-        }
+    public override long SectorCount
+    {
+        get { return _block.SectorCount; }
+    }
 
-        public override long SectorCount
-        {
-            get { return _block.SectorCount; }
-        }
+    public override string TypeAsString
+    {
+        get { return GetType().FullName; }
+    }
 
-        public override string TypeAsString
-        {
-            get { return GetType().FullName; }
-        }
+    public override PhysicalVolumeType VolumeType
+    {
+        get { return PhysicalVolumeType.ApplePartition; }
+    }
 
-        public override PhysicalVolumeType VolumeType
-        {
-            get { return PhysicalVolumeType.ApplePartition; }
-        }
-
-        public override SparseStream Open()
-        {
-            return new SubStream(_disk.Content, FirstSector * _disk.SectorSize, SectorCount * _disk.SectorSize);
-        }
+    public override SparseStream Open()
+    {
+        return new SubStream(_disk.Content, FirstSector * _disk.SectorSize, SectorCount * _disk.SectorSize);
     }
 }

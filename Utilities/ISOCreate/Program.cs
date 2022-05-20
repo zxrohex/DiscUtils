@@ -25,73 +25,72 @@ using System.IO;
 using DiscUtils.Common;
 using DiscUtils.Iso9660;
 
-namespace ISOCreate
+namespace ISOCreate;
+
+class Program : ProgramBase
 {
-    class Program : ProgramBase
+    private CommandLineParameter _isoFileParam;
+    private CommandLineParameter _srcDir;
+    private CommandLineParameter _bootImage;
+    private CommandLineSwitch _volLabelSwitch;
+
+    static void Main(string[] args)
     {
-        private CommandLineParameter _isoFileParam;
-        private CommandLineParameter _srcDir;
-        private CommandLineParameter _bootImage;
-        private CommandLineSwitch _volLabelSwitch;
+        var program = new Program();
+        program.Run(args);
+    }
 
-        static void Main(string[] args)
+    protected override StandardSwitches DefineCommandLine(CommandLineParser parser)
+    {
+        _isoFileParam = new CommandLineParameter("iso_file", "The ISO file to create.", false);
+        _srcDir = new CommandLineParameter("sourcedir", "The directory to be added to the ISO", false);
+        _bootImage = new CommandLineParameter("bootimage", "The bootable disk image, to create a bootable ISO", true);
+        _volLabelSwitch = new CommandLineSwitch("vl", "vollabel", "label", "Volume Label for the ISO file.");
+
+        parser.AddParameter(_isoFileParam);
+        parser.AddParameter(_srcDir);
+        parser.AddParameter(_bootImage);
+        parser.AddSwitch(_volLabelSwitch);
+
+        return StandardSwitches.Default;
+    }
+
+    protected override void DoRun()
+    {
+        var di = new DirectoryInfo(_srcDir.Value);
+        if (!di.Exists)
         {
-            Program program = new Program();
-            program.Run(args);
+            Console.WriteLine("The source directory doesn't exist!");
+            Environment.Exit(1);
         }
 
-        protected override StandardSwitches DefineCommandLine(CommandLineParser parser)
+        var builder = new CDBuilder();
+
+        if (_volLabelSwitch.IsPresent)
         {
-            _isoFileParam = new CommandLineParameter("iso_file", "The ISO file to create.", false);
-            _srcDir = new CommandLineParameter("sourcedir", "The directory to be added to the ISO", false);
-            _bootImage = new CommandLineParameter("bootimage", "The bootable disk image, to create a bootable ISO", true);
-            _volLabelSwitch = new CommandLineSwitch("vl", "vollabel", "label", "Volume Label for the ISO file.");
-
-            parser.AddParameter(_isoFileParam);
-            parser.AddParameter(_srcDir);
-            parser.AddParameter(_bootImage);
-            parser.AddSwitch(_volLabelSwitch);
-
-            return StandardSwitches.Default;
+            builder.VolumeIdentifier = _volLabelSwitch.Value;
         }
 
-        protected override void DoRun()
+        if (_bootImage.IsPresent)
         {
-            DirectoryInfo di = new DirectoryInfo(_srcDir.Value);
-            if (!di.Exists)
-            {
-                Console.WriteLine("The source directory doesn't exist!");
-                Environment.Exit(1);
-            }
-
-            CDBuilder builder = new CDBuilder();
-
-            if (_volLabelSwitch.IsPresent)
-            {
-                builder.VolumeIdentifier = _volLabelSwitch.Value;
-            }
-
-            if (_bootImage.IsPresent)
-            {
-                builder.SetBootImage(new FileStream(_bootImage.Value, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 2 << 20, useAsync: true), BootDeviceEmulation.NoEmulation, 0);
-            }
-
-            PopulateFromFolder(builder, di, di.FullName);
-
-            builder.Build(_isoFileParam.Value);
+            builder.SetBootImage(new FileStream(_bootImage.Value, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 2 << 20, useAsync: true), BootDeviceEmulation.NoEmulation, 0);
         }
 
-        private static void PopulateFromFolder(CDBuilder builder, DirectoryInfo di, string basePath)
-        {
-            foreach (FileInfo file in di.GetFiles())
-            {
-                builder.AddFile(file.FullName.Substring(basePath.Length), file.FullName);
-            }
+        PopulateFromFolder(builder, di, di.FullName);
 
-            foreach (DirectoryInfo dir in di.GetDirectories())
-            {
-                PopulateFromFolder(builder, dir, basePath);
-            }
+        builder.Build(_isoFileParam.Value);
+    }
+
+    private static void PopulateFromFolder(CDBuilder builder, DirectoryInfo di, string basePath)
+    {
+        foreach (var file in di.GetFiles())
+        {
+            builder.AddFile(file.FullName.Substring(basePath.Length), file.FullName);
+        }
+
+        foreach (var dir in di.GetDirectories())
+        {
+            PopulateFromFolder(builder, dir, basePath);
         }
     }
 }

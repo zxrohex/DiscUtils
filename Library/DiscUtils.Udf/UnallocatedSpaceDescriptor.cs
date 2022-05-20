@@ -22,29 +22,28 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal sealed class UnallocatedSpaceDescriptor : TaggedDescriptor<UnallocatedSpaceDescriptor>
 {
-    internal sealed class UnallocatedSpaceDescriptor : TaggedDescriptor<UnallocatedSpaceDescriptor>
+    public ExtentAllocationDescriptor[] Extents;
+    public uint VolumeDescriptorSequenceNumber;
+
+    public UnallocatedSpaceDescriptor()
+        : base(TagIdentifier.UnallocatedSpaceDescriptor) {}
+
+    public override int Parse(byte[] buffer, int offset)
     {
-        public ExtentAllocationDescriptor[] Extents;
-        public uint VolumeDescriptorSequenceNumber;
+        VolumeDescriptorSequenceNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
 
-        public UnallocatedSpaceDescriptor()
-            : base(TagIdentifier.UnallocatedSpaceDescriptor) {}
+        var numDescriptors = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
+        Extents = new ExtentAllocationDescriptor[numDescriptors];
 
-        public override int Parse(byte[] buffer, int offset)
+        for (var i = 0; i < numDescriptors; ++i)
         {
-            VolumeDescriptorSequenceNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-
-            uint numDescriptors = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
-            Extents = new ExtentAllocationDescriptor[numDescriptors];
-
-            for (int i = 0; i < numDescriptors; ++i)
-            {
-                Extents[i] = EndianUtilities.ToStruct<ExtentAllocationDescriptor>(buffer, offset + 24 + i * 8);
-            }
-
-            return (int)(24 + numDescriptors * 8);
+            Extents[i] = EndianUtilities.ToStruct<ExtentAllocationDescriptor>(buffer, offset + 24 + i * 8);
         }
+
+        return (int)(24 + numDescriptors * 8);
     }
 }

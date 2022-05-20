@@ -28,236 +28,261 @@ using System.Threading.Tasks;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class FileBuffer : Buffer
 {
-    internal sealed class FileBuffer : Buffer
+    private readonly ForkData _baseData;
+    private readonly CatalogNodeId _cnid;
+    private readonly Context _context;
+
+    public FileBuffer(Context context, ForkData baseData, CatalogNodeId catalogNodeId)
     {
-        private readonly ForkData _baseData;
-        private readonly CatalogNodeId _cnid;
-        private readonly Context _context;
+        _context = context;
+        _baseData = baseData;
+        _cnid = catalogNodeId;
+    }
 
-        public FileBuffer(Context context, ForkData baseData, CatalogNodeId catalogNodeId)
+    public override bool CanRead
+    {
+        get { return true; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
+
+    public override long Capacity
+    {
+        get { return (long)_baseData.LogicalSize; }
+    }
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+    {
+        var pos = 0;
+
+        var totalRead = 0;
+
+        var limitedCount = Capacity;
+
+        while (totalRead < limitedCount)
         {
-            _context = context;
-            _baseData = baseData;
-            _cnid = catalogNodeId;
-        }
+            var extent = FindExtent(pos, out var extentLogicalStart);
+            var extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
+            var extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
+            var extentOffset = pos + totalRead - extentLogicalStart;
+            var toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
 
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
-
-        public override long Capacity
-        {
-            get { return (long)_baseData.LogicalSize; }
-        }
-
-        public override int Read(long pos, byte[] buffer, int offset, int count)
-        {
-            int totalRead = 0;
-
-            int limitedCount = (int)Math.Min(count, Math.Max(0, Capacity - pos));
-
-            while (totalRead < limitedCount)
+            // Remaining in extent can create a situation where amount to read is zero, and that appears
+            // to be OK, just need to exit thie while loop to avoid infinite loop.
+            if (toRead == 0)
             {
-                long extentLogicalStart;
-                ExtentDescriptor extent = FindExtent(pos, out extentLogicalStart);
-                long extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
-                long extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
-
-                long extentOffset = pos + totalRead - extentLogicalStart;
-                int toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
-
-                // Remaining in extent can create a situation where amount to read is zero, and that appears
-                // to be OK, just need to exit thie while loop to avoid infinite loop.
-                if (toRead == 0)
-                {
-                    break;
-                }
-
-                Stream volStream = _context.VolumeStream;
-                volStream.Position = extentStreamStart + extentOffset;
-                int numRead = volStream.Read(buffer, offset + totalRead, toRead);
-
-                totalRead += numRead;
+                break;
             }
 
-            return totalRead;
+            yield return new(extentStreamStart + extentOffset, toRead);
+
+            totalRead += toRead;
         }
+    }
+
+    public override int Read(long pos, byte[] buffer, int offset, int count)
+    {
+        var totalRead = 0;
+
+        var limitedCount = (int)Math.Min(count, Math.Max(0, Capacity - pos));
+
+        while (totalRead < limitedCount)
+        {
+            var extent = FindExtent(pos, out var extentLogicalStart);
+            var extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
+            var extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
+
+            var extentOffset = pos + totalRead - extentLogicalStart;
+            var toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
+
+            // Remaining in extent can create a situation where amount to read is zero, and that appears
+            // to be OK, just need to exit thie while loop to avoid infinite loop.
+            if (toRead == 0)
+            {
+                break;
+            }
+
+            var volStream = _context.VolumeStream;
+            volStream.Position = extentStreamStart + extentOffset;
+            var numRead = volStream.Read(buffer, offset + totalRead, toRead);
+
+            totalRead += numRead;
+        }
+
+        return totalRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        var totalRead = 0;
+
+        var limitedCount = (int)Math.Min(count, Math.Max(0, Capacity - pos));
+
+        while (totalRead < limitedCount)
         {
-            int totalRead = 0;
+            var extent = FindExtent(pos, out var extentLogicalStart);
+            var extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
+            var extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
 
-            int limitedCount = (int)Math.Min(count, Math.Max(0, Capacity - pos));
+            var extentOffset = pos + totalRead - extentLogicalStart;
+            var toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
 
-            while (totalRead < limitedCount)
+            // Remaining in extent can create a situation where amount to read is zero, and that appears
+            // to be OK, just need to exit thie while loop to avoid infinite loop.
+            if (toRead == 0)
             {
-                long extentLogicalStart;
-                ExtentDescriptor extent = FindExtent(pos, out extentLogicalStart);
-                long extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
-                long extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
-
-                long extentOffset = pos + totalRead - extentLogicalStart;
-                int toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
-
-                // Remaining in extent can create a situation where amount to read is zero, and that appears
-                // to be OK, just need to exit thie while loop to avoid infinite loop.
-                if (toRead == 0)
-                {
-                    break;
-                }
-
-                Stream volStream = _context.VolumeStream;
-                volStream.Position = extentStreamStart + extentOffset;
-                int numRead = await volStream.ReadAsync(buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
-
-                totalRead += numRead;
+                break;
             }
 
-            return totalRead;
+            var volStream = _context.VolumeStream;
+            volStream.Position = extentStreamStart + extentOffset;
+            var numRead = await volStream.ReadAsync(buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
+
+            totalRead += numRead;
         }
+
+        return totalRead;
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var totalRead = 0;
+
+        var limitedCount = (int)Math.Min(buffer.Length, Math.Max(0, Capacity - pos));
+
+        while (totalRead < limitedCount)
         {
-            int totalRead = 0;
+            var extent = FindExtent(pos, out var extentLogicalStart);
+            var extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
+            var extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
 
-            int limitedCount = (int)Math.Min(buffer.Length, Math.Max(0, Capacity - pos));
+            var extentOffset = pos + totalRead - extentLogicalStart;
+            var toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
 
-            while (totalRead < limitedCount)
+            // Remaining in extent can create a situation where amount to read is zero, and that appears
+            // to be OK, just need to exit thie while loop to avoid infinite loop.
+            if (toRead == 0)
             {
-                long extentLogicalStart;
-                ExtentDescriptor extent = FindExtent(pos, out extentLogicalStart);
-                long extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
-                long extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
-
-                long extentOffset = pos + totalRead - extentLogicalStart;
-                int toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
-
-                // Remaining in extent can create a situation where amount to read is zero, and that appears
-                // to be OK, just need to exit thie while loop to avoid infinite loop.
-                if (toRead == 0)
-                {
-                    break;
-                }
-
-                Stream volStream = _context.VolumeStream;
-                volStream.Position = extentStreamStart + extentOffset;
-                int numRead = await volStream.ReadAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
-
-                totalRead += numRead;
+                break;
             }
 
-            return totalRead;
+            var volStream = _context.VolumeStream;
+            volStream.Position = extentStreamStart + extentOffset;
+            var numRead = await volStream.ReadAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+
+            totalRead += numRead;
         }
 
-        public override int Read(long pos, Span<byte> buffer)
+        return totalRead;
+    }
+
+    public override int Read(long pos, Span<byte> buffer)
+    {
+        var totalRead = 0;
+
+        var limitedCount = (int)Math.Min(buffer.Length, Math.Max(0, Capacity - pos));
+
+        while (totalRead < limitedCount)
         {
-            int totalRead = 0;
+            var extent = FindExtent(pos, out var extentLogicalStart);
+            var extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
+            var extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
 
-            int limitedCount = (int)Math.Min(buffer.Length, Math.Max(0, Capacity - pos));
+            var extentOffset = pos + totalRead - extentLogicalStart;
+            var toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
 
-            while (totalRead < limitedCount)
+            // Remaining in extent can create a situation where amount to read is zero, and that appears
+            // to be OK, just need to exit thie while loop to avoid infinite loop.
+            if (toRead == 0)
             {
-                long extentLogicalStart;
-                ExtentDescriptor extent = FindExtent(pos, out extentLogicalStart);
-                long extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
-                long extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
-
-                long extentOffset = pos + totalRead - extentLogicalStart;
-                int toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
-
-                // Remaining in extent can create a situation where amount to read is zero, and that appears
-                // to be OK, just need to exit thie while loop to avoid infinite loop.
-                if (toRead == 0)
-                {
-                    break;
-                }
-
-                Stream volStream = _context.VolumeStream;
-                volStream.Position = extentStreamStart + extentOffset;
-                int numRead = volStream.Read(buffer.Slice(totalRead, toRead));
-
-                totalRead += numRead;
+                break;
             }
 
-            return totalRead;
+            var volStream = _context.VolumeStream;
+            volStream.Position = extentStreamStart + extentOffset;
+            var numRead = volStream.Read(buffer.Slice(totalRead, toRead));
+
+            totalRead += numRead;
         }
+
+        return totalRead;
+    }
 #endif
 
-        public override void Write(long pos, byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
+    public override void Write(long pos, byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
-            throw new NotSupportedException();
+    public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+        throw new NotSupportedException();
 #endif
 
-        public override void SetCapacity(long value)
-        {
-            throw new NotSupportedException();
-        }
+    public override void SetCapacity(long value)
+    {
+        throw new NotSupportedException();
+    }
 
-        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
-        {
-            return new[] { new StreamExtent(start, Math.Min(start + count, Capacity) - start) };
-        }
+    public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    {
+        yield return new StreamExtent(start, Math.Min(start + count, Capacity) - start);
+    }
 
-        private ExtentDescriptor FindExtent(long pos, out long extentLogicalStart)
+    private ExtentDescriptor FindExtent(long pos, out long extentLogicalStart)
+    {
+        uint blocksSeen = 0;
+        var block = (uint)(pos / _context.VolumeHeader.BlockSize);
+        for (var i = 0; i < _baseData.Extents.Length; ++i)
         {
-            uint blocksSeen = 0;
-            uint block = (uint)(pos / _context.VolumeHeader.BlockSize);
-            for (int i = 0; i < _baseData.Extents.Length; ++i)
+            if (blocksSeen + _baseData.Extents[i].BlockCount > block)
             {
-                if (blocksSeen + _baseData.Extents[i].BlockCount > block)
-                {
-                    extentLogicalStart = blocksSeen * (long)_context.VolumeHeader.BlockSize;
-                    return _baseData.Extents[i];
-                }
-
-                blocksSeen += _baseData.Extents[i].BlockCount;
+                extentLogicalStart = blocksSeen * (long)_context.VolumeHeader.BlockSize;
+                return _baseData.Extents[i];
             }
 
-            while (blocksSeen < _baseData.TotalBlocks)
-            {
-                byte[] extentData = _context.ExtentsOverflow.Find(new ExtentKey(_cnid, blocksSeen, false));
+            blocksSeen += _baseData.Extents[i].BlockCount;
+        }
 
-                if (extentData != null)
+        while (blocksSeen < _baseData.TotalBlocks)
+        {
+            var extentData = _context.ExtentsOverflow.Find(new ExtentKey(_cnid, blocksSeen, false));
+
+            if (extentData != null)
+            {
+                var extentDescriptorCount = extentData.Length / 8;
+                for (var a = 0; a < extentDescriptorCount; a++)
                 {
-                    int extentDescriptorCount = extentData.Length / 8;
-                    for (int a = 0; a < extentDescriptorCount; a++)
+                    var extentDescriptor = new ExtentDescriptor();
+                    var bytesRead = extentDescriptor.ReadFrom(extentData, a * 8);
+
+                    if (blocksSeen + extentDescriptor.BlockCount > block)
                     {
-                        ExtentDescriptor extentDescriptor = new ExtentDescriptor();
-                        int bytesRead = extentDescriptor.ReadFrom(extentData, a * 8);
-
-                        if (blocksSeen + extentDescriptor.BlockCount > block)
-                        {
-                            extentLogicalStart = blocksSeen * (long)_context.VolumeHeader.BlockSize;
-                            return extentDescriptor;
-                        }
-
-                        blocksSeen += extentDescriptor.BlockCount;
+                        extentLogicalStart = blocksSeen * (long)_context.VolumeHeader.BlockSize;
+                        return extentDescriptor;
                     }
-                }
-                else
-                {
-                    throw new IOException("Missing extent from extent overflow file: cnid=" + _cnid + ", blocksSeen=" +
-                                          blocksSeen);
+
+                    blocksSeen += extentDescriptor.BlockCount;
                 }
             }
-
-            throw new InvalidOperationException("Requested file fragment beyond EOF");
+            else
+            {
+                throw new IOException("Missing extent from extent overflow file: cnid=" + _cnid + ", blocksSeen=" +
+                                      blocksSeen);
+            }
         }
+
+        throw new InvalidOperationException("Requested file fragment beyond EOF");
     }
 }

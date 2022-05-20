@@ -23,28 +23,25 @@
 using System;
 using System.IO;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+/// <summary>
+/// Base class for all NFS result structures.
+/// </summary>
+public abstract class Nfs3CallResult : IRpcObject
 {
-    /// <summary>
-    /// Base class for all NFS result structures.
-    /// </summary>
-    public abstract class Nfs3CallResult : IRpcObject
+    public Nfs3Status Status { get; set; }
+
+    public virtual void Write(XdrDataWriter writer)
     {
-        public Nfs3Status Status { get; set; }
+        throw new NotSupportedException();
+    }
 
-        public virtual void Write(XdrDataWriter writer)
-        {
-            throw new NotSupportedException();
-        }
-
-        public virtual long GetSize()
-        {
-            using (MemoryStream stream = new MemoryStream())
-            {
-                XdrDataWriter writer = new XdrDataWriter(stream);
-                Write(writer);
-                return stream.Length;
-            }
-        }
+    public virtual long GetSize()
+    {
+        using var stream = new MemoryStream();
+        var writer = new XdrDataWriter(stream);
+        Write(writer);
+        return stream.Length;
     }
 }

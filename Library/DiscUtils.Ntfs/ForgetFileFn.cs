@@ -1,4 +1,3 @@
-namespace DiscUtils.Ntfs
-{
-    internal delegate void ForgetFileFn(File file);
-}
+namespace DiscUtils.Ntfs;
+
+internal delegate void ForgetFileFn(File file);

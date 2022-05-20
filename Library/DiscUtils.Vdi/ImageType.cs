@@ -20,13 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vdi
+namespace DiscUtils.Vdi;
+
+internal enum ImageType : uint
 {
-    internal enum ImageType : uint
-    {
-        Dynamic = 1,
-        Fixed = 2,
-        Undo = 3,
-        Differencing = 4
-    }
+    Dynamic = 1,
+    Fixed = 2,
+    Undo = 3,
+    Differencing = 4
 }

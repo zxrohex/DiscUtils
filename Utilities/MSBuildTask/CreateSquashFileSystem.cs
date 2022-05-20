@@ -20,72 +20,71 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace MSBuildTask
+namespace MSBuildTask;
+
+using System;
+using System.Collections.Generic;
+using DiscUtils.Iso9660;
+using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
+using DiscUtils.SquashFs;
+
+public class CreateSquashFileSystem : Task
 {
-    using System;
-    using System.Collections.Generic;
-    using DiscUtils.Iso9660;
-    using Microsoft.Build.Framework;
-    using Microsoft.Build.Utilities;
-    using DiscUtils.SquashFs;
-
-    public class CreateSquashFileSystem : Task
+    public CreateSquashFileSystem()
     {
-        public CreateSquashFileSystem()
+    }
+
+    /// <summary>
+    /// The name of the file to create, containing the filesystem image.
+    /// </summary>
+    [Required]
+    public ITaskItem FileName { get; set; }
+
+    /// <summary>
+    /// The files to add to the filesystem image.
+    /// </summary>
+    [Required]
+    public ITaskItem[] SourceFiles { get; set; }
+
+    /// <summary>
+    /// Sets the root to remove from the source files.
+    /// </summary>
+    /// <remarks>
+    /// If the source file is C:\MyDir\MySubDir\file.txt, and RemoveRoot is C:\MyDir, the filesystem will
+    /// contain \MySubDir\file.txt.  If not specified, the file would be named \MyDir\MySubDir\file.txt.
+    /// </remarks>
+    public ITaskItem RemoveRoot { get; set; }
+
+    public override bool Execute()
+    {
+        Log.LogMessage(MessageImportance.Normal, "Creating SquashFS file: '{0}'", FileName.ItemSpec);
+
+        try
         {
-        }
+            var builder = new SquashFileSystemBuilder();
 
-        /// <summary>
-        /// The name of the file to create, containing the filesystem image.
-        /// </summary>
-        [Required]
-        public ITaskItem FileName { get; set; }
-
-        /// <summary>
-        /// The files to add to the filesystem image.
-        /// </summary>
-        [Required]
-        public ITaskItem[] SourceFiles { get; set; }
-
-        /// <summary>
-        /// Sets the root to remove from the source files.
-        /// </summary>
-        /// <remarks>
-        /// If the source file is C:\MyDir\MySubDir\file.txt, and RemoveRoot is C:\MyDir, the filesystem will
-        /// contain \MySubDir\file.txt.  If not specified, the file would be named \MyDir\MySubDir\file.txt.
-        /// </remarks>
-        public ITaskItem RemoveRoot { get; set; }
-
-        public override bool Execute()
-        {
-            Log.LogMessage(MessageImportance.Normal, "Creating SquashFS file: '{0}'", FileName.ItemSpec);
-
-            try
+            foreach (var sourceFile in SourceFiles)
             {
-                SquashFileSystemBuilder builder = new SquashFileSystemBuilder();
-
-                foreach (var sourceFile in SourceFiles)
+                if (this.RemoveRoot != null)
                 {
-                    if (this.RemoveRoot != null)
-                    {
-                        string location = (sourceFile.GetMetadata("FullPath")).Replace(this.RemoveRoot.GetMetadata("FullPath"), string.Empty);
-                        builder.AddFile(location, sourceFile.GetMetadata("FullPath"));
-                    }
-                    else
-                    {
-                        builder.AddFile(sourceFile.GetMetadata("Directory") + sourceFile.GetMetadata("FileName") + sourceFile.GetMetadata("Extension"), sourceFile.GetMetadata("FullPath"));
-                    }
+                    var location = (sourceFile.GetMetadata("FullPath")).Replace(this.RemoveRoot.GetMetadata("FullPath"), string.Empty);
+                    builder.AddFile(location, sourceFile.GetMetadata("FullPath"));
                 }
-
-                builder.Build(FileName.ItemSpec);
-            }
-            catch (Exception e)
-            {
-                Log.LogErrorFromException(e, true, true, null);
-                return false;
+                else
+                {
+                    builder.AddFile(sourceFile.GetMetadata("Directory") + sourceFile.GetMetadata("FileName") + sourceFile.GetMetadata("Extension"), sourceFile.GetMetadata("FullPath"));
+                }
             }
 
-            return !Log.HasLoggedErrors;
+            builder.Build(FileName.ItemSpec);
         }
+        catch (Exception e)
+        {
+            Log.LogErrorFromException(e, true, true, null);
+            return false;
+        }
+
+        return !Log.HasLoggedErrors;
     }
 }

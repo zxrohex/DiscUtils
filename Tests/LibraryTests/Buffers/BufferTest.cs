@@ -31,8 +31,8 @@ namespace LibraryTests.Buffers
         [Fact]
         public void SparseMemoryBufferClear()
         {
-            SparseMemoryBuffer memoryBuffer = new SparseMemoryBuffer(10);
-            byte[] buffer = new byte[20];
+            var memoryBuffer = new SparseMemoryBuffer(10);
+            var buffer = new byte[20];
 
             memoryBuffer.Write(0, buffer, 0, 20);
             Assert.Equal(2, memoryBuffer.AllocatedChunks.Count());

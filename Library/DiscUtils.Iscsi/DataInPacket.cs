@@ -22,64 +22,63 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class DataInPacket : BaseResponse
 {
-    internal class DataInPacket : BaseResponse
+    public bool Acknowledge;
+    public uint BufferOffset;
+
+    public uint DataSequenceNumber;
+    public BasicHeaderSegment Header;
+    public ulong Lun;
+    public bool O;
+    public byte[] ReadData;
+    public uint ResidualCount;
+
+    public ScsiStatus Status;
+    public uint TargetTransferTag;
+    public bool U;
+
+    public override void Parse(ProtocolDataUnit pdu)
     {
-        public bool Acknowledge;
-        public uint BufferOffset;
+        Parse(pdu.HeaderData, 0, pdu.ContentData);
+    }
 
-        public uint DataSequenceNumber;
-        public BasicHeaderSegment Header;
-        public ulong Lun;
-        public bool O;
-        public byte[] ReadData;
-        public uint ResidualCount;
+    public void Parse(byte[] headerData, int headerOffset, byte[] bodyData)
+    {
+        Header = new BasicHeaderSegment();
+        Header.ReadFrom(headerData, headerOffset);
 
-        public ScsiStatus Status;
-        public uint TargetTransferTag;
-        public bool U;
-
-        public override void Parse(ProtocolDataUnit pdu)
+        if (Header.OpCode != OpCode.ScsiDataIn)
         {
-            Parse(pdu.HeaderData, 0, pdu.ContentData);
+            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.ScsiDataIn + " was " +
+                                               Header.OpCode);
         }
 
-        public void Parse(byte[] headerData, int headerOffset, byte[] bodyData)
+        UnpackFlags(headerData[headerOffset + 1]);
+        if (StatusPresent)
         {
-            Header = new BasicHeaderSegment();
-            Header.ReadFrom(headerData, headerOffset);
-
-            if (Header.OpCode != OpCode.ScsiDataIn)
-            {
-                throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.ScsiDataIn + " was " +
-                                                   Header.OpCode);
-            }
-
-            UnpackFlags(headerData[headerOffset + 1]);
-            if (StatusPresent)
-            {
-                Status = (ScsiStatus)headerData[headerOffset + 3];
-            }
-
-            Lun = EndianUtilities.ToUInt64BigEndian(headerData, headerOffset + 8);
-            TargetTransferTag = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 20);
-            StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-            ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-            MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-            DataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
-            BufferOffset = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 40);
-            ResidualCount = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 44);
-
-            ReadData = bodyData;
+            Status = (ScsiStatus)headerData[headerOffset + 3];
         }
 
-        private void UnpackFlags(byte value)
-        {
-            Acknowledge = (value & 0x40) != 0;
-            O = (value & 0x04) != 0;
-            U = (value & 0x02) != 0;
-            StatusPresent = (value & 0x01) != 0;
-        }
+        Lun = EndianUtilities.ToUInt64BigEndian(headerData, headerOffset + 8);
+        TargetTransferTag = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 20);
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
+        DataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
+        BufferOffset = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 40);
+        ResidualCount = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 44);
+
+        ReadData = bodyData;
+    }
+
+    private void UnpackFlags(byte value)
+    {
+        Acknowledge = (value & 0x40) != 0;
+        O = (value & 0x04) != 0;
+        U = (value & 0x02) != 0;
+        StatusPresent = (value & 0x01) != 0;
     }
 }

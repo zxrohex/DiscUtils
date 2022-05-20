@@ -23,51 +23,50 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal abstract class VolumeDescriptorDiskRegion : BuilderExtent
 {
-    internal abstract class VolumeDescriptorDiskRegion : BuilderExtent
+    private byte[] _readCache;
+
+    public VolumeDescriptorDiskRegion(long start)
+        : base(start, IsoUtilities.SectorSize) {}
+
+    public override void Dispose() {}
+
+    public override void PrepareForRead()
     {
-        private byte[] _readCache;
+        _readCache = GetBlockData();
+    }
 
-        public VolumeDescriptorDiskRegion(long start)
-            : base(start, IsoUtilities.SectorSize) {}
+    public override int Read(long diskOffset, byte[] buffer, int offset, int count)
+    {
+        var relPos = diskOffset - Start;
 
-        public override void Dispose() {}
+        var numRead = (int)Math.Min(count, _readCache.Length - relPos);
 
-        public override void PrepareForRead()
-        {
-            _readCache = GetBlockData();
-        }
+        Array.Copy(_readCache, (int)relPos, buffer, offset, numRead);
 
-        public override int Read(long diskOffset, byte[] buffer, int offset, int count)
-        {
-            long relPos = diskOffset - Start;
-
-            int numRead = (int)Math.Min(count, _readCache.Length - relPos);
-
-            Array.Copy(_readCache, (int)relPos, buffer, offset, numRead);
-
-            return numRead;
-        }
+        return numRead;
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override int Read(long diskOffset, Span<byte> buffer)
-        {
-            long relPos = diskOffset - Start;
+    public override int Read(long diskOffset, Span<byte> buffer)
+    {
+        var relPos = diskOffset - Start;
 
-            int numRead = (int)Math.Min(buffer.Length, _readCache.Length - relPos);
+        var numRead = (int)Math.Min(buffer.Length, _readCache.Length - relPos);
 
-            _readCache.AsSpan((int)relPos, numRead).CopyTo(buffer);
+        _readCache.AsSpan((int)relPos, numRead).CopyTo(buffer);
 
-            return numRead;
-        }
+        return numRead;
+    }
 #endif
 
-        public override void DisposeReadState()
-        {
-            _readCache = null;
-        }
-
-        protected abstract byte[] GetBlockData();
+    public override void DisposeReadState()
+    {
+        _readCache = null;
     }
+
+    protected abstract byte[] GetBlockData();
 }

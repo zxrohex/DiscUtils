@@ -22,20 +22,19 @@
 
 using System.Text;
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal sealed class GenericSuspExtension : SuspExtension
 {
-    internal sealed class GenericSuspExtension : SuspExtension
+    public GenericSuspExtension(string identifier)
     {
-        public GenericSuspExtension(string identifier)
-        {
-            Identifier = identifier;
-        }
+        Identifier = identifier;
+    }
 
-        public override string Identifier { get; }
+    public override string Identifier { get; }
 
-        public override SystemUseEntry Parse(string name, byte length, byte version, byte[] data, int offset, Encoding encoding)
-        {
-            return new GenericSystemUseEntry(name, length, version, data, offset);
-        }
+    public override SystemUseEntry Parse(string name, byte length, byte version, byte[] data, int offset, Encoding encoding)
+    {
+        return new GenericSystemUseEntry(name, length, version, data, offset);
     }
 }

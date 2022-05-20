@@ -24,57 +24,56 @@ using System.IO;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class XdrDataReader : BigEndianDataReader
 {
-    public sealed class XdrDataReader : BigEndianDataReader
+    public XdrDataReader(Stream stream)
+        : base(stream) {}
+
+    public bool ReadBool()
     {
-        public XdrDataReader(Stream stream)
-            : base(stream) {}
+        return ReadUInt32() != 0;
+    }
 
-        public bool ReadBool()
+    public override byte[] ReadBytes(int count)
+    {
+        var buffer = StreamUtilities.ReadExact(_stream, count);
+
+        if ((count & 0x3) != 0)
         {
-            return ReadUInt32() != 0;
+            StreamUtilities.ReadExact(_stream, 4 - (count & 0x3));
         }
 
-        public override byte[] ReadBytes(int count)
+        return buffer;
+    }
+
+    public byte[] ReadBuffer()
+    {
+        var length = ReadUInt32();
+        return ReadBytes((int)length);
+    }
+
+    public byte[] ReadBuffer(uint maxLength)
+    {
+        var length = ReadUInt32();
+        if (length <= maxLength)
         {
-            byte[] buffer = StreamUtilities.ReadExact(_stream, count);
-
-            if ((count & 0x3) != 0)
-            {
-                StreamUtilities.ReadExact(_stream, 4 - (count & 0x3));
-            }
-
-            return buffer;
-        }
-
-        public byte[] ReadBuffer()
-        {
-            uint length = ReadUInt32();
             return ReadBytes((int)length);
         }
 
-        public byte[] ReadBuffer(uint maxLength)
-        {
-            uint length = ReadUInt32();
-            if (length <= maxLength)
-            {
-                return ReadBytes((int)length);
-            }
+        throw new IOException("Attempt to read buffer that is too long");
+    }
 
-            throw new IOException("Attempt to read buffer that is too long");
-        }
+    public string ReadString()
+    {
+        var data = ReadBuffer();
+        return Encoding.ASCII.GetString(data);
+    }
 
-        public string ReadString()
-        {
-            byte[] data = ReadBuffer();
-            return Encoding.ASCII.GetString(data);
-        }
-
-        public string ReadString(uint maxLength)
-        {
-            byte[] data = ReadBuffer(maxLength);
-            return Encoding.ASCII.GetString(data);
-        }
+    public string ReadString(uint maxLength)
+    {
+        var data = ReadBuffer(maxLength);
+        return Encoding.ASCII.GetString(data);
     }
 }

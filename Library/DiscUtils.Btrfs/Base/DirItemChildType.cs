@@ -20,18 +20,17 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal enum DirItemChildType : byte
 {
-    internal enum DirItemChildType : byte
-    {
-        Unknown = 0,
-        RegularFile = 1,
-        Directory = 2,
-        CharDevice = 3,
-        BlockDevice = 4,
-        Fifo = 5,
-        Socket = 6,
-        Symlink = 7,
-        ExtendedAttribute=8
-    }
+    Unknown = 0,
+    RegularFile = 1,
+    Directory = 2,
+    CharDevice = 3,
+    BlockDevice = 4,
+    Fifo = 5,
+    Socket = 6,
+    Symlink = 7,
+    ExtendedAttribute=8
 }

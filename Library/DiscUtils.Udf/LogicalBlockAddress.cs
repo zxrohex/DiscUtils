@@ -23,33 +23,32 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal struct LogicalBlockAddress : IByteArraySerializable
 {
-    internal struct LogicalBlockAddress : IByteArraySerializable
+    public uint LogicalBlock;
+    public ushort Partition;
+
+    public int Size
     {
-        public uint LogicalBlock;
-        public ushort Partition;
+        get { return 6; }
+    }
 
-        public int Size
-        {
-            get { return 6; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        LogicalBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
+        Partition = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
+        return 6;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            LogicalBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-            Partition = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-            return 6;
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string ToString()
-        {
-            return LogicalBlock + ",p" + Partition;
-        }
+    public override string ToString()
+    {
+        return LogicalBlock + ",p" + Partition;
     }
 }

@@ -20,16 +20,15 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal abstract class BTreeKeyedNode<TKey> : BTreeNode
+    where TKey : BTreeKey
 {
-    internal abstract class BTreeKeyedNode<TKey> : BTreeNode
-        where TKey : BTreeKey
-    {
-        public BTreeKeyedNode(BTree tree, BTreeNodeDescriptor descriptor)
-            : base(tree, descriptor) {}
+    public BTreeKeyedNode(BTree tree, BTreeNodeDescriptor descriptor)
+        : base(tree, descriptor) {}
 
-        public abstract byte[] FindKey(TKey key);
+    public abstract byte[] FindKey(TKey key);
 
-        public abstract void VisitRange(BTreeVisitor<TKey> visitor);
-    }
+    public abstract void VisitRange(BTreeVisitor<TKey> visitor);
 }

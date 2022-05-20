@@ -54,29 +54,31 @@ namespace LibraryTests
 
         private static DiscFileSystem FatFileSystem()
         {
-            SparseMemoryBuffer buffer = new SparseMemoryBuffer(4096);
-            SparseMemoryStream ms = new SparseMemoryStream();
-            Geometry diskGeometry = Geometry.FromCapacity(30 * 1024 * 1024);
+            var buffer = new SparseMemoryBuffer(4096);
+            var ms = new SparseMemoryStream();
+            var diskGeometry = Geometry.FromCapacity(30 * 1024 * 1024);
             return DiscUtils.Fat.FatFileSystem.FormatFloppy(ms, FloppyDiskType.Extended, null);
         }
 
         public static DiscFileSystem DiagnosticNtfsFileSystem()
         {
-            SparseMemoryBuffer buffer = new SparseMemoryBuffer(4096);
-            SparseMemoryStream ms = new SparseMemoryStream();
-            Geometry diskGeometry = Geometry.FromCapacity(30 * 1024 * 1024);
+            var buffer = new SparseMemoryBuffer(4096);
+            var ms = new SparseMemoryStream();
+            var diskGeometry = Geometry.FromCapacity(30 * 1024 * 1024);
             DiscUtils.Ntfs.NtfsFileSystem.Format(ms, "", diskGeometry, 0, diskGeometry.TotalSectorsLong);
-            var discFs = new DiscUtils.Diagnostics.ValidatingFileSystem<NtfsFileSystem, NtfsFileSystemChecker>(ms);
-            discFs.CheckpointInterval = 1;
-            discFs.GlobalIOTraceCapturesStackTraces = false;
+            var discFs = new DiscUtils.Diagnostics.ValidatingFileSystem<NtfsFileSystem, NtfsFileSystemChecker>(ms)
+            {
+                CheckpointInterval = 1,
+                GlobalIOTraceCapturesStackTraces = false
+            };
             return discFs;
         }
 
         public static DiscUtils.Ntfs.NtfsFileSystem NtfsFileSystem()
         {
-            SparseMemoryBuffer buffer = new SparseMemoryBuffer(4096);
-            SparseMemoryStream ms = new SparseMemoryStream();
-            Geometry diskGeometry = Geometry.FromCapacity(30 * 1024 * 1024);
+            var buffer = new SparseMemoryBuffer(4096);
+            var ms = new SparseMemoryStream();
+            var diskGeometry = Geometry.FromCapacity(30 * 1024 * 1024);
             return DiscUtils.Ntfs.NtfsFileSystem.Format(ms, "", diskGeometry, 0, diskGeometry.TotalSectorsLong);
         }
 

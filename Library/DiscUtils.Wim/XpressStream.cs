@@ -26,223 +26,222 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Compression;
 
-namespace DiscUtils.Wim
+namespace DiscUtils.Wim;
+
+/// <summary>
+/// Implements the XPRESS decompression algorithm.
+/// </summary>
+/// <remarks>This class is optimized for the case where the entire stream contents
+/// fit into memory, it is not suitable for unbounded streams.</remarks>
+internal class XpressStream : Stream
 {
+    private readonly byte[] _buffer;
+    private readonly Stream _compressedStream;
+    private long _position;
+
     /// <summary>
-    /// Implements the XPRESS decompression algorithm.
+    /// Initializes a new instance of the XpressStream class.
     /// </summary>
-    /// <remarks>This class is optimized for the case where the entire stream contents
-    /// fit into memory, it is not suitable for unbounded streams.</remarks>
-    internal class XpressStream : Stream
+    /// <param name="compressed">The stream of compressed data.</param>
+    /// <param name="count">The length of this stream (in uncompressed bytes).</param>
+    public XpressStream(Stream compressed, int count)
     {
-        private readonly byte[] _buffer;
-        private readonly Stream _compressedStream;
-        private long _position;
+        _compressedStream = new BufferedStream(compressed);
+        _buffer = Buffer(count);
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the XpressStream class.
-        /// </summary>
-        /// <param name="compressed">The stream of compressed data.</param>
-        /// <param name="count">The length of this stream (in uncompressed bytes).</param>
-        public XpressStream(Stream compressed, int count)
+    public override bool CanRead
+    {
+        get { return true; }
+    }
+
+    public override bool CanSeek
+    {
+        get { return false; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
+
+    public override long Length
+    {
+        get { return _buffer.Length; }
+    }
+
+    public override long Position
+    {
+        get { return _position; }
+
+        set { _position = value; }
+    }
+
+    public override void Flush() {}
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        if (_position > Length)
         {
-            _compressedStream = new BufferedStream(compressed);
-            _buffer = Buffer(count);
+            return 0;
         }
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
-
-        public override bool CanSeek
-        {
-            get { return false; }
-        }
-
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
-
-        public override long Length
-        {
-            get { return _buffer.Length; }
-        }
-
-        public override long Position
-        {
-            get { return _position; }
-
-            set { _position = value; }
-        }
-
-        public override void Flush() {}
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (_position > Length)
-            {
-                return 0;
-            }
-
-            int numToRead = (int)Math.Min(count, _buffer.Length - _position);
-            Array.Copy(_buffer, (int)_position, buffer, offset, numToRead);
-            _position += numToRead;
-            return numToRead;
-        }
+        var numToRead = (int)Math.Min(count, _buffer.Length - _position);
+        Array.Copy(_buffer, (int)_position, buffer, offset, numToRead);
+        _position += numToRead;
+        return numToRead;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (_position > Length)
         {
-            if (_position > Length)
-            {
-                return Task.FromResult(0);
-            }
-
-            int numToRead = (int)Math.Min(count, _buffer.Length - _position);
-            Array.Copy(_buffer, (int)_position, buffer, offset, numToRead);
-            _position += numToRead;
-            return Task.FromResult(numToRead);
+            return Task.FromResult(0);
         }
+
+        var numToRead = (int)Math.Min(count, _buffer.Length - _position);
+        Array.Copy(_buffer, (int)_position, buffer, offset, numToRead);
+        _position += numToRead;
+        return Task.FromResult(numToRead);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (_position > Length)
         {
-            if (_position > Length)
-            {
-                return new(0);
-            }
-
-            int numToRead = (int)Math.Min(buffer.Length, _buffer.Length - _position);
-            _buffer.AsMemory((int)_position, numToRead).CopyTo(buffer);
-            _position += numToRead;
-            return new(numToRead);
+            return new(0);
         }
 
-        public override int Read(Span<byte> buffer)
-        {
-            if (_position > Length)
-            {
-                return 0;
-            }
+        var numToRead = (int)Math.Min(buffer.Length, _buffer.Length - _position);
+        _buffer.AsMemory((int)_position, numToRead).CopyTo(buffer);
+        _position += numToRead;
+        return new(numToRead);
+    }
 
-            int numToRead = (int)Math.Min(buffer.Length, _buffer.Length - _position);
-            _buffer.AsSpan((int)_position, numToRead).CopyTo(buffer);
-            _position += numToRead;
-            return numToRead;
+    public override int Read(Span<byte> buffer)
+    {
+        if (_position > Length)
+        {
+            return 0;
         }
+
+        var numToRead = (int)Math.Min(buffer.Length, _buffer.Length - _position);
+        _buffer.AsSpan((int)_position, numToRead).CopyTo(buffer);
+        _position += numToRead;
+        return numToRead;
+    }
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override void SetLength(long value)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
+
+    private HuffmanTree ReadHuffmanTree()
+    {
+        var lengths = new uint[256 + 16 * 16];
+
+        for (var i = 0; i < lengths.Length; i += 2)
         {
-            throw new NotSupportedException();
+            var b = ReadCompressedByte();
+
+            lengths[i] = (uint)(b & 0xF);
+            lengths[i + 1] = (uint)(b >> 4);
         }
 
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
+        return new HuffmanTree(lengths);
+    }
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
+    private byte[] Buffer(int count)
+    {
+        var buffer = new byte[count];
+        var numRead = 0;
 
-        private HuffmanTree ReadHuffmanTree()
-        {
-            uint[] lengths = new uint[256 + 16 * 16];
+        var tree = ReadHuffmanTree();
+        var bitStream = new XpressBitStream(_compressedStream);
 
-            for (int i = 0; i < lengths.Length; i += 2)
+        while (numRead < count)
+        {
+            var symbol = tree.NextSymbol(bitStream);
+            if (symbol < 256)
             {
-                int b = ReadCompressedByte();
-
-                lengths[i] = (uint)(b & 0xF);
-                lengths[i + 1] = (uint)(b >> 4);
+                // The first 256 symbols are literal byte values
+                buffer[numRead] = (byte)symbol;
+                numRead++;
             }
-
-            return new HuffmanTree(lengths);
-        }
-
-        private byte[] Buffer(int count)
-        {
-            byte[] buffer = new byte[count];
-            int numRead = 0;
-
-            HuffmanTree tree = ReadHuffmanTree();
-            XpressBitStream bitStream = new XpressBitStream(_compressedStream);
-
-            while (numRead < count)
+            else
             {
-                uint symbol = tree.NextSymbol(bitStream);
-                if (symbol < 256)
+                // The next 256 symbols are 4 bits each for offset and length.
+                var offsetBits = (int)((symbol - 256) / 16);
+                var len = (int)((symbol - 256) % 16);
+
+                // The actual offset
+                var offset = (int)((1 << offsetBits) - 1 + bitStream.Read(offsetBits));
+
+                // Lengths up to 15 bytes are stored directly in the symbol bits, beyond that
+                // the length is stored in the compression stream.
+                if (len == 15)
                 {
-                    // The first 256 symbols are literal byte values
-                    buffer[numRead] = (byte)symbol;
+                    // Note this access is directly to the underlying stream - we're not going
+                    // through the bit stream.  This makes the precise behaviour of the bit stream,
+                    // in terms of read-ahead critical.
+                    var b = ReadCompressedByte();
+
+                    if (b == 0xFF)
+                    {
+                        // Again, note this access is directly to the underlying stream - we're not going
+                        // through the bit stream.
+                        len = ReadCompressedUShort();
+                    }
+                    else
+                    {
+                        len += b;
+                    }
+                }
+
+                // Minimum length for a match is 3 bytes, so all lengths are stored as an offset
+                // from 3.
+                len += 3;
+
+                // Simply do the copy
+                for (var i = 0; i < len; ++i)
+                {
+                    buffer[numRead] = buffer[numRead - offset - 1];
                     numRead++;
                 }
-                else
-                {
-                    // The next 256 symbols are 4 bits each for offset and length.
-                    int offsetBits = (int)((symbol - 256) / 16);
-                    int len = (int)((symbol - 256) % 16);
-
-                    // The actual offset
-                    int offset = (int)((1 << offsetBits) - 1 + bitStream.Read(offsetBits));
-
-                    // Lengths up to 15 bytes are stored directly in the symbol bits, beyond that
-                    // the length is stored in the compression stream.
-                    if (len == 15)
-                    {
-                        // Note this access is directly to the underlying stream - we're not going
-                        // through the bit stream.  This makes the precise behaviour of the bit stream,
-                        // in terms of read-ahead critical.
-                        int b = ReadCompressedByte();
-
-                        if (b == 0xFF)
-                        {
-                            // Again, note this access is directly to the underlying stream - we're not going
-                            // through the bit stream.
-                            len = ReadCompressedUShort();
-                        }
-                        else
-                        {
-                            len += b;
-                        }
-                    }
-
-                    // Minimum length for a match is 3 bytes, so all lengths are stored as an offset
-                    // from 3.
-                    len += 3;
-
-                    // Simply do the copy
-                    for (int i = 0; i < len; ++i)
-                    {
-                        buffer[numRead] = buffer[numRead - offset - 1];
-                        numRead++;
-                    }
-                }
             }
-
-            return buffer;
         }
 
-        private int ReadCompressedByte()
+        return buffer;
+    }
+
+    private int ReadCompressedByte()
+    {
+        var b = _compressedStream.ReadByte();
+        if (b < 0)
         {
-            int b = _compressedStream.ReadByte();
-            if (b < 0)
-            {
-                throw new InvalidDataException("Truncated stream");
-            }
-
-            return b;
+            throw new InvalidDataException("Truncated stream");
         }
 
-        private int ReadCompressedUShort()
-        {
-            int result = ReadCompressedByte();
-            return result | ReadCompressedByte() << 8;
-        }
+        return b;
+    }
+
+    private int ReadCompressedUShort()
+    {
+        var result = ReadCompressedByte();
+        return result | ReadCompressedByte() << 8;
     }
 }

@@ -31,7 +31,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            Nfs3FileSystemInfo attributes = new Nfs3FileSystemInfo()
+            var attributes = new Nfs3FileSystemInfo()
             {
                 DirectoryPreferredBytes = 1,
                 FileSystemProperties = Nfs3FileSystemProperties.HardLinks,
@@ -47,13 +47,13 @@ namespace LibraryTests.Nfs
 
             Nfs3FileSystemInfo clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 attributes.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new Nfs3FileSystemInfo(reader);
             }
 

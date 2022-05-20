@@ -25,115 +25,114 @@ using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-namespace DiskClone
+namespace DiskClone;
+
+static internal class Win32Wrapper
 {
-    static internal class Win32Wrapper
+    public static SafeFileHandle OpenFileHandle(string path)
     {
-        public static SafeFileHandle OpenFileHandle(string path)
+        var handle = NativeMethods.CreateFileW(path, FileAccess.Read, FileShare.Read, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
+        if (handle.IsInvalid)
         {
-            SafeFileHandle handle = NativeMethods.CreateFileW(path, FileAccess.Read, FileShare.Read, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
-            if (handle.IsInvalid)
-            {
-                throw Win32Wrapper.GetIOExceptionForLastError();
-            }
-            return handle;
+            throw Win32Wrapper.GetIOExceptionForLastError();
         }
-
-        public static NativeMethods.DiskGeometry GetDiskGeometry(SafeFileHandle handle)
-        {
-            NativeMethods.DiskGeometry diskGeometry = new NativeMethods.DiskGeometry();
-            int bytesRet = Marshal.SizeOf(diskGeometry);
-            if (!NativeMethods.DeviceIoControl(handle, NativeMethods.EIOControlCode.DiskGetDriveGeometry, null, 0, diskGeometry, bytesRet, ref bytesRet, IntPtr.Zero))
-            {
-                throw Win32Wrapper.GetIOExceptionForLastError();
-            }
-            return diskGeometry;
-        }
-
-        public static NativeMethods.NtfsVolumeData GetNtfsVolumeData(SafeFileHandle volumeHandle)
-        {
-            NativeMethods.NtfsVolumeData volumeData = new NativeMethods.NtfsVolumeData();
-            int bytesRet = Marshal.SizeOf(volumeData);
-            if (!NativeMethods.DeviceIoControl(volumeHandle, NativeMethods.EIOControlCode.FsctlGetNtfsVolumeData, null, 0, volumeData, bytesRet, ref bytesRet, IntPtr.Zero))
-            {
-                throw Win32Wrapper.GetIOExceptionForLastError();
-            }
-            return volumeData;
-        }
-
-        public static long GetDiskCapacity(SafeFileHandle diskHandle)
-        {
-            byte[] sizeBytes = new byte[8];
-            int bytesRet = sizeBytes.Length;
-            if (!NativeMethods.DeviceIoControl(diskHandle, NativeMethods.EIOControlCode.DiskGetLengthInfo, null, 0, sizeBytes, bytesRet, ref bytesRet, IntPtr.Zero))
-            {
-                throw Win32Wrapper.GetIOExceptionForLastError();
-            }
-
-            return BitConverter.ToInt64(sizeBytes, 0);
-        }
-
-        public static string GetMessageForError(int code)
-        {
-            IntPtr buffer = new IntPtr();
-
-            try
-            {
-                NativeMethods.FormatMessageW(
-                    NativeMethods.FORMAT_MESSAGE_ALLOCATE_BUFFER | NativeMethods.FORMAT_MESSAGE_FROM_SYSTEM | NativeMethods.FORMAT_MESSAGE_IGNORE_INSERTS,
-                    IntPtr.Zero,
-                    code,
-                    0,
-                    ref buffer,
-                    0,
-                    IntPtr.Zero
-                    );
-
-                return Marshal.PtrToStringUni(buffer);
-            }
-            finally
-            {
-                if (buffer != IntPtr.Zero)
-                {
-                    NativeMethods.LocalFree(buffer);
-                }
-            }
-        }
-
-        internal static Exception GetIOExceptionForLastError()
-        {
-            int lastError = Marshal.GetLastWin32Error();
-            int lastErrorHr = Marshal.GetHRForLastWin32Error();
-            return new IOException(GetMessageForError(lastError), lastErrorHr);
-        }
-
-        internal static T[] ByteArrayToStructureArray<T>(byte[] data, int offset, int count)
-        {
-            GCHandle handle = GCHandle.Alloc(data, GCHandleType.Pinned);
-            try
-            {
-                int elemSize = Marshal.SizeOf(typeof(T));
-                if (count * elemSize + offset > data.Length)
-                {
-                    throw new ArgumentException("Attempting to read too many elements from byte array");
-                }
-
-                IntPtr basePtr = handle.AddrOfPinnedObject();
-
-                T[] result = new T[count];
-                for (int i = 0; i < count; ++i)
-                {
-                    IntPtr elemPtr = new IntPtr(basePtr.ToInt64() + (elemSize * i) + offset);
-                    result[i] = (T)Marshal.PtrToStructure(elemPtr, typeof(T));
-                }
-
-                return result;
-            }
-            finally
-            {
-                handle.Free();
-            }
-        } 
-
+        return handle;
     }
+
+    public static NativeMethods.DiskGeometry GetDiskGeometry(SafeFileHandle handle)
+    {
+        var diskGeometry = new NativeMethods.DiskGeometry();
+        var bytesRet = Marshal.SizeOf(diskGeometry);
+        if (!NativeMethods.DeviceIoControl(handle, NativeMethods.EIOControlCode.DiskGetDriveGeometry, null, 0, diskGeometry, bytesRet, ref bytesRet, IntPtr.Zero))
+        {
+            throw Win32Wrapper.GetIOExceptionForLastError();
+        }
+        return diskGeometry;
+    }
+
+    public static NativeMethods.NtfsVolumeData GetNtfsVolumeData(SafeFileHandle volumeHandle)
+    {
+        var volumeData = new NativeMethods.NtfsVolumeData();
+        var bytesRet = Marshal.SizeOf(volumeData);
+        if (!NativeMethods.DeviceIoControl(volumeHandle, NativeMethods.EIOControlCode.FsctlGetNtfsVolumeData, null, 0, volumeData, bytesRet, ref bytesRet, IntPtr.Zero))
+        {
+            throw Win32Wrapper.GetIOExceptionForLastError();
+        }
+        return volumeData;
+    }
+
+    public static long GetDiskCapacity(SafeFileHandle diskHandle)
+    {
+        var sizeBytes = new byte[8];
+        var bytesRet = sizeBytes.Length;
+        if (!NativeMethods.DeviceIoControl(diskHandle, NativeMethods.EIOControlCode.DiskGetLengthInfo, null, 0, sizeBytes, bytesRet, ref bytesRet, IntPtr.Zero))
+        {
+            throw Win32Wrapper.GetIOExceptionForLastError();
+        }
+
+        return BitConverter.ToInt64(sizeBytes, 0);
+    }
+
+    public static string GetMessageForError(int code)
+    {
+        var buffer = new IntPtr();
+
+        try
+        {
+            NativeMethods.FormatMessageW(
+                NativeMethods.FORMAT_MESSAGE_ALLOCATE_BUFFER | NativeMethods.FORMAT_MESSAGE_FROM_SYSTEM | NativeMethods.FORMAT_MESSAGE_IGNORE_INSERTS,
+                IntPtr.Zero,
+                code,
+                0,
+                ref buffer,
+                0,
+                IntPtr.Zero
+                );
+
+            return Marshal.PtrToStringUni(buffer);
+        }
+        finally
+        {
+            if (buffer != IntPtr.Zero)
+            {
+                NativeMethods.LocalFree(buffer);
+            }
+        }
+    }
+
+    internal static Exception GetIOExceptionForLastError()
+    {
+        var lastError = Marshal.GetLastWin32Error();
+        var lastErrorHr = Marshal.GetHRForLastWin32Error();
+        return new IOException(GetMessageForError(lastError), lastErrorHr);
+    }
+
+    internal static T[] ByteArrayToStructureArray<T>(byte[] data, int offset, int count)
+    {
+        var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+        try
+        {
+            var elemSize = Marshal.SizeOf(typeof(T));
+            if (count * elemSize + offset > data.Length)
+            {
+                throw new ArgumentException("Attempting to read too many elements from byte array");
+            }
+
+            var basePtr = handle.AddrOfPinnedObject();
+
+            var result = new T[count];
+            for (var i = 0; i < count; ++i)
+            {
+                var elemPtr = new IntPtr(basePtr.ToInt64() + (elemSize * i) + offset);
+                result[i] = (T)Marshal.PtrToStructure(elemPtr, typeof(T));
+            }
+
+            return result;
+        }
+        finally
+        {
+            handle.Free();
+        }
+    } 
+
 }

@@ -22,35 +22,34 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal sealed class DiskExtent : VirtualDiskExtent
 {
-    internal sealed class DiskExtent : VirtualDiskExtent
+    private readonly DiskImageFile _file;
+
+    public DiskExtent(DiskImageFile file)
     {
-        private readonly DiskImageFile _file;
+        _file = file;
+    }
 
-        public DiskExtent(DiskImageFile file)
-        {
-            _file = file;
-        }
+    public override long Capacity
+    {
+        get { return _file.Capacity; }
+    }
 
-        public override long Capacity
-        {
-            get { return _file.Capacity; }
-        }
+    public override bool IsSparse
+    {
+        get { return _file.IsSparse; }
+    }
 
-        public override bool IsSparse
-        {
-            get { return _file.IsSparse; }
-        }
+    public override long StoredSize
+    {
+        get { return _file.StoredSize; }
+    }
 
-        public override long StoredSize
-        {
-            get { return _file.StoredSize; }
-        }
-
-        public override MappedStream OpenContent(SparseStream parent, Ownership ownsParent)
-        {
-            return _file.DoOpenContent(parent, ownsParent);
-        }
+    public override MappedStream OpenContent(SparseStream parent, Ownership ownsParent)
+    {
+        return _file.DoOpenContent(parent, ownsParent);
     }
 }

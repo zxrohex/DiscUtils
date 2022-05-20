@@ -32,7 +32,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            Nfs3Export export = new Nfs3Export()
+            var export = new Nfs3Export()
             {
                 DirPath = "test",
                 Groups = new List<string>()
@@ -44,13 +44,13 @@ namespace LibraryTests.Nfs
 
             Nfs3Export clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 export.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new Nfs3Export(reader);
             }
 

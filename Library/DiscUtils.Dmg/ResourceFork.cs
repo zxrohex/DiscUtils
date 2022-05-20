@@ -23,54 +23,52 @@
 using System;
 using System.Collections.Generic;
 
-namespace DiscUtils.Dmg
+namespace DiscUtils.Dmg;
+
+internal class ResourceFork
 {
-    internal class ResourceFork
+    private readonly List<Resource> _resources;
+
+    public ResourceFork(List<Resource> resources)
     {
-        private readonly List<Resource> _resources;
+        _resources = resources;
+    }
 
-        public ResourceFork(List<Resource> resources)
+    public IList<Resource> GetAllResources(string type)
+    {
+        var results = new List<Resource>();
+
+        foreach (var res in _resources)
         {
-            _resources = resources;
+            if (res.Type == type)
+            {
+                results.Add(res);
+            }
         }
 
-        public IList<Resource> GetAllResources(string type)
+        return results;
+    }
+
+    internal static ResourceFork FromPlist(Dictionary<string, object> plist)
+    {
+        if (!plist.TryGetValue("resource-fork", out var typesObject))
         {
-            List<Resource> results = new List<Resource>();
-
-            foreach (Resource res in _resources)
-            {
-                if (res.Type == type)
-                {
-                    results.Add(res);
-                }
-            }
-
-            return results;
+            throw new ArgumentException("plist doesn't contain resource fork");
         }
 
-        internal static ResourceFork FromPlist(Dictionary<string, object> plist)
+        var types = typesObject as Dictionary<string, object>;
+
+        var resources = new List<Resource>();
+
+        foreach (var type in types.Keys)
         {
-            object typesObject;
-            if (!plist.TryGetValue("resource-fork", out typesObject))
+            var typeResources = types[type] as List<object>;
+            foreach (var typeResource in typeResources)
             {
-                throw new ArgumentException("plist doesn't contain resource fork");
+                resources.Add(Resource.FromPlist(type, typeResource as Dictionary<string, object>));
             }
-
-            Dictionary<string, object> types = typesObject as Dictionary<string, object>;
-
-            List<Resource> resources = new List<Resource>();
-
-            foreach (string type in types.Keys)
-            {
-                List<object> typeResources = types[type] as List<object>;
-                foreach (object typeResource in typeResources)
-                {
-                    resources.Add(Resource.FromPlist(type, typeResource as Dictionary<string, object>));
-                }
-            }
-
-            return new ResourceFork(resources);
         }
+
+        return new ResourceFork(resources);
     }
 }

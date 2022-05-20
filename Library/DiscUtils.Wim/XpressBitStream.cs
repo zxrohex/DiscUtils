@@ -24,76 +24,75 @@ using System;
 using System.IO;
 using DiscUtils.Compression;
 
-namespace DiscUtils.Wim
+namespace DiscUtils.Wim;
+
+/// <summary>
+/// Converts a byte stream into a bit stream.
+/// </summary>
+/// <remarks>Note the precise read-ahead behaviour of this stream is critical.
+/// Some data is read directly from the underlying stream when decoding an Xpress
+/// stream - so it's critical the underlying stream position is in the correct
+/// location.</remarks>
+internal class XpressBitStream : BitStream
 {
-    /// <summary>
-    /// Converts a byte stream into a bit stream.
-    /// </summary>
-    /// <remarks>Note the precise read-ahead behaviour of this stream is critical.
-    /// Some data is read directly from the underlying stream when decoding an Xpress
-    /// stream - so it's critical the underlying stream position is in the correct
-    /// location.</remarks>
-    internal class XpressBitStream : BitStream
+    private uint _buffer;
+    private int _bufferAvailable;
+    private readonly Stream _byteStream;
+
+    private readonly byte[] _readBuffer = new byte[2];
+
+    public XpressBitStream(Stream byteStream)
     {
-        private uint _buffer;
-        private int _bufferAvailable;
-        private readonly Stream _byteStream;
+        _byteStream = byteStream;
+    }
 
-        private readonly byte[] _readBuffer = new byte[2];
+    public override int MaxReadAhead
+    {
+        get { return 16; }
+    }
 
-        public XpressBitStream(Stream byteStream)
+    public override uint Read(int count)
+    {
+        if (count > 16)
         {
-            _byteStream = byteStream;
+            throw new ArgumentOutOfRangeException(nameof(count), count, "Maximum 16 bits can be read");
         }
 
-        public override int MaxReadAhead
+        EnsureBufferFilled();
+
+        _bufferAvailable -= count;
+
+        var mask = (uint)((1 << count) - 1);
+
+        return (_buffer >> _bufferAvailable) & mask;
+    }
+
+    public override uint Peek(int count)
+    {
+        EnsureBufferFilled();
+
+        var mask = (uint)((1 << count) - 1);
+
+        return (_buffer >> (_bufferAvailable - count)) & mask;
+    }
+
+    public override void Consume(int count)
+    {
+        EnsureBufferFilled();
+
+        _bufferAvailable -= count;
+    }
+
+    private void EnsureBufferFilled()
+    {
+        if (_bufferAvailable < 16)
         {
-            get { return 16; }
-        }
+            _readBuffer[0] = 0;
+            _readBuffer[1] = 0;
+            _byteStream.Read(_readBuffer, 0, 2);
 
-        public override uint Read(int count)
-        {
-            if (count > 16)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), count, "Maximum 16 bits can be read");
-            }
-
-            EnsureBufferFilled();
-
-            _bufferAvailable -= count;
-
-            uint mask = (uint)((1 << count) - 1);
-
-            return (_buffer >> _bufferAvailable) & mask;
-        }
-
-        public override uint Peek(int count)
-        {
-            EnsureBufferFilled();
-
-            uint mask = (uint)((1 << count) - 1);
-
-            return (_buffer >> (_bufferAvailable - count)) & mask;
-        }
-
-        public override void Consume(int count)
-        {
-            EnsureBufferFilled();
-
-            _bufferAvailable -= count;
-        }
-
-        private void EnsureBufferFilled()
-        {
-            if (_bufferAvailable < 16)
-            {
-                _readBuffer[0] = 0;
-                _readBuffer[1] = 0;
-                _byteStream.Read(_readBuffer, 0, 2);
-
-                _buffer = _buffer << 16 | (uint)(_readBuffer[1] << 8) | _readBuffer[0];
-                _bufferAvailable += 16;
-            }
+            _buffer = _buffer << 16 | (uint)(_readBuffer[1] << 8) | _readBuffer[0];
+            _bufferAvailable += 16;
         }
     }
 }

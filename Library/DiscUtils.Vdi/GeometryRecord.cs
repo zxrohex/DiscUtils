@@ -23,76 +23,75 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vdi
+namespace DiscUtils.Vdi;
+
+internal class GeometryRecord
 {
-    internal class GeometryRecord
+    public int Cylinders;
+    public int Heads;
+    public int Sectors;
+    public int SectorSize;
+
+    public GeometryRecord()
     {
-        public int Cylinders;
-        public int Heads;
-        public int Sectors;
-        public int SectorSize;
+        SectorSize = 512;
+    }
 
-        public GeometryRecord()
+    public static GeometryRecord FromCapacity(long capacity)
+    {
+        var result = new GeometryRecord();
+
+        var totalSectors = capacity / 512;
+        if (totalSectors / (16 * 63) <= 1024)
         {
-            SectorSize = 512;
+            result.Cylinders = (int)Math.Max(totalSectors / (16 * 63), 1);
+            result.Heads = 16;
+        }
+        else if (totalSectors / (32 * 63) <= 1024)
+        {
+            result.Cylinders = (int)Math.Max(totalSectors / (32 * 63), 1);
+            result.Heads = 32;
+        }
+        else if (totalSectors / (64 * 63) <= 1024)
+        {
+            result.Cylinders = (int)(totalSectors / (64 * 63));
+            result.Heads = 64;
+        }
+        else if (totalSectors / (128 * 63) <= 1024)
+        {
+            result.Cylinders = (int)(totalSectors / (128 * 63));
+            result.Heads = 128;
+        }
+        else
+        {
+            result.Cylinders = (int)Math.Min(totalSectors / (255 * 63), 1024);
+            result.Heads = 255;
         }
 
-        public static GeometryRecord FromCapacity(long capacity)
-        {
-            GeometryRecord result = new GeometryRecord();
+        result.Sectors = 63;
 
-            long totalSectors = capacity / 512;
-            if (totalSectors / (16 * 63) <= 1024)
-            {
-                result.Cylinders = (int)Math.Max(totalSectors / (16 * 63), 1);
-                result.Heads = 16;
-            }
-            else if (totalSectors / (32 * 63) <= 1024)
-            {
-                result.Cylinders = (int)Math.Max(totalSectors / (32 * 63), 1);
-                result.Heads = 32;
-            }
-            else if (totalSectors / (64 * 63) <= 1024)
-            {
-                result.Cylinders = (int)(totalSectors / (64 * 63));
-                result.Heads = 64;
-            }
-            else if (totalSectors / (128 * 63) <= 1024)
-            {
-                result.Cylinders = (int)(totalSectors / (128 * 63));
-                result.Heads = 128;
-            }
-            else
-            {
-                result.Cylinders = (int)Math.Min(totalSectors / (255 * 63), 1024);
-                result.Heads = 255;
-            }
+        return result;
+    }
 
-            result.Sectors = 63;
+    public void Read(byte[] buffer, int offset)
+    {
+        Cylinders = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0);
+        Heads = EndianUtilities.ToInt32LittleEndian(buffer, offset + 4);
+        Sectors = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8);
+        SectorSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 12);
+    }
 
-            return result;
-        }
+    public void Write(byte[] buffer, int offset)
+    {
+        EndianUtilities.WriteBytesLittleEndian(Cylinders, buffer, offset + 0);
+        EndianUtilities.WriteBytesLittleEndian(Heads, buffer, offset + 4);
+        EndianUtilities.WriteBytesLittleEndian(Sectors, buffer, offset + 8);
+        EndianUtilities.WriteBytesLittleEndian(SectorSize, buffer, offset + 12);
+    }
 
-        public void Read(byte[] buffer, int offset)
-        {
-            Cylinders = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0);
-            Heads = EndianUtilities.ToInt32LittleEndian(buffer, offset + 4);
-            Sectors = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8);
-            SectorSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 12);
-        }
-
-        public void Write(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian(Cylinders, buffer, offset + 0);
-            EndianUtilities.WriteBytesLittleEndian(Heads, buffer, offset + 4);
-            EndianUtilities.WriteBytesLittleEndian(Sectors, buffer, offset + 8);
-            EndianUtilities.WriteBytesLittleEndian(SectorSize, buffer, offset + 12);
-        }
-
-        public Geometry ToGeometry(long actualCapacity)
-        {
-            long cylinderCapacity = SectorSize * (long)Sectors * Heads;
-            return new Geometry((int)(actualCapacity / cylinderCapacity), Heads, Sectors, SectorSize);
-        }
+    public Geometry ToGeometry(long actualCapacity)
+    {
+        var cylinderCapacity = SectorSize * (long)Sectors * Heads;
+        return new Geometry((int)(actualCapacity / cylinderCapacity), Heads, Sectors, SectorSize);
     }
 }

@@ -25,91 +25,90 @@ using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class FileIdentifier : VfsDirEntry, IByteArraySerializable
 {
-    internal class FileIdentifier : VfsDirEntry, IByteArraySerializable
+    public DescriptorTag DescriptorTag;
+    public FileCharacteristic FileCharacteristics;
+    public LongAllocationDescriptor FileLocation;
+    public ushort FileVersionNumber;
+    public byte[] ImplementationUse;
+    public ushort ImplementationUseLength;
+    public string Name;
+    public byte NameLength;
+
+    public override DateTime CreationTimeUtc
     {
-        public DescriptorTag DescriptorTag;
-        public FileCharacteristic FileCharacteristics;
-        public LongAllocationDescriptor FileLocation;
-        public ushort FileVersionNumber;
-        public byte[] ImplementationUse;
-        public ushort ImplementationUseLength;
-        public string Name;
-        public byte NameLength;
+        get { throw new NotSupportedException(); }
+    }
 
-        public override DateTime CreationTimeUtc
-        {
-            get { throw new NotSupportedException(); }
-        }
+    public override FileAttributes FileAttributes
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public override FileAttributes FileAttributes
-        {
-            get { throw new NotSupportedException(); }
-        }
+    public override string FileName
+    {
+        get { return Name; }
+    }
 
-        public override string FileName
-        {
-            get { return Name; }
-        }
+    public override bool HasVfsFileAttributes
+    {
+        get { return false; }
+    }
 
-        public override bool HasVfsFileAttributes
-        {
-            get { return false; }
-        }
+    public override bool HasVfsTimeInfo
+    {
+        get { return false; }
+    }
 
-        public override bool HasVfsTimeInfo
-        {
-            get { return false; }
-        }
+    public override bool IsDirectory
+    {
+        get { return (FileCharacteristics & FileCharacteristic.Directory) != 0; }
+    }
 
-        public override bool IsDirectory
-        {
-            get { return (FileCharacteristics & FileCharacteristic.Directory) != 0; }
-        }
+    public override bool IsSymlink
+    {
+        get { return false; }
+    }
 
-        public override bool IsSymlink
-        {
-            get { return false; }
-        }
+    public override DateTime LastAccessTimeUtc
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public override DateTime LastAccessTimeUtc
-        {
-            get { throw new NotSupportedException(); }
-        }
+    public override DateTime LastWriteTimeUtc
+    {
+        get { throw new NotSupportedException(); }
+    }
 
-        public override DateTime LastWriteTimeUtc
-        {
-            get { throw new NotSupportedException(); }
-        }
+    public override long UniqueCacheId
+    {
+        get { return (long)FileLocation.ExtentLocation.Partition << 32 | FileLocation.ExtentLocation.LogicalBlock; }
+    }
 
-        public override long UniqueCacheId
-        {
-            get { return (long)FileLocation.ExtentLocation.Partition << 32 | FileLocation.ExtentLocation.LogicalBlock; }
-        }
+    public int Size
+    {
+        get { throw new NotImplementedException(); }
+    }
 
-        public int Size
-        {
-            get { throw new NotImplementedException(); }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer, offset);
+        FileVersionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 16);
+        FileCharacteristics = (FileCharacteristic)buffer[offset + 18];
+        NameLength = buffer[offset + 19];
+        FileLocation = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 20);
+        ImplementationUseLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
+        ImplementationUse = EndianUtilities.ToByteArray(buffer, offset + 38, ImplementationUseLength);
+        Name = UdfUtilities.ReadDCharacters(buffer, offset + 38 + ImplementationUseLength, NameLength);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer, offset);
-            FileVersionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 16);
-            FileCharacteristics = (FileCharacteristic)buffer[offset + 18];
-            NameLength = buffer[offset + 19];
-            FileLocation = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 20);
-            ImplementationUseLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
-            ImplementationUse = EndianUtilities.ToByteArray(buffer, offset + 38, ImplementationUseLength);
-            Name = UdfUtilities.ReadDCharacters(buffer, offset + 38 + ImplementationUseLength, NameLength);
+        return MathUtilities.RoundUp(38 + ImplementationUseLength + NameLength, 4);
+    }
 
-            return MathUtilities.RoundUp(38 + ImplementationUseLength + NameLength, 4);
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

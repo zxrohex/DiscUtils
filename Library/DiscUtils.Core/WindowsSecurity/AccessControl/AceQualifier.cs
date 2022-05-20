@@ -1,10 +1,9 @@
-namespace DiscUtils.Core.WindowsSecurity.AccessControl
+namespace DiscUtils.Core.WindowsSecurity.AccessControl;
+
+public enum AceQualifier
 {
-    public enum AceQualifier
-    {
-        AccessAllowed = 0,
-        AccessDenied = 1,
-        SystemAudit = 2,
-        SystemAlarm = 3,
-    }
+    AccessAllowed = 0,
+    AccessDenied = 1,
+    SystemAudit = 2,
+    SystemAlarm = 3,
 }

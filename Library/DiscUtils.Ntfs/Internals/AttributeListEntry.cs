@@ -20,74 +20,73 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Ntfs.Internals
+namespace DiscUtils.Ntfs.Internals;
+
+/// <summary>
+/// Represents an entry in an AttributeList attribute.
+/// </summary>
+/// <remarks>Each instance of this class points to the actual Master File Table
+/// entry that contains the attribute.  It is used for files split over multiple
+/// Master File Table entries.</remarks>
+public struct AttributeListEntry : IAttributeLocator
 {
-    /// <summary>
-    /// Represents an entry in an AttributeList attribute.
-    /// </summary>
-    /// <remarks>Each instance of this class points to the actual Master File Table
-    /// entry that contains the attribute.  It is used for files split over multiple
-    /// Master File Table entries.</remarks>
-    public struct AttributeListEntry : IAttributeLocator
+    private readonly AttributeListRecord _record;
+
+    internal AttributeListEntry(AttributeListRecord record)
     {
-        private readonly AttributeListRecord _record;
+        _record = record;
+    }
 
-        internal AttributeListEntry(AttributeListRecord record)
-        {
-            _record = record;
-        }
+    /// <summary>
+    /// Gets the identifier of the attribute.
+    /// </summary>
+    public ushort Identifier
+    {
+        get { return _record.AttributeId; }
+    }
 
-        /// <summary>
-        /// Gets the identifier of the attribute.
-        /// </summary>
-        public ushort Identifier
-        {
-            get { return _record.AttributeId; }
-        }
+    /// <summary>
+    /// Gets the name of the attribute (if any).
+    /// </summary>
+    public string Name
+    {
+        get { return _record.Name; }
+    }
 
-        /// <summary>
-        /// Gets the name of the attribute (if any).
-        /// </summary>
-        public string Name
-        {
-            get { return _record.Name; }
-        }
+    /// <summary>
+    /// Gets the type of the attribute.
+    /// </summary>
+    public AttributeType AttributeType
+    {
+        get { return _record.Type; }
+    }
 
-        /// <summary>
-        /// Gets the type of the attribute.
-        /// </summary>
-        public AttributeType AttributeType
-        {
-            get { return _record.Type; }
-        }
+    /// <summary>
+    /// Gets the first cluster represented in this attribute (normally 0).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// For very fragmented files, it can be necessary to split a single attribute
+    /// over multiple Master File Table entries.  This is achieved with multiple attributes
+    /// with the same name and type (one per Master File Table entry), with this field
+    /// determining the logical order of the attributes.
+    /// </para>
+    /// <para>
+    /// The number is the first 'virtual' cluster present (i.e. divide the file's content
+    /// into 'cluster' sized chunks, this is the first of those clusters logically
+    /// represented in the attribute).
+    /// </para>
+    /// </remarks>
+    public long FirstFileCluster
+    {
+        get { return (long)_record.StartVcn; }
+    }
 
-        /// <summary>
-        /// Gets the first cluster represented in this attribute (normally 0).
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// For very fragmented files, it can be necessary to split a single attribute
-        /// over multiple Master File Table entries.  This is achieved with multiple attributes
-        /// with the same name and type (one per Master File Table entry), with this field
-        /// determining the logical order of the attributes.
-        /// </para>
-        /// <para>
-        /// The number is the first 'virtual' cluster present (i.e. divide the file's content
-        /// into 'cluster' sized chunks, this is the first of those clusters logically
-        /// represented in the attribute).
-        /// </para>
-        /// </remarks>
-        public long FirstFileCluster
-        {
-            get { return (long)_record.StartVcn; }
-        }
-
-        /// <summary>
-        /// Gets the Master File Table entry that contains the attribute.
-        /// </summary>
-        public MasterFileTableReference MasterFileTableEntry
-        {
-            get { return new MasterFileTableReference(_record.BaseFileReference); }
-        }
+    /// <summary>
+    /// Gets the Master File Table entry that contains the attribute.
+    /// </summary>
+    public MasterFileTableReference MasterFileTableEntry
+    {
+        get { return new MasterFileTableReference(_record.BaseFileReference); }
     }
 }

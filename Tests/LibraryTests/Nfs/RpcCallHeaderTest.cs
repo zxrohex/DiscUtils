@@ -31,7 +31,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            RpcCallHeader header = new RpcCallHeader()
+            var header = new RpcCallHeader()
             {
                 Credentials = new RpcAuthentication()
                 {
@@ -47,13 +47,13 @@ namespace LibraryTests.Nfs
 
             RpcCallHeader clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 header.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new RpcCallHeader(reader);
             }
 

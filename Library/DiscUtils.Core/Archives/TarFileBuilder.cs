@@ -20,197 +20,196 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Archives
+namespace DiscUtils.Archives;
+
+using Internal;
+using Streams;
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+/// <summary>
+/// Builder to create UNIX Tar archive files.
+/// </summary>
+public class TarFileBuilder : StreamBuilder
 {
-    using Internal;
-    using Streams;
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
+    private readonly List<UnixBuildFileRecord> _files;
 
     /// <summary>
-    /// Builder to create UNIX Tar archive files.
+    /// Initializes a new instance of the <see cref="TarFileBuilder"/> class.
     /// </summary>
-    public class TarFileBuilder : StreamBuilder
+    public TarFileBuilder()
     {
-        private readonly List<UnixBuildFileRecord> _files;
+        _files = new List<UnixBuildFileRecord>();
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TarFileBuilder"/> class.
-        /// </summary>
-        public TarFileBuilder()
+    public bool Exists(string name)
+    {
+        name = name.TrimEnd('/');
+
+        foreach (var file in _files)
         {
-            _files = new List<UnixBuildFileRecord>();
+            if (name.Equals(file.Name.TrimEnd('/'), StringComparison.Ordinal))
+            {
+                return true;
+            }
         }
 
-        public bool Exists(string name)
+        return false;
+    }
+
+    public long TotalSize
+    {
+        get
         {
-            name = name.TrimEnd('/');
+            var size = 0L;
 
             foreach (var file in _files)
             {
-                if (name.Equals(file.Name.TrimEnd('/'), StringComparison.Ordinal))
-                {
-                    return true;
-                }
+                size += file.Length + 512;
             }
 
-            return false;
+            return size;
         }
+    }
 
-        public long TotalSize
-        {
-            get
-            {
-                var size = 0L;
-
-                foreach (var file in _files)
-                {
-                    size += file.Length + 512;
-                }
-
-                return size;
-            }
-        }
-
-        public int FileCount => _files.Count;
+    public int FileCount => _files.Count;
 
 #if NETSTANDARD || NETCOREAPP || NET46_OR_GREATER
-        private static readonly byte[] EmptyByteArray = Array.Empty<byte>();
+    private static readonly byte[] EmptyByteArray = Array.Empty<byte>();
 #else
-        private static readonly byte[] EmptyByteArray = new byte[0];
+    private static readonly byte[] EmptyByteArray = new byte[0];
 #endif
 
-        /// <summary>
-        /// Add a directory to the tar archive.
-        /// </summary>
-        /// <param name="name">The name of the directory.</param>
-        public void AddDirectory(string name)
+    /// <summary>
+    /// Add a directory to the tar archive.
+    /// </summary>
+    /// <param name="name">The name of the directory.</param>
+    public void AddDirectory(string name)
+    {
+        if (name.Length < 1 || name[name.Length - 1] != '/')
         {
-            if (name.Length < 1 || name[name.Length - 1] != '/')
-            {
-                name += "/";
-            }
-
-            AddFile(name, EmptyByteArray);
+            name += "/";
         }
 
-        /// <summary>
-        /// Add a directory to the tar archive.
-        /// </summary>
-        /// <param name="name">The name of the directory.</param>
-        /// <param name="ownerId">The uid of the owner.</param>
-        /// <param name="groupId">The gid of the owner.</param>
-        /// <param name="fileMode">The access mode of the directory.</param>
-        /// <param name="modificationTime">The modification time for the directory.</param>
-        public void AddDirectory(
-            string name, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
-        {
-            if (name.Length < 1 || name[name.Length - 1] != '/')
-            {
-                name += "/";
-            }
+        AddFile(name, EmptyByteArray);
+    }
 
-            AddFile(name, EmptyByteArray, ownerId, groupId, fileMode, modificationTime);
+    /// <summary>
+    /// Add a directory to the tar archive.
+    /// </summary>
+    /// <param name="name">The name of the directory.</param>
+    /// <param name="ownerId">The uid of the owner.</param>
+    /// <param name="groupId">The gid of the owner.</param>
+    /// <param name="fileMode">The access mode of the directory.</param>
+    /// <param name="modificationTime">The modification time for the directory.</param>
+    public void AddDirectory(
+        string name, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+    {
+        if (name.Length < 1 || name[name.Length - 1] != '/')
+        {
+            name += "/";
         }
 
-        /// <summary>
-        /// Add a file to the tar archive.
-        /// </summary>
-        /// <param name="name">The name of the file.</param>
-        /// <param name="buffer">The file data.</param>
-        public void AddFile(string name, byte[] buffer)
+        AddFile(name, EmptyByteArray, ownerId, groupId, fileMode, modificationTime);
+    }
+
+    /// <summary>
+    /// Add a file to the tar archive.
+    /// </summary>
+    /// <param name="name">The name of the file.</param>
+    /// <param name="buffer">The file data.</param>
+    public void AddFile(string name, byte[] buffer)
+    {
+        _files.Add(new UnixBuildFileRecord(name, buffer));
+    }
+
+    /// <summary>
+    /// Add a file to the tar archive.
+    /// </summary>
+    /// <param name="name">The name of the file.</param>
+    /// <param name="sourcefile">The file to add.</param>
+    public void AddFile(string name, string sourcefile)
+    {
+        _files.Add(new UnixBuildFileRecord(name, File.ReadAllBytes(sourcefile)));
+    }
+
+    /// <summary>
+    /// Add a file to the tar archive.
+    /// </summary>
+    /// <param name="name">The name of the file.</param>
+    /// <param name="buffer">The file data.</param>
+    /// <param name="ownerId">The uid of the owner.</param>
+    /// <param name="groupId">The gid of the owner.</param>
+    /// <param name="fileMode">The access mode of the file.</param>
+    /// <param name="modificationTime">The modification time for the file.</param>
+    public void AddFile(
+        string name, byte[] buffer, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+    {
+        _files.Add(new UnixBuildFileRecord(name, buffer, fileMode, ownerId, groupId, modificationTime));
+    }
+
+    /// <summary>
+    /// Add a file to the tar archive.
+    /// </summary>
+    /// <param name="name">The name of the file.</param>
+    /// <param name="sourcefile">The file to add.</param>
+    /// <param name="ownerId">The uid of the owner.</param>
+    /// <param name="groupId">The gid of the owner.</param>
+    /// <param name="fileMode">The access mode of the file.</param>
+    /// <param name="modificationTime">The modification time for the file.</param>
+    public void AddFile(
+        string name, string sourcefile, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+    {
+        _files.Add(new UnixBuildFileRecord(name, File.ReadAllBytes(sourcefile), fileMode, ownerId, groupId, modificationTime));
+    }
+
+    /// <summary>
+    /// Add a file to the tar archive.
+    /// </summary>
+    /// <param name="name">The name of the file.</param>
+    /// <param name="stream">The file data.</param>
+    public void AddFile(string name, Stream stream)
+    {
+        _files.Add(new UnixBuildFileRecord(name, stream));
+    }
+
+    /// <summary>
+    /// Add a file to the tar archive.
+    /// </summary>
+    /// <param name="name">The name of the file.</param>
+    /// <param name="stream">The file data.</param>
+    /// <param name="ownerId">The uid of the owner.</param>
+    /// <param name="groupId">The gid of the owner.</param>
+    /// <param name="fileMode">The access mode of the file.</param>
+    /// <param name="modificationTime">The modification time for the file.</param>
+    public void AddFile(
+        string name, Stream stream, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+    {
+        _files.Add(new UnixBuildFileRecord(name, stream, fileMode, ownerId, groupId, modificationTime));
+    }
+
+    protected override List<BuilderExtent> FixExtents(out long totalLength)
+    {
+        var result = new List<BuilderExtent>((_files.Count * 2) + 2);
+        long pos = 0;
+
+        foreach (var file in _files)
         {
-            _files.Add(new UnixBuildFileRecord(name, buffer));
+            var fileContentExtent = file.Fix(pos + TarHeader.Length);
+
+            result.Add(new TarHeaderExtent(
+                pos, file.Name, fileContentExtent.Length, file.FileMode, file.OwnerId, file.GroupId, file.ModificationTime));
+            pos += TarHeader.Length;
+
+            result.Add(fileContentExtent);
+            pos += MathUtilities.RoundUp(fileContentExtent.Length, 512);
         }
 
-        /// <summary>
-        /// Add a file to the tar archive.
-        /// </summary>
-        /// <param name="name">The name of the file.</param>
-        /// <param name="sourcefile">The file to add.</param>
-        public void AddFile(string name, string sourcefile)
-        {
-            _files.Add(new UnixBuildFileRecord(name, File.ReadAllBytes(sourcefile)));
-        }
+        // Two empty 512-byte blocks at end of tar file.
+        result.Add(new BuilderBufferExtent(pos, new byte[1024]));
 
-        /// <summary>
-        /// Add a file to the tar archive.
-        /// </summary>
-        /// <param name="name">The name of the file.</param>
-        /// <param name="buffer">The file data.</param>
-        /// <param name="ownerId">The uid of the owner.</param>
-        /// <param name="groupId">The gid of the owner.</param>
-        /// <param name="fileMode">The access mode of the file.</param>
-        /// <param name="modificationTime">The modification time for the file.</param>
-        public void AddFile(
-            string name, byte[] buffer, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
-        {
-            _files.Add(new UnixBuildFileRecord(name, buffer, fileMode, ownerId, groupId, modificationTime));
-        }
-
-        /// <summary>
-        /// Add a file to the tar archive.
-        /// </summary>
-        /// <param name="name">The name of the file.</param>
-        /// <param name="sourcefile">The file to add.</param>
-        /// <param name="ownerId">The uid of the owner.</param>
-        /// <param name="groupId">The gid of the owner.</param>
-        /// <param name="fileMode">The access mode of the file.</param>
-        /// <param name="modificationTime">The modification time for the file.</param>
-        public void AddFile(
-            string name, string sourcefile, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
-        {
-            _files.Add(new UnixBuildFileRecord(name, File.ReadAllBytes(sourcefile), fileMode, ownerId, groupId, modificationTime));
-        }
-
-        /// <summary>
-        /// Add a file to the tar archive.
-        /// </summary>
-        /// <param name="name">The name of the file.</param>
-        /// <param name="stream">The file data.</param>
-        public void AddFile(string name, Stream stream)
-        {
-            _files.Add(new UnixBuildFileRecord(name, stream));
-        }
-
-        /// <summary>
-        /// Add a file to the tar archive.
-        /// </summary>
-        /// <param name="name">The name of the file.</param>
-        /// <param name="stream">The file data.</param>
-        /// <param name="ownerId">The uid of the owner.</param>
-        /// <param name="groupId">The gid of the owner.</param>
-        /// <param name="fileMode">The access mode of the file.</param>
-        /// <param name="modificationTime">The modification time for the file.</param>
-        public void AddFile(
-            string name, Stream stream, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
-        {
-            _files.Add(new UnixBuildFileRecord(name, stream, fileMode, ownerId, groupId, modificationTime));
-        }
-
-        protected override List<BuilderExtent> FixExtents(out long totalLength)
-        {
-            List<BuilderExtent> result = new List<BuilderExtent>((_files.Count * 2) + 2);
-            long pos = 0;
-
-            foreach (UnixBuildFileRecord file in _files)
-            {
-                BuilderExtent fileContentExtent = file.Fix(pos + TarHeader.Length);
-
-                result.Add(new TarHeaderExtent(
-                    pos, file.Name, fileContentExtent.Length, file.FileMode, file.OwnerId, file.GroupId, file.ModificationTime));
-                pos += TarHeader.Length;
-
-                result.Add(fileContentExtent);
-                pos += MathUtilities.RoundUp(fileContentExtent.Length, 512);
-            }
-
-            // Two empty 512-byte blocks at end of tar file.
-            result.Add(new BuilderBufferExtent(pos, new byte[1024]));
-
-            totalLength = pos + 1024;
-            return result;
-        }
+        totalLength = pos + 1024;
+        return result;
     }
 }

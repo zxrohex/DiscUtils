@@ -20,58 +20,58 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+/// <summary>
+/// Implementation of SquashFs file system reader.
+/// </summary>
+/// <remarks>
+/// SquashFs is a read-only file system, it is not designed to be modified
+/// after it is created.
+/// </remarks>
+public class SquashFileSystemReader : VfsFileSystemFacade, IUnixFileSystem
 {
     /// <summary>
-    /// Implementation of SquashFs file system reader.
+    /// Initializes a new instance of the SquashFileSystemReader class.
     /// </summary>
-    /// <remarks>
-    /// SquashFs is a read-only file system, it is not designed to be modified
-    /// after it is created.
-    /// </remarks>
-    public class SquashFileSystemReader : VfsFileSystemFacade, IUnixFileSystem
+    /// <param name="data">The stream to read the file system image from.</param>
+    public SquashFileSystemReader(Stream data)
+        : base(new VfsSquashFileSystemReader(data)) {}
+
+    /// <summary>
+    /// Gets Unix file information about a file or directory.
+    /// </summary>
+    /// <param name="path">Path to the file or directory.</param>
+    /// <returns>Unix information about the file or directory.</returns>
+    public UnixFileSystemInfo GetUnixFileInfo(string path)
     {
-        /// <summary>
-        /// Initializes a new instance of the SquashFileSystemReader class.
-        /// </summary>
-        /// <param name="data">The stream to read the file system image from.</param>
-        public SquashFileSystemReader(Stream data)
-            : base(new VfsSquashFileSystemReader(data)) {}
+        return GetRealFileSystem<VfsSquashFileSystemReader>().GetUnixFileInfo(path);
+    }
 
-        /// <summary>
-        /// Gets Unix file information about a file or directory.
-        /// </summary>
-        /// <param name="path">Path to the file or directory.</param>
-        /// <returns>Unix information about the file or directory.</returns>
-        public UnixFileSystemInfo GetUnixFileInfo(string path)
+    /// <summary>
+    /// Detects if the stream contains a SquashFs file system.
+    /// </summary>
+    /// <param name="stream">The stream to inspect.</param>
+    /// <returns><c>true</c> if stream appears to be a SquashFs file system.</returns>
+    public static bool Detect(Stream stream)
+    {
+        stream.Position = 0;
+
+        var superBlock = new SuperBlock();
+
+        if (stream.Length < superBlock.Size)
         {
-            return GetRealFileSystem<VfsSquashFileSystemReader>().GetUnixFileInfo(path);
+            return false;
         }
 
-        /// <summary>
-        /// Detects if the stream contains a SquashFs file system.
-        /// </summary>
-        /// <param name="stream">The stream to inspect.</param>
-        /// <returns><c>true</c> if stream appears to be a SquashFs file system.</returns>
-        public static bool Detect(Stream stream)
-        {
-            stream.Position = 0;
+        var buffer = StreamUtilities.ReadExact(stream, superBlock.Size);
+        superBlock.ReadFrom(buffer, 0);
 
-            SuperBlock superBlock = new SuperBlock();
-
-            if (stream.Length < superBlock.Size)
-            {
-                return false;
-            }
-
-            byte[] buffer = StreamUtilities.ReadExact(stream, superBlock.Size);
-            superBlock.ReadFrom(buffer, 0);
-
-            return superBlock.Magic == SuperBlock.SquashFsMagic;
-        }
+        return superBlock.Magic == SuperBlock.SquashFsMagic;
     }
 }

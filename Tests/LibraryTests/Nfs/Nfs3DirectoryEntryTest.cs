@@ -33,7 +33,7 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            Nfs3DirectoryEntry entry = new Nfs3DirectoryEntry()
+            var entry = new Nfs3DirectoryEntry()
             {
                 Cookie = 1,
                 FileAttributes = new Nfs3FileAttributes()
@@ -58,13 +58,13 @@ namespace LibraryTests.Nfs
 
             Nfs3DirectoryEntry clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 entry.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new Nfs3DirectoryEntry(reader);
             }
 

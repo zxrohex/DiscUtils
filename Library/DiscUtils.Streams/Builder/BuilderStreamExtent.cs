@@ -25,62 +25,61 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscUtils.Streams
+namespace DiscUtils.Streams;
+
+public class BuilderStreamExtent : BuilderExtent
 {
-    public class BuilderStreamExtent : BuilderExtent
+    private readonly Ownership _ownership;
+    private Stream _source;
+
+    public BuilderStreamExtent(long start, Stream source)
+        : this(start, source, Ownership.None) {}
+
+    public BuilderStreamExtent(long start, Stream source, Ownership ownership)
+        : base(start, source.Length)
     {
-        private readonly Ownership _ownership;
-        private Stream _source;
+        _source = source;
+        _ownership = ownership;
+    }
 
-        public BuilderStreamExtent(long start, Stream source)
-            : this(start, source, Ownership.None) {}
-
-        public BuilderStreamExtent(long start, Stream source, Ownership ownership)
-            : base(start, source.Length)
+    public override void Dispose()
+    {
+        if (_source != null && _ownership == Ownership.Dispose)
         {
-            _source = source;
-            _ownership = ownership;
+            _source.Dispose();
+            _source = null;
         }
+    }
 
-        public override void Dispose()
-        {
-            if (_source != null && _ownership == Ownership.Dispose)
-            {
-                _source.Dispose();
-                _source = null;
-            }
-        }
+    public override void PrepareForRead() {}
 
-        public override void PrepareForRead() {}
-
-        public override int Read(long diskOffset, byte[] block, int offset, int count)
-        {
-            _source.Position = diskOffset - Start;
-            return _source.Read(block, offset, count);
-        }
+    public override int Read(long diskOffset, byte[] block, int offset, int count)
+    {
+        _source.Position = diskOffset - Start;
+        return _source.Read(block, offset, count);
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
-        {
-            _source.Position = diskOffset - Start;
-            return _source.ReadAsync(block, offset, count, cancellationToken);
-        }
+    public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+    {
+        _source.Position = diskOffset - Start;
+        return _source.ReadAsync(block, offset, count, cancellationToken);
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
-        {
-            _source.Position = diskOffset - Start;
-            return _source.ReadAsync(block, cancellationToken);
-        }
+    public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
+    {
+        _source.Position = diskOffset - Start;
+        return _source.ReadAsync(block, cancellationToken);
+    }
 
-        public override int Read(long diskOffset, Span<byte> block)
-        {
-            _source.Position = diskOffset - Start;
-            return _source.Read(block);
-        }
+    public override int Read(long diskOffset, Span<byte> block)
+    {
+        _source.Position = diskOffset - Start;
+        return _source.Read(block);
+    }
 #endif
 
-        public override void DisposeReadState() {}
-    }
+    public override void DisposeReadState() {}
 }

@@ -22,15 +22,14 @@
 
 using System.Management.Automation;
 
-namespace DiscUtils.PowerShell.VirtualDiskProvider
+namespace DiscUtils.PowerShell.VirtualDiskProvider;
+
+public class NewHardLinkDynamicParameters
 {
-    public class NewHardLinkDynamicParameters
+    [Parameter]
+    public string SourcePath
     {
-        [Parameter]
-        public string SourcePath
-        {
-            get;
-            set;
-        }
+        get;
+        set;
     }
 }

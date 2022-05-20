@@ -22,43 +22,42 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class ReadyToTransferPacket : BaseResponse
 {
-    internal class ReadyToTransferPacket : BaseResponse
+    public uint BufferOffset;
+    public uint DesiredTransferLength;
+    public BasicHeaderSegment Header;
+    public ulong Lun;
+    public uint ReadyToTransferSequenceNumber;
+    public uint TargetTransferTag;
+
+    public override void Parse(ProtocolDataUnit pdu)
     {
-        public uint BufferOffset;
-        public uint DesiredTransferLength;
-        public BasicHeaderSegment Header;
-        public ulong Lun;
-        public uint ReadyToTransferSequenceNumber;
-        public uint TargetTransferTag;
+        Parse(pdu.HeaderData, 0);
+    }
 
-        public override void Parse(ProtocolDataUnit pdu)
+    public void Parse(byte[] headerData, int headerOffset)
+    {
+        StatusPresent = false;
+
+        Header = new BasicHeaderSegment();
+        Header.ReadFrom(headerData, headerOffset);
+
+        if (Header.OpCode != OpCode.ReadyToTransfer)
         {
-            Parse(pdu.HeaderData, 0);
+            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.ReadyToTransfer +
+                                               " was " + Header.OpCode);
         }
 
-        public void Parse(byte[] headerData, int headerOffset)
-        {
-            StatusPresent = false;
-
-            Header = new BasicHeaderSegment();
-            Header.ReadFrom(headerData, headerOffset);
-
-            if (Header.OpCode != OpCode.ReadyToTransfer)
-            {
-                throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.ReadyToTransfer +
-                                                   " was " + Header.OpCode);
-            }
-
-            Lun = EndianUtilities.ToUInt64BigEndian(headerData, headerOffset + 8);
-            TargetTransferTag = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 20);
-            StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-            ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-            MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-            ReadyToTransferSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
-            BufferOffset = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 40);
-            DesiredTransferLength = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 44);
-        }
+        Lun = EndianUtilities.ToUInt64BigEndian(headerData, headerOffset + 8);
+        TargetTransferTag = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 20);
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
+        ReadyToTransferSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
+        BufferOffset = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 40);
+        DesiredTransferLength = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 44);
     }
 }

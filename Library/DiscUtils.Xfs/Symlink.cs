@@ -21,33 +21,32 @@
 //
 
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System.IO;
+using DiscUtils.Vfs;
+using DiscUtils.Streams;
+
+internal class Symlink : File, IVfsSymlink<DirEntry, File>
 {
-    using System.IO;
-    using DiscUtils.Vfs;
-    using DiscUtils.Streams;
-
-    internal class Symlink : File, IVfsSymlink<DirEntry, File>
+    public Symlink(Context context, Inode inode)
+        : base(context, inode)
     {
-        public Symlink(Context context, Inode inode)
-            : base(context, inode)
-        {
-        }
+    }
 
-        public string TargetPath
+    public string TargetPath
+    {
+        get
         {
-            get
+            if (Inode.Format != InodeFormat.Local && Inode.Format != InodeFormat.Extents)
             {
-                if (Inode.Format != InodeFormat.Local && Inode.Format != InodeFormat.Extents)
-                {
-                    throw new IOException("invalid Inode format for symlink");
-                }
-
-                IBuffer content = FileContent;
-                byte[] data = StreamUtilities.ReadExact(content, 0, (int)Inode.Length);
-
-                return Context.Options.FileNameEncoding.GetString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
+                throw new IOException("invalid Inode format for symlink");
             }
+
+            var content = FileContent;
+            var data = StreamUtilities.ReadExact(content, 0, (int)Inode.Length);
+
+            return Context.Options.FileNameEncoding.GetString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
         }
     }
 }

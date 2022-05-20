@@ -23,64 +23,63 @@
 using DiscUtils.Core.WindowsSecurity.AccessControl;
 using System.Collections.Generic;
 
-namespace DiscUtils
+namespace DiscUtils;
+
+/// <summary>
+/// Provides the base class for all file systems that support Windows semantics.
+/// </summary>
+public interface IWindowsFileSystem : IDosFileSystem
 {
     /// <summary>
-    /// Provides the base class for all file systems that support Windows semantics.
+    /// Gets the security descriptor associated with the file or directory.
     /// </summary>
-    public interface IWindowsFileSystem : IDosFileSystem
-    {
-        /// <summary>
-        /// Gets the security descriptor associated with the file or directory.
-        /// </summary>
-        /// <param name="path">The file or directory to inspect.</param>
-        /// <returns>The security descriptor.</returns>
-        RawSecurityDescriptor GetSecurity(string path);
+    /// <param name="path">The file or directory to inspect.</param>
+    /// <returns>The security descriptor.</returns>
+    RawSecurityDescriptor GetSecurity(string path);
 
-        /// <summary>
-        /// Sets the security descriptor associated with the file or directory.
-        /// </summary>
-        /// <param name="path">The file or directory to change.</param>
-        /// <param name="securityDescriptor">The new security descriptor.</param>
-        void SetSecurity(string path, RawSecurityDescriptor securityDescriptor);
+    /// <summary>
+    /// Sets the security descriptor associated with the file or directory.
+    /// </summary>
+    /// <param name="path">The file or directory to change.</param>
+    /// <param name="securityDescriptor">The new security descriptor.</param>
+    void SetSecurity(string path, RawSecurityDescriptor securityDescriptor);
 
-        /// <summary>
-        /// Gets the reparse point data associated with a file or directory.
-        /// </summary>
-        /// <param name="path">The file to query.</param>
-        /// <returns>The reparse point information.</returns>
-        ReparsePoint GetReparsePoint(string path);
+    /// <summary>
+    /// Gets the reparse point data associated with a file or directory.
+    /// </summary>
+    /// <param name="path">The file to query.</param>
+    /// <returns>The reparse point information.</returns>
+    ReparsePoint GetReparsePoint(string path);
 
-        /// <summary>
-        /// Sets the reparse point data on a file or directory.
-        /// </summary>
-        /// <param name="path">The file to set the reparse point on.</param>
-        /// <param name="reparsePoint">The new reparse point.</param>
-        void SetReparsePoint(string path, ReparsePoint reparsePoint);
+    /// <summary>
+    /// Sets the reparse point data on a file or directory.
+    /// </summary>
+    /// <param name="path">The file to set the reparse point on.</param>
+    /// <param name="reparsePoint">The new reparse point.</param>
+    void SetReparsePoint(string path, ReparsePoint reparsePoint);
 
-        /// <summary>
-        /// Removes a reparse point from a file or directory, without deleting the file or directory.
-        /// </summary>
-        /// <param name="path">The path to the file or directory to remove the reparse point from.</param>
-        void RemoveReparsePoint(string path);
+    /// <summary>
+    /// Removes a reparse point from a file or directory, without deleting the file or directory.
+    /// </summary>
+    /// <param name="path">The path to the file or directory to remove the reparse point from.</param>
+    void RemoveReparsePoint(string path);
 
-        /// <summary>
-        /// Gets the names of the alternate data streams for a file.
-        /// </summary>
-        /// <param name="path">The path to the file.</param>
-        /// <returns>
-        /// The list of alternate data streams (or empty, if none).  To access the contents
-        /// of the alternate streams, use OpenFile(path + ":" + name, ...).
-        /// </returns>
-        IEnumerable<string> GetAlternateDataStreams(string path);
+    /// <summary>
+    /// Gets the names of the alternate data streams for a file.
+    /// </summary>
+    /// <param name="path">The path to the file.</param>
+    /// <returns>
+    /// The list of alternate data streams (or empty, if none).  To access the contents
+    /// of the alternate streams, use OpenFile(path + ":" + name, ...).
+    /// </returns>
+    IEnumerable<string> GetAlternateDataStreams(string path);
 
-        /// <summary>
-        /// Indicates whether the file is known by other names.
-        /// </summary>
-        /// <param name="path">The file to inspect.</param>
-        /// <returns><c>true</c> if the file has other names, else <c>false</c>.</returns>
-        bool HasHardLinks(string path);
+    /// <summary>
+    /// Indicates whether the file is known by other names.
+    /// </summary>
+    /// <param name="path">The file to inspect.</param>
+    /// <returns><c>true</c> if the file has other names, else <c>false</c>.</returns>
+    bool HasHardLinks(string path);
 
-        int GetHardLinkCount(string path);
-    }
+    int GetHardLinkCount(string path);
 }

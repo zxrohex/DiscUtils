@@ -20,12 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Vdi
+namespace DiscUtils.Vdi;
+
+internal enum ImageFlags : uint
 {
-    internal enum ImageFlags : uint
-    {
-        None = 0x00000000,
-        Split2G = 0x00000001,
-        ZeroExpand = 0x00000002
-    }
+    None = 0x00000000,
+    Split2G = 0x00000001,
+    ZeroExpand = 0x00000002
 }

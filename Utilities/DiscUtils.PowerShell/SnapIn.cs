@@ -23,24 +23,23 @@
 using System.ComponentModel;
 using System.Management.Automation;
 
-namespace DiscUtils.PowerShell
+namespace DiscUtils.PowerShell;
+
+[RunInstaller(true)]
+public class SnapIn : PSSnapIn
 {
-    [RunInstaller(true)]
-    public class SnapIn : PSSnapIn
+    public override string Description
     {
-        public override string Description
-        {
-            get { return "This is the PowerShell Snap-in for .NET DiscUtils."; }
-        }
+        get { return "This is the PowerShell Snap-in for .NET DiscUtils."; }
+    }
 
-        public override string Name
-        {
-            get { return "DiscUtils.PowerShell"; }
-        }
+    public override string Name
+    {
+        get { return "DiscUtils.PowerShell"; }
+    }
 
-        public override string Vendor
-        {
-            get { return "Kenneth Bell"; }
-        }
+    public override string Vendor
+    {
+        get { return "Kenneth Bell"; }
     }
 }

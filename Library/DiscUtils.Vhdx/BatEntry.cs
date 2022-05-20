@@ -22,49 +22,48 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal struct BatEntry : IByteArraySerializable
 {
-    internal struct BatEntry : IByteArraySerializable
+    private ulong _value;
+
+    public BatEntry(byte[] buffer, int offset)
     {
-        private ulong _value;
+        _value = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+    }
 
-        public BatEntry(byte[] buffer, int offset)
-        {
-            _value = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-        }
+    public PayloadBlockStatus PayloadBlockStatus
+    {
+        get { return (PayloadBlockStatus)(_value & 0x7); }
+        set { _value = (_value & ~0x7ul) | (ulong)value; }
+    }
 
-        public PayloadBlockStatus PayloadBlockStatus
-        {
-            get { return (PayloadBlockStatus)(_value & 0x7); }
-            set { _value = (_value & ~0x7ul) | (ulong)value; }
-        }
+    public bool BitmapBlockPresent
+    {
+        get { return (_value & 0x7) == 6; }
+        set { _value = (_value & ~0x7ul) | (value ? 6u : 0u); }
+    }
 
-        public bool BitmapBlockPresent
-        {
-            get { return (_value & 0x7) == 6; }
-            set { _value = (_value & ~0x7ul) | (value ? 6u : 0u); }
-        }
+    public long FileOffsetMB
+    {
+        get { return (long)(_value >> 20) & 0xFFFFFFFFFFFL; }
+        set { _value = (_value & 0xFFFFF) | (ulong)value << 20; }
+    }
 
-        public long FileOffsetMB
-        {
-            get { return (long)(_value >> 20) & 0xFFFFFFFFFFFL; }
-            set { _value = (_value & 0xFFFFF) | (ulong)value << 20; }
-        }
+    public int Size
+    {
+        get { return 8; }
+    }
 
-        public int Size
-        {
-            get { return 8; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        _value = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+        return 8;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            _value = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-            return 8;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian(_value, buffer, offset);
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        EndianUtilities.WriteBytesLittleEndian(_value, buffer, offset);
     }
 }

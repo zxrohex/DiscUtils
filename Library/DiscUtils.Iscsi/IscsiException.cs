@@ -23,44 +23,43 @@
 using System;
 using System.IO;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+using System.Runtime.Serialization;
+
+/// <summary>
+/// Base exception for any iSCSI-related failures.
+/// </summary>
+[Serializable]
+public class IscsiException : IOException
 {
-    using System.Runtime.Serialization;
+    /// <summary>
+    /// Initializes a new instance of the IscsiException class.
+    /// </summary>
+    public IscsiException() {}
 
     /// <summary>
-    /// Base exception for any iSCSI-related failures.
+    /// Initializes a new instance of the IscsiException class.
     /// </summary>
-    [Serializable]
-    public class IscsiException : IOException
+    /// <param name="message">The reason for the exception.</param>
+    public IscsiException(string message)
+        : base(message) {}
+
+    /// <summary>
+    /// Initializes a new instance of the IscsiException class.
+    /// </summary>
+    /// <param name="message">The reason for the exception.</param>
+    /// <param name="innerException">The inner exception.</param>
+    public IscsiException(string message, Exception innerException)
+        : base(message, innerException) {}
+
+    /// <summary>
+    /// Initializes a new instance of the IscsiException class.
+    /// </summary>
+    /// <param name="info">The serialization info.</param>
+    /// <param name="context">Ther context.</param>
+    protected IscsiException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
     {
-        /// <summary>
-        /// Initializes a new instance of the IscsiException class.
-        /// </summary>
-        public IscsiException() {}
-
-        /// <summary>
-        /// Initializes a new instance of the IscsiException class.
-        /// </summary>
-        /// <param name="message">The reason for the exception.</param>
-        public IscsiException(string message)
-            : base(message) {}
-
-        /// <summary>
-        /// Initializes a new instance of the IscsiException class.
-        /// </summary>
-        /// <param name="message">The reason for the exception.</param>
-        /// <param name="innerException">The inner exception.</param>
-        public IscsiException(string message, Exception innerException)
-            : base(message, innerException) {}
-
-        /// <summary>
-        /// Initializes a new instance of the IscsiException class.
-        /// </summary>
-        /// <param name="info">The serialization info.</param>
-        /// <param name="context">Ther context.</param>
-        protected IscsiException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
     }
 }

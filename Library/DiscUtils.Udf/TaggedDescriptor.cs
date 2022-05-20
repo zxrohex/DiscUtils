@@ -24,32 +24,29 @@ using System.Globalization;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal abstract class TaggedDescriptor<T> : BaseTaggedDescriptor
+    where T : BaseTaggedDescriptor, new()
 {
-    internal abstract class TaggedDescriptor<T> : BaseTaggedDescriptor
-        where T : BaseTaggedDescriptor, new()
+    protected TaggedDescriptor(TagIdentifier id)
+        : base(id) {}
+
+    public static T FromStream(Stream stream, uint sector, uint sectorSize)
     {
-        protected TaggedDescriptor(TagIdentifier id)
-            : base(id) {}
+        stream.Position = sector * (long)sectorSize;
+        var buffer = StreamUtilities.ReadExact(stream, 512);
 
-        public static T FromStream(Stream stream, uint sector, uint sectorSize)
+        var result = new T();
+        result.ReadFrom(buffer, 0);
+        if (result.Tag.TagIdentifier != result.RequiredTagIdentifier
+            || result.Tag.TagLocation != sector)
         {
-            stream.Position = sector * (long)sectorSize;
-            byte[] buffer = StreamUtilities.ReadExact(stream, 512);
-
-            T result = new T();
-            result.ReadFrom(buffer, 0);
-            if (result.Tag.TagIdentifier != result.RequiredTagIdentifier
-                || result.Tag.TagLocation != sector)
-            {
-                throw new InvalidDataException(string.Format(CultureInfo.InvariantCulture,
-                    "Corrupt UDF file system, unable to read {0} tag at sector {1}", result.RequiredTagIdentifier,
-                    sector));
-            }
-
-            return result;
+            throw new InvalidDataException($"Corrupt UDF file system, unable to read {result.RequiredTagIdentifier} tag at sector {sector}");
         }
 
-        public abstract override int Parse(byte[] buffer, int offset);
+        return result;
     }
+
+    public abstract override int Parse(byte[] buffer, int offset);
 }

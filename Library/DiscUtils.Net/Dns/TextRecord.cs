@@ -24,55 +24,54 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Represents a DNS TXT record.
+/// </summary>
+public sealed class TextRecord : ResourceRecord
 {
-    /// <summary>
-    /// Represents a DNS TXT record.
-    /// </summary>
-    public sealed class TextRecord : ResourceRecord
+    internal TextRecord(string name, RecordType type, RecordClass rClass, DateTime expiry, PacketReader reader)
+        : base(name, type, rClass, expiry)
     {
-        internal TextRecord(string name, RecordType type, RecordClass rClass, DateTime expiry, PacketReader reader)
-            : base(name, type, rClass, expiry)
+        Values = new Dictionary<string, byte[]>();
+
+        var dataLen = reader.ReadUShort();
+        var pos = reader.Position;
+
+        while (reader.Position < pos + dataLen)
         {
-            Values = new Dictionary<string, byte[]>();
+            int valueLen = reader.ReadByte();
+            var valueBinary = reader.ReadBytes(valueLen);
 
-            ushort dataLen = reader.ReadUShort();
-            int pos = reader.Position;
+            StoreValue(valueBinary);
+        }
+    }
 
-            while (reader.Position < pos + dataLen)
-            {
-                int valueLen = reader.ReadByte();
-                byte[] valueBinary = reader.ReadBytes(valueLen);
+    /// <summary>
+    /// Gets the values encoded in this record.
+    /// </summary>
+    /// <remarks>For data fidelity, the data is returned in byte form - typically
+    /// the encoded data is actually ASCII or UTF-8.</remarks>
+    public Dictionary<string, byte[]> Values { get; }
 
-                StoreValue(valueBinary);
-            }
+    private void StoreValue(byte[] value)
+    {
+        var i = 0;
+        while (i < value.Length && value[i] != '=')
+        {
+            ++i;
         }
 
-        /// <summary>
-        /// Gets the values encoded in this record.
-        /// </summary>
-        /// <remarks>For data fidelity, the data is returned in byte form - typically
-        /// the encoded data is actually ASCII or UTF-8.</remarks>
-        public Dictionary<string, byte[]> Values { get; }
-
-        private void StoreValue(byte[] value)
+        if (i < value.Length)
         {
-            int i = 0;
-            while (i < value.Length && value[i] != '=')
-            {
-                ++i;
-            }
-
-            if (i < value.Length)
-            {
-                byte[] data = new byte[value.Length - (i + 1)];
-                Array.Copy(value, i + 1, data, 0, data.Length);
-                Values[Encoding.ASCII.GetString(value, 0, i)] = data;
-            }
-            else
-            {
-                Values[Encoding.ASCII.GetString(value)] = null;
-            }
+            var data = new byte[value.Length - (i + 1)];
+            Array.Copy(value, i + 1, data, 0, data.Length);
+            Values[Encoding.ASCII.GetString(value, 0, i)] = data;
+        }
+        else
+        {
+            Values[Encoding.ASCII.GetString(value)] = null;
         }
     }
 }

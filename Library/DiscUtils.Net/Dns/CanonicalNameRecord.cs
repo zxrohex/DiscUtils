@@ -22,27 +22,26 @@
 
 using System;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Represents a DNS CNAME record.
+/// </summary>
+public sealed class CanonicalNameRecord : ResourceRecord
 {
-    /// <summary>
-    /// Represents a DNS CNAME record.
-    /// </summary>
-    public sealed class CanonicalNameRecord : ResourceRecord
+    internal CanonicalNameRecord(string name, RecordType type, RecordClass rClass, DateTime expiry, PacketReader reader)
+        : base(name, type, rClass, expiry)
     {
-        internal CanonicalNameRecord(string name, RecordType type, RecordClass rClass, DateTime expiry, PacketReader reader)
-            : base(name, type, rClass, expiry)
-        {
-            ushort dataLen = reader.ReadUShort();
-            int pos = reader.Position;
+        var dataLen = reader.ReadUShort();
+        var pos = reader.Position;
 
-            CanonicalName = reader.ReadName();
+        CanonicalName = reader.ReadName();
 
-            reader.Position = pos + dataLen;
-        }
-
-        /// <summary>
-        /// Gets the canonical name.
-        /// </summary>
-        public string CanonicalName { get; }
+        reader.Position = pos + dataLen;
     }
+
+    /// <summary>
+    /// Gets the canonical name.
+    /// </summary>
+    public string CanonicalName { get; }
 }

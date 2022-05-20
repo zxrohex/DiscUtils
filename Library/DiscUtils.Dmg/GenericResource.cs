@@ -22,16 +22,15 @@
 
 using System.Collections.Generic;
 
-namespace DiscUtils.Dmg
-{
-    internal class GenericResource : Resource
-    {
-        internal GenericResource(string type, Dictionary<string, object> parts)
-            : base(type, parts)
-        {
-            Data = parts["Data"] as byte[];
-        }
+namespace DiscUtils.Dmg;
 
-        public byte[] Data { get; set; }
+internal class GenericResource : Resource
+{
+    internal GenericResource(string type, Dictionary<string, object> parts)
+        : base(type, parts)
+    {
+        Data = parts["Data"] as byte[];
     }
+
+    public byte[] Data { get; set; }
 }

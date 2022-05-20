@@ -26,142 +26,140 @@ using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class File : IVfsFile
 {
-    internal class File : IVfsFile
+    protected uint _blockSize;
+    protected IBuffer _content;
+    protected UdfContext _context;
+    protected FileEntry _fileEntry;
+    protected Partition _partition;
+
+    public File(UdfContext context, Partition partition, FileEntry fileEntry, uint blockSize)
     {
-        protected uint _blockSize;
-        protected IBuffer _content;
-        protected UdfContext _context;
-        protected FileEntry _fileEntry;
-        protected Partition _partition;
+        _context = context;
+        _partition = partition;
+        _fileEntry = fileEntry;
+        _blockSize = blockSize;
+    }
 
-        public File(UdfContext context, Partition partition, FileEntry fileEntry, uint blockSize)
-        {
-            _context = context;
-            _partition = partition;
-            _fileEntry = fileEntry;
-            _blockSize = blockSize;
-        }
+    public List<ExtendedAttributeRecord> ExtendedAttributes
+    {
+        get { return _fileEntry.ExtendedAttributes; }
+    }
 
-        public List<ExtendedAttributeRecord> ExtendedAttributes
+    public IBuffer FileContent
+    {
+        get
         {
-            get { return _fileEntry.ExtendedAttributes; }
-        }
-
-        public IBuffer FileContent
-        {
-            get
+            if (_content != null)
             {
-                if (_content != null)
-                {
-                    return _content;
-                }
-
-                _content = new FileContentBuffer(_context, _partition, _fileEntry, _blockSize);
                 return _content;
             }
-        }
 
-        public DateTime LastAccessTimeUtc
-        {
-            get { return _fileEntry.AccessTime; }
-            set { throw new NotSupportedException(); }
+            _content = new FileContentBuffer(_context, _partition, _fileEntry, _blockSize);
+            return _content;
         }
+    }
 
-        public DateTime LastWriteTimeUtc
-        {
-            get { return _fileEntry.ModificationTime; }
-            set { throw new NotSupportedException(); }
-        }
+    public DateTime LastAccessTimeUtc
+    {
+        get { return _fileEntry.AccessTime; }
+        set { throw new NotSupportedException(); }
+    }
 
-        public DateTime CreationTimeUtc
+    public DateTime LastWriteTimeUtc
+    {
+        get { return _fileEntry.ModificationTime; }
+        set { throw new NotSupportedException(); }
+    }
+
+    public DateTime CreationTimeUtc
+    {
+        get
         {
-            get
+            if (_fileEntry is ExtendedFileEntry efe)
             {
-                ExtendedFileEntry efe = _fileEntry as ExtendedFileEntry;
-                if (efe != null)
-                {
-                    return efe.CreationTime;
-                }
-                return LastWriteTimeUtc;
+                return efe.CreationTime;
+            }
+            return LastWriteTimeUtc;
+        }
+
+        set { throw new NotSupportedException(); }
+    }
+
+    public FileAttributes FileAttributes
+    {
+        get
+        {
+            FileAttributes attribs = 0;
+            var flags = _fileEntry.InformationControlBlock.Flags;
+
+            if (_fileEntry.InformationControlBlock.FileType == FileType.Directory)
+            {
+                attribs |= FileAttributes.Directory;
+            }
+            else if (_fileEntry.InformationControlBlock.FileType == FileType.Fifo
+                     || _fileEntry.InformationControlBlock.FileType == FileType.Socket
+                     || _fileEntry.InformationControlBlock.FileType == FileType.SpecialBlockDevice
+                     || _fileEntry.InformationControlBlock.FileType == FileType.SpecialCharacterDevice
+                     || _fileEntry.InformationControlBlock.FileType == FileType.TerminalEntry)
+            {
+                attribs |= FileAttributes.Device;
             }
 
-            set { throw new NotSupportedException(); }
-        }
-
-        public FileAttributes FileAttributes
-        {
-            get
+            if ((flags & InformationControlBlockFlags.Archive) != 0)
             {
-                FileAttributes attribs = 0;
-                InformationControlBlockFlags flags = _fileEntry.InformationControlBlock.Flags;
-
-                if (_fileEntry.InformationControlBlock.FileType == FileType.Directory)
-                {
-                    attribs |= FileAttributes.Directory;
-                }
-                else if (_fileEntry.InformationControlBlock.FileType == FileType.Fifo
-                         || _fileEntry.InformationControlBlock.FileType == FileType.Socket
-                         || _fileEntry.InformationControlBlock.FileType == FileType.SpecialBlockDevice
-                         || _fileEntry.InformationControlBlock.FileType == FileType.SpecialCharacterDevice
-                         || _fileEntry.InformationControlBlock.FileType == FileType.TerminalEntry)
-                {
-                    attribs |= FileAttributes.Device;
-                }
-
-                if ((flags & InformationControlBlockFlags.Archive) != 0)
-                {
-                    attribs |= FileAttributes.Archive;
-                }
-
-                if ((flags & InformationControlBlockFlags.System) != 0)
-                {
-                    attribs |= FileAttributes.System | FileAttributes.Hidden;
-                }
-
-                if ((int)attribs == 0)
-                {
-                    attribs = FileAttributes.Normal;
-                }
-
-                return attribs;
+                attribs |= FileAttributes.Archive;
             }
 
-            set { throw new NotSupportedException(); }
-        }
-
-        public long FileLength
-        {
-            get { return (long)_fileEntry.InformationLength; }
-        }
-
-        public static File FromDescriptor(UdfContext context, LongAllocationDescriptor icb)
-        {
-            LogicalPartition partition = context.LogicalPartitions[icb.ExtentLocation.Partition];
-
-            byte[] rootDirData = UdfUtilities.ReadExtent(context, icb);
-            DescriptorTag rootDirTag = EndianUtilities.ToStruct<DescriptorTag>(rootDirData, 0);
-
-            if (rootDirTag.TagIdentifier == TagIdentifier.ExtendedFileEntry)
+            if ((flags & InformationControlBlockFlags.System) != 0)
             {
-                ExtendedFileEntry fileEntry = EndianUtilities.ToStruct<ExtendedFileEntry>(rootDirData, 0);
-                if (fileEntry.InformationControlBlock.FileType == FileType.Directory)
-                {
-                    return new Directory(context, partition, fileEntry);
-                }
-                return new File(context, partition, fileEntry, (uint)partition.LogicalBlockSize);
+                attribs |= FileAttributes.System | FileAttributes.Hidden;
             }
-            if (rootDirTag.TagIdentifier == TagIdentifier.FileEntry)
+
+            if ((int)attribs == 0)
             {
-                FileEntry fileEntry = EndianUtilities.ToStruct<FileEntry>(rootDirData, 0);
-                if (fileEntry.InformationControlBlock.FileType == FileType.Directory)
-                {
-                    return new Directory(context, partition, fileEntry);
-                }
-                return new File(context, partition, fileEntry, (uint)partition.LogicalBlockSize);
+                attribs = FileAttributes.Normal;
             }
-            throw new NotImplementedException("Only ExtendedFileEntries implemented");
+
+            return attribs;
         }
+
+        set { throw new NotSupportedException(); }
+    }
+
+    public long FileLength
+    {
+        get { return (long)_fileEntry.InformationLength; }
+    }
+
+    public static File FromDescriptor(UdfContext context, LongAllocationDescriptor icb)
+    {
+        var partition = context.LogicalPartitions[icb.ExtentLocation.Partition];
+
+        var rootDirData = UdfUtilities.ReadExtent(context, icb);
+        var rootDirTag = EndianUtilities.ToStruct<DescriptorTag>(rootDirData, 0);
+
+        if (rootDirTag.TagIdentifier == TagIdentifier.ExtendedFileEntry)
+        {
+            var fileEntry = EndianUtilities.ToStruct<ExtendedFileEntry>(rootDirData, 0);
+            if (fileEntry.InformationControlBlock.FileType == FileType.Directory)
+            {
+                return new Directory(context, partition, fileEntry);
+            }
+            return new File(context, partition, fileEntry, (uint)partition.LogicalBlockSize);
+        }
+        if (rootDirTag.TagIdentifier == TagIdentifier.FileEntry)
+        {
+            var fileEntry = EndianUtilities.ToStruct<FileEntry>(rootDirData, 0);
+            if (fileEntry.InformationControlBlock.FileType == FileType.Directory)
+            {
+                return new Directory(context, partition, fileEntry);
+            }
+            return new File(context, partition, fileEntry, (uint)partition.LogicalBlockSize);
+        }
+        throw new NotImplementedException("Only ExtendedFileEntries implemented");
     }
 }

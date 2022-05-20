@@ -27,281 +27,280 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal sealed class NtfsFileStream : SparseStream
 {
-    internal sealed class NtfsFileStream : SparseStream
+    private SparseStream _baseStream;
+    private readonly DirectoryEntry _entry;
+
+    private readonly File _file;
+
+    private bool _isDirty;
+
+    public NtfsFileStream(NtfsFileSystem fileSystem, DirectoryEntry entry, AttributeType attrType, string attrName,
+                          FileAccess access)
     {
-        private SparseStream _baseStream;
-        private readonly DirectoryEntry _entry;
+        _entry = entry;
 
-        private readonly File _file;
+        _file = fileSystem.GetFile(entry.Reference);
+        _baseStream = _file.OpenStream(attrType, attrName, access);
+    }
 
-        private bool _isDirty;
-
-        public NtfsFileStream(NtfsFileSystem fileSystem, DirectoryEntry entry, AttributeType attrType, string attrName,
-                              FileAccess access)
+    public override bool CanRead
+    {
+        get
         {
-            _entry = entry;
+            AssertOpen();
+            return _baseStream.CanRead;
+        }
+    }
 
-            _file = fileSystem.GetFile(entry.Reference);
-            _baseStream = _file.OpenStream(attrType, attrName, access);
+    public override bool CanSeek
+    {
+        get
+        {
+            AssertOpen();
+            return _baseStream.CanSeek;
+        }
+    }
+
+    public override bool CanWrite
+    {
+        get
+        {
+            AssertOpen();
+            return _baseStream.CanWrite;
+        }
+    }
+
+    public override IEnumerable<StreamExtent> Extents
+    {
+        get
+        {
+            AssertOpen();
+            return _baseStream.Extents;
+        }
+    }
+
+    public override long Length
+    {
+        get
+        {
+            AssertOpen();
+            return _baseStream.Length;
+        }
+    }
+
+    public override long Position
+    {
+        get
+        {
+            AssertOpen();
+            return _baseStream.Position;
         }
 
-        public override bool CanRead
-        {
-            get
-            {
-                AssertOpen();
-                return _baseStream.CanRead;
-            }
-        }
-
-        public override bool CanSeek
-        {
-            get
-            {
-                AssertOpen();
-                return _baseStream.CanSeek;
-            }
-        }
-
-        public override bool CanWrite
-        {
-            get
-            {
-                AssertOpen();
-                return _baseStream.CanWrite;
-            }
-        }
-
-        public override IEnumerable<StreamExtent> Extents
-        {
-            get
-            {
-                AssertOpen();
-                return _baseStream.Extents;
-            }
-        }
-
-        public override long Length
-        {
-            get
-            {
-                AssertOpen();
-                return _baseStream.Length;
-            }
-        }
-
-        public override long Position
-        {
-            get
-            {
-                AssertOpen();
-                return _baseStream.Position;
-            }
-
-            set
-            {
-                AssertOpen();
-                using (new NtfsTransaction())
-                {
-                    _baseStream.Position = value;
-                }
-            }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (_baseStream == null)
-            {
-                base.Dispose(disposing);
-                return;
-            }
-
-            using (new NtfsTransaction())
-            {
-                base.Dispose(disposing);
-                _baseStream.Dispose();
-
-                UpdateMetadata();
-
-                _baseStream = null;
-            }
-        }
-
-        public override void Flush()
+        set
         {
             AssertOpen();
             using (new NtfsTransaction())
             {
-                _baseStream.Flush();
-
-                UpdateMetadata();
+                _baseStream.Position = value;
             }
         }
+    }
 
-        public override int Read(byte[] buffer, int offset, int count)
+    protected override void Dispose(bool disposing)
+    {
+        if (_baseStream == null)
         {
-            AssertOpen();
-            StreamUtilities.AssertBufferParameters(buffer, offset, count);
-
-            using (new NtfsTransaction())
-            {
-                return _baseStream.Read(buffer, offset, count);
-            }
+            base.Dispose(disposing);
+            return;
         }
+
+        using (new NtfsTransaction())
+        {
+            base.Dispose(disposing);
+            _baseStream.Dispose();
+
+            UpdateMetadata();
+
+            _baseStream = null;
+        }
+    }
+
+    public override void Flush()
+    {
+        AssertOpen();
+        using (new NtfsTransaction())
+        {
+            _baseStream.Flush();
+
+            UpdateMetadata();
+        }
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        AssertOpen();
+        StreamUtilities.AssertBufferParameters(buffer, offset, count);
+
+        using (new NtfsTransaction())
+        {
+            return _baseStream.Read(buffer, offset, count);
+        }
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            AssertOpen();
-            StreamUtilities.AssertBufferParameters(buffer, offset, count);
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        AssertOpen();
+        StreamUtilities.AssertBufferParameters(buffer, offset, count);
 
-            using (new NtfsTransaction())
-            {
-                return await _baseStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-            }
+        using (new NtfsTransaction())
+        {
+            return await _baseStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         }
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override int Read(Span<byte> buffer)
+    public override int Read(Span<byte> buffer)
+    {
+        AssertOpen();
+
+        using (new NtfsTransaction())
         {
-            AssertOpen();
-
-            using (new NtfsTransaction())
-            {
-                return _baseStream.Read(buffer);
-            }
+            return _baseStream.Read(buffer);
         }
+    }
 
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        AssertOpen();
+
+        using (new NtfsTransaction())
         {
-            AssertOpen();
-
-            using (new NtfsTransaction())
-            {
-                return await _baseStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-            }
+            return await _baseStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
+    }
 #endif
 
-        public override long Seek(long offset, SeekOrigin origin)
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        AssertOpen();
+        using (new NtfsTransaction())
         {
-            AssertOpen();
-            using (new NtfsTransaction())
-            {
-                return _baseStream.Seek(offset, origin);
-            }
+            return _baseStream.Seek(offset, origin);
         }
+    }
 
-        public override void SetLength(long value)
+    public override void SetLength(long value)
+    {
+        AssertOpen();
+        using (new NtfsTransaction())
         {
-            AssertOpen();
-            using (new NtfsTransaction())
-            {
-                if (value != Length)
-                {
-                    _isDirty = true;
-                    _baseStream.SetLength(value);
-                }
-            }
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            AssertOpen();
-            StreamUtilities.AssertBufferParameters(buffer, offset, count);
-
-            using (new NtfsTransaction())
+            if (value != Length)
             {
                 _isDirty = true;
-                _baseStream.Write(buffer, offset, count);
+                _baseStream.SetLength(value);
             }
         }
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        AssertOpen();
+        StreamUtilities.AssertBufferParameters(buffer, offset, count);
+
+        using (new NtfsTransaction())
+        {
+            _isDirty = true;
+            _baseStream.Write(buffer, offset, count);
+        }
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            AssertOpen();
-            StreamUtilities.AssertBufferParameters(buffer, offset, count);
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        AssertOpen();
+        StreamUtilities.AssertBufferParameters(buffer, offset, count);
 
-            using (new NtfsTransaction())
-            {
-                _isDirty = true;
-                await _baseStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-            }
+        using (new NtfsTransaction())
+        {
+            _isDirty = true;
+            await _baseStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         }
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override void Write(ReadOnlySpan<byte> buffer)
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        AssertOpen();
+
+        using (new NtfsTransaction())
         {
-            AssertOpen();
-
-            using (new NtfsTransaction())
-            {
-                _isDirty = true;
-                _baseStream.Write(buffer);
-            }
+            _isDirty = true;
+            _baseStream.Write(buffer);
         }
+    }
 
-        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        AssertOpen();
+
+        using (new NtfsTransaction())
         {
-            AssertOpen();
-
-            using (new NtfsTransaction())
-            {
-                _isDirty = true;
-                await _baseStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
-            }
+            _isDirty = true;
+            await _baseStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
+    }
 #endif
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override Task FlushAsync(CancellationToken cancellationToken) =>
-            _baseStream.FlushAsync(cancellationToken);
+    public override Task FlushAsync(CancellationToken cancellationToken) =>
+        _baseStream.FlushAsync(cancellationToken);
 #endif
 
-        public override void Clear(int count)
+    public override void Clear(int count)
+    {
+        AssertOpen();
+        using (new NtfsTransaction())
         {
-            AssertOpen();
-            using (new NtfsTransaction())
-            {
-                _isDirty = true;
-                _baseStream.Clear(count);
-            }
+            _isDirty = true;
+            _baseStream.Clear(count);
         }
+    }
 
-        private void UpdateMetadata()
+    private void UpdateMetadata()
+    {
+        if (!_file.Context.ReadOnly)
         {
-            if (!_file.Context.ReadOnly)
+            // Update the standard information attribute - so it reflects the actual file state
+            if (_isDirty)
             {
-                // Update the standard information attribute - so it reflects the actual file state
-                if (_isDirty)
-                {
-                    _file.Modified();
-                }
-                else
-                {
-                    _file.Accessed();
-                }
-
-                // Update the directory entry used to open the file, so it's accurate
-                _entry.UpdateFrom(_file);
-
-                // Write attribute changes back to the Master File Table
-                _file.UpdateRecordInMft();
-                _isDirty = false;
+                _file.Modified();
             }
+            else
+            {
+                _file.Accessed();
+            }
+
+            // Update the directory entry used to open the file, so it's accurate
+            _entry.UpdateFrom(_file);
+
+            // Write attribute changes back to the Master File Table
+            _file.UpdateRecordInMft();
+            _isDirty = false;
         }
+    }
 
-        private void AssertOpen()
+    private void AssertOpen()
+    {
+        if (_baseStream == null)
         {
-            if (_baseStream == null)
-            {
-                throw new ObjectDisposedException(_entry.Details.FileName, "Attempt to use closed stream");
-            }
+            throw new ObjectDisposedException(_entry.Details.FileName, "Attempt to use closed stream");
         }
     }
 }

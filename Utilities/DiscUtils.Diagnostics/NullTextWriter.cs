@@ -24,23 +24,22 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace DiscUtils.Diagnostics
+namespace DiscUtils.Diagnostics;
+
+internal sealed class NullTextWriter : TextWriter
 {
-    internal sealed class NullTextWriter : TextWriter
+    public NullTextWriter()
+        : base(CultureInfo.InvariantCulture)
     {
-        public NullTextWriter()
-            : base(CultureInfo.InvariantCulture)
-        {
-        }
+    }
 
-        public override Encoding Encoding
-        {
-            get { return Encoding.Unicode; }
-        }
+    public override Encoding Encoding
+    {
+        get { return Encoding.Unicode; }
+    }
 
-        public override void Write(char value)
-        {
-            
-        }
+    public override void Write(char value)
+    {
+        
     }
 }

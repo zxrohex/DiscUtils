@@ -21,79 +21,78 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+using System.IO;
+using DiscUtils.Vfs;
+using DiscUtils.Internal;
+
+internal class DirEntry : VfsDirEntry
 {
-    using System;
-    using System.IO;
-    using DiscUtils.Vfs;
-    using DiscUtils.Internal;
+    private readonly IDirectoryEntry _entry;
+    private readonly Context _context;
+    private string _name;
 
-    internal class DirEntry : VfsDirEntry
+    internal Directory CachedDirectory { get; set; }
+
+    private DirEntry(Context context)
     {
-        private readonly IDirectoryEntry _entry;
-        private readonly Context _context;
-        private string _name;
+        _context = context;
+    }
 
-        internal Directory CachedDirectory { get; set; }
+    public DirEntry(IDirectoryEntry entry, Context context):this(context)
+    {
+        _entry = entry;
+        _name = _context.Options.FileNameEncoding.GetString(_entry.Name);
+        Inode = _context.GetInode(_entry.Inode);
+    }
+    public Inode Inode { get; private set; }
 
-        private DirEntry(Context context)
-        {
-            _context = context;
-        }
+    public override bool IsDirectory
+    {
+        get { return Inode.FileType == UnixFileType.Directory; }
+    }
 
-        public DirEntry(IDirectoryEntry entry, Context context):this(context)
-        {
-            _entry = entry;
-            _name = _context.Options.FileNameEncoding.GetString(_entry.Name);
-            Inode = _context.GetInode(_entry.Inode);
-        }
-        public Inode Inode { get; private set; }
+    public override bool IsSymlink
+    {
+        get { return Inode.FileType == UnixFileType.Link; }
+    }
 
-        public override bool IsDirectory
-        {
-            get { return Inode.FileType == UnixFileType.Directory; }
-        }
+    public override string FileName { get { return _name; } }
 
-        public override bool IsSymlink
-        {
-            get { return Inode.FileType == UnixFileType.Link; }
-        }
+    public override bool HasVfsTimeInfo
+    {
+        get { return true; }
+    }
 
-        public override string FileName { get { return _name; } }
+    public override DateTime LastAccessTimeUtc
+    {
+        get { return Inode.AccessTime; }
+    }
 
-        public override bool HasVfsTimeInfo
-        {
-            get { return true; }
-        }
+    public override DateTime LastWriteTimeUtc
+    {
+        get { return Inode.ModificationTime; }
+    }
 
-        public override DateTime LastAccessTimeUtc
-        {
-            get { return Inode.AccessTime; }
-        }
+    public override DateTime CreationTimeUtc
+    {
+        get { return Inode.CreationTime; }
+    }
 
-        public override DateTime LastWriteTimeUtc
-        {
-            get { return Inode.ModificationTime; }
-        }
+    public override bool HasVfsFileAttributes
+    {
+        get { return true; }
+    }
 
-        public override DateTime CreationTimeUtc
-        {
-            get { return Inode.CreationTime; }
-        }
+    public override FileAttributes FileAttributes
+    {
+        get { return Utilities.FileAttributesFromUnixFileType(Inode.FileType); ; }
+    }
 
-        public override bool HasVfsFileAttributes
-        {
-            get { return true; }
-        }
-
-        public override FileAttributes FileAttributes
-        {
-            get { return Utilities.FileAttributesFromUnixFileType(Inode.FileType); ; }
-        }
-
-        public override long UniqueCacheId
-        {
-            get { return ((long)Inode.AllocationGroup) << 32 | Inode.RelativeInodeNumber; }
-        }
+    public override long UniqueCacheId
+    {
+        get { return ((long)Inode.AllocationGroup) << 32 | Inode.RelativeInodeNumber; }
     }
 }

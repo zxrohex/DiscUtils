@@ -23,55 +23,54 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Wim
+namespace DiscUtils.Wim;
+
+internal class FileHeader
 {
-    internal class FileHeader
+    public uint BootIndex;
+    public ShortResourceHeader BootMetaData;
+    public int CompressionSize;
+    public FileFlags Flags;
+    public uint HeaderSize;
+    public uint ImageCount;
+    public ShortResourceHeader IntegrityHeader;
+    public ShortResourceHeader OffsetTableHeader;
+    public ushort PartNumber;
+    public string Tag;
+    public ushort TotalParts;
+    public uint Version;
+    public Guid WimGuid;
+    public ShortResourceHeader XmlDataHeader;
+
+    public void Read(byte[] buffer, int offset)
     {
-        public uint BootIndex;
-        public ShortResourceHeader BootMetaData;
-        public int CompressionSize;
-        public FileFlags Flags;
-        public uint HeaderSize;
-        public uint ImageCount;
-        public ShortResourceHeader IntegrityHeader;
-        public ShortResourceHeader OffsetTableHeader;
-        public ushort PartNumber;
-        public string Tag;
-        public ushort TotalParts;
-        public uint Version;
-        public Guid WimGuid;
-        public ShortResourceHeader XmlDataHeader;
+        Tag = EndianUtilities.BytesToString(buffer, offset, 8);
+        HeaderSize = EndianUtilities.ToUInt32LittleEndian(buffer, 8);
+        Version = EndianUtilities.ToUInt32LittleEndian(buffer, 12);
+        Flags = (FileFlags)EndianUtilities.ToUInt32LittleEndian(buffer, 16);
+        CompressionSize = EndianUtilities.ToInt32LittleEndian(buffer, 20);
+        WimGuid = EndianUtilities.ToGuidLittleEndian(buffer, 24);
+        PartNumber = EndianUtilities.ToUInt16LittleEndian(buffer, 40);
+        TotalParts = EndianUtilities.ToUInt16LittleEndian(buffer, 42);
+        ImageCount = EndianUtilities.ToUInt32LittleEndian(buffer, 44);
 
-        public void Read(byte[] buffer, int offset)
-        {
-            Tag = EndianUtilities.BytesToString(buffer, offset, 8);
-            HeaderSize = EndianUtilities.ToUInt32LittleEndian(buffer, 8);
-            Version = EndianUtilities.ToUInt32LittleEndian(buffer, 12);
-            Flags = (FileFlags)EndianUtilities.ToUInt32LittleEndian(buffer, 16);
-            CompressionSize = EndianUtilities.ToInt32LittleEndian(buffer, 20);
-            WimGuid = EndianUtilities.ToGuidLittleEndian(buffer, 24);
-            PartNumber = EndianUtilities.ToUInt16LittleEndian(buffer, 40);
-            TotalParts = EndianUtilities.ToUInt16LittleEndian(buffer, 42);
-            ImageCount = EndianUtilities.ToUInt32LittleEndian(buffer, 44);
+        OffsetTableHeader = new ShortResourceHeader();
+        OffsetTableHeader.Read(buffer, 48);
 
-            OffsetTableHeader = new ShortResourceHeader();
-            OffsetTableHeader.Read(buffer, 48);
+        XmlDataHeader = new ShortResourceHeader();
+        XmlDataHeader.Read(buffer, 72);
 
-            XmlDataHeader = new ShortResourceHeader();
-            XmlDataHeader.Read(buffer, 72);
+        BootMetaData = new ShortResourceHeader();
+        BootMetaData.Read(buffer, 96);
 
-            BootMetaData = new ShortResourceHeader();
-            BootMetaData.Read(buffer, 96);
+        BootIndex = EndianUtilities.ToUInt32LittleEndian(buffer, 120);
 
-            BootIndex = EndianUtilities.ToUInt32LittleEndian(buffer, 120);
+        IntegrityHeader = new ShortResourceHeader();
+        IntegrityHeader.Read(buffer, 124);
+    }
 
-            IntegrityHeader = new ShortResourceHeader();
-            IntegrityHeader.Read(buffer, 124);
-        }
-
-        public bool IsValid()
-        {
-            return Tag == "MSWIM\0\0\0" && HeaderSize >= 148;
-        }
+    public bool IsValid()
+    {
+        return Tag == "MSWIM\0\0\0" && HeaderSize >= 148;
     }
 }

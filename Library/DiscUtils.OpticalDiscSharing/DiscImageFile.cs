@@ -24,66 +24,65 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.OpticalDiscSharing
+namespace DiscUtils.OpticalDiscSharing;
+
+internal sealed class DiscImageFile : VirtualDiskLayer
 {
-    internal sealed class DiscImageFile : VirtualDiskLayer
+    internal const int Mode1SectorSize = 2048;
+
+    internal DiscImageFile(Uri uri, string userName, string password)
     {
-        internal const int Mode1SectorSize = 2048;
+        Content = new BufferStream(new DiscContentBuffer(uri, userName, password), FileAccess.Read);
 
-        internal DiscImageFile(Uri uri, string userName, string password)
+        var cacheSettings = new BlockCacheSettings
         {
-            Content = new BufferStream(new DiscContentBuffer(uri, userName, password), FileAccess.Read);
+            BlockSize = (int)(32 * Sizes.OneKiB),
+            OptimumReadSize = (int)(128 * Sizes.OneKiB)
+        };
 
-            BlockCacheSettings cacheSettings = new BlockCacheSettings
-            {
-                BlockSize = (int)(32 * Sizes.OneKiB),
-                OptimumReadSize = (int)(128 * Sizes.OneKiB)
-            };
+        Content = new BlockCacheStream(Content, Ownership.Dispose);
+    }
 
-            Content = new BlockCacheStream(Content, Ownership.Dispose);
+    /// <summary>
+    /// Gets a value indicating whether the layer data is opened for writing.
+    /// </summary>
+    public override bool CanWrite => false;
+
+    public override long Capacity
+    {
+        get { return Content.Length; }
+    }
+
+    public SparseStream Content { get; }
+
+    public override Geometry Geometry
+    {
+        // Note external sector size is always 2048
+        get { return new Geometry(1, 1, 1, Mode1SectorSize); }
+    }
+
+    public override bool IsSparse
+    {
+        get { return false; }
+    }
+
+    public override bool NeedsParent
+    {
+        get { return false; }
+    }
+
+    public override FileLocator RelativeFileLocator
+    {
+        get { return null; }
+    }
+
+    public override SparseStream OpenContent(SparseStream parent, Ownership ownsParent)
+    {
+        if (ownsParent == Ownership.Dispose && parent != null)
+        {
+            parent.Dispose();
         }
 
-        /// <summary>
-        /// Gets a value indicating whether the layer data is opened for writing.
-        /// </summary>
-        public override bool CanWrite => false;
-
-        public override long Capacity
-        {
-            get { return Content.Length; }
-        }
-
-        public SparseStream Content { get; }
-
-        public override Geometry Geometry
-        {
-            // Note external sector size is always 2048
-            get { return new Geometry(1, 1, 1, Mode1SectorSize); }
-        }
-
-        public override bool IsSparse
-        {
-            get { return false; }
-        }
-
-        public override bool NeedsParent
-        {
-            get { return false; }
-        }
-
-        public override FileLocator RelativeFileLocator
-        {
-            get { return null; }
-        }
-
-        public override SparseStream OpenContent(SparseStream parent, Ownership ownsParent)
-        {
-            if (ownsParent == Ownership.Dispose && parent != null)
-            {
-                parent.Dispose();
-            }
-
-            return SparseStream.FromStream(Content, Ownership.None);
-        }
+        return SparseStream.FromStream(Content, Ownership.None);
     }
 }

@@ -23,57 +23,56 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal class RegularInode : Inode
 {
-    internal class RegularInode : Inode
+    private uint _fileSize;
+    public uint FragmentKey;
+    public uint FragmentOffset;
+    public uint StartBlock;
+
+    public override long FileSize
     {
-        private uint _fileSize;
-        public uint FragmentKey;
-        public uint FragmentOffset;
-        public uint StartBlock;
+        get { return _fileSize; }
 
-        public override long FileSize
+        set
         {
-            get { return _fileSize; }
-
-            set
+            if (value > uint.MaxValue)
             {
-                if (value > uint.MaxValue)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value), value,
-                        "File size greater than " + uint.MaxValue);
-                }
-
-                _fileSize = (uint)value;
+                throw new ArgumentOutOfRangeException(nameof(value), value,
+                    "File size greater than " + uint.MaxValue);
             }
+
+            _fileSize = (uint)value;
         }
+    }
 
-        public override int Size
-        {
-            get { return 32; }
-        }
+    public override int Size
+    {
+        get { return 32; }
+    }
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            base.ReadFrom(buffer, offset);
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        base.ReadFrom(buffer, offset);
 
-            NumLinks = 1;
-            StartBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-            FragmentKey = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
-            FragmentOffset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 24);
-            _fileSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 28);
+        NumLinks = 1;
+        StartBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
+        FragmentKey = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
+        FragmentOffset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 24);
+        _fileSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 28);
 
-            return 32;
-        }
+        return 32;
+    }
 
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            base.WriteTo(buffer, offset);
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        base.WriteTo(buffer, offset);
 
-            EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer, offset + 16);
-            EndianUtilities.WriteBytesLittleEndian(FragmentKey, buffer, offset + 20);
-            EndianUtilities.WriteBytesLittleEndian(FragmentOffset, buffer, offset + 24);
-            EndianUtilities.WriteBytesLittleEndian(_fileSize, buffer, offset + 28);
-        }
+        EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer, offset + 16);
+        EndianUtilities.WriteBytesLittleEndian(FragmentKey, buffer, offset + 20);
+        EndianUtilities.WriteBytesLittleEndian(FragmentOffset, buffer, offset + 24);
+        EndianUtilities.WriteBytesLittleEndian(_fileSize, buffer, offset + 28);
     }
 }

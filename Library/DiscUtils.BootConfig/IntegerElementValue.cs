@@ -24,41 +24,37 @@ using System;
 using System.Globalization;
 using DiscUtils.Streams;
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class IntegerElementValue : ElementValue
 {
-    internal class IntegerElementValue : ElementValue
+    private readonly ulong _value;
+
+    public IntegerElementValue(byte[] value)
     {
-        private readonly ulong _value;
+        // Actual bytes stored may be less than 8
+        Span<byte> buffer = stackalloc byte[8];
+        value.AsSpan().CopyTo(buffer);
 
-        public IntegerElementValue(byte[] value)
-        {
-            // Actual bytes stored may be less than 8
-            byte[] buffer = new byte[8];
-            Array.Copy(value, buffer, value.Length);
+        _value = EndianUtilities.ToUInt64LittleEndian(buffer);
+    }
 
-            _value = EndianUtilities.ToUInt64LittleEndian(buffer, 0);
-        }
+    public IntegerElementValue(ulong value)
+    {
+        _value = value;
+    }
 
-        public IntegerElementValue(ulong value)
-        {
-            _value = value;
-        }
+    public override ElementFormat Format
+    {
+        get { return ElementFormat.Integer; }
+    }
 
-        public override ElementFormat Format
-        {
-            get { return ElementFormat.Integer; }
-        }
+    public override string ToString() => _value.ToString(NumberFormatInfo.InvariantInfo);
 
-        public override string ToString()
-        {
-            return string.Format(CultureInfo.InvariantCulture, "{0}", _value);
-        }
-
-        internal byte[] GetBytes()
-        {
-            byte[] bytes = new byte[8];
-            EndianUtilities.WriteBytesLittleEndian(_value, bytes, 0);
-            return bytes;
-        }
+    internal byte[] GetBytes()
+    {
+        var bytes = new byte[8];
+        EndianUtilities.WriteBytesLittleEndian(_value, bytes, 0);
+        return bytes;
     }
 }

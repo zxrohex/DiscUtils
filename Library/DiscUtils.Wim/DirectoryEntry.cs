@@ -27,140 +27,140 @@ using System.Text;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Wim
+namespace DiscUtils.Wim;
+
+internal class DirectoryEntry
 {
-    internal class DirectoryEntry
+    public Dictionary<string, AlternateStreamEntry> AlternateStreams;
+    public FileAttributes Attributes;
+    public long CreationTime;
+    public string FileName;
+    public uint HardLink;
+    public byte[] Hash;
+    public long LastAccessTime;
+    public long LastWriteTime;
+    public long Length;
+    public uint ReparseTag;
+    public uint SecurityId;
+    public string ShortName;
+    public ushort StreamCount;
+    public long SubdirOffset;
+
+    public string SearchName
     {
-        public Dictionary<string, AlternateStreamEntry> AlternateStreams;
-        public FileAttributes Attributes;
-        public long CreationTime;
-        public string FileName;
-        public uint HardLink;
-        public byte[] Hash;
-        public long LastAccessTime;
-        public long LastWriteTime;
-        public long Length;
-        public uint ReparseTag;
-        public uint SecurityId;
-        public string ShortName;
-        public ushort StreamCount;
-        public long SubdirOffset;
-
-        public string SearchName
+        get
         {
-            get
+            if (FileName.IndexOf('.') == -1)
             {
-                if (FileName.IndexOf('.') == -1)
-                {
-                    return FileName + ".";
-                }
-                return FileName;
+                return FileName + ".";
             }
+            return FileName;
+        }
+    }
+
+    public static DirectoryEntry ReadFrom(DataReader reader)
+    {
+        var startPos = reader.Position;
+
+        var length = reader.ReadInt64();
+        if (length == 0)
+        {
+            return null;
         }
 
-        public static DirectoryEntry ReadFrom(DataReader reader)
+        var result = new DirectoryEntry
         {
-            long startPos = reader.Position;
+            Length = length,
+            Attributes = (FileAttributes)reader.ReadUInt32(),
+            SecurityId = reader.ReadUInt32(),
+            SubdirOffset = reader.ReadInt64()
+        };
+        reader.Skip(16);
+        result.CreationTime = reader.ReadInt64();
+        result.LastAccessTime = reader.ReadInt64();
+        result.LastWriteTime = reader.ReadInt64();
+        result.Hash = reader.ReadBytes(20);
+        reader.Skip(4);
+        result.ReparseTag = reader.ReadUInt32();
+        result.HardLink = reader.ReadUInt32();
+        result.StreamCount = reader.ReadUInt16();
+        int shortNameLength = reader.ReadUInt16();
+        int fileNameLength = reader.ReadUInt16();
 
-            long length = reader.ReadInt64();
-            if (length == 0)
-            {
-                return null;
-            }
+        if (fileNameLength > 0)
+        {
+            result.FileName = Encoding.Unicode.GetString(reader.ReadBytes(fileNameLength + 2)).TrimEnd('\0');
+        }
+        else
+        {
+            result.FileName = string.Empty;
+        }
 
-            var result = new DirectoryEntry();
-            result.Length = length;
-            result.Attributes = (FileAttributes)reader.ReadUInt32();
-            result.SecurityId = reader.ReadUInt32();
-            result.SubdirOffset = reader.ReadInt64();
-            reader.Skip(16);
-            result.CreationTime = reader.ReadInt64();
-            result.LastAccessTime = reader.ReadInt64();
-            result.LastWriteTime = reader.ReadInt64();
-            result.Hash = reader.ReadBytes(20);
-            reader.Skip(4);
-            result.ReparseTag = reader.ReadUInt32();
-            result.HardLink = reader.ReadUInt32();
-            result.StreamCount = reader.ReadUInt16();
-            int shortNameLength = reader.ReadUInt16();
-            int fileNameLength = reader.ReadUInt16();
+        if (shortNameLength > 0)
+        {
+            result.ShortName = Encoding.Unicode.GetString(reader.ReadBytes(shortNameLength + 2)).TrimEnd('\0');
+        }
+        else
+        {
+            result.ShortName = null;
+        }
 
-            if (fileNameLength > 0)
-            {
-                result.FileName = Encoding.Unicode.GetString(reader.ReadBytes(fileNameLength + 2)).TrimEnd('\0');
-            }
-            else
-            {
-                result.FileName = string.Empty;
-            }
+        if (startPos + length > reader.Position)
+        {
+            var toRead = (int)(startPos + length - reader.Position);
+            reader.Skip(toRead);
+        }
 
-            if (shortNameLength > 0)
+        if (result.StreamCount > 0)
+        {
+            result.AlternateStreams = new Dictionary<string, AlternateStreamEntry>();
+            for (var i = 0; i < result.StreamCount; ++i)
             {
-                result.ShortName = Encoding.Unicode.GetString(reader.ReadBytes(shortNameLength + 2)).TrimEnd('\0');
-            }
-            else
-            {
-                result.ShortName = null;
-            }
+                var stream = AlternateStreamEntry.ReadFrom(reader);
 
-            if (startPos + length > reader.Position)
-            {
-                var toRead = (int)(startPos + length - reader.Position);
-                reader.Skip(toRead);
-            }
-
-            if (result.StreamCount > 0)
-            {
-                result.AlternateStreams = new Dictionary<string, AlternateStreamEntry>();
-                for (var i = 0; i < result.StreamCount; ++i)
+                // Avoid crashes on badly built WIM files with multiple streams without
+                // a stream name
+                if (!result.AlternateStreams.ContainsKey(stream.Name))
                 {
-                    var stream = AlternateStreamEntry.ReadFrom(reader);
-
-                    // Avoid crashes on badly built WIM files with multiple streams without
-                    // a stream name
-                    if (!result.AlternateStreams.ContainsKey(stream.Name))
-                    {
-                        result.AlternateStreams.Add(stream.Name, stream);
-                    }
+                    result.AlternateStreams.Add(stream.Name, stream);
                 }
             }
-
-            return result;
         }
 
-        public byte[] GetStreamHash(string streamName)
+        return result;
+    }
+
+    public byte[] GetStreamHash(string streamName)
+    {
+        if (string.IsNullOrEmpty(streamName))
         {
-            if (string.IsNullOrEmpty(streamName))
+            if (!Utilities.IsAllZeros(Hash, 0, 20))
             {
-                if (!Utilities.IsAllZeros(Hash, 0, 20))
-                {
-                    return Hash;
-                }
+                return Hash;
             }
-
-            if (AlternateStreams != null && AlternateStreams.TryGetValue(streamName, out var streamEntry))
-            {
-                return streamEntry.Hash;
-            }
-
-            return new byte[20];
         }
 
-        internal long GetHeaderLength(string streamName)
+        if (AlternateStreams != null && AlternateStreams.TryGetValue(streamName, out var streamEntry))
         {
-            if (string.IsNullOrEmpty(streamName))
-            {
-                return Length;
-            }
-
-            if (AlternateStreams != null && AlternateStreams.TryGetValue(streamName, out var streamEntry))
-            {
-                return streamEntry.Length;
-            }
-
-            throw new FileNotFoundException(
-                string.Format(CultureInfo.InvariantCulture, "No such alternate stream '{0}' in file '{1}'", streamName,
-                    FileName), FileName + ":" + streamName);
+            return streamEntry.Hash;
         }
+
+        return new byte[20];
+    }
+
+    internal long GetHeaderLength(string streamName)
+    {
+        if (string.IsNullOrEmpty(streamName))
+        {
+            return Length;
+        }
+
+        if (AlternateStreams != null && AlternateStreams.TryGetValue(streamName, out var streamEntry))
+        {
+            return streamEntry.Length;
+        }
+
+        throw new FileNotFoundException(
+            $"No such alternate stream '{streamName}' in file '{FileName}'", $"{FileName}:{streamName}");
     }
 }

@@ -20,35 +20,34 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal enum ItemType:byte
 {
-    internal enum ItemType:byte
-    {
-        InodeItem = 0x01,
-        InodeRef = 0x0c,
-        InodeExtRef = 0x0d,
-        XattrItem = 0x18,
-        OrphanItem = 0x30,
-        DirLogItem = 0x3c,
-        DirLogIndex = 0x48,
-        DirItem = 0x54,
-        DirIndex = 0x60,
-        ExtentData = 0x6c,
-        ExtentCsum = 0x80,
-        RootItem = 0x84,
-        RootBackref = 0x90,
-        RootRef = 0x9c,
-        ExtentItem = 0xa8,
-        MetadataItem = 0xa9,
-        TreeBlockRef = 0xb0,
-        ExtentDataRef = 0xb2,
-        ExtentRefV0 = 0xb4,
-        SharedBlockRef = 0xb6,
-        SharedDataRef = 0xb8,
-        BlockGroupItem = 0xc0,
-        DevExtent = 0xcc,
-        DevItem = 0xd8,
-        ChunkItem = 0xe4,
-        StringItem = 0xfd
-    }
+    InodeItem = 0x01,
+    InodeRef = 0x0c,
+    InodeExtRef = 0x0d,
+    XattrItem = 0x18,
+    OrphanItem = 0x30,
+    DirLogItem = 0x3c,
+    DirLogIndex = 0x48,
+    DirItem = 0x54,
+    DirIndex = 0x60,
+    ExtentData = 0x6c,
+    ExtentCsum = 0x80,
+    RootItem = 0x84,
+    RootBackref = 0x90,
+    RootRef = 0x9c,
+    ExtentItem = 0xa8,
+    MetadataItem = 0xa9,
+    TreeBlockRef = 0xb0,
+    ExtentDataRef = 0xb2,
+    ExtentRefV0 = 0xb4,
+    SharedBlockRef = 0xb6,
+    SharedDataRef = 0xb8,
+    BlockGroupItem = 0xc0,
+    DevExtent = 0xcc,
+    DevItem = 0xd8,
+    ChunkItem = 0xe4,
+    StringItem = 0xfd
 }

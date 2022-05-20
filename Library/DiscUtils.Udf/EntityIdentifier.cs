@@ -24,31 +24,30 @@ using System;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal abstract class EntityIdentifier : IByteArraySerializable
 {
-    internal abstract class EntityIdentifier : IByteArraySerializable
+    public byte Flags;
+    public string Identifier;
+    public byte[] Suffix;
+
+    public int Size
     {
-        public byte Flags;
-        public string Identifier;
-        public byte[] Suffix;
+        get { return 32; }
+    }
 
-        public int Size
-        {
-            get { return 32; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Flags = buffer[offset];
+        Identifier = Encoding.ASCII.GetString(buffer, offset + 1, 23).TrimEnd('\0');
+        Suffix = EndianUtilities.ToByteArray(buffer, offset + 24, 8);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Flags = buffer[offset];
-            Identifier = Encoding.ASCII.GetString(buffer, offset + 1, 23).TrimEnd('\0');
-            Suffix = EndianUtilities.ToByteArray(buffer, offset + 24, 8);
+        return 32;
+    }
 
-            return 32;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

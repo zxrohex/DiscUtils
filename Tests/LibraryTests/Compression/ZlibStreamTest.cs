@@ -33,35 +33,33 @@ namespace LibraryTests.Compression
         [Fact]
         public void TestRoundtrip()
         {
-            byte[] testData = Encoding.ASCII.GetBytes("This is a test string");
+            var testData = Encoding.ASCII.GetBytes("This is a test string");
 
-            MemoryStream compressedStream = new MemoryStream();
+            var compressedStream = new MemoryStream();
 
-            using (ZlibStream zs = new ZlibStream(compressedStream, CompressionMode.Compress, true))
+            using (var zs = new ZlibStream(compressedStream, CompressionMode.Compress, true))
             {
                 zs.Write(testData, 0, testData.Length);
             }
 
             compressedStream.Position = 0;
-            using (ZlibStream uzs = new ZlibStream(compressedStream, CompressionMode.Decompress, true))
-            {
-                byte[] outData = new byte[testData.Length];
-                uzs.Read(outData, 0, outData.Length);
-                Assert.Equal(testData, outData);
+            using var uzs = new ZlibStream(compressedStream, CompressionMode.Decompress, true);
+            var outData = new byte[testData.Length];
+            uzs.Read(outData, 0, outData.Length);
+            Assert.Equal(testData, outData);
 
-                // Should be end of stream
-                Assert.Equal(-1, uzs.ReadByte());
-            }
+            // Should be end of stream
+            Assert.Equal(-1, uzs.ReadByte());
         }
 
         [Fact]
         public void TestInvalidChecksum()
         {
-            byte[] testData = Encoding.ASCII.GetBytes("This is a test string");
+            var testData = Encoding.ASCII.GetBytes("This is a test string");
 
-            MemoryStream compressedStream = new MemoryStream();
+            var compressedStream = new MemoryStream();
 
-            using (ZlibStream zs = new ZlibStream(compressedStream, CompressionMode.Compress, true))
+            using (var zs = new ZlibStream(compressedStream, CompressionMode.Compress, true))
             {
                 zs.Write(testData, 0, testData.Length);
             }
@@ -72,15 +70,13 @@ namespace LibraryTests.Compression
             compressedStream.Position = 0;
             Assert.Throws<InvalidDataException>(() =>
             {
-                using (ZlibStream uzs = new ZlibStream(compressedStream, CompressionMode.Decompress, true))
-                {
-                    byte[] outData = new byte[testData.Length];
-                    uzs.Read(outData, 0, outData.Length);
-                    Assert.Equal(testData, outData);
+                using var uzs = new ZlibStream(compressedStream, CompressionMode.Decompress, true);
+                var outData = new byte[testData.Length];
+                uzs.Read(outData, 0, outData.Length);
+                Assert.Equal(testData, outData);
 
-                    // Should be end of stream
-                    Assert.Equal(-1, uzs.ReadByte());
-                }
+                // Should be end of stream
+                Assert.Equal(-1, uzs.ReadByte());
             });
         }
     }

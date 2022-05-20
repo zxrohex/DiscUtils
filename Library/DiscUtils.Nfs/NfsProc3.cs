@@ -20,31 +20,30 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum NfsProc3 : uint
 {
-    public enum NfsProc3 : uint
-    {
-        Null = 0,
-        GetAttr = 1,
-        SetAttr = 2,
-        Lookup = 3,
-        Access = 4,
-        Readlink = 5,
-        Read = 6,
-        Write = 7,
-        Create = 8,
-        Mkdir = 9,
-        Symlink = 10,
-        Mknod = 11,
-        Remove = 12,
-        Rmdir = 13,
-        Rename = 14,
-        Link = 15,
-        ReadDir = 16,
-        ReadDirPlus = 17,
-        Fsstat = 18,
-        Fsinfo = 19,
-        Pathconf = 20,
-        Commit = 21,
-    }
+    Null = 0,
+    GetAttr = 1,
+    SetAttr = 2,
+    Lookup = 3,
+    Access = 4,
+    Readlink = 5,
+    Read = 6,
+    Write = 7,
+    Create = 8,
+    Mkdir = 9,
+    Symlink = 10,
+    Mknod = 11,
+    Remove = 12,
+    Rmdir = 13,
+    Rename = 14,
+    Link = 15,
+    ReadDir = 16,
+    ReadDirPlus = 17,
+    Fsstat = 18,
+    Fsinfo = 19,
+    Pathconf = 20,
+    Commit = 21,
 }

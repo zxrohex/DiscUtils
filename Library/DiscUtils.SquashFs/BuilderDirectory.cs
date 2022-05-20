@@ -24,203 +24,201 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal sealed class BuilderDirectory : BuilderNode
 {
-    internal sealed class BuilderDirectory : BuilderNode
+    private readonly List<Entry> _children;
+    private readonly Dictionary<string, Entry> _index;
+    private DirectoryInode _inode;
+
+    public BuilderDirectory()
     {
-        private readonly List<Entry> _children;
-        private readonly Dictionary<string, Entry> _index;
-        private DirectoryInode _inode;
+        _children = new List<Entry>();
+        _index = new Dictionary<string, Entry>();
+    }
 
-        public BuilderDirectory()
+    public override Inode Inode
+    {
+        get { return _inode; }
+    }
+
+    public void AddChild(string name, BuilderNode node)
+    {
+        if (name.Contains(@"\\"))
         {
-            _children = new List<Entry>();
-            _index = new Dictionary<string, Entry>();
+            throw new ArgumentException("Single level of path must be provided", nameof(name));
         }
 
-        public override Inode Inode
+        if (_index.ContainsKey(name))
         {
-            get { return _inode; }
+            throw new IOException("The directory entry '" + name + "' already exists");
         }
 
-        public void AddChild(string name, BuilderNode node)
+        var newEntry = new Entry { Name = name, Node = node };
+        _children.Add(newEntry);
+        _index.Add(name, newEntry);
+    }
+
+    public BuilderNode GetChild(string name)
+    {
+        if (_index.TryGetValue(name, out var result))
         {
-            if (name.Contains(@"\\"))
-            {
-                throw new ArgumentException("Single level of path must be provided", nameof(name));
-            }
-
-            if (_index.ContainsKey(name))
-            {
-                throw new IOException("The directory entry '" + name + "' already exists");
-            }
-
-            Entry newEntry = new Entry { Name = name, Node = node };
-            _children.Add(newEntry);
-            _index.Add(name, newEntry);
+            return result.Node;
         }
 
-        public BuilderNode GetChild(string name)
-        {
-            Entry result;
-            if (_index.TryGetValue(name, out result))
-            {
-                return result.Node;
-            }
+        return null;
+    }
 
-            return null;
-        }
-
-        public IEnumerable<KeyValuePair<string, BuilderNode>> EnumerateTree()
+    public IEnumerable<KeyValuePair<string, BuilderNode>> EnumerateTree()
+    {
+        foreach (var entry in _index)
         {
-            foreach (var entry in _index)
+            if (entry.Value.Node is BuilderDirectory subdir)
             {
-                if (entry.Value.Node is BuilderDirectory subdir)
+                foreach (var subdir_entry in subdir.EnumerateTree())
                 {
-                    foreach (var subdir_entry in subdir.EnumerateTree())
-                    {
-                        yield return new KeyValuePair<string, BuilderNode>(Path.Combine(entry.Key, subdir_entry.Key), subdir_entry.Value);
-                    }
+                    yield return new KeyValuePair<string, BuilderNode>(Path.Combine(entry.Key, subdir_entry.Key), subdir_entry.Value);
                 }
-
-                yield return new KeyValuePair<string, BuilderNode>(entry.Key, entry.Value.Node);
             }
-        }
 
-        public IEnumerable<BuilderNode> EnumerateTreeEntries()
+            yield return new KeyValuePair<string, BuilderNode>(entry.Key, entry.Value.Node);
+        }
+    }
+
+    public IEnumerable<BuilderNode> EnumerateTreeEntries()
+    {
+        foreach (var entry in _index)
         {
-            foreach (var entry in _index)
+            if (entry.Value.Node is BuilderDirectory subdir)
             {
-                if (entry.Value.Node is BuilderDirectory subdir)
+                foreach (var subdir_entry in subdir.EnumerateTreeEntries())
                 {
-                    foreach (var subdir_entry in subdir.EnumerateTreeEntries())
-                    {
-                        yield return subdir_entry;
-                    }
+                    yield return subdir_entry;
                 }
-
-                yield return entry.Value.Node;
             }
+
+            yield return entry.Value.Node;
+        }
+    }
+
+    public override void Reset()
+    {
+        foreach (var entry in _children)
+        {
+            entry.Node.Reset();
         }
 
-        public override void Reset()
-        {
-            foreach (Entry entry in _children)
-            {
-                entry.Node.Reset();
-            }
+        _inode = new DirectoryInode();
+    }
 
-            _inode = new DirectoryInode();
+    public override void Write(BuilderContext context)
+    {
+        if (_written)
+        {
+            return;
         }
 
-        public override void Write(BuilderContext context)
+        _children.Sort();
+
+        foreach (var entry in _children)
         {
-            if (_written)
-            {
-                return;
-            }
-
-            _children.Sort();
-
-            foreach (Entry entry in _children)
-            {
-                entry.Node.Write(context);
-            }
-
-            WriteDirectory(context);
-
-            WriteInode(context);
-
-            _written = true;
+            entry.Node.Write(context);
         }
 
-        private void WriteDirectory(BuilderContext context)
+        WriteDirectory(context);
+
+        WriteInode(context);
+
+        _written = true;
+    }
+
+    private void WriteDirectory(BuilderContext context)
+    {
+        var startPos = context.DirectoryWriter.Position;
+
+        var currentChild = 0;
+        var numDirs = 0;
+        while (currentChild < _children.Count)
         {
-            MetadataRef startPos = context.DirectoryWriter.Position;
+            var thisBlock = _children[currentChild].Node.InodeRef.Block;
+            var firstInode = _children[currentChild].Node.InodeNumber;
 
-            int currentChild = 0;
-            int numDirs = 0;
-            while (currentChild < _children.Count)
+            var count = 1;
+            while (currentChild + count < _children.Count
+                   && _children[currentChild + count].Node.InodeRef.Block == thisBlock
+                   && _children[currentChild + count].Node.InodeNumber - firstInode < 0x7FFF)
             {
-                long thisBlock = _children[currentChild].Node.InodeRef.Block;
-                int firstInode = _children[currentChild].Node.InodeNumber;
+                ++count;
+            }
 
-                int count = 1;
-                while (currentChild + count < _children.Count
-                       && _children[currentChild + count].Node.InodeRef.Block == thisBlock
-                       && _children[currentChild + count].Node.InodeNumber - firstInode < 0x7FFF)
+            var hdr = new DirectoryHeader
+            {
+                Count = count - 1,
+                InodeNumber = firstInode,
+                StartBlock = (int)thisBlock
+            };
+
+            hdr.WriteTo(context.IoBuffer, 0);
+            context.DirectoryWriter.Write(context.IoBuffer, 0, hdr.Size);
+
+            for (var i = 0; i < count; ++i)
+            {
+                var child = _children[currentChild + i];
+                var record = new DirectoryRecord
                 {
-                    ++count;
-                }
-
-                DirectoryHeader hdr = new DirectoryHeader
-                {
-                    Count = count - 1,
-                    InodeNumber = firstInode,
-                    StartBlock = (int)thisBlock
+                    Offset = (ushort)child.Node.InodeRef.Offset,
+                    InodeNumber = (short)(child.Node.InodeNumber - firstInode),
+                    Type = child.Node.Inode.Type,
+                    Name = child.Name
                 };
 
-                hdr.WriteTo(context.IoBuffer, 0);
-                context.DirectoryWriter.Write(context.IoBuffer, 0, hdr.Size);
+                record.WriteTo(context.IoBuffer, 0);
+                context.DirectoryWriter.Write(context.IoBuffer, 0, record.Size);
 
-                for (int i = 0; i < count; ++i)
+                if (child.Node.Inode.Type == InodeType.Directory
+                    || child.Node.Inode.Type == InodeType.ExtendedDirectory)
                 {
-                    Entry child = _children[currentChild + i];
-                    DirectoryRecord record = new DirectoryRecord
-                    {
-                        Offset = (ushort)child.Node.InodeRef.Offset,
-                        InodeNumber = (short)(child.Node.InodeNumber - firstInode),
-                        Type = child.Node.Inode.Type,
-                        Name = child.Name
-                    };
-
-                    record.WriteTo(context.IoBuffer, 0);
-                    context.DirectoryWriter.Write(context.IoBuffer, 0, record.Size);
-
-                    if (child.Node.Inode.Type == InodeType.Directory
-                        || child.Node.Inode.Type == InodeType.ExtendedDirectory)
-                    {
-                        ++numDirs;
-                    }
+                    ++numDirs;
                 }
-
-                currentChild += count;
             }
 
-            long size = context.DirectoryWriter.DistanceFrom(startPos);
-            if (size > uint.MaxValue)
-            {
-                throw new NotImplementedException("Writing large directories");
-            }
-
-            NumLinks = numDirs + 2; // +1 for self, +1 for parent
-
-            _inode.StartBlock = (uint)startPos.Block;
-            _inode.Offset = (ushort)startPos.Offset;
-            _inode.FileSize = (uint)size + 3; // For some reason, always +3
+            currentChild += count;
         }
 
-        private void WriteInode(BuilderContext context)
+        var size = context.DirectoryWriter.DistanceFrom(startPos);
+        if (size > uint.MaxValue)
         {
-            FillCommonInodeData(context);
-            _inode.Type = InodeType.Directory;
-
-            InodeRef = context.InodeWriter.Position;
-
-            _inode.WriteTo(context.IoBuffer, 0);
-
-            context.InodeWriter.Write(context.IoBuffer, 0, _inode.Size);
+            throw new NotImplementedException("Writing large directories");
         }
 
-        private class Entry : IComparable<Entry>
-        {
-            public string Name;
-            public BuilderNode Node;
+        NumLinks = numDirs + 2; // +1 for self, +1 for parent
 
-            public int CompareTo(Entry other)
-            {
-                return string.CompareOrdinal(Name, other.Name);
-            }
+        _inode.StartBlock = (uint)startPos.Block;
+        _inode.Offset = (ushort)startPos.Offset;
+        _inode.FileSize = (uint)size + 3; // For some reason, always +3
+    }
+
+    private void WriteInode(BuilderContext context)
+    {
+        FillCommonInodeData(context);
+        _inode.Type = InodeType.Directory;
+
+        InodeRef = context.InodeWriter.Position;
+
+        _inode.WriteTo(context.IoBuffer, 0);
+
+        context.InodeWriter.Write(context.IoBuffer, 0, _inode.Size);
+    }
+
+    private class Entry : IComparable<Entry>
+    {
+        public string Name;
+        public BuilderNode Node;
+
+        public int CompareTo(Entry other)
+        {
+            return string.CompareOrdinal(Name, other.Name);
         }
     }
 }

@@ -22,15 +22,14 @@
 
 using System.Runtime.InteropServices;
 
-namespace DiskClone
+namespace DiskClone;
+
+[ComImport]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+[Guid("507C37B4-CF5B-4e95-B0AF-14EB9767467E")]
+public interface IVssAsync
 {
-    [ComImport]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    [Guid("507C37B4-CF5B-4e95-B0AF-14EB9767467E")]
-    public interface IVssAsync
-    {
-        void Cancel();
-        void Wait(uint millis);
-        void QueryStatus(out uint hrResult, ref int pReserved);
-    }
+    void Cancel();
+    void Wait(uint millis);
+    void QueryStatus(out uint hrResult, ref int pReserved);
 }

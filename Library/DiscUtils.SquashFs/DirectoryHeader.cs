@@ -23,38 +23,39 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal class DirectoryHeader : IByteArraySerializable
 {
-    internal class DirectoryHeader : IByteArraySerializable
+    public int Count;
+    public int InodeNumber;
+    public int StartBlock;
+
+    public int Size
     {
-        public int Count;
-        public int InodeNumber;
-        public int StartBlock;
+        get { return 12; }
+    }
 
-        public int Size
-        {
-            get { return 12; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        EndianUtilities.WriteBytesLittleEndian(Count, buffer, offset + 0);
+        EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer, offset + 4);
+        EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer, offset + 8);
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
+    public static DirectoryHeader ReadFrom(MetablockReader reader)
+    {
+        var result = new DirectoryHeader
         {
-            EndianUtilities.WriteBytesLittleEndian(Count, buffer, offset + 0);
-            EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer, offset + 4);
-            EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer, offset + 8);
-        }
-
-        public static DirectoryHeader ReadFrom(MetablockReader reader)
-        {
-            DirectoryHeader result = new DirectoryHeader();
-            result.Count = reader.ReadInt();
-            result.StartBlock = reader.ReadInt();
-            result.InodeNumber = reader.ReadInt();
-            return result;
-        }
+            Count = reader.ReadInt(),
+            StartBlock = reader.ReadInt(),
+            InodeNumber = reader.ReadInt()
+        };
+        return result;
     }
 }

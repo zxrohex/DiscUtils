@@ -21,114 +21,135 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
 {
-    internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem
+    public HfsPlusFileSystemImpl(Stream s)
+        : base(new DiscFileSystemOptions())
     {
-        public HfsPlusFileSystemImpl(Stream s)
-            : base(new DiscFileSystemOptions())
+        s.Position = 1024;
+
+        var headerBuf = StreamUtilities.ReadExact(s, 512);
+        var hdr = new VolumeHeader();
+        hdr.ReadFrom(headerBuf, 0);
+
+        Context = new Context
         {
-            s.Position = 1024;
+            VolumeStream = s,
+            VolumeHeader = hdr
+        };
 
-            byte[] headerBuf = StreamUtilities.ReadExact(s, 512);
-            VolumeHeader hdr = new VolumeHeader();
-            hdr.ReadFrom(headerBuf, 0);
+        var catalogBuffer = new FileBuffer(Context, hdr.CatalogFile, CatalogNodeId.CatalogFileId);
+        Context.Catalog = new BTree<CatalogKey>(catalogBuffer);
 
-            Context = new Context();
-            Context.VolumeStream = s;
-            Context.VolumeHeader = hdr;
+        var extentsBuffer = new FileBuffer(Context, hdr.ExtentsFile, CatalogNodeId.ExtentsFileId);
+        Context.ExtentsOverflow = new BTree<ExtentKey>(extentsBuffer);
 
-            FileBuffer catalogBuffer = new FileBuffer(Context, hdr.CatalogFile, CatalogNodeId.CatalogFileId);
-            Context.Catalog = new BTree<CatalogKey>(catalogBuffer);
+        var attributesBuffer = new FileBuffer(Context, hdr.AttributesFile, CatalogNodeId.AttributesFileId);
+        Context.Attributes = new BTree<AttributeKey>(attributesBuffer);
 
-            FileBuffer extentsBuffer = new FileBuffer(Context, hdr.ExtentsFile, CatalogNodeId.ExtentsFileId);
-            Context.ExtentsOverflow = new BTree<ExtentKey>(extentsBuffer);
-
-            FileBuffer attributesBuffer = new FileBuffer(Context, hdr.AttributesFile, CatalogNodeId.AttributesFileId);
-            Context.Attributes = new BTree<AttributeKey>(attributesBuffer);
-
-            // Establish Root directory
-            byte[] rootThreadData = Context.Catalog.Find(new CatalogKey(CatalogNodeId.RootFolderId, string.Empty));
-            CatalogThread rootThread = new CatalogThread();
-            rootThread.ReadFrom(rootThreadData, 0);
-            byte[] rootDirEntryData = Context.Catalog.Find(new CatalogKey(rootThread.ParentId, rootThread.Name));
-            DirEntry rootDirEntry = new DirEntry(rootThread.Name, rootDirEntryData);
-            RootDirectory = (Directory)GetFile(rootDirEntry);
-        }
-
-        public override string FriendlyName
-        {
-            get { return "Apple HFS+"; }
-        }
-
-        public override string VolumeLabel
-        {
-            get
-            {
-                byte[] rootThreadData = Context.Catalog.Find(new CatalogKey(CatalogNodeId.RootFolderId, string.Empty));
-                CatalogThread rootThread = new CatalogThread();
-                rootThread.ReadFrom(rootThreadData, 0);
-
-                return rootThread.Name;
-            }
-        }
-
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
-
-        public UnixFileSystemInfo GetUnixFileInfo(string path)
-        {
-            DirEntry dirEntry = GetDirectoryEntry(path);
-            if (dirEntry == null)
-            {
-                throw new FileNotFoundException("No such file or directory", path);
-            }
-
-            return dirEntry.CatalogFileInfo.FileSystemInfo;
-        }
-
-        protected override File ConvertDirEntryToFile(DirEntry dirEntry)
-        {
-            if (dirEntry.IsDirectory)
-            {
-                return new Directory(Context, dirEntry.NodeId, dirEntry.CatalogFileInfo);
-            }
-            if (dirEntry.IsSymlink)
-            {
-                return new Symlink(Context, dirEntry.NodeId, dirEntry.CatalogFileInfo);
-            }
-            return new File(Context, dirEntry.NodeId, dirEntry.CatalogFileInfo);
-        }
-        /// <summary>
-        /// Size of the Filesystem in bytes
-        /// </summary>
-        public override long Size
-        {
-            get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
-        }
-
-        /// <summary>
-        /// Used space of the Filesystem in bytes
-        /// </summary>
-        public override long UsedSpace
-        {
-            get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
-        }
-
-        /// <summary>
-        /// Available space of the Filesystem in bytes
-        /// </summary>
-        public override long AvailableSpace
-        {
-            get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
-        }
-
-        public override bool SupportsUsedAvailableSpace => false;
+        // Establish Root directory
+        var rootThreadData = Context.Catalog.Find(new CatalogKey(CatalogNodeId.RootFolderId, string.Empty));
+        var rootThread = new CatalogThread();
+        rootThread.ReadFrom(rootThreadData, 0);
+        var rootDirEntryData = Context.Catalog.Find(new CatalogKey(rootThread.ParentId, rootThread.Name));
+        var rootDirEntry = new DirEntry(rootThread.Name, rootDirEntryData);
+        RootDirectory = (Directory)GetFile(rootDirEntry);
     }
+
+    public override string FriendlyName
+    {
+        get { return "Apple HFS+"; }
+    }
+
+    public override string VolumeLabel
+    {
+        get
+        {
+            var rootThreadData = Context.Catalog.Find(new CatalogKey(CatalogNodeId.RootFolderId, string.Empty));
+            var rootThread = new CatalogThread();
+            rootThread.ReadFrom(rootThreadData, 0);
+
+            return rootThread.Name;
+        }
+    }
+
+    public override bool CanWrite
+    {
+        get { return false; }
+    }
+
+    public UnixFileSystemInfo GetUnixFileInfo(string path)
+    {
+        var dirEntry = GetDirectoryEntry(path);
+        if (dirEntry == null)
+        {
+            throw new FileNotFoundException("No such file or directory", path);
+        }
+
+        return dirEntry.CatalogFileInfo.FileSystemInfo;
+    }
+
+    protected override File ConvertDirEntryToFile(DirEntry dirEntry)
+    {
+        if (dirEntry.IsDirectory)
+        {
+            return new Directory(Context, dirEntry.NodeId, dirEntry.CatalogFileInfo);
+        }
+        if (dirEntry.IsSymlink)
+        {
+            return new Symlink(Context, dirEntry.NodeId, dirEntry.CatalogFileInfo);
+        }
+        return new File(Context, dirEntry.NodeId, dirEntry.CatalogFileInfo);
+    }
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    {
+        var file = GetFile(path);
+
+        if (file == null)
+        {
+            throw new FileNotFoundException("No such file or directory", path);
+        }
+
+        if (file.FileContent is not FileBuffer fileBuffer)
+        {
+            return Enumerable.Empty<StreamExtent>();
+        }
+
+        return fileBuffer.EnumerateAllocationExtents();
+    }
+
+    /// <summary>
+    /// Size of the Filesystem in bytes
+    /// </summary>
+    public override long Size
+    {
+        get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
+    }
+
+    /// <summary>
+    /// Used space of the Filesystem in bytes
+    /// </summary>
+    public override long UsedSpace
+    {
+        get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
+    }
+
+    /// <summary>
+    /// Available space of the Filesystem in bytes
+    /// </summary>
+    public override long AvailableSpace
+    {
+        get { throw new NotSupportedException("Filesystem size is not (yet) supported"); }
+    }
+
+    public override bool SupportsUsedAvailableSpace => false;
 }

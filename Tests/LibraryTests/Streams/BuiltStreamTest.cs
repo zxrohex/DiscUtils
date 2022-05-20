@@ -31,17 +31,15 @@ namespace LibraryTests.Streams
         [Fact]
         public void BuildStreamLengthIsRespected()
         {
-            int length = 1024;
+            var length = 1024;
             var extent = new BuilderSparseStreamExtent(0, new ZeroStream(2 * length));
-            using (var stream = new BuiltStream(length, new List<BuilderExtent> { extent }))
-            {
-                Assert.Equal(0, stream.Position);
-                Assert.Equal(length, stream.Length);
-                var content = new byte[2 * length];
-                var read = stream.Read(content, 0, content.Length);
-                Assert.Equal(length, read);
-                Assert.Equal(stream.Length, stream.Position);
-            }
+            using var stream = new BuiltStream(length, new List<BuilderExtent> { extent });
+            Assert.Equal(0, stream.Position);
+            Assert.Equal(length, stream.Length);
+            var content = new byte[2 * length];
+            var read = stream.Read(content, 0, content.Length);
+            Assert.Equal(length, read);
+            Assert.Equal(stream.Length, stream.Position);
         }
     }
 }

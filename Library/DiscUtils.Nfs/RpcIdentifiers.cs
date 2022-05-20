@@ -20,14 +20,13 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public static class RpcIdentifiers
 {
-    public static class RpcIdentifiers
-    {
-        public const int Nfs3ProgramIdentifier = 100003;
-        public const int Nfs3ProgramVersion = 3;
-        public const int Nfs3MountProgramIdentifier = 100005;
-        public const int Nfs3MountProgramVersion = 3;
-        public const int RpcVersion = 2;
-    }
+    public const int Nfs3ProgramIdentifier = 100003;
+    public const int Nfs3ProgramVersion = 3;
+    public const int Nfs3MountProgramIdentifier = 100005;
+    public const int Nfs3MountProgramVersion = 3;
+    public const int RpcVersion = 2;
 }

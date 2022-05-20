@@ -20,61 +20,60 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+/// <summary>
+/// Enumeration of known application types.
+/// </summary>
+public enum ApplicationType
 {
     /// <summary>
-    /// Enumeration of known application types.
+    /// Unknown type.
     /// </summary>
-    public enum ApplicationType
-    {
-        /// <summary>
-        /// Unknown type.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// Firmware boot manager (e.g. UEFI).
-        /// </summary>
-        FirmwareBootManager = 1,
+    /// <summary>
+    /// Firmware boot manager (e.g. UEFI).
+    /// </summary>
+    FirmwareBootManager = 1,
 
-        /// <summary>
-        /// Windows boot manager.
-        /// </summary>
-        BootManager = 2,
+    /// <summary>
+    /// Windows boot manager.
+    /// </summary>
+    BootManager = 2,
 
-        /// <summary>
-        /// Operating System Loader.
-        /// </summary>
-        OsLoader = 3,
+    /// <summary>
+    /// Operating System Loader.
+    /// </summary>
+    OsLoader = 3,
 
-        /// <summary>
-        /// Resume loader.
-        /// </summary>
-        Resume = 4,
+    /// <summary>
+    /// Resume loader.
+    /// </summary>
+    Resume = 4,
 
-        /// <summary>
-        /// Memory diagnostic application.
-        /// </summary>
-        MemoryDiagnostics = 5,
+    /// <summary>
+    /// Memory diagnostic application.
+    /// </summary>
+    MemoryDiagnostics = 5,
 
-        /// <summary>
-        /// Legacy NT loader application.
-        /// </summary>
-        NtLoader = 6,
+    /// <summary>
+    /// Legacy NT loader application.
+    /// </summary>
+    NtLoader = 6,
 
-        /// <summary>
-        /// Windows setup application.
-        /// </summary>
-        SetupLoader = 7,
+    /// <summary>
+    /// Windows setup application.
+    /// </summary>
+    SetupLoader = 7,
 
-        /// <summary>
-        /// Boot sector application.
-        /// </summary>
-        BootSector = 8,
+    /// <summary>
+    /// Boot sector application.
+    /// </summary>
+    BootSector = 8,
 
-        /// <summary>
-        /// Startup application.
-        /// </summary>
-        Startup = 9
-    }
+    /// <summary>
+    /// Startup application.
+    /// </summary>
+    Startup = 9
 }

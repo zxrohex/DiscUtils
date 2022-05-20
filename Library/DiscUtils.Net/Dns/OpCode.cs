@@ -20,12 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+internal enum OpCode : byte
 {
-    internal enum OpCode : byte
-    {
-        Query = 0,
-        InverseQuery = 1,
-        StatusRequest = 2
-    }
+    Query = 0,
+    InverseQuery = 1,
+    StatusRequest = 2
 }

@@ -1,12 +1,11 @@
 using System;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+[Flags]
+internal enum IndexEntryFlags : ushort
 {
-    [Flags]
-    internal enum IndexEntryFlags : ushort
-    {
-        None = 0x00,
-        Node = 0x01,
-        End = 0x02
-    }
+    None = 0x00,
+    Node = 0x01,
+    End = 0x02
 }

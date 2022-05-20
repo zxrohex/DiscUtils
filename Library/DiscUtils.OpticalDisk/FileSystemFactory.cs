@@ -26,36 +26,35 @@ using DiscUtils.Iso9660;
 using DiscUtils.Udf;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.OpticalDisk
+namespace DiscUtils.OpticalDisk;
+
+[VfsFileSystemFactory]
+internal class FileSystemFactory : VfsFileSystemFactory
 {
-    [VfsFileSystemFactory]
-    internal class FileSystemFactory : VfsFileSystemFactory
+    public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
     {
-        public override IEnumerable<FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+        if (UdfReader.Detect(stream))
         {
-            if (UdfReader.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("UDF", "OSTA Universal Disk Format (UDF)", OpenUdf);
-            }
-
-            if (CDReader.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("ISO9660", "ISO 9660 (CD-ROM)", OpenIso);
-            }
+            yield return new VfsFileSystemInfo("UDF", "OSTA Universal Disk Format (UDF)", OpenUdf);
         }
 
-        private DiscFileSystem OpenUdf(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+        if (CDReader.Detect(stream))
         {
-            if (volumeInfo != null)
-            {
-                return new UdfReader(stream, volumeInfo.PhysicalGeometry.BytesPerSector);
-            }
-            return new UdfReader(stream);
+            yield return new VfsFileSystemInfo("ISO9660", "ISO 9660 (CD-ROM)", OpenIso);
         }
+    }
 
-        private DiscFileSystem OpenIso(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    private DiscFileSystem OpenUdf(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        if (volumeInfo != null)
         {
-            return new CDReader(stream, true, true);
+            return new UdfReader(stream, volumeInfo.PhysicalGeometry.BytesPerSector);
         }
+        return new UdfReader(stream);
+    }
+
+    private DiscFileSystem OpenIso(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new CDReader(stream, true, true);
     }
 }

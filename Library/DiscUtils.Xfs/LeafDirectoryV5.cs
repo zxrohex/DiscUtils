@@ -20,51 +20,50 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+
+internal class LeafDirectoryV5 : LeafDirectory
 {
-    using DiscUtils.Streams;
-    using System;
+    public const uint HeaderMagicV5 = 0x58444433;
 
-    internal class LeafDirectoryV5 : LeafDirectory
+    public uint Crc { get; private set; }
+
+    public ulong BlockNumber { get; private set; }
+    
+    public ulong LogSequenceNumber { get; private set; }
+
+    public Guid Uuid { get; private set; }
+
+    public ulong Owner { get; private set; }
+
+    protected override int HeaderPadding
     {
-        public const uint HeaderMagicV5 = 0x58444433;
+        get { return 4; }
+    }
 
-        public uint Crc { get; private set; }
+    public override int Size
+    {
+        get { return 0x30 + 3 * 32 + HeaderPadding; }
+    }
 
-        public ulong BlockNumber { get; private set; }
-        
-        public ulong LogSequenceNumber { get; private set; }
+    public LeafDirectoryV5(Context context) : base(context) { }
 
-        public Guid Uuid { get; private set; }
+    public override bool HasValidMagic
+    {
+        get { return Magic == HeaderMagicV5; }
+    }
 
-        public ulong Owner { get; private set; }
-
-        protected override int HeaderPadding
-        {
-            get { return 4; }
-        }
-
-        public override int Size
-        {
-            get { return 0x30 + 3 * 32 + HeaderPadding; }
-        }
-
-        public LeafDirectoryV5(Context context) : base(context) { }
-
-        public override bool HasValidMagic
-        {
-            get { return Magic == HeaderMagicV5; }
-        }
-
-        protected override int ReadHeader(byte[] buffer, int offset)
-        {
-            Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            Crc = EndianUtilities.ToUInt32BigEndian(buffer, offset+0x04);
-            BlockNumber = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x08);
-            LogSequenceNumber = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x10);
-            Uuid = EndianUtilities.ToGuidBigEndian(buffer, offset + 0x18);
-            Owner = EndianUtilities.ToUInt64BigEndian(buffer, 0x28);
-            return 0x30;
-        }
+    protected override int ReadHeader(byte[] buffer, int offset)
+    {
+        Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        Crc = EndianUtilities.ToUInt32BigEndian(buffer, offset+0x04);
+        BlockNumber = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x08);
+        LogSequenceNumber = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x10);
+        Uuid = EndianUtilities.ToGuidBigEndian(buffer, offset + 0x18);
+        Owner = EndianUtilities.ToUInt64BigEndian(buffer, 0x28);
+        return 0x30;
     }
 }

@@ -25,92 +25,90 @@ using System.Globalization;
 using System.IO;
 using DiscUtils.Internal;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+[VirtualDiskTransport("nfs")]
+internal sealed class DiskTransport : VirtualDiskTransport
 {
-    [VirtualDiskTransport("nfs")]
-    internal sealed class DiskTransport : VirtualDiskTransport
+    private string _extraInfo;
+    private NfsFileSystem _fileSystem;
+    private string _path;
+
+    public override bool IsRawDisk
     {
-        private string _extraInfo;
-        private NfsFileSystem _fileSystem;
-        private string _path;
+        get { return false; }
+    }
 
-        public override bool IsRawDisk
+    public override void Connect(Uri uri, string username, string password)
+    {
+        var fsPath = uri.AbsolutePath;
+
+        // Find the best (least specific) export
+        string bestRoot = null;
+        var bestMatchLength = int.MaxValue;
+        foreach (var export in NfsFileSystem.GetExports(uri.Host))
         {
-            get { return false; }
-        }
-
-        public override void Connect(Uri uri, string username, string password)
-        {
-            string fsPath = uri.AbsolutePath;
-
-            // Find the best (least specific) export
-            string bestRoot = null;
-            int bestMatchLength = int.MaxValue;
-            foreach (string export in NfsFileSystem.GetExports(uri.Host))
+            if (fsPath.Length >= export.Length)
             {
-                if (fsPath.Length >= export.Length)
+                var matchLength = export.Length;
+                for (var i = 0; i < export.Length; ++i)
                 {
-                    int matchLength = export.Length;
-                    for (int i = 0; i < export.Length; ++i)
+                    if (export[i] != fsPath[i])
                     {
-                        if (export[i] != fsPath[i])
-                        {
-                            matchLength = i;
-                            break;
-                        }
-                    }
-
-                    if (matchLength < bestMatchLength)
-                    {
-                        bestRoot = export;
-                        bestMatchLength = matchLength;
+                        matchLength = i;
+                        break;
                     }
                 }
-            }
 
-            if (bestRoot == null)
-            {
-                throw new IOException(string.Format(CultureInfo.InvariantCulture,
-                    "Unable to find an NFS export providing access to '{0}'", fsPath));
-            }
-
-            _fileSystem = new NfsFileSystem(uri.Host, bestRoot);
-            _path = fsPath.Substring(bestRoot.Length).Replace('/', '\\');
-            _extraInfo = uri.Fragment.TrimStart('#');
-        }
-
-        public override VirtualDisk OpenDisk(FileAccess access)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override FileLocator GetFileLocator()
-        {
-            return new DiscFileLocator(_fileSystem, Utilities.GetDirectoryFromPath(_path));
-        }
-
-        public override string GetFileName()
-        {
-            return Utilities.GetFileFromPath(_path);
-        }
-
-        public override string GetExtraInfo()
-        {
-            return _extraInfo;
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if (_fileSystem != null)
+                if (matchLength < bestMatchLength)
                 {
-                    _fileSystem.Dispose();
-                    _fileSystem = null;
+                    bestRoot = export;
+                    bestMatchLength = matchLength;
                 }
             }
-
-            base.Dispose(disposing);
         }
+
+        if (bestRoot == null)
+        {
+            throw new IOException($"Unable to find an NFS export providing access to '{fsPath}'");
+        }
+
+        _fileSystem = new NfsFileSystem(uri.Host, bestRoot);
+        _path = fsPath.Substring(bestRoot.Length).Replace('/', '\\');
+        _extraInfo = uri.Fragment.TrimStart('#');
+    }
+
+    public override VirtualDisk OpenDisk(FileAccess access)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override FileLocator GetFileLocator()
+    {
+        return new DiscFileLocator(_fileSystem, Utilities.GetDirectoryFromPath(_path));
+    }
+
+    public override string GetFileName()
+    {
+        return Utilities.GetFileFromPath(_path);
+    }
+
+    public override string GetExtraInfo()
+    {
+        return _extraInfo;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            if (_fileSystem != null)
+            {
+                _fileSystem.Dispose();
+                _fileSystem = null;
+            }
+        }
+
+        base.Dispose(disposing);
     }
 }

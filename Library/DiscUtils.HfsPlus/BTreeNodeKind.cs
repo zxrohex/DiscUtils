@@ -20,13 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.HfsPlus
+namespace DiscUtils.HfsPlus;
+
+internal enum BTreeNodeKind : sbyte
 {
-    internal enum BTreeNodeKind : sbyte
-    {
-        LeafNode = -1,
-        IndexNode = 0,
-        HeaderNode = 1,
-        MapNode = 2
-    }
+    LeafNode = -1,
+    IndexNode = 0,
+    HeaderNode = 1,
+    MapNode = 2
 }

@@ -24,92 +24,91 @@ using System;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+internal sealed class PacketReader
 {
-    internal sealed class PacketReader
+    private readonly byte[] _data;
+
+    public PacketReader(byte[] data)
     {
-        private readonly byte[] _data;
+        _data = data;
+    }
 
-        public PacketReader(byte[] data)
+    public int Position { get; set; }
+
+    public string ReadName()
+    {
+        var sb = new StringBuilder();
+
+        var hasIndirected = false;
+        var readPos = Position;
+
+        while (_data[readPos] != 0)
         {
-            _data = data;
-        }
-
-        public int Position { get; set; }
-
-        public string ReadName()
-        {
-            StringBuilder sb = new StringBuilder();
-
-            bool hasIndirected = false;
-            int readPos = Position;
-
-            while (_data[readPos] != 0)
+            var len = _data[readPos];
+            switch (len & 0xC0)
             {
-                byte len = _data[readPos];
-                switch (len & 0xC0)
-                {
-                    case 0x00:
-                        sb.Append(Encoding.UTF8.GetString(_data, readPos + 1, len));
-                        sb.Append(".");
-                        readPos += 1 + len;
-                        if (!hasIndirected)
-                        {
-                            Position = readPos;
-                        }
+                case 0x00:
+                    sb.Append(Encoding.UTF8.GetString(_data, readPos + 1, len));
+                    sb.Append(".");
+                    readPos += 1 + len;
+                    if (!hasIndirected)
+                    {
+                        Position = readPos;
+                    }
 
-                        break;
+                    break;
 
-                    case 0xC0:
-                        if (!hasIndirected)
-                        {
-                            Position += 2;
-                        }
+                case 0xC0:
+                    if (!hasIndirected)
+                    {
+                        Position += 2;
+                    }
 
-                        hasIndirected = true;
-                        readPos = EndianUtilities.ToUInt16BigEndian(_data, readPos) & 0x3FFF;
-                        break;
+                    hasIndirected = true;
+                    readPos = EndianUtilities.ToUInt16BigEndian(_data, readPos) & 0x3FFF;
+                    break;
 
-                    default:
-                        throw new NotImplementedException("Unknown control flags reading label");
-                }
+                default:
+                    throw new NotImplementedException("Unknown control flags reading label");
             }
-
-            if (!hasIndirected)
-            {
-                Position++;
-            }
-
-            return sb.ToString();
         }
 
-        public ushort ReadUShort()
+        if (!hasIndirected)
         {
-            ushort result = EndianUtilities.ToUInt16BigEndian(_data, Position);
-            Position += 2;
-            return result;
-        }
-
-        public int ReadInt()
-        {
-            int result = EndianUtilities.ToInt32BigEndian(_data, Position);
-            Position += 4;
-            return result;
-        }
-
-        public byte ReadByte()
-        {
-            byte result = _data[Position];
             Position++;
-            return result;
         }
 
-        public byte[] ReadBytes(int count)
-        {
-            byte[] result = new byte[count];
-            Array.Copy(_data, Position, result, 0, count);
-            Position += count;
-            return result;
-        }
+        return sb.ToString();
+    }
+
+    public ushort ReadUShort()
+    {
+        var result = EndianUtilities.ToUInt16BigEndian(_data, Position);
+        Position += 2;
+        return result;
+    }
+
+    public int ReadInt()
+    {
+        var result = EndianUtilities.ToInt32BigEndian(_data, Position);
+        Position += 4;
+        return result;
+    }
+
+    public byte ReadByte()
+    {
+        var result = _data[Position];
+        Position++;
+        return result;
+    }
+
+    public byte[] ReadBytes(int count)
+    {
+        var result = new byte[count];
+        Array.Copy(_data, Position, result, 0, count);
+        Position += count;
+        return result;
     }
 }

@@ -22,38 +22,37 @@
 
 using System;
 
-namespace DiscUtils.Diagnostics
+namespace DiscUtils.Diagnostics;
+
+/// <summary>
+/// Exception thrown when file system corruption is detected during verification.
+/// </summary>
+public sealed class ValidatingFileSystemException : Exception
 {
     /// <summary>
-    /// Exception thrown when file system corruption is detected during verification.
+    /// Creates a new instance.
     /// </summary>
-    public sealed class ValidatingFileSystemException : Exception
+    public ValidatingFileSystemException()
     {
-        /// <summary>
-        /// Creates a new instance.
-        /// </summary>
-        public ValidatingFileSystemException()
-        {
-        }
-
-        /// <summary>
-        /// Creates a new instance.
-        /// </summary>
-        /// <param name="message">The exception message.</param>
-        public ValidatingFileSystemException(string message)
-            : base(message)
-        {
-        }
-
-        /// <summary>
-        /// Creates a new instance.
-        /// </summary>
-        /// <param name="message">The exception message</param>
-        /// <param name="innerException">The inner exception</param>
-        public ValidatingFileSystemException(string message, Exception innerException)
-            :base(message, innerException)
-        {
-        }
-
     }
+
+    /// <summary>
+    /// Creates a new instance.
+    /// </summary>
+    /// <param name="message">The exception message.</param>
+    public ValidatingFileSystemException(string message)
+        : base(message)
+    {
+    }
+
+    /// <summary>
+    /// Creates a new instance.
+    /// </summary>
+    /// <param name="message">The exception message</param>
+    /// <param name="innerException">The inner exception</param>
+    public ValidatingFileSystemException(string message, Exception innerException)
+        :base(message, innerException)
+    {
+    }
+
 }

@@ -19,37 +19,36 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public enum Nfs3CreateMode
 {
-    public enum Nfs3CreateMode
-    {
-        /// <summary>
-        /// UNCHECKED
-        /// means that the file should be created without checking
-        /// for the existence of a duplicate file in the same
-        /// directory. In this case, how.obj_attributes is a sattr3
-        /// describing the initial attributes for the file.
-        /// </summary>
-        Unchecked = 0,
+    /// <summary>
+    /// UNCHECKED
+    /// means that the file should be created without checking
+    /// for the existence of a duplicate file in the same
+    /// directory. In this case, how.obj_attributes is a sattr3
+    /// describing the initial attributes for the file.
+    /// </summary>
+    Unchecked = 0,
 
-        /// <summary>
-        /// GUARDED
-        /// specifies that the server should check for the presence
-        /// of a duplicate file before performing the create and
-        /// should fail the request with NFS3ERR_EXIST if a
-        /// duplicate file exists. If the file does not exist, the
-        /// request is performed as described for UNCHECKED.
-        /// </summary>
-        Guarded = 1,
+    /// <summary>
+    /// GUARDED
+    /// specifies that the server should check for the presence
+    /// of a duplicate file before performing the create and
+    /// should fail the request with NFS3ERR_EXIST if a
+    /// duplicate file exists. If the file does not exist, the
+    /// request is performed as described for UNCHECKED.
+    /// </summary>
+    Guarded = 1,
 
-        /// <summary>
-        /// EXCLUSIVE specifies that the server is to follow
-        /// exclusive creation semantics, using the verifier to
-        /// ensure exclusive creation of the target. No attributes
-        /// may be provided in this case, since the server may use
-        /// the target file metadata to store the createverf3
-        /// verifier.
-        /// </summary>
-        Exclusive = 2
-    }
+    /// <summary>
+    /// EXCLUSIVE specifies that the server is to follow
+    /// exclusive creation semantics, using the verifier to
+    /// ensure exclusive creation of the target. No attributes
+    /// may be provided in this case, since the server may use
+    /// the target file metadata to store the createverf3
+    /// verifier.
+    /// </summary>
+    Exclusive = 2
 }

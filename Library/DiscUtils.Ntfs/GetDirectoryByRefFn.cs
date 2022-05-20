@@ -1,4 +1,3 @@
-namespace DiscUtils.Ntfs
-{
-    internal delegate Directory GetDirectoryByRefFn(FileRecordReference reference);
-}
+namespace DiscUtils.Ntfs;
+
+internal delegate Directory GetDirectoryByRefFn(FileRecordReference reference);

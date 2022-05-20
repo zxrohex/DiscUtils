@@ -2,326 +2,325 @@ using System;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
-namespace DiscUtils.Core.WindowsSecurity.AccessControl
+namespace DiscUtils.Core.WindowsSecurity.AccessControl;
+
+public sealed class ObjectAce : QualifiedAce
 {
-    public sealed class ObjectAce : QualifiedAce
+    private Guid _objectAceType;
+    private Guid _inheritedObjectType;
+    
+    public ObjectAceFlags ObjectAceFlags { get; set; }
+
+    public ObjectAce(AceFlags aceFlags, AceQualifier qualifier,
+                     int accessMask, SecurityIdentifier sid,
+                     ObjectAceFlags flags, Guid type,
+                     Guid inheritedType, bool isCallback,
+                     byte[] opaque)
+        : base(ConvertType(qualifier, isCallback), aceFlags, opaque)
     {
-        private Guid _objectAceType;
-        private Guid _inheritedObjectType;
-        
-        public ObjectAceFlags ObjectAceFlags { get; set; }
+        AccessMask = accessMask;
+        SecurityIdentifier = sid;
+        ObjectAceFlags = flags;
+        ObjectAceType = type;
+        InheritedObjectAceType = inheritedType;
+    }
 
-        public ObjectAce(AceFlags aceFlags, AceQualifier qualifier,
-                         int accessMask, SecurityIdentifier sid,
-                         ObjectAceFlags flags, Guid type,
-                         Guid inheritedType, bool isCallback,
-                         byte[] opaque)
-            : base(ConvertType(qualifier, isCallback), aceFlags, opaque)
+    internal ObjectAce(AceType type, AceFlags flags, int accessMask,
+                       SecurityIdentifier sid, ObjectAceFlags objFlags,
+                       Guid objType, Guid inheritedType, byte[] opaque)
+        : base(type, flags, opaque)
+    {
+        AccessMask = accessMask;
+        SecurityIdentifier = sid;
+        ObjectAceFlags = objFlags;
+        ObjectAceType = objType;
+        InheritedObjectAceType = inheritedType;
+    }
+
+    internal ObjectAce(byte[] binaryForm, int offset)
+        : base(binaryForm, offset)
+    {
+        int len = ReadUShort(binaryForm, offset + 2);
+        var lenMinimum = 12 + SecurityIdentifier.MinBinaryLength;
+
+        if (offset > binaryForm.Length - len)
         {
-            AccessMask = accessMask;
-            SecurityIdentifier = sid;
-            ObjectAceFlags = flags;
-            ObjectAceType = type;
-            InheritedObjectAceType = inheritedType;
+            throw new ArgumentException("Invalid ACE - truncated", nameof(binaryForm));
         }
 
-        internal ObjectAce(AceType type, AceFlags flags, int accessMask,
-                           SecurityIdentifier sid, ObjectAceFlags objFlags,
-                           Guid objType, Guid inheritedType, byte[] opaque)
-            : base(type, flags, opaque)
+        if (len < lenMinimum)
         {
-            AccessMask = accessMask;
-            SecurityIdentifier = sid;
-            ObjectAceFlags = objFlags;
-            ObjectAceType = objType;
-            InheritedObjectAceType = inheritedType;
+            throw new ArgumentException("Invalid ACE", nameof(binaryForm));
         }
 
-        internal ObjectAce(byte[] binaryForm, int offset)
-            : base(binaryForm, offset)
+        AccessMask = ReadInt(binaryForm, offset + 4);
+        ObjectAceFlags = (ObjectAceFlags)ReadInt(binaryForm, offset + 8);
+
+        if (ObjectAceTypePresent)
         {
-            int len = ReadUShort(binaryForm, offset + 2);
-            var lenMinimum = 12 + SecurityIdentifier.MinBinaryLength;
-
-            if (offset > binaryForm.Length - len)
-            {
-                throw new ArgumentException("Invalid ACE - truncated", nameof(binaryForm));
-            }
-
-            if (len < lenMinimum)
-            {
-                throw new ArgumentException("Invalid ACE", nameof(binaryForm));
-            }
-
-            AccessMask = ReadInt(binaryForm, offset + 4);
-            ObjectAceFlags = (ObjectAceFlags)ReadInt(binaryForm, offset + 8);
-
-            if (ObjectAceTypePresent)
-            {
-                lenMinimum += 16;
-            }
-
-            if (InheritedObjectAceTypePresent)
-            {
-                lenMinimum += 16;
-            }
-
-            if (len < lenMinimum)
-            {
-                throw new ArgumentException("Invalid ACE", nameof(binaryForm));
-            }
-
-            var pos = 12;
-            if (ObjectAceTypePresent)
-            {
-                ObjectAceType = ReadGuid(binaryForm, offset + pos);
-                pos += 16;
-            }
-            if (InheritedObjectAceTypePresent)
-            {
-                InheritedObjectAceType = ReadGuid(binaryForm, offset + pos);
-                pos += 16;
-            }
-
-            SecurityIdentifier = new SecurityIdentifier(binaryForm, offset + pos);
-            pos += SecurityIdentifier.BinaryLength;
-
-            var opaqueLen = len - pos;
-            if (opaqueLen > 0)
-            {
-                var opaque = new byte[opaqueLen];
-                Array.Copy(binaryForm, offset + pos, opaque, 0, opaqueLen);
-                SetOpaque(opaque);
-            }
+            lenMinimum += 16;
         }
+
+        if (InheritedObjectAceTypePresent)
+        {
+            lenMinimum += 16;
+        }
+
+        if (len < lenMinimum)
+        {
+            throw new ArgumentException("Invalid ACE", nameof(binaryForm));
+        }
+
+        var pos = 12;
+        if (ObjectAceTypePresent)
+        {
+            ObjectAceType = ReadGuid(binaryForm, offset + pos);
+            pos += 16;
+        }
+        if (InheritedObjectAceTypePresent)
+        {
+            InheritedObjectAceType = ReadGuid(binaryForm, offset + pos);
+            pos += 16;
+        }
+
+        SecurityIdentifier = new SecurityIdentifier(binaryForm, offset + pos);
+        pos += SecurityIdentifier.BinaryLength;
+
+        var opaqueLen = len - pos;
+        if (opaqueLen > 0)
+        {
+            var opaque = new byte[opaqueLen];
+            Array.Copy(binaryForm, offset + pos, opaque, 0, opaqueLen);
+            SetOpaque(opaque);
+        }
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        internal ObjectAce(ReadOnlySpan<byte> binaryForm)
-            : base(binaryForm)
+    internal ObjectAce(ReadOnlySpan<byte> binaryForm)
+        : base(binaryForm)
+    {
+        int len = ReadUShort(binaryForm[2..]);
+        var lenMinimum = 12 + SecurityIdentifier.MinBinaryLength;
+
+        if (len > binaryForm.Length)
         {
-            int len = ReadUShort(binaryForm[2..]);
-            var lenMinimum = 12 + SecurityIdentifier.MinBinaryLength;
-
-            if (len > binaryForm.Length)
-            {
-                throw new ArgumentException("Invalid ACE - truncated", nameof(binaryForm));
-            }
-
-            if (len < lenMinimum)
-            {
-                throw new ArgumentException("Invalid ACE", nameof(binaryForm));
-            }
-
-            AccessMask = ReadInt(binaryForm[4..]);
-            ObjectAceFlags = (ObjectAceFlags)ReadInt(binaryForm[8..]);
-
-            if (ObjectAceTypePresent)
-            {
-                lenMinimum += 16;
-            }
-
-            if (InheritedObjectAceTypePresent)
-            {
-                lenMinimum += 16;
-            }
-
-            if (len < lenMinimum)
-            {
-                throw new ArgumentException("Invalid ACE", nameof(binaryForm));
-            }
-
-            var pos = 12;
-            if (ObjectAceTypePresent)
-            {
-                ObjectAceType = ReadGuid(binaryForm[pos..]);
-                pos += 16;
-            }
-            if (InheritedObjectAceTypePresent)
-            {
-                InheritedObjectAceType = ReadGuid(binaryForm[pos..]);
-                pos += 16;
-            }
-
-            SecurityIdentifier = new SecurityIdentifier(binaryForm[pos..]);
-            pos += SecurityIdentifier.BinaryLength;
-
-            var opaqueLen = len - pos;
-            if (opaqueLen > 0)
-            {
-                var opaque = binaryForm.Slice(pos, opaqueLen);
-                SetOpaque(opaque);
-            }
+            throw new ArgumentException("Invalid ACE - truncated", nameof(binaryForm));
         }
+
+        if (len < lenMinimum)
+        {
+            throw new ArgumentException("Invalid ACE", nameof(binaryForm));
+        }
+
+        AccessMask = ReadInt(binaryForm[4..]);
+        ObjectAceFlags = (ObjectAceFlags)ReadInt(binaryForm[8..]);
+
+        if (ObjectAceTypePresent)
+        {
+            lenMinimum += 16;
+        }
+
+        if (InheritedObjectAceTypePresent)
+        {
+            lenMinimum += 16;
+        }
+
+        if (len < lenMinimum)
+        {
+            throw new ArgumentException("Invalid ACE", nameof(binaryForm));
+        }
+
+        var pos = 12;
+        if (ObjectAceTypePresent)
+        {
+            ObjectAceType = ReadGuid(binaryForm[pos..]);
+            pos += 16;
+        }
+        if (InheritedObjectAceTypePresent)
+        {
+            InheritedObjectAceType = ReadGuid(binaryForm[pos..]);
+            pos += 16;
+        }
+
+        SecurityIdentifier = new SecurityIdentifier(binaryForm[pos..]);
+        pos += SecurityIdentifier.BinaryLength;
+
+        var opaqueLen = len - pos;
+        if (opaqueLen > 0)
+        {
+            var opaque = binaryForm.Slice(pos, opaqueLen);
+            SetOpaque(opaque);
+        }
+    }
 #endif
 
-        public override int BinaryLength
+    public override int BinaryLength
+    {
+        get
         {
-            get
+            var length = 12 + SecurityIdentifier.BinaryLength + OpaqueLength;
+            if (ObjectAceTypePresent)
             {
-                var length = 12 + SecurityIdentifier.BinaryLength + OpaqueLength;
-                if (ObjectAceTypePresent)
+                length += 16;
+            }
+
+            if (InheritedObjectAceTypePresent)
+            {
+                length += 16;
+            }
+
+            return length;
+        }
+    }
+
+    public Guid InheritedObjectAceType
+    {
+        get => _inheritedObjectType;
+        set => _inheritedObjectType = value;
+    }
+
+    bool InheritedObjectAceTypePresent => 0 != (ObjectAceFlags & ObjectAceFlags.InheritedObjectAceTypePresent);
+
+
+    public Guid ObjectAceType
+    {
+        get => _objectAceType;
+        set => _objectAceType = value;
+    }
+
+    bool ObjectAceTypePresent => 0 != (ObjectAceFlags & ObjectAceFlags.ObjectAceTypePresent);
+
+    public override void GetBinaryForm(byte[] binaryForm, int offset)
+    {
+        var len = BinaryLength;
+        binaryForm[offset++] = (byte)AceType;
+        binaryForm[offset++] = (byte)AceFlags;
+        WriteUShort((ushort)len, binaryForm, offset);
+        offset += 2;
+        WriteInt(AccessMask, binaryForm, offset);
+        offset += 4;
+        WriteInt((int)ObjectAceFlags, binaryForm, offset);
+        offset += 4;
+
+        if (0 != (ObjectAceFlags & ObjectAceFlags.ObjectAceTypePresent))
+        {
+            WriteGuid(ObjectAceType, binaryForm, offset);
+            offset += 16;
+        }
+        if (0 != (ObjectAceFlags & ObjectAceFlags.InheritedObjectAceTypePresent))
+        {
+            WriteGuid(InheritedObjectAceType, binaryForm, offset);
+            offset += 16;
+        }
+
+        SecurityIdentifier.GetBinaryForm(binaryForm, offset);
+        offset += SecurityIdentifier.BinaryLength;
+
+        var opaque = GetOpaque();
+        if (opaque != null)
+        {
+            Array.Copy(opaque, 0, binaryForm, offset, opaque.Length);
+            offset += opaque.Length;
+        }
+    }
+
+    public static int MaxOpaqueLength(bool isCallback) =>
+        // Varies by platform?
+        65423;
+
+    internal override string GetSddlForm()
+    {
+        if (OpaqueLength != 0)
+        {
+            throw new NotImplementedException(
+                "Unable to convert conditional ACEs to SDDL");
+        }
+
+        var objType = "";
+        if ((ObjectAceFlags & ObjectAceFlags.ObjectAceTypePresent) != 0)
+        {
+            objType = _objectAceType.ToString("D");
+        }
+
+        var inhObjType = "";
+        if ((ObjectAceFlags & ObjectAceFlags.InheritedObjectAceTypePresent) != 0)
+        {
+            inhObjType = _inheritedObjectType.ToString("D");
+        }
+
+        return string.Format(CultureInfo.InvariantCulture,
+            "({0};{1};{2};{3};{4};{5})",
+            GetSddlAceType(AceType),
+            GetSddlAceFlags(AceFlags),
+            GetSddlAccessRights(AccessMask),
+            objType,
+            inhObjType,
+            SecurityIdentifier.GetSddlForm());
+    }
+
+    private static AceType ConvertType(AceQualifier qualifier, bool isCallback)
+    {
+        switch (qualifier)
+        {
+            case AceQualifier.AccessAllowed:
+                if (isCallback)
                 {
-                    length += 16;
+                    return AceType.AccessAllowedCallbackObject;
+                }
+                else
+                {
+                    return AceType.AccessAllowedObject;
                 }
 
-                if (InheritedObjectAceTypePresent)
+            case AceQualifier.AccessDenied:
+                if (isCallback)
                 {
-                    length += 16;
+                    return AceType.AccessDeniedCallbackObject;
+                }
+                else
+                {
+                    return AceType.AccessDeniedObject;
                 }
 
-                return length;
-            }
+            case AceQualifier.SystemAlarm:
+                if (isCallback)
+                {
+                    return AceType.SystemAlarmCallbackObject;
+                }
+                else
+                {
+                    return AceType.SystemAlarmObject;
+                }
+
+            case AceQualifier.SystemAudit:
+                if (isCallback)
+                {
+                    return AceType.SystemAuditCallbackObject;
+                }
+                else
+                {
+                    return AceType.SystemAuditObject;
+                }
+
+            default:
+                throw new ArgumentException("Unrecognized ACE qualifier: " + qualifier, nameof(qualifier));
         }
+    }
 
-        public Guid InheritedObjectAceType
-        {
-            get => _inheritedObjectType;
-            set => _inheritedObjectType = value;
-        }
+    private void WriteGuid(Guid val, byte[] buffer,
+                           int offset)
+    {
+        var guidData = val.ToByteArray();
+        Array.Copy(guidData, 0, buffer, offset, 16);
+    }
 
-        bool InheritedObjectAceTypePresent => 0 != (ObjectAceFlags & ObjectAceFlags.InheritedObjectAceTypePresent);
+    private Guid ReadGuid(byte[] buffer, int offset)
+    {
+        return MemoryMarshal.Read<Guid>(buffer.AsSpan(offset, 16));
+    }
 
-
-        public Guid ObjectAceType
-        {
-            get => _objectAceType;
-            set => _objectAceType = value;
-        }
-
-        bool ObjectAceTypePresent => 0 != (ObjectAceFlags & ObjectAceFlags.ObjectAceTypePresent);
-
-        public override void GetBinaryForm(byte[] binaryForm, int offset)
-        {
-            var len = BinaryLength;
-            binaryForm[offset++] = (byte)AceType;
-            binaryForm[offset++] = (byte)AceFlags;
-            WriteUShort((ushort)len, binaryForm, offset);
-            offset += 2;
-            WriteInt(AccessMask, binaryForm, offset);
-            offset += 4;
-            WriteInt((int)ObjectAceFlags, binaryForm, offset);
-            offset += 4;
-
-            if (0 != (ObjectAceFlags & ObjectAceFlags.ObjectAceTypePresent))
-            {
-                WriteGuid(ObjectAceType, binaryForm, offset);
-                offset += 16;
-            }
-            if (0 != (ObjectAceFlags & ObjectAceFlags.InheritedObjectAceTypePresent))
-            {
-                WriteGuid(InheritedObjectAceType, binaryForm, offset);
-                offset += 16;
-            }
-
-            SecurityIdentifier.GetBinaryForm(binaryForm, offset);
-            offset += SecurityIdentifier.BinaryLength;
-
-            var opaque = GetOpaque();
-            if (opaque != null)
-            {
-                Array.Copy(opaque, 0, binaryForm, offset, opaque.Length);
-                offset += opaque.Length;
-            }
-        }
-
-        public static int MaxOpaqueLength(bool isCallback) =>
-            // Varies by platform?
-            65423;
-
-        internal override string GetSddlForm()
-        {
-            if (OpaqueLength != 0)
-            {
-                throw new NotImplementedException(
-                    "Unable to convert conditional ACEs to SDDL");
-            }
-
-            var objType = "";
-            if ((ObjectAceFlags & ObjectAceFlags.ObjectAceTypePresent) != 0)
-            {
-                objType = _objectAceType.ToString("D");
-            }
-
-            var inhObjType = "";
-            if ((ObjectAceFlags & ObjectAceFlags.InheritedObjectAceTypePresent) != 0)
-            {
-                inhObjType = _inheritedObjectType.ToString("D");
-            }
-
-            return string.Format(CultureInfo.InvariantCulture,
-                "({0};{1};{2};{3};{4};{5})",
-                GetSddlAceType(AceType),
-                GetSddlAceFlags(AceFlags),
-                GetSddlAccessRights(AccessMask),
-                objType,
-                inhObjType,
-                SecurityIdentifier.GetSddlForm());
-        }
-
-        private static AceType ConvertType(AceQualifier qualifier, bool isCallback)
-        {
-            switch (qualifier)
-            {
-                case AceQualifier.AccessAllowed:
-                    if (isCallback)
-                    {
-                        return AceType.AccessAllowedCallbackObject;
-                    }
-                    else
-                    {
-                        return AceType.AccessAllowedObject;
-                    }
-
-                case AceQualifier.AccessDenied:
-                    if (isCallback)
-                    {
-                        return AceType.AccessDeniedCallbackObject;
-                    }
-                    else
-                    {
-                        return AceType.AccessDeniedObject;
-                    }
-
-                case AceQualifier.SystemAlarm:
-                    if (isCallback)
-                    {
-                        return AceType.SystemAlarmCallbackObject;
-                    }
-                    else
-                    {
-                        return AceType.SystemAlarmObject;
-                    }
-
-                case AceQualifier.SystemAudit:
-                    if (isCallback)
-                    {
-                        return AceType.SystemAuditCallbackObject;
-                    }
-                    else
-                    {
-                        return AceType.SystemAuditObject;
-                    }
-
-                default:
-                    throw new ArgumentException("Unrecognized ACE qualifier: " + qualifier, nameof(qualifier));
-            }
-        }
-
-        private void WriteGuid(Guid val, byte[] buffer,
-                               int offset)
-        {
-            var guidData = val.ToByteArray();
-            Array.Copy(guidData, 0, buffer, offset, 16);
-        }
-
-        private Guid ReadGuid(byte[] buffer, int offset)
-        {
-            return MemoryMarshal.Read<Guid>(buffer.AsSpan(offset, 16));
-        }
-
-        private Guid ReadGuid(ReadOnlySpan<byte> buffer)
-        {
-            return MemoryMarshal.Read<Guid>(buffer.Slice(0, 16));
-        }
+    private Guid ReadGuid(ReadOnlySpan<byte> buffer)
+    {
+        return MemoryMarshal.Read<Guid>(buffer.Slice(0, 16));
     }
 }

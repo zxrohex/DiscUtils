@@ -26,204 +26,189 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 
-namespace DiscUtils.Vmdk
+namespace DiscUtils.Vmdk;
+
+internal class ExtentDescriptor
 {
-    internal class ExtentDescriptor
+    public ExtentDescriptor() {}
+
+    public ExtentDescriptor(ExtentAccess access, long size, ExtentType type, string fileName, long offset)
     {
-        public ExtentDescriptor() {}
+        Access = access;
+        SizeInSectors = size;
+        Type = type;
+        FileName = fileName;
+        Offset = offset;
+    }
 
-        public ExtentDescriptor(ExtentAccess access, long size, ExtentType type, string fileName, long offset)
+    public ExtentAccess Access { get; private set; }
+
+    public string FileName { get; private set; }
+
+    public long Offset { get; private set; }
+
+    public long SizeInSectors { get; private set; }
+
+    public ExtentType Type { get; private set; }
+
+    public static ExtentDescriptor Parse(string descriptor)
+    {
+        var elems = SplitQuotedString(descriptor).ToArray();
+        if (elems.Length < 4)
         {
-            Access = access;
-            SizeInSectors = size;
-            Type = type;
-            FileName = fileName;
-            Offset = offset;
+            throw new IOException($"Invalid extent descriptor: {descriptor}");
         }
 
-        public ExtentAccess Access { get; private set; }
-
-        public string FileName { get; private set; }
-
-        public long Offset { get; private set; }
-
-        public long SizeInSectors { get; private set; }
-
-        public ExtentType Type { get; private set; }
-
-        public static ExtentDescriptor Parse(string descriptor)
+        var result = new ExtentDescriptor
         {
-            string[] elems = SplitQuotedString(descriptor).ToArray();
-            if (elems.Length < 4)
-            {
-                throw new IOException(string.Format(CultureInfo.InvariantCulture, "Invalid extent descriptor: {0}",
-                    descriptor));
-            }
-
-            ExtentDescriptor result = new ExtentDescriptor();
-
-            result.Access = ParseAccess(elems[0]);
-            result.SizeInSectors = long.Parse(elems[1], CultureInfo.InvariantCulture);
-            result.Type = ParseType(elems[2]);
-            result.FileName = elems[3].Trim('\"');
-            if (elems.Length > 4)
-            {
-                result.Offset = long.Parse(elems[4], CultureInfo.InvariantCulture);
-            }
-
-            return result;
+            Access = ParseAccess(elems[0]),
+            SizeInSectors = long.Parse(elems[1], CultureInfo.InvariantCulture),
+            Type = ParseType(elems[2]),
+            FileName = elems[3].Trim('\"')
+        };
+        if (elems.Length > 4)
+        {
+            result.Offset = long.Parse(elems[4], CultureInfo.InvariantCulture);
         }
 
-        public static ExtentAccess ParseAccess(string access)
+        return result;
+    }
+
+    public static ExtentAccess ParseAccess(string access)
+    {
+        if (access == "NOACCESS")
         {
-            if (access == "NOACCESS")
-            {
-                return ExtentAccess.None;
-            }
-            if (access == "RDONLY")
-            {
-                return ExtentAccess.ReadOnly;
-            }
-            if (access == "RW")
-            {
-                return ExtentAccess.ReadWrite;
-            }
-            throw new ArgumentException("Unknown access type", nameof(access));
+            return ExtentAccess.None;
+        }
+        if (access == "RDONLY")
+        {
+            return ExtentAccess.ReadOnly;
+        }
+        if (access == "RW")
+        {
+            return ExtentAccess.ReadWrite;
+        }
+        throw new ArgumentException("Unknown access type", nameof(access));
+    }
+
+    public static string FormatAccess(ExtentAccess access)
+    {
+        return access switch
+        {
+            ExtentAccess.None => "NOACCESS",
+            ExtentAccess.ReadOnly => "RDONLY",
+            ExtentAccess.ReadWrite => "RW",
+            _ => throw new ArgumentException("Unknown access type", nameof(access)),
+        };
+    }
+
+    public static ExtentType ParseType(string type)
+    {
+        if (type == "FLAT")
+        {
+            return ExtentType.Flat;
+        }
+        if (type == "SPARSE")
+        {
+            return ExtentType.Sparse;
+        }
+        if (type == "ZERO")
+        {
+            return ExtentType.Zero;
+        }
+        if (type == "VMFS")
+        {
+            return ExtentType.Vmfs;
+        }
+        if (type == "VMFSSPARSE")
+        {
+            return ExtentType.VmfsSparse;
+        }
+        if (type == "VMFSRDM")
+        {
+            return ExtentType.VmfsRdm;
+        }
+        if (type == "VMFSRAW")
+        {
+            return ExtentType.VmfsRaw;
+        }
+        if (type == "SESPARSE")
+        {
+            return ExtentType.SeSparse;
+        }
+        if (type == "VSANSPARSE")
+        {
+            return ExtentType.VsanSparse;
+        }
+        throw new ArgumentException("Unknown extent type", nameof(type));
+    }
+
+    public static string FormatExtentType(ExtentType type)
+    {
+        return type switch
+        {
+            ExtentType.Flat => "FLAT",
+            ExtentType.Sparse => "SPARSE",
+            ExtentType.Zero => "ZERO",
+            ExtentType.Vmfs => "VMFS",
+            ExtentType.VmfsSparse => "VMFSSPARSE",
+            ExtentType.VmfsRdm => "VMFSRDM",
+            ExtentType.VmfsRaw => "VMFSRAW",
+            ExtentType.SeSparse => "SESPARSE",
+            ExtentType.VsanSparse => "VSANSPARSE",
+            _ => throw new ArgumentException("Unknown extent type", nameof(type)),
+        };
+    }
+
+    public override string ToString()
+    {
+        var basic = FormatAccess(Access) + " " + SizeInSectors + " " + FormatExtentType(Type) + " \"" +
+                       FileName + "\"";
+        if (Type != ExtentType.Sparse && Type != ExtentType.VmfsSparse && Type != ExtentType.Zero)
+        {
+            return basic + " " + Offset;
         }
 
-        public static string FormatAccess(ExtentAccess access)
+        return basic;
+    }
+
+    private static IEnumerable<string> SplitQuotedString(string source)
+    {
+        var idx = 0;
+        while (idx < source.Length)
         {
-            switch (access)
+            // Skip spaces
+            while (source[idx] == ' ' && idx < source.Length)
             {
-                case ExtentAccess.None:
-                    return "NOACCESS";
-                case ExtentAccess.ReadOnly:
-                    return "RDONLY";
-                case ExtentAccess.ReadWrite:
-                    return "RW";
-                default:
-                    throw new ArgumentException("Unknown access type", nameof(access));
-            }
-        }
-
-        public static ExtentType ParseType(string type)
-        {
-            if (type == "FLAT")
-            {
-                return ExtentType.Flat;
-            }
-            if (type == "SPARSE")
-            {
-                return ExtentType.Sparse;
-            }
-            if (type == "ZERO")
-            {
-                return ExtentType.Zero;
-            }
-            if (type == "VMFS")
-            {
-                return ExtentType.Vmfs;
-            }
-            if (type == "VMFSSPARSE")
-            {
-                return ExtentType.VmfsSparse;
-            }
-            if (type == "VMFSRDM")
-            {
-                return ExtentType.VmfsRdm;
-            }
-            if (type == "VMFSRAW")
-            {
-                return ExtentType.VmfsRaw;
-            }
-            if (type == "SESPARSE")
-            {
-                return ExtentType.SeSparse;
-            }
-            if (type == "VSANSPARSE")
-            {
-                return ExtentType.VsanSparse;
-            }
-            throw new ArgumentException("Unknown extent type", nameof(type));
-        }
-
-        public static string FormatExtentType(ExtentType type)
-        {
-            switch (type)
-            {
-                case ExtentType.Flat:
-                    return "FLAT";
-                case ExtentType.Sparse:
-                    return "SPARSE";
-                case ExtentType.Zero:
-                    return "ZERO";
-                case ExtentType.Vmfs:
-                    return "VMFS";
-                case ExtentType.VmfsSparse:
-                    return "VMFSSPARSE";
-                case ExtentType.VmfsRdm:
-                    return "VMFSRDM";
-                case ExtentType.VmfsRaw:
-                    return "VMFSRAW";
-                case ExtentType.SeSparse:
-                    return "SESPARSE";
-                case ExtentType.VsanSparse:
-                    return "VSANSPARSE";
-                default:
-                    throw new ArgumentException("Unknown extent type", nameof(type));
-            }
-        }
-
-        public override string ToString()
-        {
-            string basic = FormatAccess(Access) + " " + SizeInSectors + " " + FormatExtentType(Type) + " \"" +
-                           FileName + "\"";
-            if (Type != ExtentType.Sparse && Type != ExtentType.VmfsSparse && Type != ExtentType.Zero)
-            {
-                return basic + " " + Offset;
-            }
-
-            return basic;
-        }
-
-        private static IEnumerable<string> SplitQuotedString(string source)
-        {
-            int idx = 0;
-            while (idx < source.Length)
-            {
-                // Skip spaces
-                while (source[idx] == ' ' && idx < source.Length)
-                {
-                    idx++;
-                }
-
-                if (source[idx] == '"')
-                {
-                    // A quoted value, find end of quotes...
-                    int start = idx;
-                    idx++;
-                    while (idx < source.Length && source[idx] != '"')
-                    {
-                        idx++;
-                    }
-
-                    yield return source.Substring(start, idx - start + 1);
-                }
-                else
-                {
-                    // An unquoted value, find end of value
-                    int start = idx;
-                    idx++;
-                    while (idx < source.Length && source[idx] != ' ')
-                    {
-                        idx++;
-                    }
-
-                    yield return source.Substring(start, idx - start);
-                }
-
                 idx++;
             }
+
+            if (source[idx] == '"')
+            {
+                // A quoted value, find end of quotes...
+                var start = idx;
+                idx++;
+                while (idx < source.Length && source[idx] != '"')
+                {
+                    idx++;
+                }
+
+                yield return source.Substring(start, idx - start + 1);
+            }
+            else
+            {
+                // An unquoted value, find end of value
+                var start = idx;
+                idx++;
+                while (idx < source.Length && source[idx] != ' ')
+                {
+                    idx++;
+                }
+
+                yield return source.Substring(start, idx - start);
+            }
+
+            idx++;
         }
     }
 }

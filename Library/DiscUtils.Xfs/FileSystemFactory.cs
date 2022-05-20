@@ -21,26 +21,25 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System.Collections.Generic;
+using System.IO;
+using DiscUtils.Vfs;
+
+[VfsFileSystemFactory]
+internal class FileSystemFactory : VfsFileSystemFactory
 {
-    using System.Collections.Generic;
-    using System.IO;
-    using DiscUtils.Vfs;
-
-    [VfsFileSystemFactory]
-    internal class FileSystemFactory : VfsFileSystemFactory
+    public override IEnumerable<DiscUtils.FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
     {
-        public override IEnumerable<DiscUtils.FileSystemInfo> Detect(Stream stream, VolumeInfo volume)
+        if (XfsFileSystem.Detect(stream))
         {
-            if (XfsFileSystem.Detect(stream))
-            {
-                yield return new VfsFileSystemInfo("xfs", "Linux xfs family filesystem", Open);
-            }
+            yield return new VfsFileSystemInfo("xfs", "Linux xfs family filesystem", Open);
         }
+    }
 
-        private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
-        {
-            return new XfsFileSystem(stream, parameters);
-        }
+    private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
+    {
+        return new XfsFileSystem(stream, parameters);
     }
 }

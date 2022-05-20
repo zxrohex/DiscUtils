@@ -25,49 +25,47 @@ using System.Globalization;
 using System.IO;
 using DiscUtils.Internal;
 
-namespace DiscUtils
+namespace DiscUtils;
+
+[VirtualDiskTransport("file")]
+internal sealed class FileTransport : VirtualDiskTransport
 {
-    [VirtualDiskTransport("file")]
-    internal sealed class FileTransport : VirtualDiskTransport
+    private string _extraInfo;
+    private string _path;
+
+    public override bool IsRawDisk
     {
-        private string _extraInfo;
-        private string _path;
+        get { return false; }
+    }
 
-        public override bool IsRawDisk
+    public override void Connect(Uri uri, string username, string password)
+    {
+        _path = uri.LocalPath;
+        _extraInfo = uri.Fragment.TrimStart('#');
+
+        if (!Directory.Exists(Path.GetDirectoryName(_path)))
         {
-            get { return false; }
+            throw new FileNotFoundException($"No such file '{uri.OriginalString}'", _path);
         }
+    }
 
-        public override void Connect(Uri uri, string username, string password)
-        {
-            _path = uri.LocalPath;
-            _extraInfo = uri.Fragment.TrimStart('#');
+    public override VirtualDisk OpenDisk(FileAccess access)
+    {
+        throw new NotSupportedException();
+    }
 
-            if (!Directory.Exists(Path.GetDirectoryName(_path)))
-            {
-                throw new FileNotFoundException(
-                    string.Format(CultureInfo.InvariantCulture, "No such file '{0}'", uri.OriginalString), _path);
-            }
-        }
+    public override FileLocator GetFileLocator()
+    {
+        return new LocalFileLocator(Path.GetDirectoryName(_path) + Path.DirectorySeparatorChar);
+    }
 
-        public override VirtualDisk OpenDisk(FileAccess access)
-        {
-            throw new NotSupportedException();
-        }
+    public override string GetFileName()
+    {
+        return Path.GetFileName(_path);
+    }
 
-        public override FileLocator GetFileLocator()
-        {
-            return new LocalFileLocator(Path.GetDirectoryName(_path) + Path.DirectorySeparatorChar);
-        }
-
-        public override string GetFileName()
-        {
-            return Path.GetFileName(_path);
-        }
-
-        public override string GetExtraInfo()
-        {
-            return _extraInfo;
-        }
+    public override string GetExtraInfo()
+    {
+        return _extraInfo;
     }
 }

@@ -22,110 +22,106 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class FileEntry : IByteArraySerializable
 {
-    internal class FileEntry : IByteArraySerializable
+    public DateTime AccessTime;
+    public byte[] AllocationDescriptors;
+    public int AllocationDescriptorsLength;
+    public DateTime AttributeTime;
+    public uint Checkpoint;
+    public DescriptorTag DescriptorTag;
+    public LongAllocationDescriptor ExtendedAttributeIcb;
+    public List<ExtendedAttributeRecord> ExtendedAttributes;
+    public int ExtendedAttributesLength;
+    public ushort FileLinkCount;
+    public uint Gid;
+    public ImplementationEntityIdentifier ImplementationIdentifier;
+    public InformationControlBlock InformationControlBlock;
+    public ulong InformationLength;
+    public ulong LogicalBlocksRecorded;
+    public DateTime ModificationTime;
+    public FilePermissions Permissions;
+    public byte RecordDisplayAttributes;
+    public byte RecordFormat;
+    public uint RecordLength;
+    public uint Uid;
+    public ulong UniqueId;
+
+    public virtual int Size
     {
-        public DateTime AccessTime;
-        public byte[] AllocationDescriptors;
-        public int AllocationDescriptorsLength;
-        public DateTime AttributeTime;
-        public uint Checkpoint;
-        public DescriptorTag DescriptorTag;
-        public LongAllocationDescriptor ExtendedAttributeIcb;
-        public List<ExtendedAttributeRecord> ExtendedAttributes;
-        public int ExtendedAttributesLength;
-        public ushort FileLinkCount;
-        public uint Gid;
-        public ImplementationEntityIdentifier ImplementationIdentifier;
-        public InformationControlBlock InformationControlBlock;
-        public ulong InformationLength;
-        public ulong LogicalBlocksRecorded;
-        public DateTime ModificationTime;
-        public FilePermissions Permissions;
-        public byte RecordDisplayAttributes;
-        public byte RecordFormat;
-        public uint RecordLength;
-        public uint Uid;
-        public ulong UniqueId;
+        get { throw new NotImplementedException(); }
+    }
 
-        public virtual int Size
+    public virtual int ReadFrom(byte[] buffer, int offset)
+    {
+        DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer, offset);
+        InformationControlBlock = EndianUtilities.ToStruct<InformationControlBlock>(buffer, offset + 16);
+        Uid = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 36);
+        Gid = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40);
+        Permissions = (FilePermissions)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
+        FileLinkCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 48);
+        RecordFormat = buffer[offset + 50];
+        RecordDisplayAttributes = buffer[offset + 51];
+        RecordLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 52);
+        InformationLength = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 56);
+        LogicalBlocksRecorded = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 64);
+        AccessTime = UdfUtilities.ParseTimestamp(buffer, offset + 72);
+        ModificationTime = UdfUtilities.ParseTimestamp(buffer, offset + 84);
+        AttributeTime = UdfUtilities.ParseTimestamp(buffer, offset + 96);
+        Checkpoint = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 108);
+        ExtendedAttributeIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 112);
+        ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer, offset + 128);
+        UniqueId = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 160);
+        ExtendedAttributesLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 168);
+        AllocationDescriptorsLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 172);
+        AllocationDescriptors = EndianUtilities.ToByteArray(buffer, offset + 176 + ExtendedAttributesLength,
+            AllocationDescriptorsLength);
+
+        var eaData = EndianUtilities.ToByteArray(buffer, offset + 176, ExtendedAttributesLength);
+        ExtendedAttributes = ReadExtendedAttributes(eaData).ToList();
+
+        return 176 + ExtendedAttributesLength + AllocationDescriptorsLength;
+    }
+
+    public virtual void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    protected static IEnumerable<ExtendedAttributeRecord> ReadExtendedAttributes(byte[] eaData)
+    {
+        if (eaData != null && eaData.Length != 0)
         {
-            get { throw new NotImplementedException(); }
-        }
+            var eaTag = new DescriptorTag();
+            eaTag.ReadFrom(eaData, 0);
 
-        public virtual int ReadFrom(byte[] buffer, int offset)
-        {
-            DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer, offset);
-            InformationControlBlock = EndianUtilities.ToStruct<InformationControlBlock>(buffer, offset + 16);
-            Uid = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 36);
-            Gid = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40);
-            Permissions = (FilePermissions)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
-            FileLinkCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 48);
-            RecordFormat = buffer[offset + 50];
-            RecordDisplayAttributes = buffer[offset + 51];
-            RecordLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 52);
-            InformationLength = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 56);
-            LogicalBlocksRecorded = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 64);
-            AccessTime = UdfUtilities.ParseTimestamp(buffer, offset + 72);
-            ModificationTime = UdfUtilities.ParseTimestamp(buffer, offset + 84);
-            AttributeTime = UdfUtilities.ParseTimestamp(buffer, offset + 96);
-            Checkpoint = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 108);
-            ExtendedAttributeIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 112);
-            ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer, offset + 128);
-            UniqueId = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 160);
-            ExtendedAttributesLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 168);
-            AllocationDescriptorsLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 172);
-            AllocationDescriptors = EndianUtilities.ToByteArray(buffer, offset + 176 + ExtendedAttributesLength,
-                AllocationDescriptorsLength);
+            var implAttrLocation = EndianUtilities.ToInt32LittleEndian(eaData, 16);
+            var appAttrLocation = EndianUtilities.ToInt32LittleEndian(eaData, 20);
 
-            byte[] eaData = EndianUtilities.ToByteArray(buffer, offset + 176, ExtendedAttributesLength);
-            ExtendedAttributes = ReadExtendedAttributes(eaData);
-
-            return 176 + ExtendedAttributesLength + AllocationDescriptorsLength;
-        }
-
-        public virtual void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected static List<ExtendedAttributeRecord> ReadExtendedAttributes(byte[] eaData)
-        {
-            if (eaData != null && eaData.Length != 0)
+            var pos = 24;
+            while (pos < eaData.Length)
             {
-                DescriptorTag eaTag = new DescriptorTag();
-                eaTag.ReadFrom(eaData, 0);
+                ExtendedAttributeRecord ea;
 
-                int implAttrLocation = EndianUtilities.ToInt32LittleEndian(eaData, 16);
-                int appAttrLocation = EndianUtilities.ToInt32LittleEndian(eaData, 20);
-
-                List<ExtendedAttributeRecord> extendedAttrs = new List<ExtendedAttributeRecord>();
-                int pos = 24;
-                while (pos < eaData.Length)
+                if (pos >= implAttrLocation)
                 {
-                    ExtendedAttributeRecord ea;
-
-                    if (pos >= implAttrLocation)
-                    {
-                        ea = new ImplementationUseExtendedAttributeRecord();
-                    }
-                    else
-                    {
-                        ea = new ExtendedAttributeRecord();
-                    }
-
-                    int numRead = ea.ReadFrom(eaData, pos);
-                    extendedAttrs.Add(ea);
-
-                    pos += numRead;
+                    ea = new ImplementationUseExtendedAttributeRecord();
+                }
+                else
+                {
+                    ea = new ExtendedAttributeRecord();
                 }
 
-                return extendedAttrs;
+                var numRead = ea.ReadFrom(eaData, pos);
+                yield return ea;
+
+                pos += numRead;
             }
-            return null;
         }
     }
 }

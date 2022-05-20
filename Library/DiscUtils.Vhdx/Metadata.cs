@@ -29,147 +29,148 @@ using DiscUtils.Streams;
 using System.Security.Permissions;
 #endif
 
-namespace DiscUtils.Vhdx
+namespace DiscUtils.Vhdx;
+
+internal sealed class Metadata
 {
-    internal sealed class Metadata
+    private readonly Stream _regionStream;
+
+    private Guid _page83Data;
+
+    public Metadata(Stream regionStream)
     {
-        private readonly Stream _regionStream;
+        _regionStream = regionStream;
+        _regionStream.Position = 0;
+        Table = StreamUtilities.ReadStruct<MetadataTable>(_regionStream);
 
-        private Guid _page83Data;
+        FileParameters = ReadStruct<FileParameters>(MetadataTable.FileParametersGuid, false);
+        DiskSize = ReadValue(MetadataTable.VirtualDiskSizeGuid, false, EndianUtilities.ToUInt64LittleEndian);
+        _page83Data = ReadValue(MetadataTable.Page83DataGuid, false, EndianUtilities.ToGuidLittleEndian);
+        LogicalSectorSize = ReadValue(MetadataTable.LogicalSectorSizeGuid, false,
+            EndianUtilities.ToUInt32LittleEndian);
+        PhysicalSectorSize = ReadValue(MetadataTable.PhysicalSectorSizeGuid, false,
+            EndianUtilities.ToUInt32LittleEndian);
+        ParentLocator = ReadStruct<ParentLocator>(MetadataTable.ParentLocatorGuid, false);
+    }
 
-        public Metadata(Stream regionStream)
+    private delegate T Reader<T>(byte[] buffer, int offset);
+
+    private delegate void Writer<T>(T val, byte[] buffer, int offset);
+
+    public MetadataTable Table { get; }
+
+    public FileParameters FileParameters { get; }
+
+    public ulong DiskSize { get; }
+
+    public uint LogicalSectorSize { get; }
+
+    public uint PhysicalSectorSize { get; }
+
+    public ParentLocator ParentLocator { get; }
+
+    internal static Metadata Initialize(Stream metadataStream, FileParameters fileParameters, ulong diskSize,
+                                        uint logicalSectorSize, uint physicalSectorSize, ParentLocator parentLocator)
+    {
+        var header = new MetadataTable();
+
+        var dataOffset = (uint)(64 * Sizes.OneKiB);
+        dataOffset += AddEntryStruct(fileParameters, MetadataTable.FileParametersGuid, MetadataEntryFlags.IsRequired,
+            header, dataOffset, metadataStream);
+        dataOffset += AddEntryValue(diskSize, EndianUtilities.WriteBytesLittleEndian, MetadataTable.VirtualDiskSizeGuid,
+            MetadataEntryFlags.IsRequired | MetadataEntryFlags.IsVirtualDisk, header, dataOffset, metadataStream);
+        dataOffset += AddEntryValue(Guid.NewGuid(), EndianUtilities.WriteBytesLittleEndian, MetadataTable.Page83DataGuid,
+            MetadataEntryFlags.IsRequired | MetadataEntryFlags.IsVirtualDisk, header, dataOffset, metadataStream);
+        dataOffset += AddEntryValue(logicalSectorSize, EndianUtilities.WriteBytesLittleEndian,
+            MetadataTable.LogicalSectorSizeGuid, MetadataEntryFlags.IsRequired | MetadataEntryFlags.IsVirtualDisk,
+            header, dataOffset, metadataStream);
+        dataOffset += AddEntryValue(physicalSectorSize, EndianUtilities.WriteBytesLittleEndian,
+            MetadataTable.PhysicalSectorSizeGuid, MetadataEntryFlags.IsRequired | MetadataEntryFlags.IsVirtualDisk,
+            header, dataOffset, metadataStream);
+        if (parentLocator != null)
         {
-            _regionStream = regionStream;
-            _regionStream.Position = 0;
-            Table = StreamUtilities.ReadStruct<MetadataTable>(_regionStream);
-
-            FileParameters = ReadStruct<FileParameters>(MetadataTable.FileParametersGuid, false);
-            DiskSize = ReadValue(MetadataTable.VirtualDiskSizeGuid, false, EndianUtilities.ToUInt64LittleEndian);
-            _page83Data = ReadValue(MetadataTable.Page83DataGuid, false, EndianUtilities.ToGuidLittleEndian);
-            LogicalSectorSize = ReadValue(MetadataTable.LogicalSectorSizeGuid, false,
-                EndianUtilities.ToUInt32LittleEndian);
-            PhysicalSectorSize = ReadValue(MetadataTable.PhysicalSectorSizeGuid, false,
-                EndianUtilities.ToUInt32LittleEndian);
-            ParentLocator = ReadStruct<ParentLocator>(MetadataTable.ParentLocatorGuid, false);
+            dataOffset += AddEntryStruct(parentLocator, MetadataTable.ParentLocatorGuid,
+                MetadataEntryFlags.IsRequired, header, dataOffset, metadataStream);
         }
 
-        private delegate T Reader<T>(byte[] buffer, int offset);
+        metadataStream.Position = 0;
+        StreamUtilities.WriteStruct(metadataStream, header);
+        return new Metadata(metadataStream);
+    }
 
-        private delegate void Writer<T>(T val, byte[] buffer, int offset);
-
-        public MetadataTable Table { get; }
-
-        public FileParameters FileParameters { get; }
-
-        public ulong DiskSize { get; }
-
-        public uint LogicalSectorSize { get; }
-
-        public uint PhysicalSectorSize { get; }
-
-        public ParentLocator ParentLocator { get; }
-
-        internal static Metadata Initialize(Stream metadataStream, FileParameters fileParameters, ulong diskSize,
-                                            uint logicalSectorSize, uint physicalSectorSize, ParentLocator parentLocator)
+    private static uint AddEntryStruct<T>(T data, Guid id, MetadataEntryFlags flags, MetadataTable header,
+                                          uint dataOffset, Stream stream)
+        where T : IByteArraySerializable
+    {
+        var key = new MetadataEntryKey(id, (flags & MetadataEntryFlags.IsUser) != 0);
+        var entry = new MetadataEntry
         {
-            MetadataTable header = new MetadataTable();
+            ItemId = id,
+            Offset = dataOffset,
+            Length = (uint)data.Size,
+            Flags = flags
+        };
 
-            uint dataOffset = (uint)(64 * Sizes.OneKiB);
-            dataOffset += AddEntryStruct(fileParameters, MetadataTable.FileParametersGuid, MetadataEntryFlags.IsRequired,
-                header, dataOffset, metadataStream);
-            dataOffset += AddEntryValue(diskSize, EndianUtilities.WriteBytesLittleEndian, MetadataTable.VirtualDiskSizeGuid,
-                MetadataEntryFlags.IsRequired | MetadataEntryFlags.IsVirtualDisk, header, dataOffset, metadataStream);
-            dataOffset += AddEntryValue(Guid.NewGuid(), EndianUtilities.WriteBytesLittleEndian, MetadataTable.Page83DataGuid,
-                MetadataEntryFlags.IsRequired | MetadataEntryFlags.IsVirtualDisk, header, dataOffset, metadataStream);
-            dataOffset += AddEntryValue(logicalSectorSize, EndianUtilities.WriteBytesLittleEndian,
-                MetadataTable.LogicalSectorSizeGuid, MetadataEntryFlags.IsRequired | MetadataEntryFlags.IsVirtualDisk,
-                header, dataOffset, metadataStream);
-            dataOffset += AddEntryValue(physicalSectorSize, EndianUtilities.WriteBytesLittleEndian,
-                MetadataTable.PhysicalSectorSizeGuid, MetadataEntryFlags.IsRequired | MetadataEntryFlags.IsVirtualDisk,
-                header, dataOffset, metadataStream);
-            if (parentLocator != null)
-            {
-                dataOffset += AddEntryStruct(parentLocator, MetadataTable.ParentLocatorGuid,
-                    MetadataEntryFlags.IsRequired, header, dataOffset, metadataStream);
-            }
+        header.Entries[key] = entry;
 
-            metadataStream.Position = 0;
-            StreamUtilities.WriteStruct(metadataStream, header);
-            return new Metadata(metadataStream);
-        }
+        stream.Position = dataOffset;
+        StreamUtilities.WriteStruct(stream, data);
 
-        private static uint AddEntryStruct<T>(T data, Guid id, MetadataEntryFlags flags, MetadataTable header,
-                                              uint dataOffset, Stream stream)
-            where T : IByteArraySerializable
-        {
-            MetadataEntryKey key = new MetadataEntryKey(id, (flags & MetadataEntryFlags.IsUser) != 0);
-            MetadataEntry entry = new MetadataEntry();
-            entry.ItemId = id;
-            entry.Offset = dataOffset;
-            entry.Length = (uint)data.Size;
-            entry.Flags = flags;
-
-            header.Entries[key] = entry;
-
-            stream.Position = dataOffset;
-            StreamUtilities.WriteStruct(stream, data);
-
-            return entry.Length;
-        }
+        return entry.Length;
+    }
 
 #if !NET5_0_OR_GREATER
-        [SecurityPermission(SecurityAction.Demand, UnmanagedCode = true)]
+    [SecurityPermission(SecurityAction.Demand, UnmanagedCode = true)]
 #endif
-        private static uint AddEntryValue<T>(T data, Writer<T> writer, Guid id, MetadataEntryFlags flags,
-                                             MetadataTable header, uint dataOffset, Stream stream)
+    private static uint AddEntryValue<T>(T data, Writer<T> writer, Guid id, MetadataEntryFlags flags,
+                                         MetadataTable header, uint dataOffset, Stream stream)
+    {
+        var key = new MetadataEntryKey(id, (flags & MetadataEntryFlags.IsUser) != 0);
+        var entry = new MetadataEntry
         {
-            MetadataEntryKey key = new MetadataEntryKey(id, (flags & MetadataEntryFlags.IsUser) != 0);
-            MetadataEntry entry = new MetadataEntry();
-            entry.ItemId = id;
-            entry.Offset = dataOffset;
-            entry.Length = (uint)ReflectionHelper.SizeOf<T>();
-            entry.Flags = flags;
+            ItemId = id,
+            Offset = dataOffset,
+            Length = (uint)ReflectionHelper.SizeOf<T>(),
+            Flags = flags
+        };
 
-            header.Entries[key] = entry;
+        header.Entries[key] = entry;
 
-            stream.Position = dataOffset;
+        stream.Position = dataOffset;
 
-            byte[] buffer = new byte[entry.Length];
-            writer(data, buffer, 0);
-            stream.Write(buffer, 0, buffer.Length);
+        var buffer = new byte[entry.Length];
+        writer(data, buffer, 0);
+        stream.Write(buffer, 0, buffer.Length);
 
-            return entry.Length;
+        return entry.Length;
+    }
+
+    private T ReadStruct<T>(Guid itemId, bool isUser)
+        where T : IByteArraySerializable, new()
+    {
+        var key = new MetadataEntryKey(itemId, isUser);
+        if (Table.Entries.TryGetValue(key, out var entry))
+        {
+            _regionStream.Position = entry.Offset;
+            return StreamUtilities.ReadStruct<T>(_regionStream, (int)entry.Length);
         }
 
-        private T ReadStruct<T>(Guid itemId, bool isUser)
-            where T : IByteArraySerializable, new()
-        {
-            MetadataEntryKey key = new MetadataEntryKey(itemId, isUser);
-            MetadataEntry entry;
-            if (Table.Entries.TryGetValue(key, out entry))
-            {
-                _regionStream.Position = entry.Offset;
-                return StreamUtilities.ReadStruct<T>(_regionStream, (int)entry.Length);
-            }
-
-            return default(T);
-        }
+        return default(T);
+    }
 
 #if !NET5_0_OR_GREATER
-        [SecurityPermission(SecurityAction.Demand, UnmanagedCode = true)]
+    [SecurityPermission(SecurityAction.Demand, UnmanagedCode = true)]
 #endif
-        private T ReadValue<T>(Guid itemId, bool isUser, Reader<T> reader)
+    private T ReadValue<T>(Guid itemId, bool isUser, Reader<T> reader)
+    {
+        var key = new MetadataEntryKey(itemId, isUser);
+        if (Table.Entries.TryGetValue(key, out var entry))
         {
-            MetadataEntryKey key = new MetadataEntryKey(itemId, isUser);
-            MetadataEntry entry;
-            if (Table.Entries.TryGetValue(key, out entry))
-            {
-                _regionStream.Position = entry.Offset;
-                byte[] data = StreamUtilities.ReadExact(_regionStream, ReflectionHelper.SizeOf<T>());
-                return reader(data, 0);
-            }
-
-            return default(T);
+            _regionStream.Position = entry.Offset;
+            var data = StreamUtilities.ReadExact(_regionStream, ReflectionHelper.SizeOf<T>());
+            return reader(data, 0);
         }
+
+        return default(T);
     }
 }

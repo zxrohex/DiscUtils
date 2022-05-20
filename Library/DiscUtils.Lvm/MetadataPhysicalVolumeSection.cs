@@ -20,96 +20,88 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using System;
+using System.IO;
+
+internal class MetadataPhysicalVolumeSection
 {
-    using System;
-    using System.IO;
+    public string Name;
+    public string Id;
+    public string Device;
+    public PhysicalVolumeStatus Status;
+    public string[] Flags;
+    public ulong DeviceSize;
+    public ulong PeStart;
+    public ulong PeCount;
 
-    internal class MetadataPhysicalVolumeSection
+
+    internal void Parse(string head, TextReader data)
     {
-        public string Name;
-        public string Id;
-        public string Device;
-        public PhysicalVolumeStatus Status;
-        public string[] Flags;
-        public ulong DeviceSize;
-        public ulong PeStart;
-        public ulong PeCount;
-
-
-        internal void Parse(string head, TextReader data)
+        Name = head.Trim().TrimEnd('{').TrimEnd();
+        string line;
+        while ((line = Metadata.ReadLine(data)) != null)
         {
-            Name = head.Trim().TrimEnd('{').TrimEnd();
-            string line;
-            while ((line = Metadata.ReadLine(data)) != null)
+            if (line == String.Empty) continue;
+            if (line.Contains("="))
             {
-                if (line == String.Empty) continue;
-                if (line.Contains("="))
+                var parameter = Metadata.ParseParameter(line);
+                switch (parameter.Key.Trim().ToLowerInvariant())
                 {
-                    var parameter = Metadata.ParseParameter(line);
-                    switch (parameter.Key.Trim().ToLowerInvariant())
-                    {
-                        case "id":
-                            Id = Metadata.ParseStringValue(parameter.Value);
-                            break;
-                        case "device":
-                            Device = Metadata.ParseStringValue(parameter.Value);
-                            break;
-                        case "status":
-                            var values = Metadata.ParseArrayValue(parameter.Value);
-                            foreach (var value in values)
+                    case "id":
+                        Id = Metadata.ParseStringValue(parameter.Value);
+                        break;
+                    case "device":
+                        Device = Metadata.ParseStringValue(parameter.Value);
+                        break;
+                    case "status":
+                        var values = Metadata.ParseArrayValue(parameter.Value);
+                        foreach (var value in values)
+                        {
+                            Status |= value.ToLowerInvariant().Trim() switch
                             {
-                                switch (value.ToLowerInvariant().Trim())
-                                {
-                                    case "read":
-                                        Status |= PhysicalVolumeStatus.Read;
-                                        break;
-                                    case "write":
-                                        Status |= PhysicalVolumeStatus.Write;
-                                        break;
-                                    case "allocatable":
-                                        Status |= PhysicalVolumeStatus.Allocatable;
-                                        break;
-                                    default:
-                                        throw new ArgumentOutOfRangeException("status", "Unexpected status in physical volume metadata");
-                                }
-                            }
-                            break;
-                        case "flags":
-                            Flags = Metadata.ParseArrayValue(parameter.Value);
-                            break;
-                        case "dev_size":
-                            DeviceSize = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        case "pe_start":
-                            PeStart = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        case "pe_count":
-                            PeCount = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in global metadata");
-                    }
-                }
-                else if (line.EndsWith("}"))
-                {
-                    break;
-                }
-                else
-                {
-                    throw new ArgumentOutOfRangeException(line, "unexpected input");
+                                "read" => PhysicalVolumeStatus.Read,
+                                "write" => PhysicalVolumeStatus.Write,
+                                "allocatable" => PhysicalVolumeStatus.Allocatable,
+                                _ => throw new ArgumentOutOfRangeException("status", "Unexpected status in physical volume metadata"),
+                            };
+                        }
+                        break;
+                    case "flags":
+                        Flags = Metadata.ParseArrayValue(parameter.Value);
+                        break;
+                    case "dev_size":
+                        DeviceSize = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    case "pe_start":
+                        PeStart = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    case "pe_count":
+                        PeCount = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in global metadata");
                 }
             }
+            else if (line.EndsWith("}"))
+            {
+                break;
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(line, "unexpected input");
+            }
         }
-
     }
 
-    [Flags]
-    internal enum PhysicalVolumeStatus
-    {
-        None = 0x0,
-        Read = 0x1,
-        Write = 0x4,
-        Allocatable = 0x8,
-    }
+}
+
+[Flags]
+internal enum PhysicalVolumeStatus
+{
+    None = 0x0,
+    Read = 0x1,
+    Write = 0x4,
+    Allocatable = 0x8,
 }

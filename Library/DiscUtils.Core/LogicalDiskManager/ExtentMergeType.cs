@@ -20,12 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.LogicalDiskManager
+namespace DiscUtils.LogicalDiskManager;
+
+internal enum ExtentMergeType : byte
 {
-    internal enum ExtentMergeType : byte
-    {
-        None = 0,
-        Interleaved = 1,
-        Concatenated = 2
-    }
+    None = 0,
+    Interleaved = 1,
+    Concatenated = 2
 }

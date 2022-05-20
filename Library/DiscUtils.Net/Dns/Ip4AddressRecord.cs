@@ -23,27 +23,26 @@
 using System;
 using System.Net;
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Represents a DNS A record.
+/// </summary>
+public sealed class IP4AddressRecord : ResourceRecord
 {
-    /// <summary>
-    /// Represents a DNS A record.
-    /// </summary>
-    public sealed class IP4AddressRecord : ResourceRecord
+    internal IP4AddressRecord(string name, RecordType type, RecordClass rClass, DateTime expiry, PacketReader reader)
+        : base(name, type, rClass, expiry)
     {
-        internal IP4AddressRecord(string name, RecordType type, RecordClass rClass, DateTime expiry, PacketReader reader)
-            : base(name, type, rClass, expiry)
-        {
-            ushort dataLen = reader.ReadUShort();
-            int pos = reader.Position;
+        var dataLen = reader.ReadUShort();
+        var pos = reader.Position;
 
-            Address = new IPAddress(reader.ReadBytes(dataLen));
+        Address = new IPAddress(reader.ReadBytes(dataLen));
 
-            reader.Position = pos + dataLen;
-        }
-
-        /// <summary>
-        /// Gets the IPv4 address.
-        /// </summary>
-        public IPAddress Address { get; }
+        reader.Position = pos + dataLen;
     }
+
+    /// <summary>
+    /// Gets the IPv4 address.
+    /// </summary>
+    public IPAddress Address { get; }
 }

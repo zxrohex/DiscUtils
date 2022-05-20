@@ -23,119 +23,114 @@
 using System;
 using System.Collections.Generic;
 
-namespace DiscUtils.Common
+namespace DiscUtils.Common;
+
+public static class Utilities
 {
-    public static class Utilities
+    public static IEnumerable<string> WordWrap(string text, int width)
     {
-        public static string[] WordWrap(string text, int width)
+        var pos = 0;
+
+        while (pos < text.Length - width)
         {
-            List<string> lines = new List<string>();
-            int pos = 0;
+            var start = Math.Min(pos + width, text.Length - 1);
+            var count = start - pos;
 
-            while (pos < text.Length - width)
+            var breakPos = text.LastIndexOf(' ', start, count);
+
+            yield return text.Substring(pos, breakPos - pos).TrimEnd(' ');
+
+            while (breakPos < text.Length && text[breakPos] == ' ')
             {
-                int start = Math.Min(pos + width, text.Length - 1);
-                int count = start - pos;
-
-                int breakPos = text.LastIndexOf(' ', start, count);
-
-                lines.Add(text.Substring(pos, breakPos - pos).TrimEnd(' '));
-
-                while (breakPos < text.Length && text[breakPos] == ' ')
-                {
-                    breakPos++;
-                }
-                pos = breakPos;
+                breakPos++;
             }
-
-            lines.Add(text.Substring(pos));
-
-            return lines.ToArray();
+            pos = breakPos;
         }
 
-        public static string PromptForPassword()
-        {
-            Console.WriteLine();
-            Console.Write("Password: ");
+        yield return text.Substring(pos);
+    }
 
-            ConsoleColor restoreColor = Console.ForegroundColor;
-            Console.ForegroundColor = Console.BackgroundColor;
-            try
-            {
-                return Console.ReadLine();
-            }
-            finally
-            {
-                Console.ForegroundColor = restoreColor;
-            }
+    public static string PromptForPassword()
+    {
+        Console.WriteLine();
+        Console.Write("Password: ");
+
+        var restoreColor = Console.ForegroundColor;
+        Console.ForegroundColor = Console.BackgroundColor;
+        try
+        {
+            return Console.ReadLine();
         }
-
-        public static string ApproximateDiskSize(long size)
+        finally
         {
-            if (size > 10 * (1024 * 1024L * 1024))
-            {
-                return (size / (1024 * 1024 * 1024)) + " GiB";
-            }
-            else if (size > 10 * (1024 * 1024L))
-            {
-                return (size / (1024 * 1024)) + " MiB";
-            }
-            else if (size > 10 * 1024)
-            {
-                return (size / 1024) + " KiB";
-            }
-            else
-            {
-                return size + " B";
-            }
+            Console.ForegroundColor = restoreColor;
         }
+    }
 
-        public static bool TryParseDiskSize(string size, out long value)
+    public static string ApproximateDiskSize(long size)
+    {
+        if (size > 10 * (1024 * 1024L * 1024))
         {
-            char lastChar = size[size.Length - 1];
-            if (Char.IsDigit(lastChar))
+            return (size / (1024 * 1024 * 1024)) + " GiB";
+        }
+        else if (size > 10 * (1024 * 1024L))
+        {
+            return (size / (1024 * 1024)) + " MiB";
+        }
+        else if (size > 10 * 1024)
+        {
+            return (size / 1024) + " KiB";
+        }
+        else
+        {
+            return size + " B";
+        }
+    }
+
+    public static bool TryParseDiskSize(string size, out long value)
+    {
+        var lastChar = size[size.Length - 1];
+        if (Char.IsDigit(lastChar))
+        {
+            return long.TryParse(size, out value);
+        }
+        else if (lastChar == 'B' && size.Length >= 2)
+        {
+            var unitChar = size[size.Length - 2];
+
+            // suffix is 'B', indicating bytes
+            if (Char.IsDigit(unitChar))
             {
-                return long.TryParse(size, out value);
+                return long.TryParse(size.Substring(0, size.Length - 1), out value);
             }
-            else if (lastChar == 'B' && size.Length >= 2)
-            {
-                char unitChar = size[size.Length - 2];
 
-                // suffix is 'B', indicating bytes
-                if (Char.IsDigit(unitChar))
-                {
-                    return long.TryParse(size.Substring(0, size.Length - 1), out value);
-                }
-
-                // suffix is KB, MB or GB
-                long quantity;
-                if (!long.TryParse(size.Substring(0, size.Length - 2), out quantity))
-                {
-                    value = 0;
-                    return false;
-                }
-
-                switch (unitChar)
-                {
-                    case 'K':
-                        value = quantity * 1024L;
-                        return true;
-                    case 'M':
-                        value = quantity * 1024L * 1024L;
-                        return true;
-                    case 'G':
-                        value = quantity * 1024L * 1024L * 1024L;
-                        return true;
-                    default:
-                        value = 0;
-                        return false;
-                }
-            }
-            else
+            // suffix is KB, MB or GB
+            if (!long.TryParse(size.Substring(0, size.Length - 2), out var quantity))
             {
                 value = 0;
                 return false;
             }
+
+            switch (unitChar)
+            {
+                case 'K':
+                    value = quantity * 1024L;
+                    return true;
+                case 'M':
+                    value = quantity * 1024L * 1024L;
+                    return true;
+                case 'G':
+                    value = quantity * 1024L * 1024L * 1024L;
+                    return true;
+                default:
+                    value = 0;
+                    return false;
+            }
+        }
+        else
+        {
+            value = 0;
+            return false;
         }
     }
 }

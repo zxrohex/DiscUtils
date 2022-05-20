@@ -24,110 +24,105 @@ using System.Globalization;
 using System.IO;
 using System.Management.Automation;
 
-namespace DiscUtils.PowerShell
+namespace DiscUtils.PowerShell;
+
+internal class Utilities
 {
-    internal class Utilities
+    /// <summary>
+    /// Replace all ':' characters with '#'.
+    /// </summary>
+    /// <param name="path">The path to normalize</param>
+    /// <returns>The normalized path</returns>
+    /// <remarks>
+    /// PowerShell has a bug that prevents tab-completion if the paths contain ':'
+    /// characters, so in the external path for this provider we encode ':' as '#'.
+    /// </remarks>
+    public static string NormalizePath(string path)
     {
-        /// <summary>
-        /// Replace all ':' characters with '#'.
-        /// </summary>
-        /// <param name="path">The path to normalize</param>
-        /// <returns>The normalized path</returns>
-        /// <remarks>
-        /// PowerShell has a bug that prevents tab-completion if the paths contain ':'
-        /// characters, so in the external path for this provider we encode ':' as '#'.
-        /// </remarks>
-        public static string NormalizePath(string path)
-        {
-            return path.Replace(':', '#');
-        }
-
-        /// <summary>
-        /// Replace all '#' characters with ':'.
-        /// </summary>
-        /// <param name="path">The path to normalize</param>
-        /// <returns>The normalized path</returns>
-        /// <remarks>
-        /// PowerShell has a bug that prevents tab-completion if the paths contain ':'
-        /// characters, so in the external path for this provider we encode ':' as '#'.
-        /// </remarks>
-        public static string DenormalizePath(string path)
-        {
-            return path.Replace('#', ':');
-        }
-
-        public static Stream CreatePsPath(SessionState session, string filePath)
-        {
-            string parentPath = session.Path.ParseParent(filePath, null);
-            string childName = session.Path.ParseChildName(filePath);
-            var parentItems = session.InvokeProvider.Item.Get(parentPath);
-            if (parentItems.Count > 1)
-            {
-                throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} is ambiguous", parentPath));
-            }
-            else if (parentItems.Count < 1)
-            {
-                throw new DirectoryNotFoundException("No such directory");
-            }
-
-            DirectoryInfo parentAsDir = parentItems[0].BaseObject as DirectoryInfo;
-            if (parentAsDir != null)
-            {
-                return File.Create(Path.Combine(parentAsDir.FullName, childName));
-            }
-
-            DiscDirectoryInfo parentAsDiscDir = parentItems[0].BaseObject as DiscDirectoryInfo;
-            if (parentAsDiscDir != null)
-            {
-                return parentAsDiscDir.FileSystem.OpenFile(Path.Combine(parentAsDiscDir.FullName, childName), FileMode.Create, FileAccess.ReadWrite);
-            }
-
-            throw new FileNotFoundException("Path is not a directory", parentPath);
-        }
-
-        public static Stream OpenPsPath(SessionState session, string filePath, FileAccess access, FileShare share)
-        {
-            var items = session.InvokeProvider.Item.Get(filePath);
-            if (items.Count == 1)
-            {
-                FileInfo itemAsFile = items[0].BaseObject as FileInfo;
-                if (itemAsFile != null)
-                {
-                    return itemAsFile.Open(FileMode.Open, access, share);
-                }
-
-                DiscFileInfo itemAsDiscFile = items[0].BaseObject as DiscFileInfo;
-                if (itemAsDiscFile != null)
-                {
-                    return itemAsDiscFile.Open(FileMode.Open, access);
-                }
-
-                throw new FileNotFoundException("Path is not a file", filePath);
-            }
-            else if (items.Count > 1)
-            {
-                throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} is ambiguous", filePath));
-            }
-            else
-            {
-                throw new FileNotFoundException("No such file", filePath);
-            }
-        }
-
-        public static string ResolvePsPath(SessionState session, string filePath)
-        {
-            var paths = session.Path.GetResolvedPSPathFromPSPath(filePath);
-            if (paths.Count > 1)
-            {
-                throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} is ambiguous", filePath));
-            }
-            else if (paths.Count < 1)
-            {
-                throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} not found", filePath));
-            }
-
-            return paths[0].Path;
-        }
-
+        return path.Replace(':', '#');
     }
+
+    /// <summary>
+    /// Replace all '#' characters with ':'.
+    /// </summary>
+    /// <param name="path">The path to normalize</param>
+    /// <returns>The normalized path</returns>
+    /// <remarks>
+    /// PowerShell has a bug that prevents tab-completion if the paths contain ':'
+    /// characters, so in the external path for this provider we encode ':' as '#'.
+    /// </remarks>
+    public static string DenormalizePath(string path)
+    {
+        return path.Replace('#', ':');
+    }
+
+    public static Stream CreatePsPath(SessionState session, string filePath)
+    {
+        var parentPath = session.Path.ParseParent(filePath, null);
+        var childName = session.Path.ParseChildName(filePath);
+        var parentItems = session.InvokeProvider.Item.Get(parentPath);
+        if (parentItems.Count > 1)
+        {
+            throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} is ambiguous", parentPath));
+        }
+        else if (parentItems.Count < 1)
+        {
+            throw new DirectoryNotFoundException("No such directory");
+        }
+
+        if (parentItems[0].BaseObject is DirectoryInfo parentAsDir)
+        {
+            return File.Create(Path.Combine(parentAsDir.FullName, childName));
+        }
+
+        if (parentItems[0].BaseObject is DiscDirectoryInfo parentAsDiscDir)
+        {
+            return parentAsDiscDir.FileSystem.OpenFile(Path.Combine(parentAsDiscDir.FullName, childName), FileMode.Create, FileAccess.ReadWrite);
+        }
+
+        throw new FileNotFoundException("Path is not a directory", parentPath);
+    }
+
+    public static Stream OpenPsPath(SessionState session, string filePath, FileAccess access, FileShare share)
+    {
+        var items = session.InvokeProvider.Item.Get(filePath);
+        if (items.Count == 1)
+        {
+            if (items[0].BaseObject is FileInfo itemAsFile)
+            {
+                return itemAsFile.Open(FileMode.Open, access, share);
+            }
+
+            if (items[0].BaseObject is DiscFileInfo itemAsDiscFile)
+            {
+                return itemAsDiscFile.Open(FileMode.Open, access);
+            }
+
+            throw new FileNotFoundException("Path is not a file", filePath);
+        }
+        else if (items.Count > 1)
+        {
+            throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} is ambiguous", filePath));
+        }
+        else
+        {
+            throw new FileNotFoundException("No such file", filePath);
+        }
+    }
+
+    public static string ResolvePsPath(SessionState session, string filePath)
+    {
+        var paths = session.Path.GetResolvedPSPathFromPSPath(filePath);
+        if (paths.Count > 1)
+        {
+            throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} is ambiguous", filePath));
+        }
+        else if (paths.Count < 1)
+        {
+            throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} not found", filePath));
+        }
+
+        return paths[0].Path;
+    }
+
 }

@@ -25,78 +25,75 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal struct UpperCase : IComparer<string>
 {
-    internal struct UpperCase : IComparer<string>
+    private readonly char[] _table;
+
+    public UpperCase(File file)
     {
-        private readonly char[] _table;
+        using Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.Read);
+        _table = new char[s.Length / 2];
 
-        public UpperCase(File file)
+        var buffer = StreamUtilities.ReadExact(s, (int)s.Length);
+
+        for (var i = 0; i < _table.Length; ++i)
         {
-            using (Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.Read))
+            _table[i] = (char)EndianUtilities.ToUInt16LittleEndian(buffer, i * 2);
+        }
+    }
+
+    public int Compare(string x, string y)
+    {
+        var compLen = Math.Min(x.Length, y.Length);
+        for (var i = 0; i < compLen; ++i)
+        {
+            var result = _table[x[i]] - _table[y[i]];
+            if (result != 0)
             {
-                _table = new char[s.Length / 2];
-
-                byte[] buffer = StreamUtilities.ReadExact(s, (int)s.Length);
-
-                for (int i = 0; i < _table.Length; ++i)
-                {
-                    _table[i] = (char)EndianUtilities.ToUInt16LittleEndian(buffer, i * 2);
-                }
+                return result;
             }
         }
 
-        public int Compare(string x, string y)
-        {
-            int compLen = Math.Min(x.Length, y.Length);
-            for (int i = 0; i < compLen; ++i)
-            {
-                int result = _table[x[i]] - _table[y[i]];
-                if (result != 0)
-                {
-                    return result;
-                }
-            }
+        // Identical out to the shortest string, so length is now the
+        // determining factor.
+        return x.Length - y.Length;
+    }
 
-            // Identical out to the shortest string, so length is now the
-            // determining factor.
-            return x.Length - y.Length;
+    public int Compare(byte[] x, int xOffset, int xLength, byte[] y, int yOffset, int yLength)
+    {
+        var compLen = Math.Min(xLength, yLength) / 2;
+        for (var i = 0; i < compLen; ++i)
+        {
+            var xCh = (char)(x[xOffset + i * 2] | (x[xOffset + i * 2 + 1] << 8));
+            var yCh = (char)(y[yOffset + i * 2] | (y[yOffset + i * 2 + 1] << 8));
+
+            var result = _table[xCh] - _table[yCh];
+            if (result != 0)
+            {
+                return result;
+            }
         }
 
-        public int Compare(byte[] x, int xOffset, int xLength, byte[] y, int yOffset, int yLength)
+        // Identical out to the shortest string, so length is now the
+        // determining factor.
+        return xLength - yLength;
+    }
+
+    internal static UpperCase Initialize(File file)
+    {
+        var buffer = new byte[(char.MaxValue + 1) * 2];
+        for (int i = char.MinValue; i <= char.MaxValue; ++i)
         {
-            int compLen = Math.Min(xLength, yLength) / 2;
-            for (int i = 0; i < compLen; ++i)
-            {
-                char xCh = (char)(x[xOffset + i * 2] | (x[xOffset + i * 2 + 1] << 8));
-                char yCh = (char)(y[yOffset + i * 2] | (y[yOffset + i * 2 + 1] << 8));
-
-                int result = _table[xCh] - _table[yCh];
-                if (result != 0)
-                {
-                    return result;
-                }
-            }
-
-            // Identical out to the shortest string, so length is now the
-            // determining factor.
-            return xLength - yLength;
+            EndianUtilities.WriteBytesLittleEndian(char.ToUpperInvariant((char)i), buffer, i * 2);
         }
 
-        internal static UpperCase Initialize(File file)
+        using (Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite))
         {
-            byte[] buffer = new byte[(char.MaxValue + 1) * 2];
-            for (int i = char.MinValue; i <= char.MaxValue; ++i)
-            {
-                EndianUtilities.WriteBytesLittleEndian(char.ToUpperInvariant((char)i), buffer, i * 2);
-            }
-
-            using (Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite))
-            {
-                s.Write(buffer, 0, buffer.Length);
-            }
-
-            return new UpperCase(file);
+            s.Write(buffer, 0, buffer.Length);
         }
+
+        return new UpperCase(file);
     }
 }

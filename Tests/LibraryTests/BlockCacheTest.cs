@@ -33,8 +33,8 @@ namespace LibraryTests
         [Fact]
         public void Dispose()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose);
+            var ms = CreateSequencedMemStream(100, false);
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose);
             cacheStream.Dispose();
 
             try
@@ -61,11 +61,11 @@ namespace LibraryTests
         [Fact]
         public void LargeRead()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, false);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[40];
+            var buffer = new byte[40];
             cacheStream.Position = 0;
             cacheStream.Read(buffer, 0, buffer.Length);
 
@@ -78,11 +78,11 @@ namespace LibraryTests
         [Fact]
         public void ReadThrough()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, false);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[20];
+            var buffer = new byte[20];
             cacheStream.Position = 0;
             cacheStream.Read(buffer, 0, buffer.Length);
 
@@ -95,11 +95,11 @@ namespace LibraryTests
         [Fact]
         public void CachedRead()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, false);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[20];
+            var buffer = new byte[20];
             cacheStream.Position = 0;
             cacheStream.Read(buffer, 0, buffer.Length);
 
@@ -121,11 +121,11 @@ namespace LibraryTests
         [Fact]
         public void UnalignedRead()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, false);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[20];
+            var buffer = new byte[20];
             cacheStream.Position = 3;
             cacheStream.Read(buffer, 0, buffer.Length);
 
@@ -138,11 +138,11 @@ namespace LibraryTests
         [Fact]
         public void UnalignedCachedRead()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, false);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[20];
+            var buffer = new byte[20];
             cacheStream.Position = 3;
             cacheStream.Read(buffer, 0, buffer.Length);
 
@@ -165,13 +165,13 @@ namespace LibraryTests
         [Fact]
         public void Overread()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, false);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[20];
+            var buffer = new byte[20];
             cacheStream.Position = 90;
-            int numRead = cacheStream.Read(buffer, 0, buffer.Length);
+            var numRead = cacheStream.Read(buffer, 0, buffer.Length);
 
             Assert.Equal(10, numRead);
             AssertSequenced(buffer, 0, 10, 90);
@@ -184,13 +184,13 @@ namespace LibraryTests
         [Fact]
         public void CachedOverread()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, false);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[20];
+            var buffer = new byte[20];
             cacheStream.Position = 90;
-            int numRead = cacheStream.Read(buffer, 0, buffer.Length);
+            var numRead = cacheStream.Read(buffer, 0, buffer.Length);
 
             Assert.Equal(10, numRead);
             AssertSequenced(buffer, 0, 10, 90);
@@ -212,13 +212,13 @@ namespace LibraryTests
         [Fact]
         public void CacheBlockRecycle()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 50, LargeReadSize = 100 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, false);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 50, LargeReadSize = 100 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[50];
+            var buffer = new byte[50];
             cacheStream.Position = 10;
-            int numRead = cacheStream.Read(buffer, 0, buffer.Length);
+            var numRead = cacheStream.Read(buffer, 0, buffer.Length);
 
             Assert.Equal(50, numRead);
             AssertSequenced(buffer, 10);
@@ -240,11 +240,11 @@ namespace LibraryTests
         [Fact]
         public void Write()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, true);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, true);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[20];
+            var buffer = new byte[20];
             cacheStream.Position = 10;
             cacheStream.Read(buffer, 0, buffer.Length);
 
@@ -267,17 +267,17 @@ namespace LibraryTests
         [Fact]
         public void FailWrite()
         {
-            MemoryStream ms = CreateSequencedMemStream(100, false);
-            BlockCacheSettings settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
-            BlockCacheStream cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
+            var ms = CreateSequencedMemStream(100, false);
+            var settings = new BlockCacheSettings() { BlockSize = 10, OptimumReadSize = 20, ReadCacheSize = 100, LargeReadSize = 30 };
+            var cacheStream = new BlockCacheStream(SparseStream.FromStream(ms, Ownership.Dispose), Ownership.Dispose, settings);
 
-            byte[] buffer = new byte[25];
+            var buffer = new byte[25];
             cacheStream.Position = 0;
             cacheStream.Read(buffer, 0, buffer.Length);
 
             AssertSequenced(buffer, 0);
 
-            int freeBefore = cacheStream.Statistics.FreeReadBlocks;
+            var freeBefore = cacheStream.Statistics.FreeReadBlocks;
 
             cacheStream.Position = 11;
             try
@@ -292,8 +292,8 @@ namespace LibraryTests
 
         private MemoryStream CreateSequencedMemStream(int length, bool writable)
         {
-            byte[] buffer = new byte[length];
-            for (int i = 0; i < length; ++i)
+            var buffer = new byte[length];
+            for (var i = 0; i < length; ++i)
             {
                 buffer[i] = (byte)i;
             }
@@ -308,11 +308,11 @@ namespace LibraryTests
 
         private void AssertSequenced(byte[] buffer, int offset, int count, int seqOffset)
         {
-            for (int i = 0; i < count; ++i)
+            for (var i = 0; i < count; ++i)
             {
                 if (buffer[i + offset] != (byte)(i + seqOffset))
                 {
-                    Assert.True(false, string.Format("Expected {0} at index {1}, was {2}", (byte)(i + seqOffset), i + offset, buffer[i + offset]));
+                    Assert.True(false, $"Expected {(byte)(i + seqOffset)} at index {i + offset}, was {buffer[i + offset]}");
                 }
             }
         }

@@ -34,15 +34,15 @@ namespace LibraryTests.Xva
         [Fact]
         public void TestEmpty()
         {
-            MemoryStream xvaStream = new MemoryStream();
-            VirtualMachineBuilder vmb = new VirtualMachineBuilder();
+            var xvaStream = new MemoryStream();
+            var vmb = new VirtualMachineBuilder();
             vmb.AddDisk("Foo", new MemoryStream(), Ownership.Dispose);
             vmb.Build(xvaStream);
 
             Assert.NotEqual(0, xvaStream.Length);
 
-            VirtualMachine vm = new VirtualMachine(xvaStream);
-            List<Disk> disks = new List<Disk>(vm.Disks);
+            var vm = new VirtualMachine(xvaStream);
+            var disks = new List<Disk>(vm.Disks);
             Assert.Single(disks);
             Assert.Equal(0, disks[0].Capacity);
         }
@@ -50,11 +50,11 @@ namespace LibraryTests.Xva
         [Fact]
         public void TestNotEmpty()
         {
-            MemoryStream xvaStream = new MemoryStream();
-            VirtualMachineBuilder vmb = new VirtualMachineBuilder();
+            var xvaStream = new MemoryStream();
+            var vmb = new VirtualMachineBuilder();
 
-            MemoryStream ms = new MemoryStream();
-            for (int i = 0; i < 1024 * 1024; ++i)
+            var ms = new MemoryStream();
+            for (var i = 0; i < 1024 * 1024; ++i)
             {
                 ms.Position = i * 10;
                 ms.WriteByte((byte)(i ^ (i >> 8) ^ (i >> 16) ^ (i >> 24)));
@@ -65,13 +65,13 @@ namespace LibraryTests.Xva
 
             Assert.NotEqual(0, xvaStream.Length);
 
-            VirtualMachine vm = new VirtualMachine(xvaStream);
-            List<Disk> disks = new List<Disk>(vm.Disks);
+            var vm = new VirtualMachine(xvaStream);
+            var disks = new List<Disk>(vm.Disks);
             Assert.Single(disks);
             Assert.Equal(10 * 1024 * 1024, disks[0].Capacity);
 
             Stream diskContent = disks[0].Content;
-            for (int i = 0; i < 1024 * 1024; ++i)
+            for (var i = 0; i < 1024 * 1024; ++i)
             {
                 diskContent.Position = i * 10;
                 if ((byte)(i ^ (i >> 8) ^ (i >> 16) ^ (i >> 24)) != diskContent.ReadByte())

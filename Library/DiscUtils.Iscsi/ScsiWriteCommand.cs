@@ -23,44 +23,43 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class ScsiWriteCommand : ScsiCommand
 {
-    internal class ScsiWriteCommand : ScsiCommand
+    private readonly uint _logicalBlockAddress;
+
+    public ScsiWriteCommand(ulong targetLun, uint logicalBlockAddress, ushort numBlocks)
+        : base(targetLun)
     {
-        private readonly uint _logicalBlockAddress;
+        _logicalBlockAddress = logicalBlockAddress;
+        NumBlocks = numBlocks;
+    }
 
-        public ScsiWriteCommand(ulong targetLun, uint logicalBlockAddress, ushort numBlocks)
-            : base(targetLun)
-        {
-            _logicalBlockAddress = logicalBlockAddress;
-            NumBlocks = numBlocks;
-        }
+    public ushort NumBlocks { get; }
 
-        public ushort NumBlocks { get; }
+    public override int Size
+    {
+        get { return 10; }
+    }
 
-        public override int Size
-        {
-            get { return 10; }
-        }
+    public override TaskAttributes TaskAttributes
+    {
+        get { return TaskAttributes.Simple; }
+    }
 
-        public override TaskAttributes TaskAttributes
-        {
-            get { return TaskAttributes.Simple; }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            buffer[offset] = 0x2A;
-            buffer[offset + 1] = 0;
-            EndianUtilities.WriteBytesBigEndian(_logicalBlockAddress, buffer, offset + 2);
-            buffer[offset + 6] = 0;
-            EndianUtilities.WriteBytesBigEndian(NumBlocks, buffer, offset + 7);
-            buffer[offset + 9] = 0;
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        buffer[offset] = 0x2A;
+        buffer[offset + 1] = 0;
+        EndianUtilities.WriteBytesBigEndian(_logicalBlockAddress, buffer, offset + 2);
+        buffer[offset + 6] = 0;
+        EndianUtilities.WriteBytesBigEndian(NumBlocks, buffer, offset + 7);
+        buffer[offset + 9] = 0;
     }
 }

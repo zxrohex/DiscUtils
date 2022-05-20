@@ -22,18 +22,17 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+[Flags]
+public enum Nfs3AccessPermissions
 {
-    [Flags]
-    public enum Nfs3AccessPermissions
-    {
-        None = 0x00,
-        Read = 0x01,
-        Lookup = 0x02,
-        Modify = 0x04,
-        Extend = 0x08,
-        Delete = 0x10,
-        Execute = 0x20,
-        All = Read | Lookup | Modify | Extend | Delete | Execute
-    }
+    None = 0x00,
+    Read = 0x01,
+    Lookup = 0x02,
+    Modify = 0x04,
+    Extend = 0x08,
+    Delete = 0x10,
+    Execute = 0x20,
+    All = Read | Lookup | Modify | Extend | Delete | Execute
 }

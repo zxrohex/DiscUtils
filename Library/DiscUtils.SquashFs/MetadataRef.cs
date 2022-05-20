@@ -20,30 +20,29 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal struct MetadataRef
 {
-    internal struct MetadataRef
+    public MetadataRef(long value)
     {
-        public MetadataRef(long value)
-        {
-            Value = value;
-        }
-
-        public MetadataRef(long block, int offset)
-        {
-            Value = (block << 16) | (uint)(offset & 0xFFFF);
-        }
-
-        public long Block
-        {
-            get { return (Value >> 16) & 0xFFFFFFFFFFFF; }
-        }
-
-        public int Offset
-        {
-            get { return (int)(Value & 0xFFFF); }
-        }
-
-        public long Value { get; }
+        Value = value;
     }
+
+    public MetadataRef(long block, int offset)
+    {
+        Value = (block << 16) | (uint)(offset & 0xFFFF);
+    }
+
+    public long Block
+    {
+        get { return (Value >> 16) & 0xFFFFFFFFFFFF; }
+    }
+
+    public int Offset
+    {
+        get { return (int)(Value & 0xFFFF); }
+    }
+
+    public long Value { get; }
 }

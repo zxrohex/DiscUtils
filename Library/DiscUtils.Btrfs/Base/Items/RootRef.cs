@@ -23,47 +23,46 @@
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base.Items
+namespace DiscUtils.Btrfs.Base.Items;
+
+/// <summary>
+/// From an inode to a name in a directory
+/// </summary>
+internal class RootRef : BaseItem
 {
+    public RootRef(Key key) : base(key) { }
+
     /// <summary>
-    /// From an inode to a name in a directory
+    /// ID of directory in [tree id] that contains the subtree  
     /// </summary>
-    internal class RootRef : BaseItem
+    public ulong DirectoryId { get; private set; }
+
+    /// <summary>
+    /// Sequence (index in tree) (even, starting at 2?)
+    /// </summary>
+    public ulong Sequence { get; private set; }
+
+    /// <summary>
+    /// (n)
+    /// </summary>
+    public ushort NameLength { get; private set; }
+
+    /// <summary>
+    /// name
+    /// </summary>
+    public string Name { get; private set; }
+    
+    public override int Size
     {
-        public RootRef(Key key) : base(key) { }
+        get { return 0x12+NameLength; }
+    }
 
-        /// <summary>
-        /// ID of directory in [tree id] that contains the subtree  
-        /// </summary>
-        public ulong DirectoryId { get; private set; }
-
-        /// <summary>
-        /// Sequence (index in tree) (even, starting at 2?)
-        /// </summary>
-        public ulong Sequence { get; private set; }
-
-        /// <summary>
-        /// (n)
-        /// </summary>
-        public ushort NameLength { get; private set; }
-
-        /// <summary>
-        /// name
-        /// </summary>
-        public string Name { get; private set; }
-        
-        public override int Size
-        {
-            get { return 0x12+NameLength; }
-        }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            DirectoryId = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-            Sequence = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-            NameLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x10);
-            Name = Encoding.UTF8.GetString(buffer, offset + 0x12, NameLength);
-            return Size;
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        DirectoryId = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+        Sequence = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
+        NameLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x10);
+        Name = Encoding.UTF8.GetString(buffer, offset + 0x12, NameLength);
+        return Size;
     }
 }

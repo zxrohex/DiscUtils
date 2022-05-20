@@ -35,19 +35,19 @@ namespace LibraryTests
         [Fact]
         public void OpenView()
         {
-            ThreadSafeStream tss = new ThreadSafeStream(SparseStream.FromStream(Stream.Null, Ownership.None));
-            SparseStream view = tss.OpenView();
+            var tss = new ThreadSafeStream(SparseStream.FromStream(Stream.Null, Ownership.None));
+            var view = tss.OpenView();
         }
 
         [Fact]
         public void ViewIO()
         {
-            SparseMemoryStream memStream = new SparseMemoryStream();
+            var memStream = new SparseMemoryStream();
             memStream.SetLength(1024);
 
-            ThreadSafeStream tss = new ThreadSafeStream(memStream);
+            var tss = new ThreadSafeStream(memStream);
 
-            SparseStream altView = tss.OpenView();
+            var altView = tss.OpenView();
 
             // Check positions are independant
             tss.Position = 100;
@@ -55,7 +55,7 @@ namespace LibraryTests
             Assert.Equal(100, tss.Position);
 
             // Check I/O is synchronous
-            byte[] buffer = new byte[200];
+            var buffer = new byte[200];
             tss.WriteByte(99);
             altView.Read(buffer, 0, 200);
             Assert.Equal(99, buffer[100]);
@@ -68,10 +68,10 @@ namespace LibraryTests
         [Fact]
         public void ChangeLengthFails()
         {
-            SparseMemoryStream memStream = new SparseMemoryStream();
+            var memStream = new SparseMemoryStream();
             memStream.SetLength(2);
 
-            ThreadSafeStream tss = new ThreadSafeStream(memStream);
+            var tss = new ThreadSafeStream(memStream);
             Assert.Equal(2, tss.Length);
 
             try
@@ -87,17 +87,17 @@ namespace LibraryTests
         [Fact]
         public void Extents()
         {
-            SparseMemoryStream memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
+            var memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
             memStream.SetLength(1024);
 
-            ThreadSafeStream tss = new ThreadSafeStream(memStream);
+            var tss = new ThreadSafeStream(memStream);
 
-            SparseStream altView = tss.OpenView();
+            var altView = tss.OpenView();
 
             tss.Position = 100;
             tss.WriteByte(99);
 
-            List<StreamExtent> extents = new List<StreamExtent>(altView.Extents);
+            var extents = new List<StreamExtent>(altView.Extents);
             Assert.Single(extents);
             Assert.Equal(100, extents[0].Start);
             Assert.Equal(1, extents[0].Length);
@@ -111,29 +111,29 @@ namespace LibraryTests
         [Fact]
         public void DisposeView()
         {
-            SparseMemoryStream memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
+            var memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
             memStream.SetLength(1024);
 
-            ThreadSafeStream tss = new ThreadSafeStream(memStream);
+            var tss = new ThreadSafeStream(memStream);
 
-            SparseStream altView = tss.OpenView();
+            var altView = tss.OpenView();
             altView.Dispose();
 
             tss.ReadByte();
 
-            SparseStream altView2 = tss.OpenView();
+            var altView2 = tss.OpenView();
             altView2.ReadByte();
         }
 
         [Fact]
         public void Dispose_StopsView()
         {
-            SparseMemoryStream memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
+            var memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
             memStream.SetLength(1024);
 
-            ThreadSafeStream tss = new ThreadSafeStream(memStream);
+            var tss = new ThreadSafeStream(memStream);
 
-            SparseStream altView = tss.OpenView();
+            var altView = tss.OpenView();
             tss.Dispose();
 
             try
@@ -149,10 +149,10 @@ namespace LibraryTests
         [Fact]
         public void Seek()
         {
-            SparseMemoryStream memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
+            var memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
             memStream.SetLength(1024);
 
-            ThreadSafeStream tss = new ThreadSafeStream(memStream);
+            var tss = new ThreadSafeStream(memStream);
 
             tss.Seek(10, SeekOrigin.Begin);
             Assert.Equal(10, tss.Position);
@@ -167,8 +167,8 @@ namespace LibraryTests
         [Fact]
         public void CanWrite()
         {
-            SparseMemoryStream memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
-            ThreadSafeStream tss = new ThreadSafeStream(memStream);
+            var memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
+            var tss = new ThreadSafeStream(memStream);
             Assert.True(tss.CanWrite);
 
             memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.Read);
@@ -179,8 +179,8 @@ namespace LibraryTests
         [Fact]
         public void CanRead()
         {
-            SparseMemoryStream memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
-            ThreadSafeStream tss = new ThreadSafeStream(memStream);
+            var memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.ReadWrite);
+            var tss = new ThreadSafeStream(memStream);
             Assert.True(tss.CanRead);
 
             memStream = new SparseMemoryStream(new SparseMemoryBuffer(1), FileAccess.Write);

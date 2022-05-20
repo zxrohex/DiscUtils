@@ -20,69 +20,68 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+using System.IO;
+
+internal class ShortformDirectoryEntry : IByteArraySerializable, IDirectoryEntry
 {
-    using DiscUtils.Streams;
-    using System;
-    using System.IO;
+    private readonly bool _useShortInode;
+    private readonly bool _ftype;
 
-    internal class ShortformDirectoryEntry : IByteArraySerializable, IDirectoryEntry
+    public ShortformDirectoryEntry(bool useShortInode, Context context)
     {
-        private readonly bool _useShortInode;
-        private readonly bool _ftype;
+        _useShortInode = useShortInode;
+        _ftype = context.SuperBlock.HasFType;
+    }
 
-        public ShortformDirectoryEntry(bool useShortInode, Context context)
+    public byte NameLength { get; private set; }
+
+    public ushort Offset { get; private set; }
+
+    public byte[] Name { get; private set; }
+
+    public ulong Inode { get; private set; }
+
+    public DirectoryFType FType { get; private set; }
+
+    public int Size
+    {
+        get { return 0x3 + NameLength + (_useShortInode ? 4 : 8) + (_ftype?1:0); }
+    }
+
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        NameLength = buffer[offset];
+        Offset = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x1);
+        Name = EndianUtilities.ToByteArray(buffer, offset + 0x3, NameLength);
+        offset += 0x3 + NameLength;
+        if (_ftype)
         {
-            _useShortInode = useShortInode;
-            _ftype = context.SuperBlock.HasFType;
+            FType = (DirectoryFType)buffer[offset];
+            offset++;
         }
-
-        public byte NameLength { get; private set; }
-
-        public ushort Offset { get; private set; }
-
-        public byte[] Name { get; private set; }
-
-        public ulong Inode { get; private set; }
-
-        public DirectoryFType FType { get; private set; }
-
-        public int Size
+        if (_useShortInode)
         {
-            get { return 0x3 + NameLength + (_useShortInode ? 4 : 8) + (_ftype?1:0); }
+            Inode = EndianUtilities.ToUInt32BigEndian(buffer, offset);
         }
-
-        public int ReadFrom(byte[] buffer, int offset)
+        else
         {
-            NameLength = buffer[offset];
-            Offset = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x1);
-            Name = EndianUtilities.ToByteArray(buffer, offset + 0x3, NameLength);
-            offset += 0x3 + NameLength;
-            if (_ftype)
-            {
-                FType = (DirectoryFType)buffer[offset];
-                offset++;
-            }
-            if (_useShortInode)
-            {
-                Inode = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-            }
-            else
-            {
-                Inode = EndianUtilities.ToUInt64BigEndian(buffer, offset);
-            }
-            return Size;
+            Inode = EndianUtilities.ToUInt64BigEndian(buffer, offset);
         }
+        return Size;
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            return $"{Inode}: {EndianUtilities.BytesToString(Name, 0, NameLength)}";
-        }
+    /// <inheritdoc />
+    public override string ToString()
+    {
+        return $"{Inode}: {EndianUtilities.BytesToString(Name, 0, NameLength)}";
     }
 }

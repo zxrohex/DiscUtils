@@ -21,58 +21,58 @@
 //
 
 using System;
+using System.Linq;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class ExtendedFileEntry : FileEntry, IByteArraySerializable
 {
-    internal class ExtendedFileEntry : FileEntry, IByteArraySerializable
+    public DateTime CreationTime;
+    public ulong ObjectSize;
+    public LongAllocationDescriptor StreamDirectoryIcb;
+
+    public override int Size
     {
-        public DateTime CreationTime;
-        public ulong ObjectSize;
-        public LongAllocationDescriptor StreamDirectoryIcb;
+        get { throw new NotImplementedException(); }
+    }
 
-        public override int Size
-        {
-            get { throw new NotImplementedException(); }
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer, offset);
+        InformationControlBlock = EndianUtilities.ToStruct<InformationControlBlock>(buffer, offset + 16);
+        Uid = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 36);
+        Gid = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40);
+        Permissions = (FilePermissions)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
+        FileLinkCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 48);
+        RecordFormat = buffer[offset + 50];
+        RecordDisplayAttributes = buffer[offset + 51];
+        RecordLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 52);
+        InformationLength = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 56);
+        ObjectSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 64);
+        LogicalBlocksRecorded = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 72);
+        AccessTime = UdfUtilities.ParseTimestamp(buffer, offset + 80);
+        ModificationTime = UdfUtilities.ParseTimestamp(buffer, offset + 92);
+        CreationTime = UdfUtilities.ParseTimestamp(buffer, offset + 104);
+        AttributeTime = UdfUtilities.ParseTimestamp(buffer, offset + 116);
+        Checkpoint = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 128);
+        ExtendedAttributeIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 136);
+        StreamDirectoryIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 152);
+        ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer, offset + 168);
+        UniqueId = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 200);
+        ExtendedAttributesLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 208);
+        AllocationDescriptorsLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 212);
+        AllocationDescriptors = EndianUtilities.ToByteArray(buffer, offset + 216 + ExtendedAttributesLength,
+            AllocationDescriptorsLength);
 
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer, offset);
-            InformationControlBlock = EndianUtilities.ToStruct<InformationControlBlock>(buffer, offset + 16);
-            Uid = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 36);
-            Gid = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40);
-            Permissions = (FilePermissions)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
-            FileLinkCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 48);
-            RecordFormat = buffer[offset + 50];
-            RecordDisplayAttributes = buffer[offset + 51];
-            RecordLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 52);
-            InformationLength = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 56);
-            ObjectSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 64);
-            LogicalBlocksRecorded = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 72);
-            AccessTime = UdfUtilities.ParseTimestamp(buffer, offset + 80);
-            ModificationTime = UdfUtilities.ParseTimestamp(buffer, offset + 92);
-            CreationTime = UdfUtilities.ParseTimestamp(buffer, offset + 104);
-            AttributeTime = UdfUtilities.ParseTimestamp(buffer, offset + 116);
-            Checkpoint = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 128);
-            ExtendedAttributeIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 136);
-            StreamDirectoryIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 152);
-            ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer, offset + 168);
-            UniqueId = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 200);
-            ExtendedAttributesLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 208);
-            AllocationDescriptorsLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 212);
-            AllocationDescriptors = EndianUtilities.ToByteArray(buffer, offset + 216 + ExtendedAttributesLength,
-                AllocationDescriptorsLength);
+        var eaData = EndianUtilities.ToByteArray(buffer, offset + 216, ExtendedAttributesLength);
+        ExtendedAttributes = ReadExtendedAttributes(eaData).ToList();
 
-            byte[] eaData = EndianUtilities.ToByteArray(buffer, offset + 216, ExtendedAttributesLength);
-            ExtendedAttributes = ReadExtendedAttributes(eaData);
+        return 216 + ExtendedAttributesLength + AllocationDescriptorsLength;
+    }
 
-            return 216 + ExtendedAttributesLength + AllocationDescriptorsLength;
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

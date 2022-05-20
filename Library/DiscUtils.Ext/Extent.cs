@@ -23,37 +23,36 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ext
+namespace DiscUtils.Ext;
+
+internal class Extent : IByteArraySerializable
 {
-    internal class Extent : IByteArraySerializable
+    public uint FirstLogicalBlock;
+    public ushort FirstPhysicalBlockHi;
+    public uint FirstPhysicalBlockLow;
+    public ushort NumBlocks;
+
+    public ulong FirstPhysicalBlock
     {
-        public uint FirstLogicalBlock;
-        public ushort FirstPhysicalBlockHi;
-        public uint FirstPhysicalBlockLow;
-        public ushort NumBlocks;
+        get { return FirstPhysicalBlockLow | ((ulong)FirstPhysicalBlockHi << 32); }
+    }
 
-        public ulong FirstPhysicalBlock
-        {
-            get { return FirstPhysicalBlockLow | ((ulong)FirstPhysicalBlockHi << 32); }
-        }
+    public int Size
+    {
+        get { return 12; }
+    }
 
-        public int Size
-        {
-            get { return 12; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        FirstLogicalBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+        NumBlocks = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
+        FirstPhysicalBlockHi = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
+        FirstPhysicalBlockLow = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
+        return 12;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            FirstLogicalBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-            NumBlocks = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-            FirstPhysicalBlockHi = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
-            FirstPhysicalBlockLow = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
-            return 12;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

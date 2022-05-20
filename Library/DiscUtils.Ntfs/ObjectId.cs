@@ -24,31 +24,30 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Ntfs
+namespace DiscUtils.Ntfs;
+
+internal struct ObjectId : IByteArraySerializable, IDiagnosticTraceable
 {
-    internal struct ObjectId : IByteArraySerializable, IDiagnosticTraceable
+    public Guid Id;
+
+    public int Size
     {
-        public Guid Id;
+        get { return 16; }
+    }
 
-        public int Size
-        {
-            get { return 16; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Id = EndianUtilities.ToGuidLittleEndian(buffer, offset);
+        return 16;
+    }
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Id = EndianUtilities.ToGuidLittleEndian(buffer, offset);
-            return 16;
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        EndianUtilities.WriteBytesLittleEndian(Id, buffer, offset);
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian(Id, buffer, offset);
-        }
-
-        public void Dump(TextWriter writer, string indent)
-        {
-            writer.WriteLine(indent + "  Object ID: " + Id);
-        }
+    public void Dump(TextWriter writer, string indent)
+    {
+        writer.WriteLine(indent + "  Object ID: " + Id);
     }
 }

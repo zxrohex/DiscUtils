@@ -24,85 +24,84 @@ using DiscUtils.Common;
 using DiscUtils.OpticalDiscSharing;
 using System;
 
-namespace ODSBrowse
+namespace ODSBrowse;
+
+class Program : ProgramBase
 {
-    class Program : ProgramBase
+    private CommandLineParameter _host;
+
+    static void Main(string[] args)
     {
-        private CommandLineParameter _host;
+        var program = new Program();
+        program.Run(args);
+    }
 
-        static void Main(string[] args)
+    protected override StandardSwitches DefineCommandLine(CommandLineParser parser)
+    {
+        _host = new CommandLineParameter("host", "The name of a Mac / PC sharing its optical disk(s).  For example \"My Computer\".", true);
+        parser.AddParameter(_host);
+
+        return StandardSwitches.Default;
+    }
+
+    protected override void DoRun()
+    {
+        var odsClient = new OpticalDiscServiceClient();
+
+        if (_host.IsPresent)
         {
-            Program program = new Program();
-            program.Run(args);
-        }
+            var found = false;
 
-        protected override StandardSwitches DefineCommandLine(CommandLineParser parser)
-        {
-            _host = new CommandLineParameter("host", "The name of a Mac / PC sharing its optical disk(s).  For example \"My Computer\".", true);
-            parser.AddParameter(_host);
-
-            return StandardSwitches.Default;
-        }
-
-        protected override void DoRun()
-        {
-            OpticalDiscServiceClient odsClient = new OpticalDiscServiceClient();
-
-            if (_host.IsPresent)
+            foreach (var service in odsClient.LookupServices())
             {
-                bool found = false;
-
-                foreach (var service in odsClient.LookupServices())
+                if (_host.Value == service.DisplayName || _host.Value == Uri.EscapeDataString(service.DisplayName))
                 {
-                    if (_host.Value == service.DisplayName || _host.Value == Uri.EscapeDataString(service.DisplayName))
-                    {
-                        found = true;
+                    found = true;
 
-                        Console.WriteLine("Connecting to " + service.DisplayName + " - the owner may need to accept...");
-                        service.Connect(Environment.UserName, Environment.MachineName, 30);
+                    Console.WriteLine("Connecting to " + service.DisplayName + " - the owner may need to accept...");
+                    service.Connect(Environment.UserName, Environment.MachineName, 30);
 
-                        ShowService(service);
-
-                        break;
-                    }
-                }
-
-                if (!found)
-                {
-                    Console.WriteLine("Host not found");
-                }
-            }
-            else
-            {
-                foreach (var service in odsClient.LookupServices())
-                {
                     ShowService(service);
-                    Console.WriteLine();
+
+                    break;
                 }
             }
+
+            if (!found)
+            {
+                Console.WriteLine("Host not found");
+            }
+        }
+        else
+        {
+            foreach (var service in odsClient.LookupServices())
+            {
+                ShowService(service);
+                Console.WriteLine();
+            }
+        }
+    }
+
+    private static void ShowService(OpticalDiscService service)
+    {
+        Console.WriteLine();
+        Console.WriteLine("Service: " + service.DisplayName);
+        Console.WriteLine("  Safe Name: " + Uri.EscapeDataString(service.DisplayName) + "  (for URLs, copy+paste)");
+        Console.WriteLine();
+
+        var foundDisk = false;
+        foreach (var disk in service.AdvertisedDiscs)
+        {
+            foundDisk = true;
+            Console.WriteLine("  Disk: " + disk.VolumeLabel);
+            Console.WriteLine("    Name: " + disk.Name);
+            Console.WriteLine("    Type: " + disk.VolumeType);
+            Console.WriteLine("     Url: " + Uri.EscapeDataString("ods://local/" + service.DisplayName + "/" + disk.VolumeLabel));
         }
 
-        private static void ShowService(OpticalDiscService service)
+        if (!foundDisk)
         {
-            Console.WriteLine();
-            Console.WriteLine("Service: " + service.DisplayName);
-            Console.WriteLine("  Safe Name: " + Uri.EscapeDataString(service.DisplayName) + "  (for URLs, copy+paste)");
-            Console.WriteLine();
-
-            bool foundDisk = false;
-            foreach (var disk in service.AdvertisedDiscs)
-            {
-                foundDisk = true;
-                Console.WriteLine("  Disk: " + disk.VolumeLabel);
-                Console.WriteLine("    Name: " + disk.Name);
-                Console.WriteLine("    Type: " + disk.VolumeType);
-                Console.WriteLine("     Url: " + Uri.EscapeDataString("ods://local/" + service.DisplayName + "/" + disk.VolumeLabel));
-            }
-
-            if (!foundDisk)
-            {
-                Console.WriteLine("  [No disks found - try specifying host to connect for full list]");
-            }
+            Console.WriteLine("  [No disks found - try specifying host to connect for full list]");
         }
     }
 }

@@ -23,32 +23,31 @@
 using System.Collections.Generic;
 using DiscUtils.Internal;
 
-namespace DiscUtils.LogicalDiskManager
+namespace DiscUtils.LogicalDiskManager;
+
+[LogicalVolumeFactory]
+internal class DynamicDiskManagerFactory : LogicalVolumeFactory
 {
-    [LogicalVolumeFactory]
-    internal class DynamicDiskManagerFactory : LogicalVolumeFactory
+    public override bool HandlesPhysicalVolume(PhysicalVolumeInfo volume)
     {
-        public override bool HandlesPhysicalVolume(PhysicalVolumeInfo volume)
+        return DynamicDiskManager.HandlesPhysicalVolume(volume);
+    }
+
+    public override void MapDisks(IEnumerable<VirtualDisk> disks, Dictionary<string, LogicalVolumeInfo> result)
+    {
+        var mgr = new DynamicDiskManager();
+
+        foreach (var disk in disks)
         {
-            return DynamicDiskManager.HandlesPhysicalVolume(volume);
+            if (DynamicDiskManager.IsDynamicDisk(disk))
+            {
+                mgr.Add(disk);
+            }
         }
 
-        public override void MapDisks(IEnumerable<VirtualDisk> disks, Dictionary<string, LogicalVolumeInfo> result)
+        foreach (var vol in mgr.GetLogicalVolumes())
         {
-            DynamicDiskManager mgr = new DynamicDiskManager();
-
-            foreach (VirtualDisk disk in disks)
-            {
-                if (DynamicDiskManager.IsDynamicDisk(disk))
-                {
-                    mgr.Add(disk);
-                }
-            }
-
-            foreach (LogicalVolumeInfo vol in mgr.GetLogicalVolumes())
-            {
-                result.Add(vol.Identity, vol);
-            }
+            result.Add(vol.Identity, vol);
         }
     }
 }

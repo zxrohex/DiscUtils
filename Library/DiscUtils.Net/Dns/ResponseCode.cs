@@ -20,15 +20,14 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+internal enum ResponseCode : byte
 {
-    internal enum ResponseCode : byte
-    {
-        Success = 0,
-        FormatError = 1,
-        ServerFailure = 2,
-        NameError = 3,
-        NotImplemented = 4,
-        Refused = 5
-    }
+    Success = 0,
+    FormatError = 1,
+    ServerFailure = 2,
+    NameError = 3,
+    NotImplemented = 4,
+    Refused = 5
 }

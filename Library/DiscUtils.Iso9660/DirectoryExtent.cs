@@ -25,60 +25,59 @@ using System.Collections.Generic;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal class DirectoryExtent : BuilderExtent
 {
-    internal class DirectoryExtent : BuilderExtent
+    private readonly BuildDirectoryInfo _dirInfo;
+    private readonly Encoding _enc;
+    private readonly Dictionary<BuildDirectoryMember, uint> _locationTable;
+
+    private byte[] _readCache;
+
+    public DirectoryExtent(BuildDirectoryInfo dirInfo, Dictionary<BuildDirectoryMember, uint> locationTable,
+                           Encoding enc, long start)
+        : base(start, dirInfo.GetDataSize(enc))
     {
-        private readonly BuildDirectoryInfo _dirInfo;
-        private readonly Encoding _enc;
-        private readonly Dictionary<BuildDirectoryMember, uint> _locationTable;
+        _dirInfo = dirInfo;
+        _locationTable = locationTable;
+        _enc = enc;
+    }
 
-        private byte[] _readCache;
+    public override void Dispose() {}
 
-        public DirectoryExtent(BuildDirectoryInfo dirInfo, Dictionary<BuildDirectoryMember, uint> locationTable,
-                               Encoding enc, long start)
-            : base(start, dirInfo.GetDataSize(enc))
-        {
-            _dirInfo = dirInfo;
-            _locationTable = locationTable;
-            _enc = enc;
-        }
+    public override void PrepareForRead()
+    {
+        _readCache = new byte[Length];
+        _dirInfo.Write(_readCache, 0, _locationTable, _enc);
+    }
 
-        public override void Dispose() {}
+    public override int Read(long diskOffset, byte[] buffer, int offset, int count)
+    {
+        var relPos = diskOffset - Start;
 
-        public override void PrepareForRead()
-        {
-            _readCache = new byte[Length];
-            _dirInfo.Write(_readCache, 0, _locationTable, _enc);
-        }
+        var numRead = (int)Math.Min(count, _readCache.Length - relPos);
 
-        public override int Read(long diskOffset, byte[] buffer, int offset, int count)
-        {
-            long relPos = diskOffset - Start;
+        Array.Copy(_readCache, (int)relPos, buffer, offset, numRead);
 
-            int numRead = (int)Math.Min(count, _readCache.Length - relPos);
-
-            Array.Copy(_readCache, (int)relPos, buffer, offset, numRead);
-
-            return numRead;
-        }
+        return numRead;
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override int Read(long diskOffset, Span<byte> block)
-        {
-            long relPos = diskOffset - Start;
+    public override int Read(long diskOffset, Span<byte> block)
+    {
+        var relPos = diskOffset - Start;
 
-            int numRead = (int)Math.Min(block.Length, _readCache.Length - relPos);
+        var numRead = (int)Math.Min(block.Length, _readCache.Length - relPos);
 
-            _readCache.AsSpan((int)relPos, numRead).CopyTo(block);
+        _readCache.AsSpan((int)relPos, numRead).CopyTo(block);
 
-            return numRead;
-        }
+        return numRead;
+    }
 #endif
 
-        public override void DisposeReadState()
-        {
-            _readCache = null;
-        }
+    public override void DisposeReadState()
+    {
+        _readCache = null;
     }
 }

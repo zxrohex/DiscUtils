@@ -20,23 +20,22 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iso9660
+namespace DiscUtils.Iso9660;
+
+internal class BootVolumeDescriptorRegion : VolumeDescriptorDiskRegion
 {
-    internal class BootVolumeDescriptorRegion : VolumeDescriptorDiskRegion
+    private readonly BootVolumeDescriptor _descriptor;
+
+    public BootVolumeDescriptorRegion(BootVolumeDescriptor descriptor, long start)
+        : base(start)
     {
-        private readonly BootVolumeDescriptor _descriptor;
+        _descriptor = descriptor;
+    }
 
-        public BootVolumeDescriptorRegion(BootVolumeDescriptor descriptor, long start)
-            : base(start)
-        {
-            _descriptor = descriptor;
-        }
-
-        protected override byte[] GetBlockData()
-        {
-            byte[] buffer = new byte[IsoUtilities.SectorSize];
-            _descriptor.WriteTo(buffer, 0);
-            return buffer;
-        }
+    protected override byte[] GetBlockData()
+    {
+        var buffer = new byte[IsoUtilities.SectorSize];
+        _descriptor.WriteTo(buffer, 0);
+        return buffer;
     }
 }

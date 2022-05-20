@@ -31,20 +31,20 @@ namespace LibraryTests.Nfs
         [Fact]
         public void RoundTripTest()
         {
-            Nfs3FileHandle attributes = new Nfs3FileHandle()
+            var attributes = new Nfs3FileHandle()
             {
                 Value = new byte[] { 0x01 }
             };
 
             Nfs3FileHandle clone = null;
 
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
-                XdrDataWriter writer = new XdrDataWriter(stream);
+                var writer = new XdrDataWriter(stream);
                 attributes.Write(writer);
 
                 stream.Position = 0;
-                XdrDataReader reader = new XdrDataReader(stream);
+                var reader = new XdrDataReader(stream);
                 clone = new Nfs3FileHandle(reader);
             }
 

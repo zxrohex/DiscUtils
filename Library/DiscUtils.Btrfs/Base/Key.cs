@@ -23,74 +23,75 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal class Key : IByteArraySerializable
 {
-    internal class Key : IByteArraySerializable
+    public static readonly int Length = 0x11;
+
+    public Key()
     {
-        public static readonly int Length = 0x11;
+    }
 
-        public Key()
-        {
-        }
+    public Key(ulong objectId, ItemType type, ulong offset) : this()
+    {
+        ObjectId = objectId;
+        ItemType = type;
+        Offset = offset;
+    }
 
-        public Key(ulong objectId, ItemType type, ulong offset) : this()
-        {
-            ObjectId = objectId;
-            ItemType = type;
-            Offset = offset;
-        }
+    public Key(ulong objectId, ItemType type) : this(objectId, type, 0UL)
+    {
+    }
 
-        public Key(ulong objectId, ItemType type) : this(objectId, type, 0UL)
-        {
-        }
+    public Key(ReservedObjectId objectId, ItemType type) : this((ulong)objectId, type)
+    {
+    }
 
-        public Key(ReservedObjectId objectId, ItemType type) : this((ulong)objectId, type)
-        {
-        }
+    /// <summary>
+    /// Object ID. Each tree has its own set of Object IDs.
+    /// </summary>
+    public ulong ObjectId { get; private set; }
 
-        /// <summary>
-        /// Object ID. Each tree has its own set of Object IDs.
-        /// </summary>
-        public ulong ObjectId { get; private set; }
+    public ReservedObjectId ReservedObjectId
+    {
+        get { return (ReservedObjectId)ObjectId; }
+    }
 
-        public ReservedObjectId ReservedObjectId
-        {
-            get { return (ReservedObjectId)ObjectId; }
-        }
+    /// <summary>
+    /// Item type.
+    /// </summary>
+    public ItemType ItemType { get; private set; }
 
-        /// <summary>
-        /// Item type.
-        /// </summary>
-        public ItemType ItemType { get; private set; }
+    /// <summary>
+    /// Offset. The meaning depends on the item type. 
+    /// </summary>
+    public ulong Offset { get; private set; }
 
-        /// <summary>
-        /// Offset. The meaning depends on the item type. 
-        /// </summary>
-        public ulong Offset { get; private set; }
+    public int Size
+    {
+        get { return Length; }
+    }
 
-        public int Size
-        {
-            get { return Length; }
-        }
+    public int ReadFrom(byte[] buffer, int offset) => ReadFrom(buffer.AsSpan(offset));
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            ObjectId = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-            ItemType = (ItemType)buffer[offset +0x8];
-            Offset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x9);
-            return Size;
-        }
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
+    {
+        ObjectId = EndianUtilities.ToUInt64LittleEndian(buffer);
+        ItemType = (ItemType)buffer[0x8];
+        Offset = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x9));
+        return Size;
+    }
 
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override string ToString()
-        {
-            if (Enum.IsDefined(typeof(ReservedObjectId), ObjectId))
-                return $"{ReservedObjectId}|{ItemType}|{Offset}";
-            return $"{ObjectId}|{ItemType}|{Offset}";
-        }
+    public override string ToString()
+    {
+        if (Enum.IsDefined(typeof(ReservedObjectId), ObjectId))
+            return $"{ReservedObjectId}|{ItemType}|{Offset}";
+        return $"{ObjectId}|{ItemType}|{Offset}";
     }
 }

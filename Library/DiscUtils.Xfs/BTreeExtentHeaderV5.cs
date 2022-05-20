@@ -20,40 +20,39 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using DiscUtils.Streams;
+using System;
+using System.Collections.Generic;
+
+internal abstract class BTreeExtentHeaderV5 : BTreeExtentHeader
 {
-    using DiscUtils.Streams;
-    using System;
-    using System.Collections.Generic;
+    public const uint BtreeMagicV5 = 0x424d4133;
+    
+    public ulong BlockNumber { get; private set; }
+    
+    public ulong LogSequenceNumber { get; private set; }
+    
+    public Guid Uuid { get; private set; }
+    
+    public ulong Owner { get; private set; }
+    
+    public uint Crc { get; private set; }
 
-    internal abstract class BTreeExtentHeaderV5 : BTreeExtentHeader
+    public override int Size
     {
-        public const uint BtreeMagicV5 = 0x424d4133;
-        
-        public ulong BlockNumber { get; private set; }
-        
-        public ulong LogSequenceNumber { get; private set; }
-        
-        public Guid Uuid { get; private set; }
-        
-        public ulong Owner { get; private set; }
-        
-        public uint Crc { get; private set; }
+        get { return base.Size + 48; }
+    }
 
-        public override int Size
-        {
-            get { return base.Size + 48; }
-        }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            offset += base.ReadFrom(buffer, offset);
-            BlockNumber = EndianUtilities.ToUInt64BigEndian(buffer, offset);
-            LogSequenceNumber = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x8);
-            Uuid = EndianUtilities.ToGuidBigEndian(buffer, offset + 0x10);
-            Owner = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x20);
-            Crc = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x28);
-            return base.Size + 48;
-        }
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        offset += base.ReadFrom(buffer, offset);
+        BlockNumber = EndianUtilities.ToUInt64BigEndian(buffer, offset);
+        LogSequenceNumber = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x8);
+        Uuid = EndianUtilities.ToGuidBigEndian(buffer, offset + 0x10);
+        Owner = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x20);
+        Crc = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x28);
+        return base.Size + 48;
     }
 }

@@ -22,15 +22,14 @@
 
 using System.Management.Automation;
 
-namespace DiscUtils.PowerShell.VirtualDiskProvider
+namespace DiscUtils.PowerShell.VirtualDiskProvider;
+
+public class GetItemParameters
 {
-    public class GetItemParameters
+    [Parameter]
+    public SwitchParameter ReadWrite
     {
-        [Parameter]
-        public SwitchParameter ReadWrite
-        {
-            get;
-            set;
-        }
+        get;
+        set;
     }
 }

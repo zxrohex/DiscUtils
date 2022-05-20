@@ -23,84 +23,83 @@
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Fat
+namespace DiscUtils.Fat;
+
+internal class FileAllocationTable
 {
-    internal class FileAllocationTable
+    private readonly FatBuffer _buffer;
+    private readonly ushort _firstFatSector;
+    private readonly byte _numFats;
+    private readonly Stream _stream;
+
+    public FileAllocationTable(FatType type, Stream stream, ushort firstFatSector, uint fatSize, byte numFats,
+                               byte activeFat)
     {
-        private readonly FatBuffer _buffer;
-        private readonly ushort _firstFatSector;
-        private readonly byte _numFats;
-        private readonly Stream _stream;
+        _stream = stream;
+        _firstFatSector = firstFatSector;
+        _numFats = numFats;
 
-        public FileAllocationTable(FatType type, Stream stream, ushort firstFatSector, uint fatSize, byte numFats,
-                                   byte activeFat)
+        _stream.Position = (firstFatSector + fatSize * activeFat) * Sizes.Sector;
+        _buffer = new FatBuffer(type, StreamUtilities.ReadExact(_stream, (int)(fatSize * Sizes.Sector)));
+    }
+
+    internal bool IsFree(uint val)
+    {
+        return _buffer.IsFree(val);
+    }
+
+    internal bool IsEndOfChain(uint val)
+    {
+        return _buffer.IsEndOfChain(val);
+    }
+
+    internal bool IsBadCluster(uint val)
+    {
+        return _buffer.IsBadCluster(val);
+    }
+
+    internal uint GetNext(uint cluster)
+    {
+        return _buffer.GetNext(cluster);
+    }
+
+    internal void SetEndOfChain(uint cluster)
+    {
+        _buffer.SetEndOfChain(cluster);
+    }
+
+    internal void SetBadCluster(uint cluster)
+    {
+        _buffer.SetBadCluster(cluster);
+    }
+
+    internal void SetNext(uint cluster, uint next)
+    {
+        _buffer.SetNext(cluster, next);
+    }
+
+    internal void Flush()
+    {
+        for (var i = 0; i < _numFats; ++i)
         {
-            _stream = stream;
-            _firstFatSector = firstFatSector;
-            _numFats = numFats;
-
-            _stream.Position = (firstFatSector + fatSize * activeFat) * Sizes.Sector;
-            _buffer = new FatBuffer(type, StreamUtilities.ReadExact(_stream, (int)(fatSize * Sizes.Sector)));
+            _buffer.WriteDirtyRegions(_stream, _firstFatSector * Sizes.Sector + _buffer.Size * i);
         }
 
-        internal bool IsFree(uint val)
-        {
-            return _buffer.IsFree(val);
-        }
+        _buffer.ClearDirtyRegions();
+    }
 
-        internal bool IsEndOfChain(uint val)
-        {
-            return _buffer.IsEndOfChain(val);
-        }
+    internal bool TryGetFreeCluster(out uint cluster)
+    {
+        return _buffer.TryGetFreeCluster(out cluster);
+    }
 
-        internal bool IsBadCluster(uint val)
-        {
-            return _buffer.IsBadCluster(val);
-        }
+    internal void FreeChain(uint head)
+    {
+        _buffer.FreeChain(head);
+    }
 
-        internal uint GetNext(uint cluster)
-        {
-            return _buffer.GetNext(cluster);
-        }
-
-        internal void SetEndOfChain(uint cluster)
-        {
-            _buffer.SetEndOfChain(cluster);
-        }
-
-        internal void SetBadCluster(uint cluster)
-        {
-            _buffer.SetBadCluster(cluster);
-        }
-
-        internal void SetNext(uint cluster, uint next)
-        {
-            _buffer.SetNext(cluster, next);
-        }
-
-        internal void Flush()
-        {
-            for (int i = 0; i < _numFats; ++i)
-            {
-                _buffer.WriteDirtyRegions(_stream, _firstFatSector * Sizes.Sector + _buffer.Size * i);
-            }
-
-            _buffer.ClearDirtyRegions();
-        }
-
-        internal bool TryGetFreeCluster(out uint cluster)
-        {
-            return _buffer.TryGetFreeCluster(out cluster);
-        }
-
-        internal void FreeChain(uint head)
-        {
-            _buffer.FreeChain(head);
-        }
- 
-        internal int NumEntries
-        {
-            get { return _buffer.NumEntries; }
-        }
+    internal int NumEntries
+    {
+        get { return _buffer.NumEntries; }
     }
 }

@@ -25,61 +25,57 @@ using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Dmg
+namespace DiscUtils.Dmg;
+
+[VirtualDiskFactory("DMG", ".dmg")]
+internal sealed class DiskFactory : VirtualDiskFactory
 {
-    [VirtualDiskFactory("DMG", ".dmg")]
-    internal sealed class DiskFactory : VirtualDiskFactory
+    public override string[] Variants => Array.Empty<string>();
+
+    public override VirtualDiskTypeInfo GetDiskTypeInformation(string variant)
     {
-        public override string[] Variants
-        {
-            get { return new string[] { }; }
-        }
+        return MakeDiskTypeInfo();
+    }
 
-        public override VirtualDiskTypeInfo GetDiskTypeInformation(string variant)
-        {
-            return MakeDiskTypeInfo();
-        }
+    public override DiskImageBuilder GetImageBuilder(string variant)
+    {
+        throw new NotSupportedException();
+    }
 
-        public override DiskImageBuilder GetImageBuilder(string variant)
-        {
-            throw new NotSupportedException();
-        }
+    public override VirtualDisk CreateDisk(FileLocator locator, string variant, string path,
+                                           VirtualDiskParameters diskParameters)
+    {
+        throw new NotSupportedException();
+    }
 
-        public override VirtualDisk CreateDisk(FileLocator locator, string variant, string path,
-                                               VirtualDiskParameters diskParameters)
-        {
-            throw new NotSupportedException();
-        }
+    public override VirtualDisk OpenDisk(string path, FileAccess access)
+    {
+        var locator = new LocalFileLocator(string.Empty);
+        return OpenDisk(locator, path, access);
+    }
 
-        public override VirtualDisk OpenDisk(string path, FileAccess access)
-        {
-            var locator = new LocalFileLocator(string.Empty);
-            return OpenDisk(locator, path, access);
-        }
+    public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)
+    {
+        var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
+        return new Disk(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose);
+    }
 
-        public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)
-        {
-            FileShare share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
-            return new Disk(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose);
-        }
+    public override VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access)
+    {
+        var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
+        return new DiskImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose);
+    }
 
-        public override VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access)
+    internal static VirtualDiskTypeInfo MakeDiskTypeInfo()
+    {
+        return new VirtualDiskTypeInfo
         {
-            FileShare share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
-            return new DiskImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose);
-        }
-
-        internal static VirtualDiskTypeInfo MakeDiskTypeInfo()
-        {
-            return new VirtualDiskTypeInfo
-            {
-                Name = "DMG",
-                Variant = string.Empty,
-                CanBeHardDisk = true,
-                DeterministicGeometry = true,
-                PreservesBiosGeometry = false,
-                CalcGeometry = Geometry.FromCapacity
-            };
-        }
+            Name = "DMG",
+            Variant = string.Empty,
+            CanBeHardDisk = true,
+            DeterministicGeometry = true,
+            PreservesBiosGeometry = false,
+            CalcGeometry = Geometry.FromCapacity
+        };
     }
 }

@@ -24,61 +24,60 @@ using System;
 using System.IO;
 using DiscUtils.Internal;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+[VirtualDiskTransport("iscsi")]
+internal sealed class DiskTransport : VirtualDiskTransport
 {
-    [VirtualDiskTransport("iscsi")]
-    internal sealed class DiskTransport : VirtualDiskTransport
+    private LunInfo _lunInfo;
+    private Session _session;
+
+    public override bool IsRawDisk
     {
-        private LunInfo _lunInfo;
-        private Session _session;
+        get { return true; }
+    }
 
-        public override bool IsRawDisk
+    public override void Connect(Uri uri, string username, string password)
+    {
+        _lunInfo = LunInfo.ParseUri(uri.OriginalString);
+
+        var initiator = new Initiator();
+        initiator.SetCredentials(username, password);
+        _session = initiator.ConnectTo(_lunInfo.Target);
+    }
+
+    public override VirtualDisk OpenDisk(FileAccess access)
+    {
+        return _session.OpenDisk(_lunInfo.Lun, access);
+    }
+
+    public override FileLocator GetFileLocator()
+    {
+        throw new NotImplementedException();
+    }
+
+    public override string GetFileName()
+    {
+        throw new NotImplementedException();
+    }
+
+    public override string GetExtraInfo()
+    {
+        throw new NotImplementedException();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
         {
-            get { return true; }
-        }
-
-        public override void Connect(Uri uri, string username, string password)
-        {
-            _lunInfo = LunInfo.ParseUri(uri.OriginalString);
-
-            Initiator initiator = new Initiator();
-            initiator.SetCredentials(username, password);
-            _session = initiator.ConnectTo(_lunInfo.Target);
-        }
-
-        public override VirtualDisk OpenDisk(FileAccess access)
-        {
-            return _session.OpenDisk(_lunInfo.Lun, access);
-        }
-
-        public override FileLocator GetFileLocator()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string GetFileName()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string GetExtraInfo()
-        {
-            throw new NotImplementedException();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
+            if (_session != null)
             {
-                if (_session != null)
-                {
-                    _session.Dispose();
-                }
-
-                _session = null;
+                _session.Dispose();
             }
 
-            base.Dispose(disposing);
+            _session = null;
         }
+
+        base.Dispose(disposing);
     }
 }

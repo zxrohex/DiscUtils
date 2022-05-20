@@ -21,171 +21,170 @@
 //
 
 
-namespace DiscUtils.Lvm
+namespace DiscUtils.Lvm;
+
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+
+internal class MetadataSegmentSection
 {
-    using System;
-    using System.IO;
-    using System.Collections.Generic;
-    using System.Linq;
+    public string Name;
+    public ulong StartExtent;
+    public ulong ExtentCount;
+    public SegmentType Type;
+    public ulong StripeCount;
+    public MetadataStripe[] Stripes;
 
-    internal class MetadataSegmentSection
+    internal void Parse(string head, TextReader data)
     {
-        public string Name;
-        public ulong StartExtent;
-        public ulong ExtentCount;
-        public SegmentType Type;
-        public ulong StripeCount;
-        public MetadataStripe[] Stripes;
-
-        internal void Parse(string head, TextReader data)
+        Name = head.Trim().TrimEnd('{').TrimEnd();
+        string line;
+        while ((line = Metadata.ReadLine(data)) != null)
         {
-            Name = head.Trim().TrimEnd('{').TrimEnd();
-            string line;
-            while ((line = Metadata.ReadLine(data)) != null)
+            if (line == String.Empty) continue;
+            if (line.Contains("="))
             {
-                if (line == String.Empty) continue;
-                if (line.Contains("="))
+                var parameter = Metadata.ParseParameter(line);
+                switch (parameter.Key.Trim().ToLowerInvariant())
                 {
-                    var parameter = Metadata.ParseParameter(line);
-                    switch (parameter.Key.Trim().ToLowerInvariant())
-                    {
-                        case "start_extent":
-                            StartExtent = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        case "extent_count":
-                            ExtentCount = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        case "type":
-                            var value = Metadata.ParseStringValue(parameter.Value);
-                            switch (value)
-                            {
-                                case "striped":
-                                    Type = SegmentType.Striped;
-                                    break;
-                                case "zero":
-                                    Type = SegmentType.Zero;
-                                    break;
-                                case "error":
-                                    Type = SegmentType.Error;
-                                    break;
-                                case "free":
-                                    Type = SegmentType.Free;
-                                    break;
-                                case "snapshot":
-                                    Type = SegmentType.Snapshot;
-                                    break;
-                                case "mirror":
-                                    Type = SegmentType.Mirror;
-                                    break;
-                                case "raid1":
-                                    Type = SegmentType.Raid1;
-                                    break;
-                                case "raid10":
-                                    Type = SegmentType.Raid10;
-                                    break;
-                                case "raid4":
-                                    Type = SegmentType.Raid4;
-                                    break;
-                                case "raid5":
-                                    Type = SegmentType.Raid5;
-                                    break;
-                                case "raid5_la":
-                                    Type = SegmentType.Raid5La;
-                                    break;
-                                case "raid5_ra":
-                                    Type = SegmentType.Raid5Ra;
-                                    break;
-                                case "raid5_ls":
-                                    Type = SegmentType.Raid5Ls;
-                                    break;
-                                case "raid5_rs":
-                                    Type = SegmentType.Raid5Rs;
-                                    break;
-                                case "raid6":
-                                    Type = SegmentType.Raid6;
-                                    break;
-                                case "raid6_zr":
-                                    Type = SegmentType.Raid6Zr;
-                                    break;
-                                case "raid6_nr":
-                                    Type = SegmentType.Raid6Nr;
-                                    break;
-                                case "raid6_nc":
-                                    Type = SegmentType.Raid6Nc;
-                                    break;
-                                case "thin-pool":
-                                    Type = SegmentType.ThinPool;
-                                    break;
-                                case "thin":
-                                    Type = SegmentType.Thin;
-                                    break;
-                            }
-                            break;
-                        case "stripe_count":
-                            StripeCount = Metadata.ParseNumericValue(parameter.Value);
-                            break;
-                        case "stripes":
-                            if (parameter.Value.Trim() == "[")
-                            {
-                                Stripes = ParseStripesSection(data).ToArray();
-                            }
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in global metadata");
-                    }
-                }
-                else if (line.EndsWith("}"))
-                {
-                    return;
-                }
-                else
-                {
-                    throw new ArgumentOutOfRangeException(line, "unexpected input");
+                    case "start_extent":
+                        StartExtent = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    case "extent_count":
+                        ExtentCount = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    case "type":
+                        var value = Metadata.ParseStringValue(parameter.Value);
+                        switch (value)
+                        {
+                            case "striped":
+                                Type = SegmentType.Striped;
+                                break;
+                            case "zero":
+                                Type = SegmentType.Zero;
+                                break;
+                            case "error":
+                                Type = SegmentType.Error;
+                                break;
+                            case "free":
+                                Type = SegmentType.Free;
+                                break;
+                            case "snapshot":
+                                Type = SegmentType.Snapshot;
+                                break;
+                            case "mirror":
+                                Type = SegmentType.Mirror;
+                                break;
+                            case "raid1":
+                                Type = SegmentType.Raid1;
+                                break;
+                            case "raid10":
+                                Type = SegmentType.Raid10;
+                                break;
+                            case "raid4":
+                                Type = SegmentType.Raid4;
+                                break;
+                            case "raid5":
+                                Type = SegmentType.Raid5;
+                                break;
+                            case "raid5_la":
+                                Type = SegmentType.Raid5La;
+                                break;
+                            case "raid5_ra":
+                                Type = SegmentType.Raid5Ra;
+                                break;
+                            case "raid5_ls":
+                                Type = SegmentType.Raid5Ls;
+                                break;
+                            case "raid5_rs":
+                                Type = SegmentType.Raid5Rs;
+                                break;
+                            case "raid6":
+                                Type = SegmentType.Raid6;
+                                break;
+                            case "raid6_zr":
+                                Type = SegmentType.Raid6Zr;
+                                break;
+                            case "raid6_nr":
+                                Type = SegmentType.Raid6Nr;
+                                break;
+                            case "raid6_nc":
+                                Type = SegmentType.Raid6Nc;
+                                break;
+                            case "thin-pool":
+                                Type = SegmentType.ThinPool;
+                                break;
+                            case "thin":
+                                Type = SegmentType.Thin;
+                                break;
+                        }
+                        break;
+                    case "stripe_count":
+                        StripeCount = Metadata.ParseNumericValue(parameter.Value);
+                        break;
+                    case "stripes":
+                        if (parameter.Value.Trim() == "[")
+                        {
+                            Stripes = ParseStripesSection(data).ToArray();
+                        }
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in global metadata");
                 }
             }
-        }
-
-        private IEnumerable<MetadataStripe> ParseStripesSection(TextReader data)
-        {
-            string line;
-            while ((line = Metadata.ReadLine(data)) != null)
+            else if (line.EndsWith("}"))
             {
-                if (line == String.Empty) continue;
-                if (line.EndsWith("]"))
-                {
-                    yield break;
-                }
-                var pv = new MetadataStripe();
-                pv.Parse(line);
-                yield return pv;
+                return;
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(line, "unexpected input");
             }
         }
     }
 
-    [Flags]
-    internal enum SegmentType
+    private IEnumerable<MetadataStripe> ParseStripesSection(TextReader data)
     {
-        //$ lvm segtypes, man(8) lvm
-        None,
-        Striped,
-        Zero,
-        Error,
-        Free,
-        Snapshot,
-        Mirror,
-        Raid1,
-        Raid10,
-        Raid4,
-        Raid5,
-        Raid5La,
-        Raid5Ra,
-        Raid5Ls,
-        Raid5Rs,
-        Raid6,
-        Raid6Zr,
-        Raid6Nr,
-        Raid6Nc,
-        ThinPool,
-        Thin,
+        string line;
+        while ((line = Metadata.ReadLine(data)) != null)
+        {
+            if (line == String.Empty) continue;
+            if (line.EndsWith("]"))
+            {
+                yield break;
+            }
+            var pv = new MetadataStripe();
+            pv.Parse(line);
+            yield return pv;
+        }
     }
+}
+
+[Flags]
+internal enum SegmentType
+{
+    //$ lvm segtypes, man(8) lvm
+    None,
+    Striped,
+    Zero,
+    Error,
+    Free,
+    Snapshot,
+    Mirror,
+    Raid1,
+    Raid10,
+    Raid4,
+    Raid5,
+    Raid5La,
+    Raid5Ra,
+    Raid5Ls,
+    Raid5Rs,
+    Raid6,
+    Raid6Zr,
+    Raid6Nr,
+    Raid6Nc,
+    ThinPool,
+    Thin,
 }

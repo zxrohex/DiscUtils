@@ -1,9 +1,8 @@
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal enum LogoutReason
 {
-    internal enum LogoutReason
-    {
-        CloseSession = 0,
-        CloseConnection = 1,
-        CloseForRecovery = 2
-    }
+    CloseSession = 0,
+    CloseConnection = 1,
+    CloseForRecovery = 2
 }

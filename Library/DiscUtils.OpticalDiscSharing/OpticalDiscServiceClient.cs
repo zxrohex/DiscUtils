@@ -24,55 +24,54 @@ using System;
 using System.Collections.Generic;
 using DiscUtils.Net.Dns;
 
-namespace DiscUtils.OpticalDiscSharing
+namespace DiscUtils.OpticalDiscSharing;
+
+/// <summary>
+/// Provides access to Optical Disc Sharing services.
+/// </summary>
+public sealed class OpticalDiscServiceClient : IDisposable
 {
+    private ServiceDiscoveryClient _sdClient;
+
     /// <summary>
-    /// Provides access to Optical Disc Sharing services.
+    /// Initializes a new instance of the OpticalDiscServiceClient class.
     /// </summary>
-    public sealed class OpticalDiscServiceClient : IDisposable
+    public OpticalDiscServiceClient()
     {
-        private ServiceDiscoveryClient _sdClient;
+        _sdClient = new ServiceDiscoveryClient();
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the OpticalDiscServiceClient class.
-        /// </summary>
-        public OpticalDiscServiceClient()
+    /// <summary>
+    /// Disposes of this instance.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_sdClient != null)
         {
-            _sdClient = new ServiceDiscoveryClient();
+            _sdClient.Dispose();
+            _sdClient = null;
         }
+    }
 
-        /// <summary>
-        /// Disposes of this instance.
-        /// </summary>
-        public void Dispose()
-        {
-            if (_sdClient != null)
-            {
-                _sdClient.Dispose();
-                _sdClient = null;
-            }
-        }
+    /// <summary>
+    /// Looks up the ODS services advertised.
+    /// </summary>
+    /// <returns>A list of discovered ODS services.</returns>
+    public IEnumerable<OpticalDiscService> LookupServices()
+    {
+        return LookupServices("local.");
+    }
 
-        /// <summary>
-        /// Looks up the ODS services advertised.
-        /// </summary>
-        /// <returns>A list of discovered ODS services.</returns>
-        public IEnumerable<OpticalDiscService> LookupServices()
+    /// <summary>
+    /// Looks up the ODS services advertised in a domain.
+    /// </summary>
+    /// <param name="domain">The domain to look in.</param>
+    /// <returns>A list of discovered ODS services.</returns>
+    public IEnumerable<OpticalDiscService> LookupServices(string domain)
+    {
+        foreach (var instance in _sdClient.LookupInstances("_odisk._tcp", domain, ServiceInstanceFields.All))
         {
-            return LookupServices("local.");
-        }
-
-        /// <summary>
-        /// Looks up the ODS services advertised in a domain.
-        /// </summary>
-        /// <param name="domain">The domain to look in.</param>
-        /// <returns>A list of discovered ODS services.</returns>
-        public IEnumerable<OpticalDiscService> LookupServices(string domain)
-        {
-            foreach (ServiceInstance instance in _sdClient.LookupInstances("_odisk._tcp", domain, ServiceInstanceFields.All))
-            {
-                yield return new OpticalDiscService(instance, _sdClient);
-            }
+            yield return new OpticalDiscService(instance, _sdClient);
         }
     }
 }

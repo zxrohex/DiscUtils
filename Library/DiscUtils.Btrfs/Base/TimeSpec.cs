@@ -23,44 +23,43 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Btrfs.Base
+namespace DiscUtils.Btrfs.Base;
+
+internal class TimeSpec : IByteArraySerializable
 {
-    internal class TimeSpec : IByteArraySerializable
+    public static readonly int Length = 0xc;
+
+    /// <summary>
+    /// Number of seconds since 1970-01-01T00:00:00Z. 
+    /// </summary>
+    public long Seconds { get; internal set; }
+
+    /// <summary>
+    /// Number of nanoseconds since the beginning of the second. 
+    /// </summary>
+    public uint Nanoseconds { get; internal set; }
+    
+    public DateTimeOffset Value { get { return Seconds.FromUnixTimeSeconds().AddTicks(Nanoseconds / 100); } }
+
+    public int Size
     {
-        public static readonly int Length = 0xc;
+        get { return Length; }
+    }
 
-        /// <summary>
-        /// Number of seconds since 1970-01-01T00:00:00Z. 
-        /// </summary>
-        public long Seconds { get; internal set; }
+    public DateTimeOffset DateTime
+    {
+        get { return Seconds.FromUnixTimeSeconds().AddTicks(Nanoseconds / 100); }
+    }
 
-        /// <summary>
-        /// Number of nanoseconds since the beginning of the second. 
-        /// </summary>
-        public uint Nanoseconds { get; internal set; }
-        
-        public DateTimeOffset Value { get { return Seconds.FromUnixTimeSeconds().AddTicks(Nanoseconds / 100); } }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        Seconds = EndianUtilities.ToInt64LittleEndian(buffer, offset);
+        Nanoseconds = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x8);
+        return Size;
+    }
 
-        public int Size
-        {
-            get { return Length; }
-        }
-
-        public DateTimeOffset DateTime
-        {
-            get { return Seconds.FromUnixTimeSeconds().AddTicks(Nanoseconds / 100); }
-        }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Seconds = EndianUtilities.ToInt64LittleEndian(buffer, offset);
-            Nanoseconds = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x8);
-            return Size;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }

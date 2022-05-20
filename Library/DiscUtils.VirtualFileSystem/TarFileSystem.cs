@@ -1,102 +1,101 @@
 ﻿using System;
 using System.IO;
 
-namespace DiscUtils.VirtualFileSystem
+namespace DiscUtils.VirtualFileSystem;
+
+using Archives;
+using Streams;
+using Internal;
+using System.Diagnostics;
+
+public class TarFileSystem : VirtualFileSystem
 {
-    using Archives;
-    using Streams;
-    using Internal;
-    using System.Diagnostics;
+    private readonly WeakReference _tar;
 
-    public class TarFileSystem : VirtualFileSystem
+    public static bool Detect(Stream archive)
     {
-        private readonly WeakReference _tar;
+        archive.Position = 0;
 
-        public static bool Detect(Stream archive)
+        try
         {
-            archive.Position = 0;
+            var buffer = new byte[512];
 
-            try
-            {
-                var buffer = new byte[512];
-
-                if (StreamUtilities.ReadMaximum(archive, buffer, 0, 512) < 512)
-                {
-                    return false;
-                }
-
-                return TarHeader.IsValid(buffer, 0);
-            }
-            catch
+            if (StreamUtilities.ReadMaximum(archive, buffer, 0, 512) < 512)
             {
                 return false;
             }
+
+            return TarHeader.IsValid(buffer, 0);
         }
-
-        public TarFileSystem(FileStream tar_stream, bool ownsStream)
-            : this(tar_stream, tar_stream.Name, ownsStream) { }
-
-        public TarFileSystem(Stream tar_stream, string label, bool ownsStream)
-            : base(new VirtualFileSystemOptions
-            {
-                VolumeLabel = label,
-                CaseSensitive = true
-            })
+        catch
         {
-            if (tar_stream.CanSeek)
-            {
-                tar_stream.Position = 0;
-            }
-
-            if (ownsStream)
-            {
-                _tar = new WeakReference(tar_stream);
-            }
-
-            foreach (var file in TarFile.EnumerateFiles(tar_stream))
-            {
-                var path = file.Name;
-
-                if (path.StartsWith(".", StringComparison.Ordinal))
-                {
-                    path = path.Substring(1);
-                }
-
-                path = path.Replace('/', '\\');
-
-                if (path.EndsWith(@"\", StringComparison.Ordinal))
-                {
-                    path = path.TrimEnd('\\');
-
-                    AddDirectory(path,
-                        file.Header.CreationTime.DateTime, file.Header.ModificationTime.DateTime, file.Header.LastAccessTime.DateTime,
-                        Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
-                }
-                else
-                {
-                    if (Exists(path))
-                    {
-                        Trace.WriteLine($"TarFileSystem: Duplicate file path '{file.Name}'");
-                        continue;
-                    }
-
-                    AddFile(path, file.GetStream() ?? Stream.Null,
-                        file.Header.CreationTime.DateTime, file.Header.ModificationTime.DateTime, file.Header.LastAccessTime.DateTime,
-                        Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
-                }
-            }
-
-            Freeze();
+            return false;
         }
+    }
 
-        protected override void Dispose(bool disposing)
+    public TarFileSystem(FileStream tar_stream, bool ownsStream)
+        : this(tar_stream, tar_stream.Name, ownsStream) { }
+
+    public TarFileSystem(Stream tar_stream, string label, bool ownsStream)
+        : base(new VirtualFileSystemOptions
         {
-            if (disposing && _tar?.Target is IDisposable archive)
+            VolumeLabel = label,
+            CaseSensitive = true
+        })
+    {
+        if (tar_stream.CanSeek)
+        {
+            tar_stream.Position = 0;
+        }
+
+        if (ownsStream)
+        {
+            _tar = new WeakReference(tar_stream);
+        }
+
+        foreach (var file in TarFile.EnumerateFiles(tar_stream))
+        {
+            var path = file.Name;
+
+            if (path.StartsWith(".", StringComparison.Ordinal))
             {
-                archive.Dispose();
+                path = path.Substring(1);
             }
 
-            base.Dispose(disposing);
+            path = path.Replace('/', '\\');
+
+            if (path.EndsWith(@"\", StringComparison.Ordinal))
+            {
+                path = path.TrimEnd('\\');
+
+                AddDirectory(path,
+                    file.Header.CreationTime.DateTime, file.Header.ModificationTime.DateTime, file.Header.LastAccessTime.DateTime,
+                    Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
+            }
+            else
+            {
+                if (Exists(path))
+                {
+                    Trace.WriteLine($"TarFileSystem: Duplicate file path '{file.Name}'");
+                    continue;
+                }
+
+                AddFile(path, file.GetStream() ?? Stream.Null,
+                    file.Header.CreationTime.DateTime, file.Header.ModificationTime.DateTime, file.Header.LastAccessTime.DateTime,
+                    Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
+            }
         }
+
+        Freeze();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && _tar?.Target is IDisposable archive)
+        {
+            archive.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 }

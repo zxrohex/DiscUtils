@@ -31,9 +31,9 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void AddFileStream()
         {
-            CDBuilder builder = new CDBuilder();
+            var builder = new CDBuilder();
             builder.AddFile(@"ADIR\AFILE.TXT", new MemoryStream());
-            CDReader fs = new CDReader(builder.Build(), false);
+            var fs = new CDReader(builder.Build(), false);
 
             Assert.True(fs.Exists(@"ADIR\AFILE.TXT"));
         }
@@ -41,9 +41,9 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void AddFileBytes()
         {
-            CDBuilder builder = new CDBuilder();
+            var builder = new CDBuilder();
             builder.AddFile(@"ADIR\AFILE.TXT", new byte[] {});
-            CDReader fs = new CDReader(builder.Build(), false);
+            var fs = new CDReader(builder.Build(), false);
 
             Assert.True(fs.Exists(@"ADIR\AFILE.TXT"));
         }
@@ -51,22 +51,22 @@ namespace LibraryTests.Iso9660
         [Fact]
         public void BootImage()
         {
-            byte[] memoryStream = new byte[33 * 512];
-            for(int i = 0; i < memoryStream.Length; ++i)
+            var memoryStream = new byte[33 * 512];
+            for(var i = 0; i < memoryStream.Length; ++i)
             {
                 memoryStream[i] = (byte)i;
             }
 
-            CDBuilder builder = new CDBuilder();
+            var builder = new CDBuilder();
             builder.SetBootImage(new MemoryStream(memoryStream), BootDeviceEmulation.HardDisk, 0x543);
 
-            CDReader fs = new CDReader(builder.Build(), false);
+            var fs = new CDReader(builder.Build(), false);
             Assert.True(fs.HasBootImage);
 
-            using (Stream bootImg = fs.OpenBootImage())
+            using (var bootImg = fs.OpenBootImage())
             {
                 Assert.Equal(memoryStream.Length, bootImg.Length);
-                for (int i = 0; i < bootImg.Length; ++i)
+                for (var i = 0; i < bootImg.Length; ++i)
                 {
                     if (memoryStream[i] != bootImg.ReadByte())
                     {

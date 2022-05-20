@@ -20,71 +20,70 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+
+/// <summary>
+/// Additional version flags if <see cref="VersionFlags.MOREBITSBIT"/> is set in <see cref="SuperBlock.Version"/>.
+/// </summary>
+[Flags]
+internal enum Version2Features : uint
 {
-    using System;
+    Reserved1 = 0x001,
 
     /// <summary>
-    /// Additional version flags if <see cref="VersionFlags.MOREBITSBIT"/> is set in <see cref="SuperBlock.Version"/>.
+    /// Lazy global counters. Making a filesystem with this
+    /// bit set can improve performance. The global free
+    /// space and inode counts are only updated in the
+    /// primary superblock when the filesystem is cleanly
+    /// unmounted.
     /// </summary>
-    [Flags]
-    internal enum Version2Features : uint
-    {
-        Reserved1 = 0x001,
+    LazySbBitCount = 0x002,
+    Reserved4 = 0x004,
 
-        /// <summary>
-        /// Lazy global counters. Making a filesystem with this
-        /// bit set can improve performance. The global free
-        /// space and inode counts are only updated in the
-        /// primary superblock when the filesystem is cleanly
-        /// unmounted.
-        /// </summary>
-        LazySbBitCount = 0x002,
-        Reserved4 = 0x004,
+    /// <summary>
+    /// Extended attributes version 2. Making a filesystem
+    /// with this optimises the inode layout of extended
+    /// attributes. If this bit is set and the noattr2 mount
+    /// flag is not specified, the di_forkoff inode field
+    /// will be dynamically adjusted.
+    /// </summary>
+    ExtendedAttributeVersion2 = 0x008,
 
-        /// <summary>
-        /// Extended attributes version 2. Making a filesystem
-        /// with this optimises the inode layout of extended
-        /// attributes. If this bit is set and the noattr2 mount
-        /// flag is not specified, the di_forkoff inode field
-        /// will be dynamically adjusted.
-        /// </summary>
-        ExtendedAttributeVersion2 = 0x008,
+    /// <summary>
+    /// Parent pointers. All inodes must have an extended
+    /// attribute that points back to its parent inode. The
+    /// primary purpose for this information is in backup
+    /// systems.
+    /// </summary>
+    Parent = 0x010,
 
-        /// <summary>
-        /// Parent pointers. All inodes must have an extended
-        /// attribute that points back to its parent inode. The
-        /// primary purpose for this information is in backup
-        /// systems.
-        /// </summary>
-        Parent = 0x010,
+    /// <summary>
+    /// 32-bit Project ID. Inodes can be associated with a
+    /// project ID number, which can be used to enforce disk
+    /// space usage quotas for a particular group of
+    /// directories. This flag indicates that project IDs can be
+    /// 32 bits in size.
+    /// </summary>
+    ProjectId32Bit = 0x0080,
 
-        /// <summary>
-        /// 32-bit Project ID. Inodes can be associated with a
-        /// project ID number, which can be used to enforce disk
-        /// space usage quotas for a particular group of
-        /// directories. This flag indicates that project IDs can be
-        /// 32 bits in size.
-        /// </summary>
-        ProjectId32Bit = 0x0080,
+    /// <summary>
+    /// Metadata checksumming. All metadata blocks have
+    /// an extended header containing the block checksum,
+    /// a copy of the metadata UUID, the log sequence
+    /// number of the last update to prevent stale replays,
+    /// and a back pointer to the owner of the block. This
+    /// feature must be and can only be set if the lowest
+    /// nibble of sb_versionnum is set to 5.
+    /// </summary>
+    Crc = 0x0100,
 
-        /// <summary>
-        /// Metadata checksumming. All metadata blocks have
-        /// an extended header containing the block checksum,
-        /// a copy of the metadata UUID, the log sequence
-        /// number of the last update to prevent stale replays,
-        /// and a back pointer to the owner of the block. This
-        /// feature must be and can only be set if the lowest
-        /// nibble of sb_versionnum is set to 5.
-        /// </summary>
-        Crc = 0x0100,
-
-        /// <summary>
-        /// Directory file type. Each directory entry records the
-        /// type of the inode to which the entry points. This
-        /// speeds up directory iteration by removing the need
-        /// to load every inode into memory.
-        /// </summary>
-        FType = 0x0200,
-    }
+    /// <summary>
+    /// Directory file type. Each directory entry records the
+    /// type of the inode to which the entry points. This
+    /// speeds up directory iteration by removing the need
+    /// to load every inode into memory.
+    /// </summary>
+    FType = 0x0200,
 }

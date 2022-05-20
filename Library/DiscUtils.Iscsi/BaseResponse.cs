@@ -20,15 +20,14 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Iscsi
-{
-    internal abstract class BaseResponse
-    {
-        public uint ExpectedCommandSequenceNumber;
-        public uint MaxCommandSequenceNumber;
-        public bool StatusPresent;
-        public uint StatusSequenceNumber;
+namespace DiscUtils.Iscsi;
 
-        public abstract void Parse(ProtocolDataUnit pdu);
-    }
+internal abstract class BaseResponse
+{
+    public uint ExpectedCommandSequenceNumber;
+    public uint MaxCommandSequenceNumber;
+    public bool StatusPresent;
+    public uint StatusSequenceNumber;
+
+    public abstract void Parse(ProtocolDataUnit pdu);
 }

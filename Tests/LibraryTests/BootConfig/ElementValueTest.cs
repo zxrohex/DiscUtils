@@ -36,11 +36,11 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void StringValue()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.LibraryApplicationPath, ElementValue.ForString(@"a\path\to\nowhere"));
+            var el = obj.AddElement(WellKnownElement.LibraryApplicationPath, ElementValue.ForString(@"a\path\to\nowhere"));
 
             el = obj.GetElement(WellKnownElement.LibraryApplicationPath);
 
@@ -50,11 +50,11 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void BooleanValue()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.LibraryAutoRecoveryEnabled, ElementValue.ForBoolean(true));
+            var el = obj.AddElement(WellKnownElement.LibraryAutoRecoveryEnabled, ElementValue.ForBoolean(true));
 
             el = obj.GetElement(WellKnownElement.LibraryAutoRecoveryEnabled);
 
@@ -64,17 +64,17 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void DeviceValue_Gpt()
         {
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var ms = new SparseMemoryStream();
             ms.SetLength(80 * 1024 * 1024);
-            GuidPartitionTable gpt = GuidPartitionTable.Initialize(ms, Geometry.FromCapacity(ms.Length));
+            var gpt = GuidPartitionTable.Initialize(ms, Geometry.FromCapacity(ms.Length));
             gpt.Create(WellKnownPartitionType.WindowsNtfs, true);
-            VolumeManager volMgr = new VolumeManager(ms);
+            var volMgr = new VolumeManager(ms);
 
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.LibraryApplicationDevice, ElementValue.ForDevice(Guid.Empty, volMgr.GetPhysicalVolumes()[0]));
+            var el = obj.AddElement(WellKnownElement.LibraryApplicationDevice, ElementValue.ForDevice(Guid.Empty, volMgr.GetPhysicalVolumes()[0]));
 
             el = obj.GetElement(WellKnownElement.LibraryApplicationDevice);
 
@@ -85,17 +85,17 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void DeviceValue_Mbr()
         {
-            SparseMemoryStream ms = new SparseMemoryStream();
+            var ms = new SparseMemoryStream();
             ms.SetLength(80 * 1024 * 1024);
-            BiosPartitionTable pt = BiosPartitionTable.Initialize(ms, Geometry.FromCapacity(ms.Length));
+            var pt = BiosPartitionTable.Initialize(ms, Geometry.FromCapacity(ms.Length));
             pt.Create(WellKnownPartitionType.WindowsNtfs, true);
-            VolumeManager volMgr = new VolumeManager(ms);
+            var volMgr = new VolumeManager(ms);
 
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.LibraryApplicationDevice, ElementValue.ForDevice(Guid.Empty, volMgr.GetPhysicalVolumes()[0]));
+            var el = obj.AddElement(WellKnownElement.LibraryApplicationDevice, ElementValue.ForDevice(Guid.Empty, volMgr.GetPhysicalVolumes()[0]));
 
             el = obj.GetElement(WellKnownElement.LibraryApplicationDevice);
 
@@ -106,11 +106,11 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void DeviceValue_BootDevice()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.LibraryApplicationDevice, ElementValue.ForBootDevice());
+            var el = obj.AddElement(WellKnownElement.LibraryApplicationDevice, ElementValue.ForBootDevice());
 
             el = obj.GetElement(WellKnownElement.LibraryApplicationDevice);
 
@@ -121,13 +121,13 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void GuidValue()
         {
-            Guid testGuid = Guid.NewGuid();
+            var testGuid = Guid.NewGuid();
 
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.BootMgrDefaultObject, ElementValue.ForGuid(testGuid));
+            var el = obj.AddElement(WellKnownElement.BootMgrDefaultObject, ElementValue.ForGuid(testGuid));
 
             el = obj.GetElement(WellKnownElement.BootMgrDefaultObject);
 
@@ -137,14 +137,14 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void GuidListValue()
         {
-            Guid testGuid1 = Guid.NewGuid();
-            Guid testGuid2 = Guid.NewGuid();
+            var testGuid1 = Guid.NewGuid();
+            var testGuid2 = Guid.NewGuid();
 
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.BootMgrDisplayOrder, ElementValue.ForGuidList(new Guid[] {testGuid1, testGuid2}));
+            var el = obj.AddElement(WellKnownElement.BootMgrDisplayOrder, ElementValue.ForGuidList(new Guid[] {testGuid1, testGuid2}));
 
             el = obj.GetElement(WellKnownElement.BootMgrDisplayOrder);
 
@@ -154,11 +154,11 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void IntegerValue()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.LibraryTruncatePhysicalMemory, ElementValue.ForInteger(1234));
+            var el = obj.AddElement(WellKnownElement.LibraryTruncatePhysicalMemory, ElementValue.ForInteger(1234));
 
             el = obj.GetElement(WellKnownElement.LibraryTruncatePhysicalMemory);
 
@@ -168,11 +168,11 @@ namespace LibraryTests.BootConfig
         [Fact]
         public void IntegerListValue()
         {
-            RegistryHive hive = RegistryHive.Create(new MemoryStream());
-            Store s = Store.Initialize(hive.Root);
-            BcdObject obj = s.CreateInherit(InheritType.AnyObject);
+            var hive = RegistryHive.Create(new MemoryStream());
+            var s = Store.Initialize(hive.Root);
+            var obj = s.CreateInherit(InheritType.AnyObject);
 
-            Element el = obj.AddElement(WellKnownElement.LibraryBadMemoryList, ElementValue.ForIntegerList(new long[] { 1234, 4132 }));
+            var el = obj.AddElement(WellKnownElement.LibraryBadMemoryList, ElementValue.ForIntegerList(new long[] { 1234, 4132 }));
 
             el = obj.GetElement(WellKnownElement.LibraryBadMemoryList);
 

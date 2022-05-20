@@ -22,59 +22,58 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Iscsi
+namespace DiscUtils.Iscsi;
+
+internal class LoginResponse : BaseResponse
 {
-    internal class LoginResponse : BaseResponse
+    public byte ActiveVersion;
+    public bool Continue;
+    public LoginStages CurrentStage;
+
+    public byte MaxVersion;
+    public LoginStages NextStage;
+    public byte StatusClass;
+    public LoginStatusCode StatusCode;
+
+    public ushort TargetSessionId;
+    public byte[] TextData;
+    public bool Transit;
+
+    public override void Parse(ProtocolDataUnit pdu)
     {
-        public byte ActiveVersion;
-        public bool Continue;
-        public LoginStages CurrentStage;
+        Parse(pdu.HeaderData, 0, pdu.ContentData);
+    }
 
-        public byte MaxVersion;
-        public LoginStages NextStage;
-        public byte StatusClass;
-        public LoginStatusCode StatusCode;
+    public void Parse(byte[] headerData, int headerOffset, byte[] bodyData)
+    {
+        var _headerSegment = new BasicHeaderSegment();
+        _headerSegment.ReadFrom(headerData, headerOffset);
 
-        public ushort TargetSessionId;
-        public byte[] TextData;
-        public bool Transit;
-
-        public override void Parse(ProtocolDataUnit pdu)
+        if (_headerSegment.OpCode != OpCode.LoginResponse)
         {
-            Parse(pdu.HeaderData, 0, pdu.ContentData);
+            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.LoginResponse +
+                                               " was " + _headerSegment.OpCode);
         }
 
-        public void Parse(byte[] headerData, int headerOffset, byte[] bodyData)
-        {
-            BasicHeaderSegment _headerSegment = new BasicHeaderSegment();
-            _headerSegment.ReadFrom(headerData, headerOffset);
+        UnpackState(headerData[headerOffset + 1]);
+        MaxVersion = headerData[headerOffset + 2];
+        ActiveVersion = headerData[headerOffset + 3];
+        TargetSessionId = EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 14);
+        StatusPresent = true;
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
+        StatusClass = headerData[headerOffset + 36];
+        StatusCode = (LoginStatusCode)EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 36);
 
-            if (_headerSegment.OpCode != OpCode.LoginResponse)
-            {
-                throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.LoginResponse +
-                                                   " was " + _headerSegment.OpCode);
-            }
+        TextData = bodyData;
+    }
 
-            UnpackState(headerData[headerOffset + 1]);
-            MaxVersion = headerData[headerOffset + 2];
-            ActiveVersion = headerData[headerOffset + 3];
-            TargetSessionId = EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 14);
-            StatusPresent = true;
-            StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-            ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-            MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-            StatusClass = headerData[headerOffset + 36];
-            StatusCode = (LoginStatusCode)EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 36);
-
-            TextData = bodyData;
-        }
-
-        private void UnpackState(byte value)
-        {
-            Transit = (value & 0x80) != 0;
-            Continue = (value & 0x40) != 0;
-            CurrentStage = (LoginStages)((value >> 2) & 0x3);
-            NextStage = (LoginStages)(value & 0x3);
-        }
+    private void UnpackState(byte value)
+    {
+        Transit = (value & 0x80) != 0;
+        Continue = (value & 0x40) != 0;
+        CurrentStage = (LoginStages)((value >> 2) & 0x3);
+        NextStage = (LoginStages)(value & 0x3);
     }
 }

@@ -20,41 +20,40 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+/// <summary>
+/// Enumeration of known DNS record classes (CLASS in DNS).
+/// </summary>
+public enum RecordClass
 {
     /// <summary>
-    /// Enumeration of known DNS record classes (CLASS in DNS).
+    /// No class defined.
     /// </summary>
-    public enum RecordClass
-    {
-        /// <summary>
-        /// No class defined.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// The Internet class.
-        /// </summary>
-        Internet = 1,
+    /// <summary>
+    /// The Internet class.
+    /// </summary>
+    Internet = 1,
 
-        /// <summary>
-        /// The CSNET class.
-        /// </summary>
-        CSNet = 2,
+    /// <summary>
+    /// The CSNET class.
+    /// </summary>
+    CSNet = 2,
 
-        /// <summary>
-        /// The CHAOS network class.
-        /// </summary>
-        Chaos = 3,
+    /// <summary>
+    /// The CHAOS network class.
+    /// </summary>
+    Chaos = 3,
 
-        /// <summary>
-        /// The Hesiod class.
-        /// </summary>
-        Hesiod = 4,
+    /// <summary>
+    /// The Hesiod class.
+    /// </summary>
+    Hesiod = 4,
 
-        /// <summary>
-        /// Wildcard that matches any class.
-        /// </summary>
-        Any = 255
-    }
+    /// <summary>
+    /// Wildcard that matches any class.
+    /// </summary>
+    Any = 255
 }

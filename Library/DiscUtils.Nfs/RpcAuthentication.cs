@@ -24,63 +24,62 @@
 using System;
 using System.IO;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public class RpcAuthentication
 {
-    public class RpcAuthentication
+    private readonly byte[] _body;
+    private readonly RpcAuthFlavour _flavour;
+
+    public RpcAuthentication()
     {
-        private readonly byte[] _body;
-        private readonly RpcAuthFlavour _flavour;
+        _body = new byte[400];
+    }
 
-        public RpcAuthentication()
+    public RpcAuthentication(XdrDataReader reader)
+    {
+        _flavour = (RpcAuthFlavour)reader.ReadInt32();
+        _body = reader.ReadBuffer(400);
+    }
+
+    public RpcAuthentication(RpcCredentials credential)
+    {
+        _flavour = credential.AuthFlavour;
+
+        var ms = new MemoryStream();
+        var writer = new XdrDataWriter(ms);
+        credential.Write(writer);
+        _body = ms.ToArray();
+    }
+
+    public static RpcAuthentication Null()
+    {
+        return new RpcAuthentication(new RpcNullCredentials());
+    }
+
+    public void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)_flavour);
+        writer.WriteBuffer(_body);
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as RpcAuthentication);
+    }
+
+    public bool Equals(RpcAuthentication other)
+    {
+        if (other == null)
         {
-            _body = new byte[400];
+            return false;
         }
+        
+        return other._flavour == _flavour;
+    }
 
-        public RpcAuthentication(XdrDataReader reader)
-        {
-            _flavour = (RpcAuthFlavour)reader.ReadInt32();
-            _body = reader.ReadBuffer(400);
-        }
-
-        public RpcAuthentication(RpcCredentials credential)
-        {
-            _flavour = credential.AuthFlavour;
-
-            MemoryStream ms = new MemoryStream();
-            XdrDataWriter writer = new XdrDataWriter(ms);
-            credential.Write(writer);
-            _body = ms.ToArray();
-        }
-
-        public static RpcAuthentication Null()
-        {
-            return new RpcAuthentication(new RpcNullCredentials());
-        }
-
-        public void Write(XdrDataWriter writer)
-        {
-            writer.Write((int)_flavour);
-            writer.WriteBuffer(_body);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as RpcAuthentication);
-        }
-
-        public bool Equals(RpcAuthentication other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-            
-            return other._flavour == _flavour;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(_flavour);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(_flavour);
     }
 }

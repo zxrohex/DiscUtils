@@ -20,71 +20,70 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Net.Dns
+namespace DiscUtils.Net.Dns;
+
+internal struct MessageFlags
 {
-    internal struct MessageFlags
+    public MessageFlags(ushort value)
     {
-        public MessageFlags(ushort value)
-        {
-            Value = value;
-        }
+        Value = value;
+    }
 
-        public MessageFlags(
-            bool isResponse,
-            OpCode opCode,
-            bool isAuthorative,
-            bool isTruncated,
-            bool recursionDesired,
-            bool recursionAvailable,
-            ResponseCode responseCode)
-        {
-            int val = 0;
-            val |= isResponse ? 0x8000 : 0x0000;
-            val |= ((int)opCode & 0xF) << 11;
-            val |= isAuthorative ? 0x0400 : 0x0000;
-            val |= isTruncated ? 0x0200 : 0x0000;
-            val |= recursionDesired ? 0x0100 : 0x0000;
-            val |= recursionAvailable ? 0x0080 : 0x0000;
-            val |= (int)responseCode & 0xF;
+    public MessageFlags(
+        bool isResponse,
+        OpCode opCode,
+        bool isAuthorative,
+        bool isTruncated,
+        bool recursionDesired,
+        bool recursionAvailable,
+        ResponseCode responseCode)
+    {
+        var val = 0;
+        val |= isResponse ? 0x8000 : 0x0000;
+        val |= ((int)opCode & 0xF) << 11;
+        val |= isAuthorative ? 0x0400 : 0x0000;
+        val |= isTruncated ? 0x0200 : 0x0000;
+        val |= recursionDesired ? 0x0100 : 0x0000;
+        val |= recursionAvailable ? 0x0080 : 0x0000;
+        val |= (int)responseCode & 0xF;
 
-            Value = (ushort)val;
-        }
+        Value = (ushort)val;
+    }
 
-        public ushort Value { get; }
+    public ushort Value { get; }
 
-        public bool IsResponse
-        {
-            get { return (Value & 0x8000) != 0; }
-        }
+    public bool IsResponse
+    {
+        get { return (Value & 0x8000) != 0; }
+    }
 
-        public OpCode OpCode
-        {
-            get { return (OpCode)((Value >> 11) & 0xF); }
-        }
+    public OpCode OpCode
+    {
+        get { return (OpCode)((Value >> 11) & 0xF); }
+    }
 
-        public bool IsAuthorative
-        {
-            get { return (Value & 0x0400) != 0; }
-        }
+    public bool IsAuthorative
+    {
+        get { return (Value & 0x0400) != 0; }
+    }
 
-        public bool IsTruncated
-        {
-            get { return (Value & 0x0200) != 0; }
-        }
+    public bool IsTruncated
+    {
+        get { return (Value & 0x0200) != 0; }
+    }
 
-        public bool RecursionDesired
-        {
-            get { return (Value & 0x0100) != 0; }
-        }
+    public bool RecursionDesired
+    {
+        get { return (Value & 0x0100) != 0; }
+    }
 
-        public bool RecursionAvailable
-        {
-            get { return (Value & 0x0080) != 0; }
-        }
+    public bool RecursionAvailable
+    {
+        get { return (Value & 0x0080) != 0; }
+    }
 
-        public ResponseCode ResponseCode
-        {
-            get { return (ResponseCode)(Value & 0x000F); }
-        }
+    public ResponseCode ResponseCode
+    {
+        get { return (ResponseCode)(Value & 0x000F); }
     }
 }

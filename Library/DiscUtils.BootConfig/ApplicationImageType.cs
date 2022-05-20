@@ -20,36 +20,35 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+/// <summary>
+/// Enumeration of known application image types.
+/// </summary>
+public enum ApplicationImageType
 {
     /// <summary>
-    /// Enumeration of known application image types.
+    /// Unknown type.
     /// </summary>
-    public enum ApplicationImageType
-    {
-        /// <summary>
-        /// Unknown type.
-        /// </summary>
-        None = 0x0,
+    None = 0x0,
 
-        /// <summary>
-        /// Firmware application.
-        /// </summary>
-        Firmware = 0x1,
+    /// <summary>
+    /// Firmware application.
+    /// </summary>
+    Firmware = 0x1,
 
-        /// <summary>
-        /// Windows boot loader.
-        /// </summary>
-        WindowsBoot = 0x2,
+    /// <summary>
+    /// Windows boot loader.
+    /// </summary>
+    WindowsBoot = 0x2,
 
-        /// <summary>
-        /// Legacy boot loader.
-        /// </summary>
-        LegacyLoader = 0x3,
+    /// <summary>
+    /// Legacy boot loader.
+    /// </summary>
+    LegacyLoader = 0x3,
 
-        /// <summary>
-        /// Real mode boot loader.
-        /// </summary>
-        RealMode = 0x4
-    }
+    /// <summary>
+    /// Real mode boot loader.
+    /// </summary>
+    RealMode = 0x4
 }

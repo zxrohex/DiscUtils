@@ -22,78 +22,77 @@
 
 using DiscUtils.Streams;
 
-namespace DiscUtils.Registry
+namespace DiscUtils.Registry;
+
+internal sealed class ValueCell : Cell
 {
-    internal sealed class ValueCell : Cell
+    private ValueFlags _flags;
+
+    public ValueCell(string name)
+        : this(-1)
     {
-        private ValueFlags _flags;
+        Name = name;
+    }
 
-        public ValueCell(string name)
-            : this(-1)
+    public ValueCell(int index)
+        : base(index)
+    {
+        DataIndex = -1;
+    }
+
+    public int DataIndex { get; set; }
+
+    public int DataLength { get; set; }
+
+    public RegistryValueType DataType { get; set; }
+
+    public string Name { get; private set; }
+
+    public override int Size
+    {
+        get { return 0x14 + (string.IsNullOrEmpty(Name) ? 0 : Name.Length); }
+    }
+
+    public override int ReadFrom(byte[] buffer, int offset)
+    {
+        int nameLen = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x02);
+        DataLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
+        DataIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x08);
+        DataType = (RegistryValueType)EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x0C);
+        _flags = (ValueFlags)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x10);
+
+        if ((_flags & ValueFlags.Named) != 0)
         {
-            Name = name;
+            Name = EndianUtilities.BytesToString(buffer, offset + 0x14, nameLen).Trim('\0');
         }
 
-        public ValueCell(int index)
-            : base(index)
+        return 0x14 + nameLen;
+    }
+
+    public override void WriteTo(byte[] buffer, int offset)
+    {
+        int nameLen;
+
+        if (string.IsNullOrEmpty(Name))
         {
-            DataIndex = -1;
+            _flags &= ~ValueFlags.Named;
+            nameLen = 0;
+        }
+        else
+        {
+            _flags |= ValueFlags.Named;
+            nameLen = Name.Length;
         }
 
-        public int DataIndex { get; set; }
-
-        public int DataLength { get; set; }
-
-        public RegistryValueType DataType { get; set; }
-
-        public string Name { get; private set; }
-
-        public override int Size
+        EndianUtilities.StringToBytes("vk", buffer, offset, 2);
+        EndianUtilities.WriteBytesLittleEndian(nameLen, buffer, offset + 0x02);
+        EndianUtilities.WriteBytesLittleEndian(DataLength, buffer, offset + 0x04);
+        EndianUtilities.WriteBytesLittleEndian(DataIndex, buffer, offset + 0x08);
+        EndianUtilities.WriteBytesLittleEndian((int)DataType, buffer, offset + 0x0C);
+        EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer, offset + 0x10);
+        if (nameLen != 0)
         {
-            get { return 0x14 + (string.IsNullOrEmpty(Name) ? 0 : Name.Length); }
-        }
-
-        public override int ReadFrom(byte[] buffer, int offset)
-        {
-            int nameLen = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x02);
-            DataLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
-            DataIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x08);
-            DataType = (RegistryValueType)EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x0C);
-            _flags = (ValueFlags)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x10);
-
-            if ((_flags & ValueFlags.Named) != 0)
-            {
-                Name = EndianUtilities.BytesToString(buffer, offset + 0x14, nameLen).Trim('\0');
-            }
-
-            return 0x14 + nameLen;
-        }
-
-        public override void WriteTo(byte[] buffer, int offset)
-        {
-            int nameLen;
-
-            if (string.IsNullOrEmpty(Name))
-            {
-                _flags &= ~ValueFlags.Named;
-                nameLen = 0;
-            }
-            else
-            {
-                _flags |= ValueFlags.Named;
-                nameLen = Name.Length;
-            }
-
-            EndianUtilities.StringToBytes("vk", buffer, offset, 2);
-            EndianUtilities.WriteBytesLittleEndian(nameLen, buffer, offset + 0x02);
-            EndianUtilities.WriteBytesLittleEndian(DataLength, buffer, offset + 0x04);
-            EndianUtilities.WriteBytesLittleEndian(DataIndex, buffer, offset + 0x08);
-            EndianUtilities.WriteBytesLittleEndian((int)DataType, buffer, offset + 0x0C);
-            EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer, offset + 0x10);
-            if (nameLen != 0)
-            {
-                EndianUtilities.StringToBytes(Name, buffer, offset + 0x14, nameLen);
-            }
+            EndianUtilities.StringToBytes(Name, buffer, offset + 0x14, nameLen);
         }
     }
 }

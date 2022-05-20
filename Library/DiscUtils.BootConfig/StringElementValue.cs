@@ -20,25 +20,24 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+internal class StringElementValue : ElementValue
 {
-    internal class StringElementValue : ElementValue
+    private readonly string _value;
+
+    public StringElementValue(string value)
     {
-        private readonly string _value;
+        _value = value;
+    }
 
-        public StringElementValue(string value)
-        {
-            _value = value;
-        }
+    public override ElementFormat Format
+    {
+        get { return ElementFormat.String; }
+    }
 
-        public override ElementFormat Format
-        {
-            get { return ElementFormat.String; }
-        }
-
-        public override string ToString()
-        {
-            return _value;
-        }
+    public override string ToString()
+    {
+        return _value;
     }
 }

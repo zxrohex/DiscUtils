@@ -1,4 +1,3 @@
-namespace DiscUtils.Ntfs
-{
-    internal delegate void IndexNodeSaveFn();
-}
+namespace DiscUtils.Ntfs;
+
+internal delegate void IndexNodeSaveFn();

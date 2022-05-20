@@ -27,182 +27,173 @@ using System.IO;
 using System.Text;
 using System.Xml;
 
-namespace DiscUtils
+namespace DiscUtils;
+
+internal static class Plist
 {
-    internal static class Plist
+    internal static Dictionary<string, object> Parse(Stream stream)
     {
-        internal static Dictionary<string, object> Parse(Stream stream)
-        {
-            XmlDocument xmlDoc = new XmlDocument();
+        var xmlDoc = new XmlDocument();
 #if !NETSTANDARD1_5
-            xmlDoc.XmlResolver = null;
+        xmlDoc.XmlResolver = null;
 #endif
 
-            XmlReaderSettings settings = new XmlReaderSettings();
+        var settings = new XmlReaderSettings();
 #if !NET20 && !NET35
-            // DTD processing is disabled on anything but .NET 2.0, so this must be set to
-            // Ignore.
-            // See https://msdn.microsoft.com/en-us/magazine/ee335713.aspx for additional information.
-            settings.DtdProcessing = DtdProcessing.Ignore;
+        // DTD processing is disabled on anything but .NET 2.0, so this must be set to
+        // Ignore.
+        // See https://msdn.microsoft.com/en-us/magazine/ee335713.aspx for additional information.
+        settings.DtdProcessing = DtdProcessing.Ignore;
 #endif
 
-            using (XmlReader reader = XmlReader.Create(stream, settings))
-            {
-                xmlDoc.Load(reader);
-            }
-
-            XmlElement root = xmlDoc.DocumentElement;
-            if (root.Name != "plist")
-            {
-                throw new InvalidDataException("XML document is not a plist");
-            }
-
-            return ParseDictionary(root.FirstChild);
+        using (var reader = XmlReader.Create(stream, settings))
+        {
+            xmlDoc.Load(reader);
         }
 
-        internal static void Write(Stream stream, Dictionary<string, object> plist)
+        var root = xmlDoc.DocumentElement;
+        if (root.Name != "plist")
         {
-            XmlDocument xmlDoc = new XmlDocument();
+            throw new InvalidDataException("XML document is not a plist");
+        }
+
+        return ParseDictionary(root.FirstChild);
+    }
+
+    internal static void Write(Stream stream, Dictionary<string, object> plist)
+    {
+        var xmlDoc = new XmlDocument();
 #if !NETSTANDARD1_5
-            xmlDoc.XmlResolver = null;
+        xmlDoc.XmlResolver = null;
 #endif
 
-            XmlDeclaration xmlDecl = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", null);
-            xmlDoc.AppendChild(xmlDecl);
+        var xmlDecl = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", null);
+        xmlDoc.AppendChild(xmlDecl);
 
 #if !NETSTANDARD1_5
-            XmlDocumentType xmlDocType = xmlDoc.CreateDocumentType("plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd", null);
-            xmlDoc.AppendChild(xmlDocType);
+        var xmlDocType = xmlDoc.CreateDocumentType("plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd", null);
+        xmlDoc.AppendChild(xmlDocType);
 #endif
 
-            XmlElement rootElement = xmlDoc.CreateElement("plist");
-            rootElement.SetAttribute("Version", "1.0");
-            xmlDoc.AppendChild(rootElement);
+        var rootElement = xmlDoc.CreateElement("plist");
+        rootElement.SetAttribute("Version", "1.0");
+        xmlDoc.AppendChild(rootElement);
 
-            xmlDoc.DocumentElement.SetAttribute("Version", "1.0");
+        xmlDoc.DocumentElement.SetAttribute("Version", "1.0");
 
-            rootElement.AppendChild(CreateNode(xmlDoc, plist));
+        rootElement.AppendChild(CreateNode(xmlDoc, plist));
 
-            XmlWriterSettings settings = new XmlWriterSettings();
-            settings.Indent = true;
-            settings.Encoding = Encoding.UTF8;
+        var settings = new XmlWriterSettings
+        {
+            Indent = true,
+            Encoding = Encoding.UTF8
+        };
 
-            using (XmlWriter xw = XmlWriter.Create(stream, settings))
-            {
-                xmlDoc.Save(xw);
-            }
+        using var xw = XmlWriter.Create(stream, settings);
+        xmlDoc.Save(xw);
+    }
+
+    private static object ParseNode(XmlNode xmlNode)
+    {
+        return xmlNode.Name switch
+        {
+            "dict" => ParseDictionary(xmlNode),
+            "array" => ParseArray(xmlNode),
+            "string" => ParseString(xmlNode),
+            "data" => ParseData(xmlNode),
+            "integer" => ParseInteger(xmlNode),
+            "true" => true,
+            "false" => false,
+            _ => throw new NotImplementedException(),
+        };
+    }
+
+    private static XmlNode CreateNode(XmlDocument xmlDoc, object obj)
+    {
+        if (obj is Dictionary<string, object>)
+        {
+            return CreateDictionary(xmlDoc, (Dictionary<string, object>)obj);
+        }
+        if (obj is string)
+        {
+            var text = xmlDoc.CreateTextNode((string)obj);
+            var node = xmlDoc.CreateElement("string");
+            node.AppendChild(text);
+            return node;
+        }
+        throw new NotImplementedException();
+    }
+
+    private static XmlNode CreateDictionary(XmlDocument xmlDoc, Dictionary<string, object> dict)
+    {
+        var dictNode = xmlDoc.CreateElement("dict");
+
+        foreach (var entry in dict)
+        {
+            var text = xmlDoc.CreateTextNode(entry.Key);
+            var keyNode = xmlDoc.CreateElement("key");
+            keyNode.AppendChild(text);
+
+            dictNode.AppendChild(keyNode);
+
+            var valueNode = CreateNode(xmlDoc, entry.Value);
+            dictNode.AppendChild(valueNode);
         }
 
-        private static object ParseNode(XmlNode xmlNode)
+        return dictNode;
+    }
+
+    private static Dictionary<string, object> ParseDictionary(XmlNode xmlNode)
+    {
+        var result = new Dictionary<string, object>();
+
+        var focusNode = xmlNode.FirstChild;
+        while (focusNode != null)
         {
-            switch (xmlNode.Name)
+            if (focusNode.Name != "key")
             {
-                case "dict":
-                    return ParseDictionary(xmlNode);
-                case "array":
-                    return ParseArray(xmlNode);
-                case "string":
-                    return ParseString(xmlNode);
-                case "data":
-                    return ParseData(xmlNode);
-                case "integer":
-                    return ParseInteger(xmlNode);
-                case "true":
-                    return true;
-                case "false":
-                    return false;
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        private static XmlNode CreateNode(XmlDocument xmlDoc, object obj)
-        {
-            if (obj is Dictionary<string, object>)
-            {
-                return CreateDictionary(xmlDoc, (Dictionary<string, object>)obj);
-            }
-            if (obj is string)
-            {
-                XmlText text = xmlDoc.CreateTextNode((string)obj);
-                XmlElement node = xmlDoc.CreateElement("string");
-                node.AppendChild(text);
-                return node;
-            }
-            throw new NotImplementedException();
-        }
-
-        private static XmlNode CreateDictionary(XmlDocument xmlDoc, Dictionary<string, object> dict)
-        {
-            XmlElement dictNode = xmlDoc.CreateElement("dict");
-
-            foreach (KeyValuePair<string, object> entry in dict)
-            {
-                XmlText text = xmlDoc.CreateTextNode(entry.Key);
-                XmlElement keyNode = xmlDoc.CreateElement("key");
-                keyNode.AppendChild(text);
-
-                dictNode.AppendChild(keyNode);
-
-                XmlNode valueNode = CreateNode(xmlDoc, entry.Value);
-                dictNode.AppendChild(valueNode);
-            }
-
-            return dictNode;
-        }
-
-        private static Dictionary<string, object> ParseDictionary(XmlNode xmlNode)
-        {
-            Dictionary<string, object> result = new Dictionary<string, object>();
-
-            XmlNode focusNode = xmlNode.FirstChild;
-            while (focusNode != null)
-            {
-                if (focusNode.Name != "key")
-                {
-                    throw new InvalidDataException("Invalid plist, expected dictionary key");
-                }
-
-                string key = focusNode.InnerText;
-
-                focusNode = focusNode.NextSibling;
-
-                result.Add(key, ParseNode(focusNode));
-
-                focusNode = focusNode.NextSibling;
+                throw new InvalidDataException("Invalid plist, expected dictionary key");
             }
 
-            return result;
+            var key = focusNode.InnerText;
+
+            focusNode = focusNode.NextSibling;
+
+            result.Add(key, ParseNode(focusNode));
+
+            focusNode = focusNode.NextSibling;
         }
 
-        private static object ParseArray(XmlNode xmlNode)
+        return result;
+    }
+
+    private static object ParseArray(XmlNode xmlNode)
+    {
+        var result = new List<object>();
+
+        var focusNode = xmlNode.FirstChild;
+        while (focusNode != null)
         {
-            List<object> result = new List<object>();
-
-            XmlNode focusNode = xmlNode.FirstChild;
-            while (focusNode != null)
-            {
-                result.Add(ParseNode(focusNode));
-                focusNode = focusNode.NextSibling;
-            }
-
-            return result;
+            result.Add(ParseNode(focusNode));
+            focusNode = focusNode.NextSibling;
         }
 
-        private static object ParseString(XmlNode xmlNode)
-        {
-            return xmlNode.InnerText;
-        }
+        return result;
+    }
 
-        private static object ParseData(XmlNode xmlNode)
-        {
-            string base64 = xmlNode.InnerText;
-            return Convert.FromBase64String(base64);
-        }
+    private static object ParseString(XmlNode xmlNode)
+    {
+        return xmlNode.InnerText;
+    }
 
-        private static object ParseInteger(XmlNode xmlNode)
-        {
-            return int.Parse(xmlNode.InnerText, CultureInfo.InvariantCulture);
-        }
+    private static object ParseData(XmlNode xmlNode)
+    {
+        var base64 = xmlNode.InnerText;
+        return Convert.FromBase64String(base64);
+    }
+
+    private static object ParseInteger(XmlNode xmlNode)
+    {
+        return int.Parse(xmlNode.InnerText, CultureInfo.InvariantCulture);
     }
 }

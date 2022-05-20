@@ -24,63 +24,62 @@ using System;
 using System.Collections.ObjectModel;
 using DiscUtils.Partitions;
 
-namespace DiscUtils.Dmg
+namespace DiscUtils.Dmg;
+
+internal class UdifPartitionTable : PartitionTable
 {
-    internal class UdifPartitionTable : PartitionTable
+    private readonly UdifBuffer _buffer;
+    private readonly Disk _disk;
+    private readonly Collection<PartitionInfo> _partitions;
+
+    public UdifPartitionTable(Disk disk, UdifBuffer buffer)
     {
-        private readonly UdifBuffer _buffer;
-        private readonly Disk _disk;
-        private readonly Collection<PartitionInfo> _partitions;
+        _buffer = buffer;
+        _partitions = new Collection<PartitionInfo>();
+        _disk = disk;
 
-        public UdifPartitionTable(Disk disk, UdifBuffer buffer)
+        foreach (var block in _buffer.Blocks)
         {
-            _buffer = buffer;
-            _partitions = new Collection<PartitionInfo>();
-            _disk = disk;
-
-            foreach (CompressedBlock block in _buffer.Blocks)
-            {
-                UdifPartitionInfo partition = new UdifPartitionInfo(_disk, block);
-                _partitions.Add(partition);
-            }
+            var partition = new UdifPartitionInfo(_disk, block);
+            _partitions.Add(partition);
         }
+    }
 
-        public override Guid DiskGuid
-        {
-            get { return Guid.Empty; }
-        }
+    public override Guid DiskGuid
+    {
+        get { return Guid.Empty; }
+    }
 
-        /// <summary>
-        /// Gets the partitions present on the disk.
-        /// </summary>
-        public override ReadOnlyCollection<PartitionInfo> Partitions
-        {
-            get { return new ReadOnlyCollection<PartitionInfo>(_partitions); }
-        }
+    /// <summary>
+    /// Gets the partitions present on the disk.
+    /// </summary>
+    public override ReadOnlyCollection<PartitionInfo> Partitions
+    {
+        get { return new ReadOnlyCollection<PartitionInfo>(_partitions); }
+    }
 
-        public override void Delete(int index)
-        {
-            throw new NotImplementedException();
-        }
+    public override void Delete(int index)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override int CreateAligned(long size, WellKnownPartitionType type, bool active, int alignment)
-        {
-            throw new NotImplementedException();
-        }
+    public override int CreateAligned(long size, WellKnownPartitionType type, bool active, int alignment)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override int Create(long size, WellKnownPartitionType type, bool active)
-        {
-            throw new NotImplementedException();
-        }
+    public override int Create(long size, WellKnownPartitionType type, bool active)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override int CreateAligned(WellKnownPartitionType type, bool active, int alignment)
-        {
-            throw new NotImplementedException();
-        }
+    public override int CreateAligned(WellKnownPartitionType type, bool active, int alignment)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override int Create(WellKnownPartitionType type, bool active)
-        {
-            throw new NotImplementedException();
-        }
+    public override int Create(WellKnownPartitionType type, bool active)
+    {
+        throw new NotImplementedException();
     }
 }

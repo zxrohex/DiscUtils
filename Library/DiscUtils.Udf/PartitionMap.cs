@@ -24,61 +24,53 @@ using System;
 using System.IO;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal abstract class PartitionMap : IByteArraySerializable
 {
-    internal abstract class PartitionMap : IByteArraySerializable
+    public byte Type;
+
+    public abstract int Size { get; }
+
+    public int ReadFrom(byte[] buffer, int offset)
     {
-        public byte Type;
-
-        public abstract int Size { get; }
-
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            Type = buffer[offset];
-            return Parse(buffer, offset);
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public static PartitionMap CreateFrom(byte[] buffer, int offset)
-        {
-            PartitionMap result = null;
-
-            byte type = buffer[offset];
-            if (type == 1)
-            {
-                result = new Type1PartitionMap();
-            }
-            else if (type == 2)
-            {
-                EntityIdentifier id = EndianUtilities.ToStruct<UdfEntityIdentifier>(buffer, offset + 4);
-                switch (id.Identifier)
-                {
-                    case "*UDF Virtual Partition":
-                        result = new VirtualPartitionMap();
-                        break;
-                    case "*UDF Sparable Partition":
-                        result = new SparablePartitionMap();
-                        break;
-                    case "*UDF Metadata Partition":
-                        result = new MetadataPartitionMap();
-                        break;
-                    default:
-                        throw new InvalidDataException("Unrecognized partition map entity id: " + id);
-                }
-            }
-
-            if (result != null)
-            {
-                result.ReadFrom(buffer, offset);
-            }
-
-            return result;
-        }
-
-        protected abstract int Parse(byte[] buffer, int offset);
+        Type = buffer[offset];
+        return Parse(buffer, offset);
     }
+
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public static PartitionMap CreateFrom(byte[] buffer, int offset)
+    {
+        PartitionMap result = null;
+
+        var type = buffer[offset];
+        if (type == 1)
+        {
+            result = new Type1PartitionMap();
+        }
+        else if (type == 2)
+        {
+            EntityIdentifier id = EndianUtilities.ToStruct<UdfEntityIdentifier>(buffer, offset + 4);
+            result = id.Identifier switch
+            {
+                "*UDF Virtual Partition" => new VirtualPartitionMap(),
+                "*UDF Sparable Partition" => new SparablePartitionMap(),
+                "*UDF Metadata Partition" => new MetadataPartitionMap(),
+                _ => throw new InvalidDataException("Unrecognized partition map entity id: " + id),
+            };
+        }
+
+        if (result != null)
+        {
+            result.ReadFrom(buffer, offset);
+        }
+
+        return result;
+    }
+
+    protected abstract int Parse(byte[] buffer, int offset);
 }

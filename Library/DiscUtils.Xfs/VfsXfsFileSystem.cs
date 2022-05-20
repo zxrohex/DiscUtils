@@ -21,168 +21,185 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Xfs
+namespace DiscUtils.Xfs;
+
+using System;
+using System.IO;
+using DiscUtils.Vfs;
+using DiscUtils.Streams;
+using System.Collections.Generic;
+
+internal sealed class VfsXfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
 {
-    using System;
-    using System.IO;
-    using DiscUtils.Vfs;
-    using DiscUtils.Streams;
+    private static readonly int XFS_ALLOC_AGFL_RESERVE = 4;
 
-    internal sealed class VfsXfsFileSystem :VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>,IUnixFileSystem
+    private static readonly int BBSHIFT = 9;
+
+    public VfsXfsFileSystem(Stream stream, FileSystemParameters parameters)
+        :base(new XfsFileSystemOptions(parameters))
     {
-        private static readonly int XFS_ALLOC_AGFL_RESERVE = 4;
+        stream.Position = 0;
+        var superblockData = StreamUtilities.ReadExact(stream, 264);
 
-        private static readonly int BBSHIFT = 9;
+        var superblock = new SuperBlock();
+        superblock.ReadFrom(superblockData, 0);
 
-        public VfsXfsFileSystem(Stream stream, FileSystemParameters parameters)
-            :base(new XfsFileSystemOptions(parameters))
+        if (superblock.Magic != SuperBlock.XfsMagic)
         {
-            stream.Position = 0;
-            byte[] superblockData = StreamUtilities.ReadExact(stream, 264);
-
-            SuperBlock superblock = new SuperBlock();
-            superblock.ReadFrom(superblockData, 0);
-
-            if (superblock.Magic != SuperBlock.XfsMagic)
-            {
-                throw new IOException("Invalid superblock magic - probably not an xfs file system");
-            }
-
-            Context = new Context
-            {
-                RawStream = stream,
-                SuperBlock = superblock,
-                Options = (XfsFileSystemOptions) Options
-            };
-
-            var allocationGroups = new AllocationGroup[superblock.AgCount];
-            long offset = 0;
-            for (int i = 0; i < allocationGroups.Length; i++)
-            {
-                var ag = new AllocationGroup(Context, offset);
-                allocationGroups[ag.InodeBtreeInfo.SequenceNumber] = ag;
-                offset = (XFS_AG_DADDR(Context.SuperBlock, i+1, XFS_AGF_DADDR(Context.SuperBlock)) << BBSHIFT) - superblock.SectorSize;
-            }
-            Context.AllocationGroups = allocationGroups;
-
-            RootDirectory = new Directory(Context, Context.GetInode(superblock.RootInode));
-        }
-        
-        public override string FriendlyName
-        {
-            get { return "XFS"; }
+            throw new IOException("Invalid superblock magic - probably not an xfs file system");
         }
 
-        /// <inheritdoc />
-        public override string VolumeLabel { get { return Context.SuperBlock.FilesystemName; } }
+        Context = new Context
+        {
+            RawStream = stream,
+            SuperBlock = superblock,
+            Options = (XfsFileSystemOptions) Options
+        };
 
-        /// <inheritdoc />
-        protected override File ConvertDirEntryToFile(DirEntry dirEntry)
+        var allocationGroups = new AllocationGroup[superblock.AgCount];
+        long offset = 0;
+        for (var i = 0; i < allocationGroups.Length; i++)
         {
-            if (dirEntry.IsDirectory)
-            {
-                return dirEntry.CachedDirectory ?? (dirEntry.CachedDirectory = new Directory(Context, dirEntry.Inode));
-            }
-            else if (dirEntry.IsSymlink)
-            {
-                return new Symlink(Context, dirEntry.Inode);
-            }
-            else if (dirEntry.Inode.FileType == UnixFileType.Regular)
-            {
-                return new File(Context, dirEntry.Inode);
-            }
-            else
-            {
-                throw new NotSupportedException(String.Format("Type {0} is not supported in XFS", dirEntry.Inode.FileType));
-            }
+            var ag = new AllocationGroup(Context, offset);
+            allocationGroups[ag.InodeBtreeInfo.SequenceNumber] = ag;
+            offset = (XFS_AG_DADDR(Context.SuperBlock, i+1, XFS_AGF_DADDR(Context.SuperBlock)) << BBSHIFT) - superblock.SectorSize;
         }
-        
-        /// <summary>
-        /// Size of the Filesystem in bytes
-        /// </summary>
-        public override long Size
-        {
-            get
-            {
-                var superblock = Context.SuperBlock;
-                var lsize = superblock.Logstart != 0 ? superblock.LogBlocks : 0;
-                return (long) ((superblock.DataBlocks - lsize) * superblock.Blocksize);
-            }
-        }
+        Context.AllocationGroups = allocationGroups;
 
-        /// <summary>
-        /// Used space of the Filesystem in bytes
-        /// </summary>
-        public override long UsedSpace
-        {
-            get { return Size - AvailableSpace; }
-        }
+        RootDirectory = new Directory(Context, Context.GetInode(superblock.RootInode));
+    }
+    
+    public override string FriendlyName
+    {
+        get { return "XFS"; }
+    }
 
-        /// <summary>
-        /// Available space of the Filesystem in bytes
-        /// </summary>
-        public override long AvailableSpace
+    /// <inheritdoc />
+    public override string VolumeLabel { get { return Context.SuperBlock.FilesystemName; } }
+
+    /// <inheritdoc />
+    protected override File ConvertDirEntryToFile(DirEntry dirEntry)
+    {
+        if (dirEntry.IsDirectory)
         {
-            get
+            return dirEntry.CachedDirectory ?? (dirEntry.CachedDirectory = new Directory(Context, dirEntry.Inode));
+        }
+        else if (dirEntry.IsSymlink)
+        {
+            return new Symlink(Context, dirEntry.Inode);
+        }
+        else if (dirEntry.Inode.FileType == UnixFileType.Regular)
+        {
+            return new File(Context, dirEntry.Inode);
+        }
+        else
+        {
+            throw new NotSupportedException($"Type {dirEntry.Inode.FileType} is not supported in XFS");
+        }
+    }
+    
+    /// <summary>
+    /// Size of the Filesystem in bytes
+    /// </summary>
+    public override long Size
+    {
+        get
+        {
+            var superblock = Context.SuperBlock;
+            var lsize = superblock.Logstart != 0 ? superblock.LogBlocks : 0;
+            return (long) ((superblock.DataBlocks - lsize) * superblock.Blocksize);
+        }
+    }
+
+    /// <summary>
+    /// Used space of the Filesystem in bytes
+    /// </summary>
+    public override long UsedSpace
+    {
+        get { return Size - AvailableSpace; }
+    }
+
+    /// <summary>
+    /// Available space of the Filesystem in bytes
+    /// </summary>
+    public override long AvailableSpace
+    {
+        get
+        {
+            var superblock = Context.SuperBlock;
+            ulong fdblocks = 0;
+            foreach (var agf in Context.AllocationGroups)
             {
-                var superblock = Context.SuperBlock;
-                ulong fdblocks = 0;
-                foreach (var agf in Context.AllocationGroups)
+                fdblocks += agf.FreeBlockInfo.FreeBlocks;
+            }
+
+            ulong alloc_set_aside = 4 + superblock.AgCount * (uint)XFS_ALLOC_AGFL_RESERVE;
+            if ((superblock.ReadOnlyCompatibleFeatures & ReadOnlyCompatibleFeatures.RMAPBT) != 0)
+            {
+                uint rmapMaxlevels = 9;
+                if ((superblock.ReadOnlyCompatibleFeatures & ReadOnlyCompatibleFeatures.REFLINK) != 0)
                 {
-                    fdblocks += agf.FreeBlockInfo.FreeBlocks;
+                    rmapMaxlevels = superblock.xfs_btree_compute_maxlevels();
                 }
-                ulong alloc_set_aside = 0;
-
-                alloc_set_aside = 4 + (superblock.AgCount * (uint)XFS_ALLOC_AGFL_RESERVE);
-
-                if ((superblock.ReadOnlyCompatibleFeatures & ReadOnlyCompatibleFeatures.RMAPBT) != 0)
-                {
-                    uint rmapMaxlevels = 9;
-                    if ((superblock.ReadOnlyCompatibleFeatures & ReadOnlyCompatibleFeatures.REFLINK) != 0)
-                    {
-                        rmapMaxlevels = superblock.xfs_btree_compute_maxlevels();
-                    }
-                    alloc_set_aside += superblock.AgCount * rmapMaxlevels;
-                }
-                return (long) ((fdblocks - alloc_set_aside) * superblock.Blocksize);
+                alloc_set_aside += superblock.AgCount * rmapMaxlevels;
             }
+            return (long) ((fdblocks - alloc_set_aside) * superblock.Blocksize);
         }
+    }
 
-        public UnixFileSystemInfo GetUnixFileInfo(string path)
-        {
-            throw new NotImplementedException();
-        }
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    {
+        var file = GetFile(path);
 
-        /// <summary>
-        /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L832
-        /// </summary>
-        private long XFS_AG_DADDR(SuperBlock sb, int agno, long d)
-        {
-            return XFS_AGB_TO_DADDR(sb, agno, 0) + d;
-        }
+        return file.EnumerateAllocationExtents();
+    }
 
-        /// <summary>
-        /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L829
-        /// </summary>
-        private long XFS_AGB_TO_DADDR(SuperBlock sb, int agno, int agbno)
-        {
-            return XFS_FSB_TO_BB(sb, agno * sb.AgBlocks) + agbno;
-        }
+    public UnixFileSystemInfo GetUnixFileInfo(string path)
+    {
+        var file = GetFile(path);
+        var inode = file.Inode;
 
-        /// <summary>
-        /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L587
-        /// </summary>
-        private long XFS_FSB_TO_BB(SuperBlock sb, long fsbno)
-        {
-            return fsbno << (sb.BlocksizeLog2 - BBSHIFT);
-        }
+        var fileType = (UnixFileType)((inode.Mode >> 12) & 0xff);
 
-        /// <summary>
-        /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L716
-        /// </summary>
-        private long XFS_AGF_DADDR(SuperBlock sb)
+        return new UnixFileSystemInfo
         {
-            return 1 << (sb.SectorSizeLog2 - BBSHIFT);
-        }
+            FileType = fileType,
+            Permissions = (UnixFilePermissions)(inode.Mode & 0xfff),
+            UserId = (int)inode.UserId,
+            GroupId = (int)inode.GroupId,
+            LinkCount = (int)inode.Nlink
+        };
+    }
+
+    /// <summary>
+    /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L832
+    /// </summary>
+    private long XFS_AG_DADDR(SuperBlock sb, int agno, long d)
+    {
+        return XFS_AGB_TO_DADDR(sb, agno, 0) + d;
+    }
+
+    /// <summary>
+    /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L829
+    /// </summary>
+    private long XFS_AGB_TO_DADDR(SuperBlock sb, int agno, int agbno)
+    {
+        return XFS_FSB_TO_BB(sb, agno * sb.AgBlocks) + agbno;
+    }
+
+    /// <summary>
+    /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L587
+    /// </summary>
+    private long XFS_FSB_TO_BB(SuperBlock sb, long fsbno)
+    {
+        return fsbno << (sb.BlocksizeLog2 - BBSHIFT);
+    }
+
+    /// <summary>
+    /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L716
+    /// </summary>
+    private long XFS_AGF_DADDR(SuperBlock sb)
+    {
+        return 1 << (sb.SectorSizeLog2 - BBSHIFT);
     }
 }

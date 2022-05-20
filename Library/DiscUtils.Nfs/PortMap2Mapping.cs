@@ -22,68 +22,67 @@
 
 using System;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+/// <summary> 
+/// A mapping of(program, version, network ID) to address
+///
+/// The network identifier(r_netid):
+/// This is a string that represents a local identification for a
+/// network.This is defined by a system administrator based on local
+/// conventions, and cannot be depended on to have the same value on
+/// every system.
+/// </summary>
+public class PortMap2Mapping
 {
-    /// <summary> 
-    /// A mapping of(program, version, network ID) to address
-    ///
-    /// The network identifier(r_netid):
-    /// This is a string that represents a local identification for a
-    /// network.This is defined by a system administrator based on local
-    /// conventions, and cannot be depended on to have the same value on
-    /// every system.
-    /// </summary>
-    public class PortMap2Mapping
+    public PortMap2Mapping()
     {
-        public PortMap2Mapping()
+    }
+
+    internal PortMap2Mapping(XdrDataReader reader)
+    {
+        Program = reader.ReadInt32();
+        Version = reader.ReadInt32();
+        Protocol = (PortMap2Protocol)reader.ReadUInt32();
+        Port = reader.ReadUInt32();
+    }
+
+    public int Program { get; set; }
+
+    public int Version { get; set; }
+
+    public PortMap2Protocol Protocol { get; set; }
+
+    public uint Port { get; set; }
+
+    internal void Write(XdrDataWriter writer)
+    {
+        writer.Write(Program);
+        writer.Write(Version);
+        writer.Write((uint)Protocol);
+        writer.Write(Port);
+    }
+
+    public override bool Equals(object obj)
+    {
+        return Equals(obj as PortMap2Mapping);
+    }
+
+    public bool Equals(PortMap2Mapping other)
+    {
+        if (other == null)
         {
+            return false;
         }
 
-        internal PortMap2Mapping(XdrDataReader reader)
-        {
-            Program = reader.ReadInt32();
-            Version = reader.ReadInt32();
-            Protocol = (PortMap2Protocol)reader.ReadUInt32();
-            Port = reader.ReadUInt32();
-        }
+        return other.Program == Program
+            && other.Version == Version
+            && other.Protocol == Protocol
+            && other.Port == Port;
+    }
 
-        public int Program { get; set; }
-
-        public int Version { get; set; }
-
-        public PortMap2Protocol Protocol { get; set; }
-
-        public uint Port { get; set; }
-
-        internal void Write(XdrDataWriter writer)
-        {
-            writer.Write(Program);
-            writer.Write(Version);
-            writer.Write((uint)Protocol);
-            writer.Write(Port);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as PortMap2Mapping);
-        }
-
-        public bool Equals(PortMap2Mapping other)
-        {
-            if (other == null)
-            {
-                return false;
-            }
-
-            return other.Program == Program
-                && other.Version == Version
-                && other.Protocol == Protocol
-                && other.Port == Port;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Program, Version, Protocol, Port);
-        }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Program, Version, Protocol, Port);
     }
 }

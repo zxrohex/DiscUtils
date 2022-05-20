@@ -22,12 +22,11 @@
 
 using System.Collections.Generic;
 
-namespace DiscUtils.Internal
-{
-    internal abstract class LogicalVolumeFactory
-    {
-        public abstract bool HandlesPhysicalVolume(PhysicalVolumeInfo volume);
+namespace DiscUtils.Internal;
 
-        public abstract void MapDisks(IEnumerable<VirtualDisk> disks, Dictionary<string, LogicalVolumeInfo> result);
-    }
+internal abstract class LogicalVolumeFactory
+{
+    public abstract bool HandlesPhysicalVolume(PhysicalVolumeInfo volume);
+
+    public abstract void MapDisks(IEnumerable<VirtualDisk> disks, Dictionary<string, LogicalVolumeInfo> result);
 }

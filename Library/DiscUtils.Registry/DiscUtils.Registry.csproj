@@ -22,7 +22,7 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net46'">
     <PackageReference Include="System.Memory">
       <Version>4.5.4</Version>
     </PackageReference>

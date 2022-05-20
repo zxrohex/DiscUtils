@@ -20,75 +20,81 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Internal
+using System;
+
+namespace DiscUtils.Internal;
+
+/// <summary>
+/// Calculates CRC32 of buffers.
+/// </summary>
+internal sealed class Crc32BigEndian : Crc32
 {
-    /// <summary>
-    /// Calculates CRC32 of buffers.
-    /// </summary>
-    internal sealed class Crc32BigEndian : Crc32
+    private static readonly uint[][] Tables;
+
+    static Crc32BigEndian()
     {
-        private static readonly uint[][] Tables;
+        Tables = new uint[4][];
 
-        static Crc32BigEndian()
+        Tables[(int)Crc32Algorithm.Common] = CalcTable(0x04C11DB7);
+        Tables[(int)Crc32Algorithm.Castagnoli] = CalcTable(0x1EDC6F41);
+        Tables[(int)Crc32Algorithm.Koopman] = CalcTable(0x741B8CD7);
+        Tables[(int)Crc32Algorithm.Aeronautical] = CalcTable(0x814141AB);
+    }
+
+    public Crc32BigEndian(Crc32Algorithm algorithm)
+        : base(Tables[(int)algorithm]) {}
+
+    public static uint Compute(Crc32Algorithm algorithm, byte[] buffer, int offset, int count)
+    {
+        return Process(Tables[(int)algorithm], 0xFFFFFFFF, buffer.AsSpan(offset, count)) ^ 0xFFFFFFFF;
+    }
+
+    public static uint Compute(Crc32Algorithm algorithm, ReadOnlySpan<byte> buffer)
+    {
+        return Process(Tables[(int)algorithm], 0xFFFFFFFF, buffer) ^ 0xFFFFFFFF;
+    }
+
+    public override void Process(ReadOnlySpan<byte> buffer)
+    {
+        _value = Process(Table, _value, buffer);
+    }
+
+    private static uint[] CalcTable(uint polynomial)
+    {
+        var table = new uint[256];
+
+        for (uint i = 0; i < 256; ++i)
         {
-            Tables = new uint[4][];
+            var crc = i << 24;
 
-            Tables[(int)Crc32Algorithm.Common] = CalcTable(0x04C11DB7);
-            Tables[(int)Crc32Algorithm.Castagnoli] = CalcTable(0x1EDC6F41);
-            Tables[(int)Crc32Algorithm.Koopman] = CalcTable(0x741B8CD7);
-            Tables[(int)Crc32Algorithm.Aeronautical] = CalcTable(0x814141AB);
-        }
-
-        public Crc32BigEndian(Crc32Algorithm algorithm)
-            : base(Tables[(int)algorithm]) {}
-
-        public static uint Compute(Crc32Algorithm algorithm, byte[] buffer, int offset, int count)
-        {
-            return Process(Tables[(int)algorithm], 0xFFFFFFFF, buffer, offset, count) ^ 0xFFFFFFFF;
-        }
-
-        public override void Process(byte[] buffer, int offset, int count)
-        {
-            _value = Process(Table, _value, buffer, offset, count);
-        }
-
-        private static uint[] CalcTable(uint polynomial)
-        {
-            uint[] table = new uint[256];
-
-            for (uint i = 0; i < 256; ++i)
+            for (var j = 8; j > 0; --j)
             {
-                uint crc = i << 24;
-
-                for (int j = 8; j > 0; --j)
+                if ((crc & 0x80000000) != 0)
                 {
-                    if ((crc & 0x80000000) != 0)
-                    {
-                        crc = (crc << 1) ^ polynomial;
-                    }
-                    else
-                    {
-                        crc <<= 1;
-                    }
+                    crc = (crc << 1) ^ polynomial;
                 }
-
-                table[i] = crc;
+                else
+                {
+                    crc <<= 1;
+                }
             }
 
-            return table;
+            table[i] = crc;
         }
 
-        private static uint Process(uint[] table, uint accumulator, byte[] buffer, int offset, int count)
+        return table;
+    }
+
+    private static uint Process(uint[] table, uint accumulator, ReadOnlySpan<byte> buffer)
+    {
+        var value = accumulator;
+
+        for (var i = 0; i < buffer.Length; ++i)
         {
-            uint value = accumulator;
-
-            for (int i = 0; i < count; ++i)
-            {
-                byte b = buffer[offset + i];
-                value = table[(value >> 24) ^ b] ^ (value << 8);
-            }
-
-            return value;
+            var b = buffer[i];
+            value = table[(value >> 24) ^ b] ^ (value << 8);
         }
+
+        return value;
     }
 }

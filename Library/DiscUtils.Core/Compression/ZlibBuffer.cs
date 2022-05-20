@@ -28,106 +28,105 @@ using System.Threading.Tasks;
 using DiscUtils.Streams;
 using Buffer=DiscUtils.Streams.Buffer;
 
-namespace DiscUtils.Compression
+namespace DiscUtils.Compression;
+
+internal class ZlibBuffer : Buffer
 {
-    internal class ZlibBuffer : Buffer
+    private Ownership _ownership;
+    private readonly Stream _stream;
+    private int position;
+
+    public ZlibBuffer(Stream stream, Ownership ownership)
     {
-        private Ownership _ownership;
-        private readonly Stream _stream;
-        private int position;
+        _stream = stream;
+        _ownership = ownership;
+        position = 0;
+    }
 
-        public ZlibBuffer(Stream stream, Ownership ownership)
+    public override bool CanRead
+    {
+        get { return _stream.CanRead; }
+    }
+
+    public override bool CanWrite
+    {
+        get { return _stream.CanWrite; }
+    }
+
+    public override long Capacity
+    {
+        get { return _stream.Length; }
+    }
+
+    public override int Read(long pos, byte[] buffer, int offset, int count)
+    {
+        if (pos != position)
         {
-            _stream = stream;
-            _ownership = ownership;
-            position = 0;
+            throw new NotSupportedException();
         }
 
-        public override bool CanRead
-        {
-            get { return _stream.CanRead; }
-        }
-
-        public override bool CanWrite
-        {
-            get { return _stream.CanWrite; }
-        }
-
-        public override long Capacity
-        {
-            get { return _stream.Length; }
-        }
-
-        public override int Read(long pos, byte[] buffer, int offset, int count)
-        {
-            if (pos != position)
-            {
-                throw new NotSupportedException();
-            }
-
-            int read = _stream.Read(buffer, offset, count);
-            position += read;
-            return read;
-        }
+        var read = _stream.Read(buffer, offset, count);
+        position += read;
+        return read;
+    }
 
 #if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-        public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (pos != position)
         {
-            if (pos != position)
-            {
-                throw new NotSupportedException();
-            }
-
-            int read = await _stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-            position += read;
-            return read;
+            throw new NotSupportedException();
         }
+
+        var read = await _stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        position += read;
+        return read;
+    }
 #endif
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (pos != position)
         {
-            if (pos != position)
-            {
-                throw new NotSupportedException();
-            }
-
-            int read = await _stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-            position += read;
-            return read;
+            throw new NotSupportedException();
         }
 
-        public override int Read(long pos, Span<byte> buffer)
-        {
-            if (pos != position)
-            {
-                throw new NotSupportedException();
-            }
+        var read = await _stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+        position += read;
+        return read;
+    }
 
-            int read = _stream.Read(buffer);
-            position += read;
-            return read;
+    public override int Read(long pos, Span<byte> buffer)
+    {
+        if (pos != position)
+        {
+            throw new NotSupportedException();
         }
+
+        var read = _stream.Read(buffer);
+        position += read;
+        return read;
+    }
 #endif
 
-        public override void Write(long pos, byte[] buffer, int offset, int count)
-        {
-            throw new NotImplementedException();
-        }
+    public override void Write(long pos, byte[] buffer, int offset, int count)
+    {
+        throw new NotImplementedException();
+    }
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
-            throw new NotImplementedException();
+    public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+        throw new NotImplementedException();
 #endif
 
-        public override void SetCapacity(long value)
-        {
-            throw new NotImplementedException();
-        }
+    public override void SetCapacity(long value)
+    {
+        throw new NotImplementedException();
+    }
 
-        public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
-        {
-            yield return new StreamExtent(0, _stream.Length);
-        }
+    public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
+    {
+        yield return new StreamExtent(0, _stream.Length);
     }
 }

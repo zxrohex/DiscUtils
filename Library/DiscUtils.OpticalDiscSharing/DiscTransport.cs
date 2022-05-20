@@ -22,87 +22,87 @@
 
 using System;
 using System.IO;
+using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 
-namespace DiscUtils.OpticalDiscSharing
+namespace DiscUtils.OpticalDiscSharing;
+
+[VirtualDiskTransport("ods")]
+internal sealed class DiscTransport : VirtualDiskTransport
 {
-    [VirtualDiskTransport("ods")]
-    internal sealed class DiscTransport : VirtualDiskTransport
+    private string _disk;
+    private OpticalDiscServiceClient _odsClient;
+    private OpticalDiscService _service;
+
+    public override bool IsRawDisk
     {
-        private string _disk;
-        private OpticalDiscServiceClient _odsClient;
-        private OpticalDiscService _service;
+        get { return true; }
+    }
 
-        public override bool IsRawDisk
+    public override void Connect(Uri uri, string username, string password)
+    {
+        var domain = uri.Host;
+        var pathParts = Uri.UnescapeDataString(uri.AbsolutePath).Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var instance = pathParts[0];
+        var volName = pathParts[1];
+
+        _odsClient = new OpticalDiscServiceClient();
+        foreach (var service in _odsClient.LookupServices(domain))
         {
-            get { return true; }
-        }
-
-        public override void Connect(Uri uri, string username, string password)
-        {
-            string domain = uri.Host;
-            string[] pathParts = Uri.UnescapeDataString(uri.AbsolutePath).Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-            string instance = pathParts[0];
-            string volName = pathParts[1];
-
-            _odsClient = new OpticalDiscServiceClient();
-            foreach (OpticalDiscService service in _odsClient.LookupServices(domain))
+            if (service.DisplayName == instance)
             {
-                if (service.DisplayName == instance)
-                {
-                    _service = service;
-                    _service.Connect(Environment.UserName, Environment.MachineName, 30);
+                _service = service;
+                _service.Connect(Environment.UserName, Environment.MachineName, 30);
 
-                    foreach (DiscInfo disk in _service.AdvertisedDiscs)
+                foreach (var disk in _service.AdvertisedDiscs)
+                {
+                    if (disk.VolumeLabel == volName)
                     {
-                        if (disk.VolumeLabel == volName)
-                        {
-                            _disk = disk.Name;
-                        }
+                        _disk = disk.Name;
                     }
                 }
             }
+        }
 
-            if (_disk == null)
+        if (_disk == null)
+        {
+            throw new FileNotFoundException("No such disk", uri.ToString());
+        }
+    }
+
+    public override VirtualDisk OpenDisk(FileAccess access)
+    {
+        return _service.OpenDisc(_disk);
+    }
+
+    public override FileLocator GetFileLocator()
+    {
+        throw new NotImplementedException();
+    }
+
+    public override string GetFileName()
+    {
+        throw new NotImplementedException();
+    }
+
+    public override string GetExtraInfo()
+    {
+        throw new NotImplementedException();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        try
+        {
+            if (_odsClient != null)
             {
-                throw new FileNotFoundException("No such disk", uri.ToString());
+                _odsClient.Dispose();
+                _odsClient = null;
             }
         }
-
-        public override VirtualDisk OpenDisk(FileAccess access)
+        finally
         {
-            return _service.OpenDisc(_disk);
-        }
-
-        public override FileLocator GetFileLocator()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string GetFileName()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override string GetExtraInfo()
-        {
-            throw new NotImplementedException();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            try
-            {
-                if (_odsClient != null)
-                {
-                    _odsClient.Dispose();
-                    _odsClient = null;
-                }
-            }
-            finally
-            {
-                base.Dispose(disposing);
-            }
+            base.Dispose(disposing);
         }
     }
 }

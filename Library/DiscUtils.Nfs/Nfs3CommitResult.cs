@@ -20,27 +20,26 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public class Nfs3CommitResult : Nfs3CallResult
 {
-    public class Nfs3CommitResult : Nfs3CallResult
+    public Nfs3CommitResult()
     {
-        public Nfs3CommitResult()
+    }
+
+    public Nfs3WeakCacheConsistency CacheConsistency { get; set; }
+
+    public ulong WriteVerifier { get; set; }
+
+    public override void Write(XdrDataWriter writer)
+    {
+        writer.Write((int)Status);
+        CacheConsistency.Write(writer);
+
+        if (Status == Nfs3Status.Ok)
         {
-        }
-
-        public Nfs3WeakCacheConsistency CacheConsistency { get; set; }
-
-        public ulong WriteVerifier { get; set; }
-
-        public override void Write(XdrDataWriter writer)
-        {
-            writer.Write((int)Status);
-            CacheConsistency.Write(writer);
-
-            if (Status == Nfs3Status.Ok)
-            {
-                writer.Write(WriteVerifier);
-            }
+            writer.Write(WriteVerifier);
         }
     }
 }

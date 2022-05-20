@@ -22,76 +22,76 @@
 
 using System;
 using System.Collections.Generic;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal sealed class IdTableWriter
 {
-    internal sealed class IdTableWriter
+    private readonly BuilderContext _context;
+
+    private readonly List<int> _ids;
+
+    public IdTableWriter(BuilderContext context)
     {
-        private readonly BuilderContext _context;
+        _context = context;
+        _ids = new List<int>();
+    }
 
-        private readonly List<int> _ids;
+    public int IdCount
+    {
+        get { return _ids.Count; }
+    }
 
-        public IdTableWriter(BuilderContext context)
+    /// <summary>
+    /// Allocates space for a User / Group id.
+    /// </summary>
+    /// <param name="id">The id to allocate.</param>
+    /// <returns>The key of the id.</returns>
+    public ushort AllocateId(int id)
+    {
+        for (var i = 0; i < _ids.Count; ++i)
         {
-            _context = context;
-            _ids = new List<int>();
+            if (_ids[i] == id)
+            {
+                return (ushort)i;
+            }
         }
 
-        public int IdCount
+        _ids.Add(id);
+        return (ushort)(_ids.Count - 1);
+    }
+
+    internal long Persist()
+    {
+        if (_ids.Count <= 0)
         {
-            get { return _ids.Count; }
+            return -1;
         }
 
-        /// <summary>
-        /// Allocates space for a User / Group id.
-        /// </summary>
-        /// <param name="id">The id to allocate.</param>
-        /// <returns>The key of the id.</returns>
-        public ushort AllocateId(int id)
+        if (_ids.Count * 4 > _context.DataBlockSize)
         {
-            for (int i = 0; i < _ids.Count; ++i)
-            {
-                if (_ids[i] == id)
-                {
-                    return (ushort)i;
-                }
-            }
-
-            _ids.Add(id);
-            return (ushort)(_ids.Count - 1);
+            throw new NotImplementedException("Large numbers of user / group id's");
         }
 
-        internal long Persist()
+        for (var i = 0; i < _ids.Count; ++i)
         {
-            if (_ids.Count <= 0)
-            {
-                return -1;
-            }
-
-            if (_ids.Count * 4 > _context.DataBlockSize)
-            {
-                throw new NotImplementedException("Large numbers of user / group id's");
-            }
-
-            for (int i = 0; i < _ids.Count; ++i)
-            {
-                EndianUtilities.WriteBytesLittleEndian(_ids[i], _context.IoBuffer, i * 4);
-            }
-
-            // Persist the actual Id's
-            long blockPos = _context.RawStream.Position;
-            MetablockWriter writer = new MetablockWriter();
-            writer.Write(_context.IoBuffer, 0, _ids.Count * 4);
-            writer.Persist(_context.RawStream);
-
-            // Persist the table that references the block containing the id's
-            long tablePos = _context.RawStream.Position;
-            byte[] tableBuffer = new byte[8];
-            EndianUtilities.WriteBytesLittleEndian(blockPos, tableBuffer, 0);
-            _context.RawStream.Write(tableBuffer, 0, 8);
-
-            return tablePos;
+            EndianUtilities.WriteBytesLittleEndian(_ids[i], _context.IoBuffer, i * 4);
         }
+
+        // Persist the actual Id's
+        var blockPos = _context.RawStream.Position;
+        var writer = new MetablockWriter();
+        writer.Write(_context.IoBuffer, 0, _ids.Count * 4);
+        writer.Persist(_context.RawStream);
+
+        // Persist the table that references the block containing the id's
+        var tablePos = _context.RawStream.Position;
+        Span<byte> tableBuffer = stackalloc byte[8];
+        EndianUtilities.WriteBytesLittleEndian(blockPos, tableBuffer);
+        _context.RawStream.Write(tableBuffer);
+
+        return tablePos;
     }
 }

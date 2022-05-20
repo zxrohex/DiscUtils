@@ -20,10 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public interface IRpcObject
 {
-    public interface IRpcObject
-    {
-        void Write(XdrDataWriter writer);
-    }
+    void Write(XdrDataWriter writer);
 }

@@ -21,77 +21,84 @@
 //
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Btrfs.Base;
 using DiscUtils.Btrfs.Base.Items;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
-namespace DiscUtils.Btrfs
+namespace DiscUtils.Btrfs;
+
+internal class File : IVfsFile
 {
-    internal class File : IVfsFile
+    protected readonly DirEntry DirEntry;
+    protected readonly Context Context;
+
+    public File(DirEntry dirEntry, Context context)
     {
-        protected readonly DirEntry DirEntry;
-        protected readonly Context Context;
+        DirEntry = dirEntry;
+        Context = context;
+    }
 
-        public File(DirEntry dirEntry, Context context)
+    public DateTime CreationTimeUtc
+    {
+        get { return DirEntry.CreationTimeUtc; }
+        set { throw new NotImplementedException(); }
+    }
+
+    public FileAttributes FileAttributes
+    {
+        get { return DirEntry.FileAttributes; }
+        set { throw new NotImplementedException(); }
+    }
+
+    public IBuffer FileContent
+    {
+        get
         {
-            DirEntry = dirEntry;
-            Context = context;
+            var extents = Context.FindKey<ExtentData>(DirEntry.TreeId, new Key(DirEntry.ObjectId, ItemType.ExtentData));
+            return BufferFromExtentList(extents);
+        }
+    }
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+    {
+        var extents = Context.FindKey<ExtentData>(DirEntry.TreeId, new Key(DirEntry.ObjectId, ItemType.ExtentData));
+        return extents.Select(extent => extent.GetExtent(Context));
+    }
+
+    private IBuffer BufferFromExtentList(IEnumerable<ExtentData> extents)
+    {
+        var builderExtents = new List<BuilderExtent>(extents is ICollection list ? list.Count : 1);
+
+        foreach (var extent in extents)
+        {
+            var offset = (long)extent.Key.Offset;
+
+            BuilderExtent builderExtent = new BuilderStreamExtent(offset, extent.GetStream(Context), Ownership.Dispose);
+            builderExtents.Add(builderExtent);
         }
 
-        public DateTime CreationTimeUtc
-        {
-            get { return DirEntry.CreationTimeUtc; }
-            set { throw new NotImplementedException(); }
-        }
+        return new StreamBuffer(new BuiltStream((long)DirEntry.FileSize, builderExtents), Ownership.Dispose);
+    }
 
-        public FileAttributes FileAttributes
-        {
-            get { return DirEntry.FileAttributes; }
-            set { throw new NotImplementedException(); }
-        }
+    public long FileLength
+    {
+        get { throw new NotImplementedException(); }
+    }
 
-        public IBuffer FileContent
-        {
-            get
-            {
-                var extents = Context.FindKey<ExtentData>(DirEntry.TreeId, new Key(DirEntry.ObjectId, ItemType.ExtentData));
-                return BufferFromExtentList(new List<ExtentData>(extents));
-            }
-        }
+    public DateTime LastAccessTimeUtc
+    {
+        get { return DirEntry.LastAccessTimeUtc; }
+        set { throw new NotImplementedException(); }
+    }
 
-        private IBuffer BufferFromExtentList(IList<ExtentData> extents)
-        {
-            var builderExtents = new List<BuilderExtent>(extents.Count);
-
-            foreach (var extent in extents)
-            {
-                long offset = (long)extent.Key.Offset;
-
-                BuilderExtent builderExtent = new BuilderStreamExtent(offset, extent.GetStream(Context), Ownership.Dispose);
-                builderExtents.Add(builderExtent);
-            }
-
-            return new StreamBuffer(new BuiltStream((long)DirEntry.FileSize, builderExtents), Ownership.Dispose);
-        }
-
-        public long FileLength
-        {
-            get { throw new NotImplementedException(); }
-        }
-
-        public DateTime LastAccessTimeUtc
-        {
-            get { return DirEntry.LastAccessTimeUtc; }
-            set { throw new NotImplementedException(); }
-        }
-
-        public DateTime LastWriteTimeUtc
-        {
-            get { return DirEntry.LastWriteTimeUtc; }
-            set { throw new NotImplementedException(); }
-        }
+    public DateTime LastWriteTimeUtc
+    {
+        get { return DirEntry.LastWriteTimeUtc; }
+        set { throw new NotImplementedException(); }
     }
 }

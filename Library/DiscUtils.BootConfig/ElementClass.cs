@@ -20,36 +20,35 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-namespace DiscUtils.BootConfig
+namespace DiscUtils.BootConfig;
+
+/// <summary>
+/// The known classes of element.
+/// </summary>
+public enum ElementClass
 {
     /// <summary>
-    /// The known classes of element.
+    /// Unknown class.
     /// </summary>
-    public enum ElementClass
-    {
-        /// <summary>
-        /// Unknown class.
-        /// </summary>
-        None = 0,
+    None = 0,
 
-        /// <summary>
-        /// Common setting.
-        /// </summary>
-        Library = 1,
+    /// <summary>
+    /// Common setting.
+    /// </summary>
+    Library = 1,
 
-        /// <summary>
-        /// An application setting.
-        /// </summary>
-        Application = 2,
+    /// <summary>
+    /// An application setting.
+    /// </summary>
+    Application = 2,
 
-        /// <summary>
-        /// A device (or partition) setting.
-        /// </summary>
-        Device = 3,
+    /// <summary>
+    /// A device (or partition) setting.
+    /// </summary>
+    Device = 3,
 
-        /// <summary>
-        /// A hidden setting.
-        /// </summary>
-        Hidden = 4
-    }
+    /// <summary>
+    /// A hidden setting.
+    /// </summary>
+    Hidden = 4
 }

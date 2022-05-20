@@ -22,6 +22,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using DiscUtils;
 using DiscUtils.Streams;
@@ -35,17 +36,15 @@ namespace LibraryTests.Vhd
         [Fact]
         public void InitializeDifferencing()
         {
-            MemoryStream baseStream = new MemoryStream();
-            MemoryStream diffStream = new MemoryStream();
-            using (DiskImageFile baseFile = DiskImageFile.InitializeDynamic(baseStream, Ownership.Dispose, 16 * 1024L * 1024 * 1024))
+            var baseStream = new MemoryStream();
+            var diffStream = new MemoryStream();
+            using (var baseFile = DiskImageFile.InitializeDynamic(baseStream, Ownership.Dispose, 16 * 1024L * 1024 * 1024))
             {
-                using (DiskImageFile diffFile = DiskImageFile.InitializeDifferencing(diffStream, Ownership.None, baseFile, @"C:\TEMP\Base.vhd", @".\Base.vhd", new DateTime(2007, 12, 31)))
-                {
-                    Assert.NotNull(diffFile);
-                    Assert.True(diffFile.Geometry.Capacity > 15.8 * 1024L * 1024 * 1024 && diffFile.Geometry.Capacity < 16 * 1024L * 1024 * 1024);
-                    Assert.True(diffFile.IsSparse);
-                    Assert.NotEqual(diffFile.CreationTimestamp, new DateTime(2007, 12, 31));
-                }
+                using var diffFile = DiskImageFile.InitializeDifferencing(diffStream, Ownership.None, baseFile, @"C:\TEMP\Base.vhd", @".\Base.vhd", new DateTime(2007, 12, 31));
+                Assert.NotNull(diffFile);
+                Assert.True(diffFile.Geometry.Capacity > 15.8 * 1024L * 1024 * 1024 && diffFile.Geometry.Capacity < 16 * 1024L * 1024 * 1024);
+                Assert.True(diffFile.IsSparse);
+                Assert.NotEqual(diffFile.CreationTimestamp, new DateTime(2007, 12, 31));
             }
             Assert.True(1 * 1024 * 1024 > diffStream.Length);
         }
@@ -53,19 +52,17 @@ namespace LibraryTests.Vhd
         [Fact]
         public void GetParentLocations()
         {
-            MemoryStream baseStream = new MemoryStream();
-            MemoryStream diffStream = new MemoryStream();
-            using (DiskImageFile baseFile = DiskImageFile.InitializeDynamic(baseStream, Ownership.Dispose, 16 * 1024L * 1024 * 1024))
+            var baseStream = new MemoryStream();
+            var diffStream = new MemoryStream();
+            using (var baseFile = DiskImageFile.InitializeDynamic(baseStream, Ownership.Dispose, 16 * 1024L * 1024 * 1024))
             {
                 // Write some data - exposes bug if mis-calculating where to write data
-                using (DiskImageFile diffFile = DiskImageFile.InitializeDifferencing(diffStream, Ownership.None, baseFile, @"C:\TEMP\Base.vhd", @".\Base.vhd", new DateTime(2007, 12, 31)))
-                {
-                    Disk disk = new Disk(new DiskImageFile[] { diffFile, baseFile }, Ownership.None);
-                    disk.Content.Write(new byte[512], 0, 512);
-                }
+                using var diffFile = DiskImageFile.InitializeDifferencing(diffStream, Ownership.None, baseFile, @"C:\TEMP\Base.vhd", @".\Base.vhd", new DateTime(2007, 12, 31));
+                var disk = new Disk(new DiskImageFile[] { diffFile, baseFile }, Ownership.None);
+                disk.Content.Write(new byte[512], 0, 512);
             }
 
-            using (DiskImageFile diffFile = new DiskImageFile(diffStream))
+            using (var diffFile = new DiskImageFile(diffStream))
             {
                 var BasePath = @"E:\FOO\";
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -75,17 +72,17 @@ namespace LibraryTests.Vhd
 
                 // Testing the obsolete method - disable warning
 #pragma warning disable 618
-                string[] locations = diffFile.GetParentLocations(BasePath);
+                var locations = diffFile.GetParentLocations(BasePath);
 #pragma warning restore 618
                 Assert.Equal(2, locations.Length);
                 Assert.Equal(@"C:\TEMP\Base.vhd", locations[0]);
                 Assert.Equal($"{BasePath}Base.vhd", locations[1]);
             }
 
-            using (DiskImageFile diffFile = new DiskImageFile(diffStream))
+            using (var diffFile = new DiskImageFile(diffStream))
             {
                 // Testing the new method - note relative path because diff file initialized without a path
-                string[] locations = diffFile.GetParentLocations();
+                var locations = diffFile.GetParentLocations().ToArray();
                 Assert.Equal(2, locations.Length);
                 Assert.Equal(@"C:\TEMP\Base.vhd", locations[0]);
                 Assert.Equal($".{Path.DirectorySeparatorChar}Base.vhd", locations[1]);
@@ -101,15 +98,15 @@ namespace LibraryTests.Vhd
 
             Geometry geometry;
 
-            MemoryStream stream = new MemoryStream();
-            using (DiskImageFile file = DiskImageFile.InitializeDynamic(stream, Ownership.None, 16 * 1024L * 1024 * 1024))
+            var stream = new MemoryStream();
+            using (var file = DiskImageFile.InitializeDynamic(stream, Ownership.None, 16 * 1024L * 1024 * 1024))
             {
                 geometry = file.Geometry;
             }
 
             stream.SetLength(stream.Length - 512);
 
-            using (DiskImageFile file = new DiskImageFile(stream))
+            using (var file = new DiskImageFile(stream))
             {
                 Assert.Equal(geometry, file.Geometry);
             }

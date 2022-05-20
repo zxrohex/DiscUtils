@@ -23,44 +23,45 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.SquashFs
+namespace DiscUtils.SquashFs;
+
+internal class DirectoryRecord : IByteArraySerializable
 {
-    internal class DirectoryRecord : IByteArraySerializable
+    public short InodeNumber;
+    public string Name;
+    public ushort Offset;
+    public InodeType Type;
+
+    public int Size
     {
-        public short InodeNumber;
-        public string Name;
-        public ushort Offset;
-        public InodeType Type;
+        get { return 8 + Name.Length; }
+    }
 
-        public int Size
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        EndianUtilities.WriteBytesLittleEndian(Offset, buffer, offset + 0);
+        EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer, offset + 2);
+        EndianUtilities.WriteBytesLittleEndian((ushort)Type, buffer, offset + 4);
+        EndianUtilities.WriteBytesLittleEndian((ushort)(Name.Length - 1), buffer, offset + 6);
+        EndianUtilities.StringToBytes(Name, buffer, offset + 8, Name.Length);
+    }
+
+    public static DirectoryRecord ReadFrom(MetablockReader reader)
+    {
+        var result = new DirectoryRecord
         {
-            get { return 8 + Name.Length; }
-        }
+            Offset = reader.ReadUShort(),
+            InodeNumber = reader.ReadShort(),
+            Type = (InodeType)reader.ReadUShort()
+        };
+        var size = reader.ReadUShort();
+        result.Name = reader.ReadString(size + 1);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            EndianUtilities.WriteBytesLittleEndian(Offset, buffer, offset + 0);
-            EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer, offset + 2);
-            EndianUtilities.WriteBytesLittleEndian((ushort)Type, buffer, offset + 4);
-            EndianUtilities.WriteBytesLittleEndian((ushort)(Name.Length - 1), buffer, offset + 6);
-            EndianUtilities.StringToBytes(Name, buffer, offset + 8, Name.Length);
-        }
-
-        public static DirectoryRecord ReadFrom(MetablockReader reader)
-        {
-            DirectoryRecord result = new DirectoryRecord();
-            result.Offset = reader.ReadUShort();
-            result.InodeNumber = reader.ReadShort();
-            result.Type = (InodeType)reader.ReadUShort();
-            ushort size = reader.ReadUShort();
-            result.Name = reader.ReadString(size + 1);
-
-            return result;
-        }
+        return result;
     }
 }

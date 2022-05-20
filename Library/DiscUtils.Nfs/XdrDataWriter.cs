@@ -24,49 +24,48 @@ using System.IO;
 using System.Text;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Nfs
+namespace DiscUtils.Nfs;
+
+public sealed class XdrDataWriter : BigEndianDataWriter
 {
-    public sealed class XdrDataWriter : BigEndianDataWriter
+    public XdrDataWriter(Stream stream)
+        : base(stream) {}
+
+    public void Write(bool value)
     {
-        public XdrDataWriter(Stream stream)
-            : base(stream) {}
+        Write(value ? 1 : 0);
+    }
 
-        public void Write(bool value)
+    public override void WriteBytes(byte[] buffer, int offset, int count)
+    {
+        _stream.Write(buffer, offset, count);
+        if ((count & 0x3) != 0)
         {
-            Write(value ? 1 : 0);
+            var padding = 4 - (buffer.Length & 0x3);
+            _stream.Write(new byte[padding], 0, padding);
         }
+    }
 
-        public override void WriteBytes(byte[] buffer, int offset, int count)
-        {
-            _stream.Write(buffer, offset, count);
-            if ((count & 0x3) != 0)
-            {
-                int padding = 4 - (buffer.Length & 0x3);
-                _stream.Write(new byte[padding], 0, padding);
-            }
-        }
+    public void WriteBuffer(byte[] buffer)
+    {
+        WriteBuffer(buffer, 0, buffer.Length);
+    }
 
-        public void WriteBuffer(byte[] buffer)
+    public void WriteBuffer(byte[] buffer, int offset, int count)
+    {
+        if (buffer == null || count == 0)
         {
-            WriteBuffer(buffer, 0, buffer.Length);
+            Write(0);
         }
+        else
+        {
+            Write(count);
+            WriteBytes(buffer, offset, count);
+        }
+    }
 
-        public void WriteBuffer(byte[] buffer, int offset, int count)
-        {
-            if (buffer == null || count == 0)
-            {
-                Write(0);
-            }
-            else
-            {
-                Write(count);
-                WriteBytes(buffer, offset, count);
-            }
-        }
-
-        public void Write(string value)
-        {
-            WriteBuffer(Encoding.ASCII.GetBytes(value));
-        }
+    public void Write(string value)
+    {
+        WriteBuffer(Encoding.ASCII.GetBytes(value));
     }
 }

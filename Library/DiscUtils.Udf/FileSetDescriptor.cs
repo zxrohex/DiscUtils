@@ -23,61 +23,60 @@
 using System;
 using DiscUtils.Streams;
 
-namespace DiscUtils.Udf
+namespace DiscUtils.Udf;
+
+internal class FileSetDescriptor : IByteArraySerializable
 {
-    internal class FileSetDescriptor : IByteArraySerializable
+    public string AbstractFileIdentifier;
+    public uint CharacterSetList;
+    public string CopyrightFileIdentifier;
+    public DescriptorTag DescriptorTag;
+    public DomainEntityIdentifier DomainIdentifier;
+    public CharacterSetSpecification FileSetCharset;
+    public uint FileSetDescriptorNumber;
+    public string FileSetIdentifier;
+    public uint FileSetNumber;
+    public ushort InterchangeLevel;
+    public string LogicalVolumeIdentifier;
+    public CharacterSetSpecification LogicalVolumeIdentifierCharset;
+    public uint MaximumCharacterSetList;
+    public ushort MaximumInterchangeLevel;
+    public LongAllocationDescriptor NextExtent;
+    public DateTime RecordingTime;
+    public LongAllocationDescriptor RootDirectoryIcb;
+    public LongAllocationDescriptor SystemStreamDirectoryIcb;
+
+    public int Size
     {
-        public string AbstractFileIdentifier;
-        public uint CharacterSetList;
-        public string CopyrightFileIdentifier;
-        public DescriptorTag DescriptorTag;
-        public DomainEntityIdentifier DomainIdentifier;
-        public CharacterSetSpecification FileSetCharset;
-        public uint FileSetDescriptorNumber;
-        public string FileSetIdentifier;
-        public uint FileSetNumber;
-        public ushort InterchangeLevel;
-        public string LogicalVolumeIdentifier;
-        public CharacterSetSpecification LogicalVolumeIdentifierCharset;
-        public uint MaximumCharacterSetList;
-        public ushort MaximumInterchangeLevel;
-        public LongAllocationDescriptor NextExtent;
-        public DateTime RecordingTime;
-        public LongAllocationDescriptor RootDirectoryIcb;
-        public LongAllocationDescriptor SystemStreamDirectoryIcb;
+        get { return 512; }
+    }
 
-        public int Size
-        {
-            get { return 512; }
-        }
+    public int ReadFrom(byte[] buffer, int offset)
+    {
+        DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer, offset);
+        RecordingTime = UdfUtilities.ParseTimestamp(buffer, offset + 16);
+        InterchangeLevel = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 28);
+        MaximumInterchangeLevel = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 30);
+        CharacterSetList = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 32);
+        MaximumCharacterSetList = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 36);
+        FileSetNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40);
+        FileSetDescriptorNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
+        LogicalVolumeIdentifierCharset = EndianUtilities.ToStruct<CharacterSetSpecification>(buffer, offset + 48);
+        LogicalVolumeIdentifier = UdfUtilities.ReadDString(buffer, offset + 112, 128);
+        FileSetCharset = EndianUtilities.ToStruct<CharacterSetSpecification>(buffer, offset + 240);
+        FileSetIdentifier = UdfUtilities.ReadDString(buffer, offset + 304, 32);
+        CopyrightFileIdentifier = UdfUtilities.ReadDString(buffer, offset + 336, 32);
+        AbstractFileIdentifier = UdfUtilities.ReadDString(buffer, offset + 368, 32);
+        RootDirectoryIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 400);
+        DomainIdentifier = EndianUtilities.ToStruct<DomainEntityIdentifier>(buffer, offset + 416);
+        NextExtent = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 448);
+        SystemStreamDirectoryIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 464);
 
-        public int ReadFrom(byte[] buffer, int offset)
-        {
-            DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer, offset);
-            RecordingTime = UdfUtilities.ParseTimestamp(buffer, offset + 16);
-            InterchangeLevel = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 28);
-            MaximumInterchangeLevel = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 30);
-            CharacterSetList = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 32);
-            MaximumCharacterSetList = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 36);
-            FileSetNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40);
-            FileSetDescriptorNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
-            LogicalVolumeIdentifierCharset = EndianUtilities.ToStruct<CharacterSetSpecification>(buffer, offset + 48);
-            LogicalVolumeIdentifier = UdfUtilities.ReadDString(buffer, offset + 112, 128);
-            FileSetCharset = EndianUtilities.ToStruct<CharacterSetSpecification>(buffer, offset + 240);
-            FileSetIdentifier = UdfUtilities.ReadDString(buffer, offset + 304, 32);
-            CopyrightFileIdentifier = UdfUtilities.ReadDString(buffer, offset + 336, 32);
-            AbstractFileIdentifier = UdfUtilities.ReadDString(buffer, offset + 368, 32);
-            RootDirectoryIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 400);
-            DomainIdentifier = EndianUtilities.ToStruct<DomainEntityIdentifier>(buffer, offset + 416);
-            NextExtent = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 448);
-            SystemStreamDirectoryIcb = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 464);
+        return 512;
+    }
 
-            return 512;
-        }
-
-        public void WriteTo(byte[] buffer, int offset)
-        {
-            throw new NotImplementedException();
-        }
+    public void WriteTo(byte[] buffer, int offset)
+    {
+        throw new NotImplementedException();
     }
 }
