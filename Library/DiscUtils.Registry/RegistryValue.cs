@@ -113,11 +113,11 @@ internal sealed class RegistryValue
             // for first four bytes set to length of data?
 
             var len = _cell.DataLength & 0x7FFFFFFF;
-            Span<byte> buffer = new byte[4];
+            Span<byte> buffer = stackalloc byte[4];
             EndianUtilities.WriteBytesLittleEndian(_cell.DataIndex, buffer);
 
             var result = new byte[len];
-            buffer.CopyTo(result);
+            buffer.Slice(0, Math.Min(len, buffer.Length)).CopyTo(result);
             return result;
         }
 

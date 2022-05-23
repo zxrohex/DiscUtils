@@ -78,7 +78,7 @@ public sealed class DiskBuilder : DiskImageBuilder
             throw new InvalidOperationException("No content stream specified");
         }
 
-        DiskImageFileSpecification fileSpec = new DiskImageFileSpecification(baseName + ".vhdx",
+        var fileSpec = new DiskImageFileSpecification(baseName + ".vhdx",
             new DiskStreamBuilder(Content, DiskType, BlockSize));
 
         yield return fileSpec;
@@ -104,20 +104,20 @@ public sealed class DiskBuilder : DiskImageBuilder
                 throw new NotSupportedException("Creation of Vhdx currently only supports dynamically expanding format");
             }
 
-            List<BuilderExtent> extents = new List<BuilderExtent>();
+            var extents = new List<BuilderExtent>();
 
-            int logicalSectorSize = 512;
-            int physicalSectorSize = 4096;
-            long chunkRatio = 0x800000L * logicalSectorSize / _blockSize;
-            long dataBlocksCount = MathUtilities.Ceil(_content.Length, _blockSize);
-            long sectorBitmapBlocksCount = MathUtilities.Ceil(dataBlocksCount, chunkRatio);
-            long totalBatEntriesDynamic = dataBlocksCount + (dataBlocksCount - 1) / chunkRatio;
+            var logicalSectorSize = 512;
+            var physicalSectorSize = 4096;
+            var chunkRatio = 0x800000L * logicalSectorSize / _blockSize;
+            var dataBlocksCount = MathUtilities.Ceil(_content.Length, _blockSize);
+            var sectorBitmapBlocksCount = MathUtilities.Ceil(dataBlocksCount, chunkRatio);
+            var totalBatEntriesDynamic = dataBlocksCount + (dataBlocksCount - 1) / chunkRatio;
 
-            FileHeader fileHeader = new FileHeader { Creator = ".NET DiscUtils" };
+            var fileHeader = new FileHeader { Creator = ".NET DiscUtils" };
 
-            long fileEnd = Sizes.OneMiB;
+            var fileEnd = Sizes.OneMiB;
 
-            VhdxHeader header1 = new VhdxHeader();
+            var header1 = new VhdxHeader();
             header1.SequenceNumber = 0;
             header1.FileWriteGuid = Guid.NewGuid();
             header1.DataWriteGuid = Guid.NewGuid();
@@ -130,13 +130,13 @@ public sealed class DiskBuilder : DiskImageBuilder
 
             fileEnd += header1.LogLength;
 
-            VhdxHeader header2 = new VhdxHeader(header1);
+            var header2 = new VhdxHeader(header1);
             header2.SequenceNumber = 1;
             header2.CalcChecksum();
 
-            RegionTable regionTable = new RegionTable();
+            var regionTable = new RegionTable();
 
-            RegionEntry metadataRegion = new RegionEntry();
+            var metadataRegion = new RegionEntry();
             metadataRegion.Guid = RegionEntry.MetadataRegionGuid;
             metadataRegion.FileOffset = fileEnd;
             metadataRegion.Length = (uint)Sizes.OneMiB;
@@ -145,7 +145,7 @@ public sealed class DiskBuilder : DiskImageBuilder
 
             fileEnd += metadataRegion.Length;
 
-            RegionEntry batRegion = new RegionEntry();
+            var batRegion = new RegionEntry();
             batRegion.Guid = RegionEntry.BatGuid;
             batRegion.FileOffset = fileEnd;
             batRegion.Length = (uint)MathUtilities.RoundUp(totalBatEntriesDynamic * 8, Sizes.OneMiB);
@@ -161,35 +161,34 @@ public sealed class DiskBuilder : DiskImageBuilder
             extents.Add(ExtentForStruct(regionTable, 256 * Sizes.OneKiB));
 
             // Metadata
-            FileParameters fileParams = new FileParameters
+            var fileParams = new FileParameters
             {
                 BlockSize = (uint)_blockSize,
                 Flags = FileParametersFlags.None
             };
-            ParentLocator parentLocator = new ParentLocator();
 
-            byte[] metadataBuffer = new byte[metadataRegion.Length];
-            MemoryStream metadataStream = new MemoryStream(metadataBuffer);
+            var metadataBuffer = new byte[metadataRegion.Length];
+            var metadataStream = new MemoryStream(metadataBuffer);
             Metadata.Initialize(metadataStream, fileParams, (ulong)_content.Length, (uint)logicalSectorSize,
                 (uint)physicalSectorSize, null);
             extents.Add(new BuilderBufferExtent(metadataRegion.FileOffset, metadataBuffer));
 
-            List<Range<long, long>> presentBlocks =
+            var presentBlocks =
                 new List<Range<long, long>>(StreamExtent.Blocks(_content.Extents, _blockSize));
 
             // BAT
-            BlockAllocationTableBuilderExtent batExtent = new BlockAllocationTableBuilderExtent(
+            var batExtent = new BlockAllocationTableBuilderExtent(
                 batRegion.FileOffset, batRegion.Length, presentBlocks, fileEnd, _blockSize, chunkRatio);
             extents.Add(batExtent);
 
             // Stream contents
-            foreach (Range<long, long> range in presentBlocks)
+            foreach (var range in presentBlocks)
             {
-                long substreamStart = range.Offset * _blockSize;
-                long substreamCount = Math.Min(_content.Length - substreamStart, range.Count * _blockSize);
+                var substreamStart = range.Offset * _blockSize;
+                var substreamCount = Math.Min(_content.Length - substreamStart, range.Count * _blockSize);
 
-                SubStream dataSubStream = new SubStream(_content, substreamStart, substreamCount);
-                BuilderSparseStreamExtent dataExtent = new BuilderSparseStreamExtent(fileEnd, dataSubStream);
+                var dataSubStream = new SubStream(_content, substreamStart, substreamCount);
+                var dataExtent = new BuilderSparseStreamExtent(fileEnd, dataSubStream);
                 extents.Add(dataExtent);
 
                 fileEnd += range.Count * _blockSize;
@@ -202,7 +201,7 @@ public sealed class DiskBuilder : DiskImageBuilder
 
         private static BuilderExtent ExtentForStruct(IByteArraySerializable structure, long position)
         {
-            byte[] buffer = new byte[structure.Size];
+            var buffer = new byte[structure.Size];
             structure.WriteTo(buffer);
             return new BuilderBufferExtent(position, buffer);
         }
@@ -235,16 +234,16 @@ public sealed class DiskBuilder : DiskImageBuilder
         {
             _batData = new byte[Length];
 
-            long fileOffset = _dataStart;
-            BatEntry entry = new BatEntry();
+            var fileOffset = _dataStart;
+            var entry = new BatEntry();
 
-            foreach (Range<long, long> range in _blocks)
+            foreach (var range in _blocks)
             {
-                for (long block = range.Offset; block < range.Offset + range.Count; ++block)
+                for (var block = range.Offset; block < range.Offset + range.Count; ++block)
                 {
-                    long chunk = block / _chunkRatio;
-                    long chunkOffset = block % _chunkRatio;
-                    long batIndex = chunk * (_chunkRatio + 1) + chunkOffset;
+                    var chunk = block / _chunkRatio;
+                    var chunkOffset = block % _chunkRatio;
+                    var batIndex = chunk * (_chunkRatio + 1) + chunkOffset;
 
                     entry.FileOffsetMB = fileOffset / Sizes.OneMiB;
                     entry.PayloadBlockStatus = PayloadBlockStatus.FullyPresent;
@@ -257,8 +256,8 @@ public sealed class DiskBuilder : DiskImageBuilder
 
         public override int Read(long diskOffset, byte[] block, int offset, int count)
         {
-            int start = (int)Math.Min(diskOffset - Start, _batData.Length);
-            int numRead = Math.Min(count, _batData.Length - start);
+            var start = (int)Math.Min(diskOffset - Start, _batData.Length);
+            var numRead = Math.Min(count, _batData.Length - start);
 
             Array.Copy(_batData, start, block, offset, numRead);
 
@@ -267,8 +266,8 @@ public sealed class DiskBuilder : DiskImageBuilder
 
         public override int Read(long diskOffset, Span<byte> block)
         {
-            int start = (int)Math.Min(diskOffset - Start, _batData.Length);
-            int numRead = Math.Min(block.Length, _batData.Length - start);
+            var start = (int)Math.Min(diskOffset - Start, _batData.Length);
+            var numRead = Math.Min(block.Length, _batData.Length - start);
 
             _batData.AsSpan(start, numRead).CopyTo(block);
 

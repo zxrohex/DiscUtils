@@ -494,10 +494,10 @@ public sealed class DiskImageFile : VirtualDiskLayer
         var footer = new Footer(geometry, capacity, FileType.Fixed);
         footer.UpdateChecksum();
 
-        var sector = new byte[Sizes.Sector];
+        Span<byte> sector = stackalloc byte[Sizes.Sector];
         footer.ToBytes(sector);
         stream.Position = MathUtilities.RoundUp(capacity, Sizes.Sector);
-        stream.Write(sector, 0, sector.Length);
+        stream.Write(sector);
         stream.SetLength(stream.Position);
 
         stream.Position = 0;

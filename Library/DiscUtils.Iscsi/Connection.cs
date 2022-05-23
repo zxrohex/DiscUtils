@@ -770,22 +770,22 @@ internal sealed class Connection : IDisposable
 
     #region Parameters
 
-    private const string InitiatorNameParameter = "InitiatorName";
-    private const string SessionTypeParameter = "SessionType";
-    private const string AuthMethodParameter = "AuthMethod";
+    internal const string InitiatorNameParameter = "InitiatorName";
+    internal const string SessionTypeParameter = "SessionType";
+    internal const string AuthMethodParameter = "AuthMethod";
 
-    private const string HeaderDigestParameter = "HeaderDigest";
-    private const string DataDigestParameter = "DataDigest";
-    private const string MaxRecvDataSegmentLengthParameter = "MaxRecvDataSegmentLength";
-    private const string DefaultTime2WaitParameter = "DefaultTime2Wait";
-    private const string DefaultTime2RetainParameter = "DefaultTime2Retain";
+    internal const string HeaderDigestParameter = "HeaderDigest";
+    internal const string DataDigestParameter = "DataDigest";
+    internal const string MaxRecvDataSegmentLengthParameter = "MaxRecvDataSegmentLength";
+    internal const string DefaultTime2WaitParameter = "DefaultTime2Wait";
+    internal const string DefaultTime2RetainParameter = "DefaultTime2Retain";
 
-    private const string SendTargetsParameter = "SendTargets";
-    private const string TargetNameParameter = "TargetName";
-    private const string TargetAddressParameter = "TargetAddress";
+    internal const string SendTargetsParameter = "SendTargets";
+    internal const string TargetNameParameter = "TargetName";
+    internal const string TargetAddressParameter = "TargetAddress";
 
-    private const string NoneValue = "None";
-    private const string ChapValue = "CHAP";
+    internal const string NoneValue = "None";
+    internal const string ChapValue = "CHAP";
 
     #endregion
 
