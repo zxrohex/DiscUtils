@@ -252,7 +252,8 @@ internal class HashStreamDotnet : CompatibilityStream
         return numRead;
     }
 
-    public override int Read(Span<byte> buffer) => CompatExtensions.Read(this, buffer);
+    public override int Read(Span<byte> buffer) =>
+        CompatExtensions.ReadUsingArray(this, buffer);
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -289,13 +290,14 @@ internal class HashStreamDotnet : CompatibilityStream
         return numRead;
     }
 
-    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-        => CompatExtensions.ReadAsync(this, buffer, cancellationToken);
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+        CompatExtensions.ReadUsingArrayAsync(this, buffer, cancellationToken);
 
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
         _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
 
-    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => _wrapped.WriteAsync(buffer, cancellationToken);
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+        _wrapped.WriteAsync(buffer, cancellationToken);
 
     public override void WriteByte(byte value) => _wrapped.WriteByte(value);
 

@@ -140,13 +140,13 @@ class Program : ProgramBase
 
         IVssBackupComponents backupCmpnts;
         int status;
-        if (Marshal.SizeOf(typeof(IntPtr)) == 4)
+        if (Environment.Is64BitProcess)
         {
-            status = NativeMethods.CreateVssBackupComponents(out backupCmpnts);
+            status = NativeMethods.CreateVssBackupComponents64(out backupCmpnts);
         }
         else
         {
-            status = NativeMethods.CreateVssBackupComponents64(out backupCmpnts);
+            status = NativeMethods.CreateVssBackupComponents(out backupCmpnts);
         }
 
 
@@ -417,7 +417,7 @@ class Program : ProgramBase
     {
         var props = new VssSnapshotProperties();
 
-        var buffer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(VssSnapshotProperties)));
+        var buffer = Marshal.AllocHGlobal(Marshal.SizeOf<VssSnapshotProperties>());
 
         backupComponents.GetSnapshotProperties(snapshotId, buffer);
 

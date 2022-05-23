@@ -73,17 +73,35 @@ internal static class NativeMethods
 
         EIOControlCode dwIoControlCode,
 
-        [MarshalAs(UnmanagedType.AsAny)]
-        [In] object InBuffer,
+        [In] byte[] InBuffer,
 
         int nInBufferSize,
 
-        [MarshalAs(UnmanagedType.AsAny)]
-        [Out] object OutBuffer,
+        out byte OutBuffer,
 
         int nOutBufferSize,
 
-        ref int pBytesReturned,
+        out int pBytesReturned,
+
+        IntPtr lpOverlapped
+        );
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern unsafe bool DeviceIoControl(
+        SafeFileHandle hDevice,
+
+        EIOControlCode dwIoControlCode,
+
+        void* InBuffer,
+
+        int nInBufferSize,
+
+        void* OutBuffer,
+
+        int nOutBufferSize,
+
+        out int pBytesReturned,
 
         IntPtr lpOverlapped
         );
@@ -91,20 +109,6 @@ internal static class NativeMethods
     internal const uint FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100;
     internal const uint FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200;
     internal const uint FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000;
-
-    [DllImport("Kernel32.dll", SetLastError = true, ExactSpelling = true)]
-    internal static extern uint FormatMessageW(
-        uint dwFlags,
-        IntPtr lpSource,
-        int dwMessageId,
-        int dwLanguageId,
-        ref IntPtr lpBuffer,
-        uint nSize,
-        IntPtr pArguments
-        );
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    internal static extern IntPtr LocalFree(IntPtr hMem);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return:MarshalAs(UnmanagedType.Bool)]
@@ -134,40 +138,40 @@ internal static class NativeMethods
     #endregion
 
     [StructLayout(LayoutKind.Sequential)]
-    internal class NtfsVolumeData
+    internal readonly struct NtfsVolumeData
     {
-        public long VolumeSerialNumber;
-        public long NumberSectors;
-        public long TotalClusters;
-        public long FreeClusters;
-        public long TotalReserved;
-        public uint BytesPerSector;
-        public uint BytesPerCluster;
-        public uint BytesPerFileRecordSegment;
-        public uint ClustersPerFileRecordSegment;
-        public long MftValidDataLength;
-        public long MftStartLcn;
-        public long Mft2StartLcn;
-        public long MftZoneStart;
-        public long MftZoneEnd;
+        public readonly long VolumeSerialNumber;
+        public readonly long NumberSectors;
+        public readonly long TotalClusters;
+        public readonly long FreeClusters;
+        public readonly long TotalReserved;
+        public readonly uint BytesPerSector;
+        public readonly uint BytesPerCluster;
+        public readonly uint BytesPerFileRecordSegment;
+        public readonly uint ClustersPerFileRecordSegment;
+        public readonly long MftValidDataLength;
+        public readonly long MftStartLcn;
+        public readonly long Mft2StartLcn;
+        public readonly long MftZoneStart;
+        public readonly long MftZoneEnd;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal class DiskExtent
+    internal readonly struct DiskExtent
     {
-        public uint DiskNumber;
-        public long StartingOffset;
-        public long ExtentLength;
+        public readonly uint DiskNumber;
+        public readonly long StartingOffset;
+        public readonly long ExtentLength;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal class DiskGeometry
+    internal readonly struct DiskGeometry
     {
-        public long Cylinders;
-        public int MediaType;
-        public int TracksPerCylinder;
-        public int SectorsPerTrack;
-        public int BytesPerSector;
+        public readonly long Cylinders;
+        public readonly int MediaType;
+        public readonly int TracksPerCylinder;
+        public readonly int SectorsPerTrack;
+        public readonly int BytesPerSector;
     }
 
 

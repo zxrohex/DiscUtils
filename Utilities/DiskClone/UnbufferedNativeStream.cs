@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
 using DiscUtils.Streams;
@@ -93,7 +94,7 @@ public class UnbufferedNativeStream : SparseStream.ReadOnlySparseStream
             }
             else
             {
-                throw Win32Wrapper.GetIOExceptionForLastError();
+                throw new Win32Exception();
             }
         }
     }
@@ -125,13 +126,13 @@ public class UnbufferedNativeStream : SparseStream.ReadOnlySparseStream
 
             if (!NativeMethods.SetFilePointerEx(_handle, alignedStart, out var newPos, 0))
             {
-                throw Win32Wrapper.GetIOExceptionForLastError();
+                throw new Win32Exception();
             }
 
             var toRead = (int)Math.Min(length - alignedStart, BufferSize);
             if (!NativeMethods.ReadFile(_handle, _buffer, toRead, out var numRead, IntPtr.Zero))
             {
-                throw Win32Wrapper.GetIOExceptionForLastError();
+                throw new Win32Exception();
             }
 
             var usefulData = numRead - alignmentOffset;

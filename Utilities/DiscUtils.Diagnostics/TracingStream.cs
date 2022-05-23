@@ -481,12 +481,9 @@ public sealed class TracingStream : CompatibilityStream
 
     private StreamTraceRecord CreateAndAddRecord(string activity, long position, long count, int result, Exception ex)
     {
-#if NET40
-        StackTrace trace = (_captureStack ? new StackTrace(2, _captureStackFileDetails) : null);
-#else
+        // var trace = (_captureStack ? new StackTrace(2, _captureStackFileDetails) : null);
         // Note: Not sure about the 'ex' parameter to StackTrace, but the new StackTrace does not accept a frameCount
         var trace = (_captureStack ? new StackTrace(ex, _captureStackFileDetails) : null);
-#endif
         var record = new StreamTraceRecord(_records.Count, activity, position, trace)
         {
             CountArg = count,

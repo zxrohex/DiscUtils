@@ -205,6 +205,16 @@ namespace DiscUtils.Streams.Compatibility
 
         public static int Read(this Stream stream, Span<byte> buffer)
         {
+            if (stream is CompatibilityStream compatibilityStream)
+            {
+                return compatibilityStream.Read(buffer);
+            }
+
+            return ReadUsingArray(stream, buffer);
+        }
+
+        public static int ReadUsingArray(Stream stream, Span<byte> buffer)
+        {
             var bytes = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
             {
@@ -218,7 +228,17 @@ namespace DiscUtils.Streams.Compatibility
             }
         }
 
-        public static async ValueTask<int> ReadAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+        public static ValueTask<int> ReadAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (stream is CompatibilityStream compatibilityStream)
+            {
+                return compatibilityStream.ReadAsync(buffer, cancellationToken);
+            }
+
+            return ReadUsingArrayAsync(stream, buffer, cancellationToken);
+        }
+
+        public static async ValueTask<int> ReadUsingArrayAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
         {
             if (MemoryMarshal.TryGetArray<byte>(buffer, out var arraySegment))
             {
@@ -240,6 +260,12 @@ namespace DiscUtils.Streams.Compatibility
 
         public static void Write(this Stream stream, ReadOnlySpan<byte> buffer)
         {
+            if (stream is CompatibilityStream compatibilityStream)
+            {
+                compatibilityStream.Write(buffer);
+                return;
+            }
+
             var bytes = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
             {
@@ -254,6 +280,12 @@ namespace DiscUtils.Streams.Compatibility
 
         public static async ValueTask WriteAsync(this Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
         {
+            if (stream is CompatibilityStream compatibilityStream)
+            {
+                await compatibilityStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
             if (MemoryMarshal.TryGetArray<byte>(buffer, out var arraySegment))
             {
                 await stream.WriteAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count, cancellationToken).ConfigureAwait(false);
@@ -272,7 +304,6 @@ namespace DiscUtils.Streams.Compatibility
             }
         }
 
-#if NET461_OR_GREATER || (NETSTANDARD && !NETSTANDARD2_1_OR_GREATER)
         public static void AppendData(this IncrementalHash hash, ReadOnlySpan<byte> data)
         {
             var bytes = ArrayPool<byte>.Shared.Rent(data.Length);
@@ -286,7 +317,6 @@ namespace DiscUtils.Streams.Compatibility
                 ArrayPool<byte>.Shared.Return(bytes);
             }
         }
-#endif
 #endif
     }
 

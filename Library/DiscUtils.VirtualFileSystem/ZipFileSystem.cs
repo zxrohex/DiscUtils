@@ -9,7 +9,6 @@ using Archives;
 using Streams;
 using Internal;
 
-#if NET45_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP
 public class ZipFileSystem : VirtualFileSystem
 {
     private readonly WeakReference _zip;
@@ -131,4 +130,3 @@ public class ZipFileSystem : VirtualFileSystem
         base.Dispose(disposing);
     }
 }
-#endif

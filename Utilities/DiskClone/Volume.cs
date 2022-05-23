@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
@@ -43,20 +44,19 @@ internal sealed class Volume : IDisposable
 
         if (!Path.StartsWith(@"\\"))
         {
-            Path = @"\\.\" + Path;
+            Path = $@"\\.\{Path}";
         }
 
         _handle = NativeMethods.CreateFileW(Path, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
         if (_handle.IsInvalid)
         {
-            throw Win32Wrapper.GetIOExceptionForLastError();
+            throw new Win32Exception();
         }
 
         // Enable reading the full contents of the volume (not just the region bounded by the file system)
-        var bytesRet = 0;
-        if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.FsctlAllowExtendedDasdIo, IntPtr.Zero, 0, IntPtr.Zero, 0, ref bytesRet, IntPtr.Zero))
+        if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.FsctlAllowExtendedDasdIo, null, 0, out _, 0, out _, IntPtr.Zero))
         {
-            throw Win32Wrapper.GetIOExceptionForLastError();
+            throw new Win32Exception();
         }
     }
 
@@ -90,27 +90,26 @@ internal sealed class Volume : IDisposable
     public NativeMethods.DiskExtent[] GetDiskExtents()
     {
         var numExtents = 1;
-        var bufferSize = 8 + Marshal.SizeOf(typeof(NativeMethods.DiskExtent)) * numExtents;
-        var buffer = new byte[bufferSize];
+        var bufferSize = 8 + Marshal.SizeOf<NativeMethods.DiskExtent>() * numExtents;
+        Span<byte> buffer = stackalloc byte[bufferSize];
 
-        var bytesRet = 0;
-        if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.VolumeGetDiskExtents, null, 0, buffer, bufferSize, ref bytesRet, IntPtr.Zero))
+        if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.VolumeGetDiskExtents, null, 0, out buffer[0], bufferSize, out _, IntPtr.Zero))
         {
             if (Marshal.GetLastWin32Error() != NativeMethods.ERROR_MORE_DATA)
             {
-                throw Win32Wrapper.GetIOExceptionForLastError();
+                throw new Win32Exception();
             }
 
-            numExtents = BitConverter.ToInt32(buffer, 0);
-            bufferSize = 8 + Marshal.SizeOf(typeof(NativeMethods.DiskExtent)) * numExtents;
-            buffer = new byte[bufferSize];
+            numExtents = MemoryMarshal.Read<int>(buffer);
+            bufferSize = 8 + Marshal.SizeOf<NativeMethods.DiskExtent>() * numExtents;
+            buffer = stackalloc byte[bufferSize];
 
-            if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.VolumeGetDiskExtents, null, 0, buffer, bufferSize, ref bytesRet, IntPtr.Zero))
+            if (!NativeMethods.DeviceIoControl(_handle, NativeMethods.EIOControlCode.VolumeGetDiskExtents, null, 0, out buffer[0], bufferSize, out _, IntPtr.Zero))
             {
-                throw Win32Wrapper.GetIOExceptionForLastError();
+                throw new Win32Exception();
             }
         }
 
-        return Win32Wrapper.ByteArrayToStructureArray<NativeMethods.DiskExtent>(buffer, 8, 1);
+        return MemoryMarshal.Cast<byte, NativeMethods.DiskExtent>(buffer.Slice(8)).Slice(0, numExtents).ToArray();
     }
 }

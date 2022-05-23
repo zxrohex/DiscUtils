@@ -25,7 +25,6 @@ using DiscUtils;
 using DiscUtils.Vfs;
 using DiscUtils.VirtualFileSystem;
 
-#if NET45 || NETSTANDARD2_0
 [VfsFileSystemFactory]
 internal class ZipFileSystemFactory : VfsFileSystemFactory
 {
@@ -42,4 +41,3 @@ internal class ZipFileSystemFactory : VfsFileSystemFactory
         return new ZipFileSystem(stream, "ZIP", ownsStream: true);
     }
 }
-#endif
