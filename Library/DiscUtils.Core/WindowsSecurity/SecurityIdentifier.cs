@@ -23,16 +23,6 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         buffer = ParseSddlForm(sddlForm);
     }
 
-    public SecurityIdentifier(ReadOnlySpan<char> sddlForm)
-    {
-        if (sddlForm.IsEmpty)
-        {
-            throw new ArgumentNullException(nameof(sddlForm));
-        }
-
-        buffer = ParseSddlForm(sddlForm);
-    }
-
     public SecurityIdentifier(byte[] binaryForm, int offset)
         : this(binaryForm.AsSpan(offset))
     {
@@ -353,7 +343,7 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
             throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
         }
 
-        ReadOnlySpan<char> sid;
+        string sid;
         int len;
 
         if (sddlForm.Slice(pos).StartsWith("S-".AsSpan(), StringComparison.OrdinalIgnoreCase))
@@ -374,12 +364,12 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
                 endPos--;
             }
 
-            sid = sddlForm.Slice(pos, endPos - pos);
+            sid = sddlForm.Slice(pos, endPos - pos).ToString();
             len = endPos - pos;
         }
         else
         {
-            sid = sddlForm.Slice(pos, 2).ToString().ToUpperInvariant().AsSpan();
+            sid = sddlForm.Slice(pos, 2).ToString().ToUpperInvariant();
             len = 2;
         }
 
@@ -389,11 +379,8 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     }
 
     private static byte[] ParseSddlForm(string sddlForm)
-        => ParseSddlForm(sddlForm.AsSpan());
-
-    private static byte[] ParseSddlForm(ReadOnlySpan<char> sddlForm)
     {
-        var sid = sddlForm.ToString();
+        var sid = sddlForm;
 
         // If only 2 characters long, can't be a full SID string - so assume
         // it's an attempted alias.  Do that conversion first.

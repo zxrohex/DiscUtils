@@ -174,17 +174,25 @@ namespace DiscUtils.Streams.Compatibility
 
         public static int GetBytes(this Encoding encoding, ReadOnlySpan<char> chars, Span<byte> bytes)
         {
-            var str = chars.ToString();
-            var buffer = ArrayPool<byte>.Shared.Rent(encoding.GetByteCount(str));
+            var str = ArrayPool<char>.Shared.Rent(chars.Length);
             try
             {
-                var length = encoding.GetBytes(str, 0, str.Length, buffer, 0);
-                buffer.AsSpan().CopyTo(bytes);
-                return length;
+                chars.CopyTo(str);
+                var buffer = ArrayPool<byte>.Shared.Rent(encoding.GetByteCount(str, 0, chars.Length));
+                try
+                {
+                    var length = encoding.GetBytes(str, 0, chars.Length, buffer, 0);
+                    buffer.AsSpan().CopyTo(bytes);
+                    return length;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(buffer);
+                ArrayPool<char>.Shared.Return(str);
             }
         }
 

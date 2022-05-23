@@ -447,21 +447,31 @@ public static class EndianUtilities
     /// <param name="dest">The buffer to fill.</param>
     /// <remarks>The built-in ASCIIEncoding converts characters of codepoint > 127 to ?,
     /// this preserves those code points by removing the top 16 bits of each character.</remarks>
-    public static void StringToBytes(ReadOnlySpan<char> value, Span<byte> dest)
+    public static int StringToBytes(ReadOnlySpan<char> value, Span<byte> dest)
     {
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        Encoding.GetEncoding(28591).GetBytes(value.Slice(0, Math.Min(dest.Length, value.Length)), dest);
+        return Encoding.GetEncoding(28591).GetBytes(value.Slice(0, Math.Min(dest.Length, value.Length)), dest);
 #else
-        var buffer = ArrayPool<byte>.Shared.Rent(dest.Length);
+        var chars = ArrayPool<char>.Shared.Rent(value.Length);
         try
         {
-            Array.Clear(buffer, 0, dest.Length);
-            StringToBytes(value.ToString(), buffer, 0, dest.Length);
-            buffer.AsSpan(0, dest.Length).CopyTo(dest);
+            value.CopyTo(chars);
+            var buffer = ArrayPool<byte>.Shared.Rent(dest.Length);
+            try
+            {
+                Array.Clear(buffer, 0, dest.Length);
+                var numBytes = Encoding.GetEncoding(28591).GetBytes(chars, 0, value.Length, buffer, 0);
+                buffer.AsSpan(0, numBytes).CopyTo(dest);
+                return numBytes;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            ArrayPool<char>.Shared.Return(chars);
         }
 #endif
     }
