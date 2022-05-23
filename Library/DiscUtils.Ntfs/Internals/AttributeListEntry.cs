@@ -28,7 +28,7 @@ namespace DiscUtils.Ntfs.Internals;
 /// <remarks>Each instance of this class points to the actual Master File Table
 /// entry that contains the attribute.  It is used for files split over multiple
 /// Master File Table entries.</remarks>
-public struct AttributeListEntry : IAttributeLocator
+public readonly struct AttributeListEntry : IAttributeLocator
 {
     private readonly AttributeListRecord _record;
 

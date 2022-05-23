@@ -30,7 +30,7 @@ namespace DiscUtils.Streams;
 /// </summary>
 /// <typeparam name="TOffset">The type of the offset element.</typeparam>
 /// <typeparam name="TCount">The type of the size element.</typeparam>
-public struct Range<TOffset, TCount> : IEquatable<Range<TOffset, TCount>>
+public readonly struct Range<TOffset, TCount> : IEquatable<Range<TOffset, TCount>>
     where TOffset : IEquatable<TOffset>
     where TCount : IEquatable<TCount>
 {

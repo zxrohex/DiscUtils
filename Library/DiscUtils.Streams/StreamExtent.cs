@@ -32,7 +32,7 @@ namespace DiscUtils.Streams;
 /// are actually stored in the underlying storage medium (rather than implied
 /// zero bytes).  Extents are stored as a zero-based byte offset (from the
 /// beginning of the stream), and a byte length.</remarks>
-public struct StreamExtent : IEquatable<StreamExtent>, IComparable<StreamExtent>
+public readonly struct StreamExtent : IEquatable<StreamExtent>, IComparable<StreamExtent>
 {
     /// <summary>
     /// Initializes a new instance of the StreamExtent class.

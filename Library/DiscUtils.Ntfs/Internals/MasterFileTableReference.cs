@@ -25,9 +25,9 @@ namespace DiscUtils.Ntfs.Internals;
 /// <summary>
 /// A reference to a Master File Table entry.
 /// </summary>
-public struct MasterFileTableReference
+public readonly struct MasterFileTableReference
 {
-    private FileRecordReference _ref;
+    private readonly FileRecordReference _ref;
 
     internal MasterFileTableReference(FileRecordReference recordRef)
     {
