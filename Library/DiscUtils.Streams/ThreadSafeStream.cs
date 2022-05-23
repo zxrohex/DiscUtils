@@ -235,7 +235,7 @@ public class ThreadSafeStream : SparseStream
         }
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     /// <summary>
     /// Reads data from the stream.
     /// </summary>
@@ -254,7 +254,7 @@ public class ThreadSafeStream : SparseStream
             return numRead;
         }
     }
-#endif
+
 
     /// <summary>
     /// Changes the current stream position (each view has it's own Position).
@@ -314,7 +314,7 @@ public class ThreadSafeStream : SparseStream
         }
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     /// <summary>
     /// Writes data to the stream (not currently supported).
     /// </summary>
@@ -337,7 +337,7 @@ public class ThreadSafeStream : SparseStream
             _position += buffer.Length;
         }
     }
-#endif
+
 
     /// <summary>
     /// Disposes of this instance, invalidating any remaining views.

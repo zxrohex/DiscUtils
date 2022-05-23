@@ -44,29 +44,29 @@ internal struct IndexRoot : IByteArraySerializable, IDiagnosticTraceable
         get { return 16; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        AttributeType = EndianUtilities.ToUInt32LittleEndian(buffer, 0x00);
-        CollationRule = (AttributeCollationRule)EndianUtilities.ToUInt32LittleEndian(buffer, 0x04);
-        IndexAllocationSize = EndianUtilities.ToUInt32LittleEndian(buffer, 0x08);
+        AttributeType = EndianUtilities.ToUInt32LittleEndian(buffer);
+        CollationRule = (AttributeCollationRule)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x04));
+        IndexAllocationSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x08));
         RawClustersPerIndexRecord = buffer[0x0C];
         return 16;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(AttributeType, buffer, 0);
-        EndianUtilities.WriteBytesLittleEndian((uint)CollationRule, buffer, 0x04);
-        EndianUtilities.WriteBytesLittleEndian(IndexAllocationSize, buffer, 0x08);
-        EndianUtilities.WriteBytesLittleEndian(RawClustersPerIndexRecord, buffer, 0x0C);
+        EndianUtilities.WriteBytesLittleEndian(AttributeType, buffer);
+        EndianUtilities.WriteBytesLittleEndian((uint)CollationRule, buffer.Slice(0x04));
+        EndianUtilities.WriteBytesLittleEndian(IndexAllocationSize, buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian(RawClustersPerIndexRecord, buffer.Slice(0x0C));
     }
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "                Attr Type: " + AttributeType);
-        writer.WriteLine(indent + "           Collation Rule: " + CollationRule);
-        writer.WriteLine(indent + "         Index Alloc Size: " + IndexAllocationSize);
-        writer.WriteLine(indent + "  Raw Clusters Per Record: " + RawClustersPerIndexRecord);
+        writer.WriteLine($"{indent}                Attr Type: {AttributeType}");
+        writer.WriteLine($"{indent}           Collation Rule: {CollationRule}");
+        writer.WriteLine($"{indent}         Index Alloc Size: {IndexAllocationSize}");
+        writer.WriteLine($"{indent}  Raw Clusters Per Record: {RawClustersPerIndexRecord}");
     }
 
     public IComparer<byte[]> GetCollator(UpperCase upCase)

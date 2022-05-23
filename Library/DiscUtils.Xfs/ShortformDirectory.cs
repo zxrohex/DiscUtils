@@ -62,35 +62,35 @@ internal class ShortformDirectory : IByteArraySerializable
         }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Count4Bytes = buffer[offset];
-        Count8Bytes = buffer[offset+0x1];
+        Count4Bytes = buffer[0];
+        Count8Bytes = buffer[1];
         var count = Count4Bytes;
         _useShortInode = Count8Bytes == 0;
-        offset += 0x2;
+        var offset = 0x2;
         if (_useShortInode)
         {
-            Parent = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+            Parent = EndianUtilities.ToUInt32BigEndian(buffer.Slice(offset));
             offset += 0x4;
         }
         else
         {
-            Parent = EndianUtilities.ToUInt64BigEndian(buffer, offset);
+            Parent = EndianUtilities.ToUInt64BigEndian(buffer.Slice(offset));
             offset += 0x8;
         }
         Entries = new ShortformDirectoryEntry[count];
         for (var i = 0; i < count; i++)
         {
             var entry = new ShortformDirectoryEntry(_useShortInode, _context);
-            entry.ReadFrom(buffer, offset);
+            entry.ReadFrom(buffer.Slice(offset));
             offset += entry.Size;
             Entries[i] = entry;
         }
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

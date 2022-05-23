@@ -37,26 +37,25 @@ internal sealed class ReparsePointRecord : IByteArraySerializable, IDiagnosticTr
         get { return 8 + Content.Length; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Tag = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-        var length = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-        Content = new byte[length];
-        Array.Copy(buffer, offset + 8, Content, 0, length);
+        Tag = EndianUtilities.ToUInt32LittleEndian(buffer);
+        var length = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(4));
+        Content = buffer.Slice(8, length).ToArray();
         return 8 + length;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(Tag, buffer, offset);
-        EndianUtilities.WriteBytesLittleEndian((ushort)Content.Length, buffer, offset + 4);
-        EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer, offset + 6);
-        Array.Copy(Content, 0, buffer, offset + 8, Content.Length);
+        EndianUtilities.WriteBytesLittleEndian(Tag, buffer);
+        EndianUtilities.WriteBytesLittleEndian((ushort)Content.Length, buffer.Slice(4));
+        EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer.Slice(6));
+        Content.AsSpan().CopyTo(buffer.Slice(8));
     }
 
     public void Dump(TextWriter writer, string linePrefix)
     {
-        writer.WriteLine(linePrefix + "                Tag: " + Tag.ToString("x", CultureInfo.InvariantCulture));
+        writer.WriteLine($"{linePrefix}                Tag: {Tag:x}");
 
         var hex = string.Empty;
         for (var i = 0; i < Math.Min(Content.Length, 32); ++i)

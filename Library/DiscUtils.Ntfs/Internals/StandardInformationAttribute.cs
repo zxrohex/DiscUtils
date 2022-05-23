@@ -42,7 +42,7 @@ public sealed class StandardInformationAttribute : GenericAttribute
     {
         var content = StreamUtilities.ReadAll(Content);
         _si = new StandardInformation();
-        _si.ReadFrom(content, 0);
+        _si.ReadFrom(content);
     }
 
     /// <summary>

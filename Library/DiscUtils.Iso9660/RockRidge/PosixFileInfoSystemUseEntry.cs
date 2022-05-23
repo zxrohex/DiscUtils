@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+
 namespace DiscUtils.Iso9660;
 
 internal sealed class PosixFileInfoSystemUseEntry : SystemUseEntry
@@ -30,18 +32,18 @@ internal sealed class PosixFileInfoSystemUseEntry : SystemUseEntry
     public uint NumLinks;
     public uint UserId;
 
-    public PosixFileInfoSystemUseEntry(string name, byte length, byte version, byte[] data, int offset)
+    public PosixFileInfoSystemUseEntry(string name, byte length, byte version, ReadOnlySpan<byte> data)
     {
         CheckAndSetCommonProperties(name, length, version, 36, 1);
 
-        FileMode = IsoUtilities.ToUInt32FromBoth(data, offset + 4);
-        NumLinks = IsoUtilities.ToUInt32FromBoth(data, offset + 12);
-        UserId = IsoUtilities.ToUInt32FromBoth(data, offset + 20);
-        GroupId = IsoUtilities.ToUInt32FromBoth(data, offset + 28);
+        FileMode = IsoUtilities.ToUInt32FromBoth(data.Slice(4));
+        NumLinks = IsoUtilities.ToUInt32FromBoth(data.Slice(12));
+        UserId = IsoUtilities.ToUInt32FromBoth(data.Slice(20));
+        GroupId = IsoUtilities.ToUInt32FromBoth(data.Slice(28));
         Inode = 0;
         if (length >= 44)
         {
-            Inode = IsoUtilities.ToUInt32FromBoth(data, offset + 36);
+            Inode = IsoUtilities.ToUInt32FromBoth(data.Slice(36));
         }
     }
 }

@@ -44,22 +44,22 @@ internal sealed class BTreeIndexRecord<TKey> : BTreeNodeRecord
         get { return _size; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         Key = new TKey();
-        var keySize = Key.ReadFrom(buffer, offset);
+        var keySize = Key.ReadFrom(buffer);
 
         if ((keySize & 1) != 0)
         {
             ++keySize;
         }
 
-        ChildId = EndianUtilities.ToUInt32BigEndian(buffer, offset + keySize);
+        ChildId = EndianUtilities.ToUInt32BigEndian(buffer.Slice(keySize));
 
         return _size;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

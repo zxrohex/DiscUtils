@@ -108,14 +108,11 @@ public class MirrorStream : SparseStream
         return _wrapped[0].Read(buffer, offset, count);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         return _wrapped[0].ReadAsync(buffer, offset, count, cancellationToken);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         return _wrapped[0].ReadAsync(buffer, cancellationToken);
@@ -125,7 +122,6 @@ public class MirrorStream : SparseStream
     {
         return _wrapped[0].Read(buffer);
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -172,7 +168,6 @@ public class MirrorStream : SparseStream
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var pos = _wrapped[0].Position;
@@ -188,9 +183,7 @@ public class MirrorStream : SparseStream
             return stream.WriteAsync(buffer, offset, count, cancellationToken);
         }));
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         var pos = _wrapped[0].Position;
@@ -222,12 +215,9 @@ public class MirrorStream : SparseStream
             stream.Write(buffer);
         }
     }
-#endif
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         Task.WhenAll(_wrapped.Select(stream => stream.FlushAsync(cancellationToken)));
-#endif
 
     protected override void Dispose(bool disposing)
     {

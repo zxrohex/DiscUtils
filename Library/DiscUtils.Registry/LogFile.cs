@@ -21,7 +21,7 @@ internal class LogFile : IEnumerable<LogEntry>
     {
         stream.Position = 0;
         buffer = StreamUtilities.ReadExact(stream, (int)stream.Length);
-        var headerResult = HiveHeader.ReadFrom(buffer, 0, throwOnInvalidData: false);
+        var headerResult = HiveHeader.ReadFrom(buffer, throwOnInvalidData: false);
         if (headerResult > 0)
         {
             HeaderValid = true;

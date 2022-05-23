@@ -368,8 +368,36 @@ public static class EndianUtilities
         where T : IByteArraySerializable, new()
     {
         var result = new T();
-        result.ReadFrom(buffer, offset);
+        result.ReadFrom(buffer.AsSpan(offset));
         return result;
+    }
+
+    public static T ToStruct<T>(ReadOnlySpan<byte> buffer)
+        where T : IByteArraySerializable, new()
+    {
+        var result = new T();
+        result.ReadFrom(buffer);
+        return result;
+    }
+
+    public static string LittleEndianUnicodeBytesToString(ReadOnlySpan<byte> bytes)
+    {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        return Encoding.Unicode.GetString(bytes);
+#else
+        return MemoryMarshal.Cast<byte, char>(bytes).ToString();
+#endif
+    }
+
+    public static ReadOnlySpan<byte> StringToLittleEndianUnicodeBytesToString(ReadOnlySpan<char> chars)
+    {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        var byteCount = Encoding.Unicode.GetByteCount(chars);
+        var bytes = new byte[byteCount];
+        return bytes.AsSpan(0, Encoding.Unicode.GetBytes(chars, bytes));
+#else
+        return MemoryMarshal.AsBytes(chars);
+#endif
     }
 
     /// <summary>
@@ -391,8 +419,6 @@ public static class EndianUtilities
     /// </summary>
     /// <param name="value">The string to convert.</param>
     /// <param name="dest">The buffer to fill.</param>
-    /// <param name="offset">The start of the string in the buffer.</param>
-    /// <param name="count">The number of characters to convert.</param>
     /// <remarks>The built-in ASCIIEncoding converts characters of codepoint > 127 to ?,
     /// this preserves those code points by removing the top 16 bits of each character.</remarks>
     public static void StringToBytes(string value, Span<byte> dest)
@@ -405,6 +431,32 @@ public static class EndianUtilities
         {
             Array.Clear(buffer, 0, dest.Length);
             StringToBytes(value, buffer, 0, dest.Length);
+            buffer.AsSpan(0, dest.Length).CopyTo(dest);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+#endif
+    }
+
+    /// <summary>
+    /// Primitive conversion from Unicode to ASCII that preserves special characters.
+    /// </summary>
+    /// <param name="value">The string to convert.</param>
+    /// <param name="dest">The buffer to fill.</param>
+    /// <remarks>The built-in ASCIIEncoding converts characters of codepoint > 127 to ?,
+    /// this preserves those code points by removing the top 16 bits of each character.</remarks>
+    public static void StringToBytes(ReadOnlySpan<char> value, Span<byte> dest)
+    {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        Encoding.GetEncoding(28591).GetBytes(value.Slice(0, Math.Min(dest.Length, value.Length)), dest);
+#else
+        var buffer = ArrayPool<byte>.Shared.Rent(dest.Length);
+        try
+        {
+            Array.Clear(buffer, 0, dest.Length);
+            StringToBytes(value.ToString(), buffer, 0, dest.Length);
             buffer.AsSpan(0, dest.Length).CopyTo(dest);
         }
         finally

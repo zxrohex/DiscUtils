@@ -67,7 +67,7 @@ public abstract class Buffer :
     /// <param name="offset">The start offset within the destination buffer.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The actual number of bytes read.</returns>
-    public abstract int Read(long pos, byte[] buffer, int offset, int count);
+    public virtual int Read(long pos, byte[] buffer, int offset, int count) => Read(pos, buffer.AsSpan(offset, count));
 
     /// <summary>
     /// Writes a byte array into the buffer.
@@ -76,7 +76,7 @@ public abstract class Buffer :
     /// <param name="buffer">The source byte array.</param>
     /// <param name="offset">The start offset within the source byte array.</param>
     /// <param name="count">The number of bytes to write.</param>
-    public abstract void Write(long pos, byte[] buffer, int offset, int count);
+    public virtual void Write(long pos, byte[] buffer, int offset, int count) => Write(pos, buffer.AsSpan(offset, count));
 
     /// <summary>
     /// Clears bytes from the buffer.
@@ -126,33 +126,26 @@ public abstract class Buffer :
     /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
     public abstract IEnumerable<StreamExtent> GetExtentsInRange(long start, long count);
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-    public virtual Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-        Task.FromResult(Read(pos, buffer, offset, count));
 
-    public virtual Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public virtual ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+        new(Read(pos, buffer, offset, count));
+
+    public virtual ValueTask WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         Write(pos, buffer, offset, count);
-#if NET461_OR_GREATER || NETSTANDARD || NETCOREAPP
-        return Task.CompletedTask;
-#else
-        return Task.FromResult(0);
-#endif
+        return new();
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public abstract int Read(long pos, Span<byte> buffer);
-    
+
+    public abstract void Write(long pos, ReadOnlySpan<byte> buffer);
+
     public virtual ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken) =>
         new(Read(pos, buffer.Span));
 
-    public abstract void Write(long pos, ReadOnlySpan<byte> buffer);
-    
     public virtual ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         Write(pos, buffer.Span);
         return new();
     }
-#endif
 }

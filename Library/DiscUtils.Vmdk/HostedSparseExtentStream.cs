@@ -26,6 +26,7 @@ using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vmdk;
 
@@ -127,6 +128,43 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         _atEof = _position == Length;
     }
 
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        CheckDisposed();
+
+        if (!CanWrite)
+        {
+            throw new InvalidOperationException("Cannot write to this stream");
+        }
+
+        var totalWritten = 0;
+        while (totalWritten < buffer.Length)
+        {
+            var grainTable = (int)(_position / _gtCoverage);
+            var grainTableOffset = (int)(_position - grainTable * _gtCoverage);
+
+            LoadGrainTable(grainTable);
+
+            var grainSize = (int)(_header.GrainSize * Sizes.Sector);
+            var grain = grainTableOffset / grainSize;
+            var grainOffset = grainTableOffset - grain * grainSize;
+
+            if (GetGrainTableEntry(grain) == 0)
+            {
+                AllocateGrain(grainTable, grain);
+            }
+
+            var numToWrite = Math.Min(buffer.Length - totalWritten, grainSize - grainOffset);
+            _fileStream.Position = (long)GetGrainTableEntry(grain) * Sizes.Sector + grainOffset;
+            _fileStream.Write(buffer.Slice(totalWritten, numToWrite));
+
+            _position += numToWrite;
+            totalWritten += numToWrite;
+        }
+
+        _atEof = _position == Length;
+    }
+
     protected override int ReadGrain(byte[] buffer, int bufferOffset, long grainStart, int grainOffset,
                                      int numToRead)
     {
@@ -170,7 +208,6 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         return base.ReadGrain(buffer, bufferOffset, grainStart, grainOffset, numToRead);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     protected override async Task<int> ReadGrainAsync(byte[] buffer, int bufferOffset, long grainStart, int grainOffset, int numToRead, CancellationToken cancellationToken)
     {
         if ((_hostedHeader.Flags & HostedSparseExtentFlags.CompressedGrains) != 0)
@@ -212,9 +249,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         }
         return await base.ReadGrainAsync(buffer, bufferOffset, grainStart, grainOffset, numToRead, cancellationToken).ConfigureAwait(false);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     protected override async ValueTask<int> ReadGrainAsync(Memory<byte> buffer, long grainStart, int grainOffset, CancellationToken cancellationToken)
     {
         if ((_hostedHeader.Flags & HostedSparseExtentFlags.CompressedGrains) != 0)
@@ -298,7 +333,6 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         }
         return base.ReadGrain(buffer, grainStart, grainOffset);
     }
-#endif
 
     protected override StreamExtent MapGrain(long grainStart, int grainOffset, int numToRead)
     {

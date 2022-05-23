@@ -91,7 +91,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
                 break;
             }
 
-            bvd = new BaseVolumeDescriptor(buffer, 0);
+            bvd = new BaseVolumeDescriptor(buffer);
 
             if (bvd.StandardIdentifier != BaseVolumeDescriptor.Iso9660StandardIdentifier)
             {
@@ -101,7 +101,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
             switch (bvd.VolumeDescriptorType)
             {
                 case VolumeDescriptorType.Boot:
-                    _bootVolDesc = new BootVolumeDescriptor(buffer, 0);
+                    _bootVolDesc = new BootVolumeDescriptor(buffer);
                     if (_bootVolDesc.SystemId != BootVolumeDescriptor.ElToritoSystemIdentifier)
                     {
                         _bootVolDesc = null;
@@ -136,7 +136,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
                     {
                         data.Position = svdPos;
                         data.Read(buffer, 0, IsoUtilities.SectorSize);
-                        var volDesc = new SupplementaryVolumeDescriptor(buffer, 0);
+                        var volDesc = new SupplementaryVolumeDescriptor(buffer);
 
                         Context = new IsoContext { VolumeDescriptor = volDesc, DataStream = _data };
                         RootDirectory = new ReaderDirectory(Context,
@@ -152,7 +152,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
                     {
                         data.Position = pvdPos;
                         data.Read(buffer, 0, IsoUtilities.SectorSize);
-                        var volDesc = new PrimaryVolumeDescriptor(buffer, 0);
+                        var volDesc = new PrimaryVolumeDescriptor(buffer);
 
                         var context = new IsoContext { VolumeDescriptor = volDesc, DataStream = _data };
                         var rootSelfRecord = ReadRootSelfRecord(context);
@@ -436,7 +436,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
     {
         // Stage 1 - SUSP present?
         var extensions = new List<SuspExtension>();
-        if (!SuspRecords.DetectSharingProtocol(rootSelfRecord.SystemUseData, 0))
+        if (!SuspRecords.DetectSharingProtocol(rootSelfRecord.SystemUseData))
         {
             context.SuspExtensions = new List<SuspExtension>();
             context.SuspDetected = false;
@@ -444,7 +444,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
         }
         context.SuspDetected = true;
 
-        var suspRecords = new SuspRecords(context, rootSelfRecord.SystemUseData, 0);
+        var suspRecords = new SuspRecords(context, rootSelfRecord.SystemUseData);
 
         // Stage 2 - Init general SUSP params
         var spEntry =
@@ -489,7 +489,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
                                       context.VolumeDescriptor.LogicalBlockSize;
         var firstSector = StreamUtilities.ReadExact(context.DataStream, context.VolumeDescriptor.LogicalBlockSize);
 
-        DirectoryRecord.ReadFrom(firstSector, 0, context.VolumeDescriptor.CharacterEncoding, out var rootSelfRecord);
+        DirectoryRecord.ReadFrom(firstSector, context.VolumeDescriptor.CharacterEncoding, out var rootSelfRecord);
         return rootSelfRecord;
     }
 

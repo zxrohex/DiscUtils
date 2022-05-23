@@ -85,7 +85,6 @@ internal class FileContentBuffer : Streams.Buffer
         throw new NotImplementedException();
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(long pos, Span<byte> buffer)
     {
         if (_fileEntry.InformationControlBlock.AllocationType == AllocationType.Embedded)
@@ -105,7 +104,6 @@ internal class FileContentBuffer : Streams.Buffer
 
     public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
         throw new NotImplementedException();
-#endif
 
     public override void Clear(long pos, int count)
     {
@@ -233,7 +231,6 @@ internal class FileContentBuffer : Streams.Buffer
         return totalRead;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     private int ReadFromExtents(long pos, Span<byte> buffer)
     {
         var totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
@@ -267,7 +264,6 @@ internal class FileContentBuffer : Streams.Buffer
 
         return totalRead;
     }
-#endif
 
     private CookedExtent FindExtent(long pos)
     {

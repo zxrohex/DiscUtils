@@ -42,11 +42,9 @@ internal abstract class ClusterStream
 
     public abstract int WriteClusters(long startVcn, int count, byte[] buffer, int offset);
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public abstract void ReadClusters(long startVcn, int count, Span<byte> buffer);
 
     public abstract int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer);
-#endif
 
     public abstract int ClearClusters(long startVcn, int count);
 }

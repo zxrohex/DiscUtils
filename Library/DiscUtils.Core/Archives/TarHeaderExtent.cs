@@ -47,7 +47,7 @@ internal sealed class TarHeaderExtent : BuilderBufferExtent
     }
 
     public TarHeaderExtent(long start, string fileName, long fileLength)
-        : this(start, fileName, fileLength, 0, 0, 0, DateTimeOffsetExtensions.UnixEpoch)
+        : this(start, fileName, fileLength, 0, 0, 0, DateTimeOffset.FromUnixTimeMilliseconds(0).UtcDateTime)
     {
     }
 
@@ -63,7 +63,7 @@ internal sealed class TarHeaderExtent : BuilderBufferExtent
             groupId: _groupId,
             modificationTime: _modificationTime);
 
-        header.WriteTo(buffer, 0);
+        header.WriteTo(buffer);
 
         return buffer;
     }

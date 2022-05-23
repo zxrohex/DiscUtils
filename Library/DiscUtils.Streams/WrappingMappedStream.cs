@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -110,24 +111,24 @@ public class WrappingMappedStream<T> : MappedStream
         WrappedStream.Flush();
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         WrappedStream.FlushAsync(cancellationToken);
-#endif
+
 
     public override int Read(byte[] buffer, int offset, int count)
     {
         return WrappedStream.Read(buffer, offset, count);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         return WrappedStream.ReadAsync(buffer, offset, count, cancellationToken);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         return WrappedStream.ReadAsync(buffer, cancellationToken);
@@ -137,7 +138,7 @@ public class WrappingMappedStream<T> : MappedStream
     {
         return WrappedStream.Read(buffer);
     }
-#endif
+
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -166,14 +167,14 @@ public class WrappingMappedStream<T> : MappedStream
         WrappedStream.Write(buffer, offset, count);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         return WrappedStream.WriteAsync(buffer, offset, count, cancellationToken);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         return WrappedStream.WriteAsync(buffer, cancellationToken);
@@ -183,7 +184,7 @@ public class WrappingMappedStream<T> : MappedStream
     {
         WrappedStream.Write(buffer);
     }
-#endif
+
 
     protected override void Dispose(bool disposing)
     {

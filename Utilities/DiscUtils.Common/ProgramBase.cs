@@ -28,6 +28,7 @@ using System.Reflection;
 using DiscUtils.Streams;
 using System.Linq;
 using DiscUtils.CoreCompat;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Common;
 

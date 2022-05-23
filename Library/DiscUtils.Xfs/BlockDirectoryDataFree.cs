@@ -37,14 +37,14 @@ internal class BlockDirectoryDataFree : IByteArraySerializable
         get { return 0x4; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Offset = EndianUtilities.ToUInt16BigEndian(buffer, offset);
-        Length = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
+        Offset = EndianUtilities.ToUInt16BigEndian(buffer);
+        Length = EndianUtilities.ToUInt16BigEndian(buffer.Slice(2));
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

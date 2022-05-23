@@ -128,8 +128,8 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
         return totalToRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-    public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+
+    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var record = _attribute.PrimaryRecord;
 
@@ -181,9 +181,7 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
 
         return totalToRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var record = _attribute.PrimaryRecord;
@@ -208,7 +206,7 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
             if (pos >= record.InitializedDataLength)
             {
                 // We're just reading zero bytes from the uninitialized area
-                buffer.Span[..totalToRead].Clear();
+                buffer.Span.Slice(0, totalToRead).Clear();
                 return totalToRead;
             }
 
@@ -223,7 +221,7 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
         {
             IBuffer extentBuffer = _attribute.RawBuffer;
 
-            var justRead = await extentBuffer.ReadAsync(pos + numRead, buffer[numRead..toRead], cancellationToken).ConfigureAwait(false);
+            var justRead = await extentBuffer.ReadAsync(pos + numRead, buffer.Slice(numRead, toRead - numRead), cancellationToken).ConfigureAwait(false);
             if (justRead == 0)
             {
                 break;
@@ -234,6 +232,7 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
 
         return totalToRead;
     }
+
 
     public override int Read(long pos, Span<byte> buffer)
     {
@@ -259,7 +258,7 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
             if (pos >= record.InitializedDataLength)
             {
                 // We're just reading zero bytes from the uninitialized area
-                buffer[..totalToRead].Clear();
+                buffer.Slice(0, totalToRead).Clear();
                 return totalToRead;
             }
 
@@ -274,7 +273,7 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
         {
             IBuffer extentBuffer = _attribute.RawBuffer;
 
-            var justRead = extentBuffer.Read(pos + numRead, buffer[numRead..toRead]);
+            var justRead = extentBuffer.Read(pos + numRead, buffer.Slice(numRead, toRead - numRead));
             if (justRead == 0)
             {
                 break;
@@ -285,7 +284,6 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
 
         return totalToRead;
     }
-#endif
 
     public override void SetCapacity(long value)
     {
@@ -327,8 +325,7 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-    public override async Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async ValueTask WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var record = _attribute.PrimaryRecord;
 
@@ -351,9 +348,7 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
             _file.MarkMftRecordDirty();
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         var record = _attribute.PrimaryRecord;
@@ -397,7 +392,6 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
             _file.MarkMftRecordDirty();
         }
     }
-#endif
 
     public override void Clear(long pos, int count)
     {

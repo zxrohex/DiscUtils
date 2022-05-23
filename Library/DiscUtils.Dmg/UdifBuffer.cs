@@ -114,8 +114,8 @@ internal class UdifBuffer : Buffer
         return totalCopied;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-    public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+
+    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var totalCopied = 0;
         var currentPos = pos;
@@ -155,9 +155,7 @@ internal class UdifBuffer : Buffer
 
         return totalCopied;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var totalCopied = 0;
@@ -185,11 +183,11 @@ internal class UdifBuffer : Buffer
                 case RunType.ZlibCompressed:
                 case RunType.BZlibCompressed:
                 case RunType.LzfseCompressed:
-                    _decompBuffer.AsMemory(bufferOffset, toCopy).CopyTo(buffer[totalCopied..]);
+                    _decompBuffer.AsMemory(bufferOffset, toCopy).CopyTo(buffer.Slice(totalCopied));
                     break;
 
                 default:
-                    throw new NotImplementedException("Reading from run of type " + _activeRun.Type);
+                    throw new NotImplementedException($"Reading from run of type {_activeRun.Type}");
             }
 
             currentPos += toCopy;
@@ -198,6 +196,7 @@ internal class UdifBuffer : Buffer
 
         return totalCopied;
     }
+
 
     public override int Read(long pos, Span<byte> buffer)
     {
@@ -226,7 +225,7 @@ internal class UdifBuffer : Buffer
                 case RunType.ZlibCompressed:
                 case RunType.BZlibCompressed:
                 case RunType.LzfseCompressed:
-                    _decompBuffer.AsSpan(bufferOffset, toCopy).CopyTo(buffer[totalCopied..]);
+                    _decompBuffer.AsSpan(bufferOffset, toCopy).CopyTo(buffer.Slice(totalCopied));
                     break;
 
                 default:
@@ -239,17 +238,14 @@ internal class UdifBuffer : Buffer
 
         return totalCopied;
     }
-#endif
 
     public override void Write(long pos, byte[] buffer, int offset, int count)
     {
         throw new NotSupportedException();
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
         throw new NotSupportedException();
-#endif
 
     public override void SetCapacity(long value)
     {

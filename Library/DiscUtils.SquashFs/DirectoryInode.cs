@@ -56,27 +56,27 @@ internal class DirectoryInode : Inode, IDirectoryInode
 
     public ushort Offset { get; set; }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        base.ReadFrom(buffer, offset);
+        base.ReadFrom(buffer);
 
-        StartBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-        NumLinks = EndianUtilities.ToInt32LittleEndian(buffer, offset + 20);
-        _fileSize = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 24);
-        Offset = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 26);
-        ParentInode = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 28);
+        StartBlock = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(16));
+        NumLinks = EndianUtilities.ToInt32LittleEndian(buffer.Slice(20));
+        _fileSize = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(24));
+        Offset = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(26));
+        ParentInode = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(28));
 
         return 32;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
-        base.WriteTo(buffer, offset);
+        base.WriteTo(buffer);
 
-        EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer, offset + 16);
-        EndianUtilities.WriteBytesLittleEndian(NumLinks, buffer, offset + 20);
-        EndianUtilities.WriteBytesLittleEndian(_fileSize, buffer, offset + 24);
-        EndianUtilities.WriteBytesLittleEndian(Offset, buffer, offset + 26);
-        EndianUtilities.WriteBytesLittleEndian(ParentInode, buffer, offset + 28);
+        EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer.Slice(16));
+        EndianUtilities.WriteBytesLittleEndian(NumLinks, buffer.Slice(20));
+        EndianUtilities.WriteBytesLittleEndian(_fileSize, buffer.Slice(24));
+        EndianUtilities.WriteBytesLittleEndian(Offset, buffer.Slice(26));
+        EndianUtilities.WriteBytesLittleEndian(ParentInode, buffer.Slice(28));
     }
 }

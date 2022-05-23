@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Text;
 
@@ -40,18 +42,19 @@ internal class BaseVolumeDescriptor
         VolumeDescriptorVersion = version;
     }
 
-    public BaseVolumeDescriptor(byte[] src, int offset)
+    public BaseVolumeDescriptor(ReadOnlySpan<byte> src)
     {
-        VolumeDescriptorType = (VolumeDescriptorType)src[offset + 0];
-        StandardIdentifier = Encoding.ASCII.GetString(src, offset + 1, 5);
-        VolumeDescriptorVersion = src[offset + 6];
+        VolumeDescriptorType = (VolumeDescriptorType)src[0];
+        StandardIdentifier = Encoding.ASCII.GetString(src.Slice(1, 5));
+        VolumeDescriptorVersion = src[6];
     }
 
-    internal virtual void WriteTo(byte[] buffer, int offset)
+    internal virtual void WriteTo(Span<byte> buffer)
     {
-        Array.Clear(buffer, offset, IsoUtilities.SectorSize);
-        buffer[offset] = (byte)VolumeDescriptorType;
-        IsoUtilities.WriteAChars(buffer, offset + 1, 5, StandardIdentifier);
-        buffer[offset + 6] = VolumeDescriptorVersion;
+        buffer.Slice(0, IsoUtilities.SectorSize).Clear();
+
+        buffer[0] = (byte)VolumeDescriptorType;
+        IsoUtilities.WriteAChars(buffer.Slice(1, 5), StandardIdentifier);
+        buffer[6] = VolumeDescriptorVersion;
     }
 }

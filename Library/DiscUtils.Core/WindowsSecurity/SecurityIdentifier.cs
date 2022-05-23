@@ -23,63 +23,32 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         buffer = ParseSddlForm(sddlForm);
     }
 
-    public SecurityIdentifier(byte[] binaryForm, int offset)
+    public SecurityIdentifier(ReadOnlySpan<char> sddlForm)
     {
-        if (binaryForm == null)
+        if (sddlForm.IsEmpty)
         {
-            throw new ArgumentNullException(nameof(binaryForm));
+            throw new ArgumentNullException(nameof(sddlForm));
         }
 
-        if ((offset < 0) || (offset > binaryForm.Length - 2))
-        {
-            throw new ArgumentException("offset");
-        }
+        buffer = ParseSddlForm(sddlForm);
+    }
 
-        if (!TryCreateFromBinaryForm(binaryForm, offset))
-        {
-            throw new ArgumentException("Invalid security identifier");
-        }
+    public SecurityIdentifier(byte[] binaryForm, int offset)
+        : this(binaryForm.AsSpan(offset))
+    {
     }
 
     private SecurityIdentifier() { }
 
-    public static bool TryParse(byte[] binaryForm, int offset, out SecurityIdentifier securityIdentifier)
-    {
-        securityIdentifier = null;
+    public static bool TryParse(byte[] binaryForm, int offset, out SecurityIdentifier securityIdentifier) =>
+        TryParse(binaryForm.AsSpan(offset), out securityIdentifier);
 
-        if (binaryForm == null || (offset < 0) || (offset > binaryForm.Length - 2))
-        {
-            return false;
-        }
+    bool TryCreateFromBinaryForm(byte[] binaryForm, int offset) =>
+        TryCreateFromBinaryForm(binaryForm.AsSpan(offset));
 
-        var sid = new SecurityIdentifier();
-        if (!sid.TryCreateFromBinaryForm(binaryForm, offset))
-        {
-            return false;
-        }
-
-        securityIdentifier = sid;
-        return true;
-    }
-
-    bool TryCreateFromBinaryForm(byte[] binaryForm, int offset)
-    {
-        int revision = binaryForm[offset];
-        int numSubAuthorities = binaryForm[offset + 1];
-        if (revision != 1 || numSubAuthorities > 15 || (binaryForm.Length - offset) < (8 + (numSubAuthorities * 4)))
-        {
-            return false;
-        }
-
-        buffer = new byte[8 + (numSubAuthorities * 4)];
-        Buffer.BlockCopy(binaryForm, offset, buffer, 0, buffer.Length);
-        return true;
-    }
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public SecurityIdentifier(ReadOnlySpan<byte> binaryForm)
     {
-        if (binaryForm == null)
+        if (binaryForm.IsEmpty)
         {
             throw new ArgumentNullException(nameof(binaryForm));
         }
@@ -123,11 +92,9 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
             return false;
         }
 
-        buffer = binaryForm[..(8 + numSubAuthorities * 4)].ToArray();
+        buffer = binaryForm.Slice(0, 8 + numSubAuthorities * 4).ToArray();
         return true;
     }
-
-#endif
 
     public SecurityIdentifier(WellKnownSidType sidType,
                               SecurityIdentifier domainSid)
@@ -260,20 +227,9 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         return (sid.Value == Value);
     }
 
-    public void GetBinaryForm(byte[] binaryForm, int offset)
-    {
-        if (binaryForm == null)
-        {
-            throw new ArgumentNullException(nameof(binaryForm));
-        }
+    public void GetBinaryForm(byte[] binaryForm, int offset) => GetBinaryForm(binaryForm.AsSpan(offset));
 
-        if ((offset < 0) || (offset > binaryForm.Length - buffer.Length))
-        {
-            throw new ArgumentException("offset");
-        }
-
-        Array.Copy(buffer, 0, binaryForm, offset, buffer.Length);
-    }
+    public void GetBinaryForm(Span<byte> binaryForm) => buffer.CopyTo(binaryForm);
 
     public override int GetHashCode() => Value.GetHashCode();
 
@@ -338,7 +294,7 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
             var acct = WellKnownAccount.LookupBySid(Value);
             if (acct?.Name == null)
             {
-                throw new Exception("Unable to map SID: " + Value);
+                throw new Exception($"Unable to map SID: {Value}");
             }
 
             return new NTAccount(acct.Name);
@@ -390,18 +346,17 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         return acct.SddlForm;
     }
 
-    internal static SecurityIdentifier ParseSddlForm(string sddlForm, ref int pos)
+    internal static SecurityIdentifier ParseSddlForm(ReadOnlySpan<char> sddlForm, ref int pos)
     {
         if (sddlForm.Length - pos < 2)
         {
             throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
         }
 
-        string sid;
+        ReadOnlySpan<char> sid;
         int len;
 
-        var prefix = sddlForm.Substring(pos, 2).ToUpperInvariant();
-        if (prefix == "S-")
+        if (sddlForm.Slice(pos).StartsWith("S-".AsSpan(), StringComparison.OrdinalIgnoreCase))
         {
             // Looks like a SID, try to parse it.
             var endPos = pos;
@@ -419,12 +374,12 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
                 endPos--;
             }
 
-            sid = sddlForm.Substring(pos, endPos - pos);
+            sid = sddlForm.Slice(pos, endPos - pos);
             len = endPos - pos;
         }
         else
         {
-            sid = prefix;
+            sid = sddlForm.Slice(pos, 2).ToString().ToUpperInvariant().AsSpan();
             len = 2;
         }
 
@@ -434,35 +389,37 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     }
 
     private static byte[] ParseSddlForm(string sddlForm)
+        => ParseSddlForm(sddlForm.AsSpan());
+
+    private static byte[] ParseSddlForm(ReadOnlySpan<char> sddlForm)
     {
-        var sid = sddlForm;
+        var sid = sddlForm.ToString();
 
         // If only 2 characters long, can't be a full SID string - so assume
         // it's an attempted alias.  Do that conversion first.
-        if (sddlForm.Length == 2)
+        if (sid.Length == 2)
         {
-            var acct = WellKnownAccount.LookupBySddlForm(sddlForm);
+            var acct = WellKnownAccount.LookupBySddlForm(sid);
             if (acct == null)
             {
                 throw new ArgumentException(
-                    "Invalid SDDL string - unrecognized account: " + sddlForm,
+                    $"Invalid SDDL string - unrecognized account: {sid}",
                     nameof(sddlForm));
             }
 
             if (!acct.IsAbsolute)
             {
                 throw new NotImplementedException(
-                    "Mono unable to convert account to SID: "
-                    + (acct.Name ?? sddlForm));
+                    $"Unable to convert account to SID: {acct.Name ?? sid}");
             }
 
             sid = acct.Sid;
         }
 
-        var elements = sid.ToUpperInvariant().Split('-');
+        var elements = sid.Split('-');
         var numSubAuthorities = elements.Length - 3;
 
-        if (elements.Length < 3 || elements[0] != "S" || numSubAuthorities > 15)
+        if (elements.Length < 3 || !elements[0].Equals("S", StringComparison.OrdinalIgnoreCase) || numSubAuthorities > 15)
         {
             throw new ArgumentException("Value was invalid.");
         }
@@ -511,10 +468,17 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     {
         if (s.StartsWith("0X"))
         {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            return ulong.TryParse(s.AsSpan(2),
+                NumberStyles.HexNumber,
+                CultureInfo.InvariantCulture,
+                out result);
+#else
             return ulong.TryParse(s.Substring(2),
                 NumberStyles.HexNumber,
                 CultureInfo.InvariantCulture,
                 out result);
+#endif
         }
         else
         {
@@ -528,10 +492,17 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     {
         if (s.StartsWith("0X"))
         {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            return uint.TryParse(s.AsSpan(2),
+                NumberStyles.HexNumber,
+                CultureInfo.InvariantCulture,
+                out result);
+#else
             return uint.TryParse(s.Substring(2),
                 NumberStyles.HexNumber,
                 CultureInfo.InvariantCulture,
                 out result);
+#endif
         }
         else
         {

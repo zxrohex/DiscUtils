@@ -54,16 +54,16 @@ internal class CompressionAttribute
 
     public uint UncompressedSize { get; private set; }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        _recordType = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-        _reserved1 = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-        _reserved1 = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-        AttrSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 12);
-        _compressionMagic = EndianUtilities.ToUInt32BigEndian(buffer, offset + 16);
-        CompressionType = (FileCompressionType)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
-        UncompressedSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 24);
-        _reserved3 = EndianUtilities.ToUInt32BigEndian(buffer, offset + 28);
+        _recordType = EndianUtilities.ToUInt32BigEndian(buffer);
+        _reserved1 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        _reserved1 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
+        AttrSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(12));
+        _compressionMagic = EndianUtilities.ToUInt32BigEndian(buffer.Slice(16));
+        CompressionType = (FileCompressionType)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(20));
+        UncompressedSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(24));
+        _reserved3 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(28));
 
         return Size;
     }

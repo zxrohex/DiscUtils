@@ -16,81 +16,15 @@ public sealed class RawAcl : GenericAcl
     }
 
     public RawAcl(byte[] binaryForm, int offset)
+        : this(binaryForm.AsSpan(offset))
     {
-        if (binaryForm == null)
-        {
-            throw new ArgumentNullException(nameof(binaryForm));
-        }
-
-        if (offset < 0 || offset > binaryForm.Length - 8)
-        {
-            throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset out of range");
-        }
-
-        _revision = binaryForm[offset];
-        if (_revision != AclRevision && _revision != AclRevisionDS)
-        {
-            throw new ArgumentException("Invalid ACL - unknown revision", nameof(binaryForm));
-        }
-
-        int binaryLength = ReadUShort(binaryForm, offset + 2);
-        if (offset > binaryForm.Length - binaryLength)
-        {
-            throw new ArgumentException("Invalid ACL - truncated", nameof(binaryForm));
-        }
-
-        var pos = offset + 8;
-        int numAces = ReadUShort(binaryForm, offset + 4);
-        _list = new List<GenericAce>(numAces);
-        for (var i = 0; i < numAces; ++i)
-        {
-            var newAce = GenericAce.CreateFromBinaryForm(binaryForm, pos);
-            _list.Add(newAce);
-            pos += newAce.BinaryLength;
-        }
     }
 
     private RawAcl() { }
 
-    public static bool TryParse(byte[] binaryForm, int offset, out RawAcl rawAcl)
-    {
-        rawAcl = null;
+    public static bool TryParse(byte[] binaryForm, int offset, out RawAcl rawAcl) =>
+        TryParse(binaryForm.AsSpan(offset), out rawAcl);
 
-        if (binaryForm == null || offset < 0 || offset > binaryForm.Length - 8)
-        {
-            return false;
-        }
-
-        var revision = binaryForm[offset];
-        if (revision != AclRevision && revision != AclRevisionDS)
-        {
-            return false;
-        }
-
-        int binaryLength = ReadUShort(binaryForm, offset + 2);
-        if (offset > binaryForm.Length - binaryLength)
-        {
-            return false;
-        }
-
-        var pos = offset + 8;
-        int numAces = ReadUShort(binaryForm, offset + 4);
-        var list = new List<GenericAce>(numAces);
-        for (var i = 0; i < numAces; ++i)
-        {
-            if (!GenericAce.TryCreateFromBinaryForm(binaryForm, pos, out var newAce))
-            {
-                return false;
-            }
-            list.Add(newAce);
-            pos += newAce.BinaryLength;
-        }
-
-        rawAcl = new(revision, list);
-        return true;
-    }
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public RawAcl(ReadOnlySpan<byte> binaryForm)
     {
         if (binaryForm == null)
@@ -109,18 +43,18 @@ public sealed class RawAcl : GenericAcl
             throw new ArgumentException("Invalid ACL - unknown revision", nameof(binaryForm));
         }
 
-        int binaryLength = ReadUShort(binaryForm[2..]);
+        int binaryLength = ReadUShort(binaryForm.Slice(2));
         if (binaryLength > binaryForm.Length)
         {
             throw new ArgumentException("Invalid ACL - truncated", nameof(binaryForm));
         }
 
         var pos = 8;
-        int numAces = ReadUShort(binaryForm[4..]);
+        int numAces = ReadUShort(binaryForm.Slice(4));
         _list = new List<GenericAce>(numAces);
         for (var i = 0; i < numAces; ++i)
         {
-            var newAce = GenericAce.CreateFromBinaryForm(binaryForm[pos..]);
+            var newAce = GenericAce.CreateFromBinaryForm(binaryForm.Slice(pos));
             _list.Add(newAce);
             pos += newAce.BinaryLength;
         }
@@ -141,18 +75,18 @@ public sealed class RawAcl : GenericAcl
             return false;
         }
 
-        int binaryLength = ReadUShort(binaryForm[2..]);
+        int binaryLength = ReadUShort(binaryForm.Slice(2));
         if (binaryLength > binaryForm.Length)
         {
             return false;
         }
 
         var pos = 8;
-        int numAces = ReadUShort(binaryForm[4..]);
+        int numAces = ReadUShort(binaryForm.Slice(4));
         var list = new List<GenericAce>(numAces);
         for (var i = 0; i < numAces; ++i)
         {
-            if (!GenericAce.TryCreateFromBinaryForm(binaryForm[pos..], out var newAce))
+            if (!GenericAce.TryCreateFromBinaryForm(binaryForm.Slice(pos), out var newAce))
             {
                 return false;
             }
@@ -163,7 +97,6 @@ public sealed class RawAcl : GenericAcl
         rawAcl = new(revision, list);
         return true;
     }
-#endif
 
     internal RawAcl(byte revision, List<GenericAce> aces)
     {
@@ -194,31 +127,18 @@ public sealed class RawAcl : GenericAcl
 
     public override byte Revision => _revision;
 
-    public override void GetBinaryForm(byte[] binaryForm, int offset)
+    public override void GetBinaryForm(Span<byte> binaryForm)
     {
-        if (binaryForm == null)
-        {
-            throw new ArgumentNullException(nameof(binaryForm));
-        }
+        binaryForm[0] = Revision;
+        binaryForm[1] = 0;
+        WriteUShort((ushort)BinaryLength, binaryForm.Slice(2));
+        WriteUShort((ushort)_list.Count, binaryForm.Slice(4));
+        WriteUShort(0, binaryForm.Slice(6));
 
-        if (offset < 0
-            || offset > binaryForm.Length - BinaryLength)
-        {
-            throw new ArgumentException("Offset out of range", nameof(offset));
-        }
-
-        binaryForm[offset] = Revision;
-        binaryForm[offset + 1] = 0;
-        WriteUShort((ushort)BinaryLength, binaryForm,
-            offset + 2);
-        WriteUShort((ushort)_list.Count, binaryForm,
-            offset + 4);
-        WriteUShort(0, binaryForm, offset + 6);
-
-        var pos = offset + 8;
+        var pos = 8;
         foreach (var ace in _list)
         {
-            ace.GetBinaryForm(binaryForm, pos);
+            ace.GetBinaryForm(binaryForm.Slice(pos));
             pos += ace.BinaryLength;
         }
     }
@@ -283,7 +203,7 @@ public sealed class RawAcl : GenericAcl
         return result.ToString();
     }
 
-    internal static RawAcl ParseSddlForm(string sddlForm,
+    internal static RawAcl ParseSddlForm(ReadOnlySpan<char> sddlForm,
                                          bool isDacl,
                                          ref ControlFlags sdFlags,
                                          ref int pos)
@@ -307,7 +227,7 @@ public sealed class RawAcl : GenericAcl
         return new RawAcl(revision, aces);
     }
 
-    private static void ParseFlags(string sddlForm,
+    private static void ParseFlags(ReadOnlySpan<char> sddlForm,
                                    bool isDacl,
                                    ref ControlFlags sdFlags,
                                    ref int pos)
@@ -371,23 +291,15 @@ public sealed class RawAcl : GenericAcl
         }
     }
 
-    private static void WriteUShort(ushort val, byte[] buffer, int offset)
+    private static void WriteUShort(ushort val, Span<byte> buffer)
     {
-        buffer[offset] = (byte)val;
-        buffer[offset + 1] = (byte)(val >> 8);
+        buffer[0] = (byte)val;
+        buffer[1] = (byte)(val >> 8);
     }
 
-    private static ushort ReadUShort(byte[] buffer, int offset)
-    {
-        return (ushort)((((int)buffer[offset + 0]) << 0)
-                        | (((int)buffer[offset + 1]) << 8));
-    }
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     private static ushort ReadUShort(ReadOnlySpan<byte> buffer)
     {
         return (ushort)((((int)buffer[0]) << 0)
                         | (((int)buffer[1]) << 8));
     }
-#endif
 }

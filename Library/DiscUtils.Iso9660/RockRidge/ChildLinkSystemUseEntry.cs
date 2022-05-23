@@ -20,16 +20,18 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+
 namespace DiscUtils.Iso9660;
 
 internal sealed class ChildLinkSystemUseEntry : SystemUseEntry
 {
     public uint ChildDirLocation;
 
-    public ChildLinkSystemUseEntry(string name, byte length, byte version, byte[] data, int offset)
+    public ChildLinkSystemUseEntry(string name, byte length, byte version, ReadOnlySpan<byte> data)
     {
         CheckAndSetCommonProperties(name, length, version, 12, 1);
 
-        ChildDirLocation = IsoUtilities.ToUInt32FromBoth(data, offset + 4);
+        ChildDirLocation = IsoUtilities.ToUInt32FromBoth(data.Slice(4));
     }
 }

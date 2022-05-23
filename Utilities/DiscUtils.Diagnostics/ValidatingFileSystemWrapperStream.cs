@@ -210,6 +210,27 @@ internal sealed class ValidatingFileSystemWrapperStream<Tfs, Tc> : SparseStream
         return numRead;
     }
 
+    public override int Read(Span<byte> buffer)
+    {
+        var pos = _shadowPosition;
+
+        // Avoid stomping on buffers we know nothing about by ditching the writes into gash buffer.
+        var tempBuffer = new byte[buffer.Length];
+
+        Activity<Tfs, int> fn = delegate (Tfs fs, Dictionary<string, object> context)
+        {
+            return GetNativeStream(fs, context, pos).Read(tempBuffer);
+        };
+
+        var numRead = _fileSystem.PerformActivity(fn);
+
+        tempBuffer.AsSpan(0, numRead).CopyTo(buffer);
+
+        _shadowPosition += numRead;
+
+        return numRead;
+    }
+
     public override long Seek(long offset, SeekOrigin origin)
     {
         var pos = _shadowPosition;
@@ -256,6 +277,24 @@ internal sealed class ValidatingFileSystemWrapperStream<Tfs, Tc> : SparseStream
         _shadowPosition += count;
     }
 
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        var pos = _shadowPosition;
+
+        // Take a copy of the buffer - otherwise who knows what we're messing with.
+        var tempBuffer = new byte[buffer.Length];
+        buffer.CopyTo(tempBuffer);
+
+        Activity<Tfs, object> fn = delegate (Tfs fs, Dictionary<string, object> context)
+        {
+            GetNativeStream(fs, context, pos).Write(tempBuffer);
+            return null;
+        };
+
+        _fileSystem.PerformActivity(fn);
+
+        _shadowPosition += buffer.Length;
+    }
 
     internal void SetNativeStream(Dictionary<string, object> context, Stream s)
     {

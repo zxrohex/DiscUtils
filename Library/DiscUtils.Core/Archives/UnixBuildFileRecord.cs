@@ -36,12 +36,12 @@ internal sealed class UnixBuildFileRecord
     private BuilderExtentSource _source;
 
     public UnixBuildFileRecord(string name, byte[] buffer)
-        : this(name, new BuilderBufferExtentSource(buffer), 0, 0, 0, DateTimeOffsetExtensions.UnixEpoch)
+        : this(name, new BuilderBufferExtentSource(buffer), 0, 0, 0, DateTimeOffset.FromUnixTimeMilliseconds(0).UtcDateTime)
     {
     }
 
     public UnixBuildFileRecord(string name, Stream stream)
-        : this(name, new BuilderStreamExtentSource(stream), 0, 0, 0, DateTimeOffsetExtensions.UnixEpoch)
+        : this(name, new BuilderStreamExtentSource(stream), 0, 0, 0, DateTimeOffset.FromUnixTimeMilliseconds(0).UtcDateTime)
     {
     }
 

@@ -42,18 +42,18 @@ internal class ScsiReadCommand : ScsiCommand
         get { return 10; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
-        buffer[offset + 0] = 0x28; // OpCode: READ(10)
-        buffer[offset + 1] = 0;
-        EndianUtilities.WriteBytesBigEndian(_logicalBlockAddress, buffer, offset + 2);
-        buffer[offset + 6] = 0;
-        EndianUtilities.WriteBytesBigEndian(_numBlocks, buffer, offset + 7);
-        buffer[offset + 9] = 0;
+        buffer[0] = 0x28; // OpCode: READ(10)
+        buffer[1] = 0;
+        EndianUtilities.WriteBytesBigEndian(_logicalBlockAddress, buffer.Slice(2));
+        buffer[6] = 0;
+        EndianUtilities.WriteBytesBigEndian(_numBlocks, buffer.Slice(7));
+        buffer[9] = 0;
     }
 }

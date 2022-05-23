@@ -43,25 +43,23 @@ internal struct BinHeader : IByteArraySerializable
         get { return HeaderSize; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        var sig = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+        var sig = EndianUtilities.ToUInt32LittleEndian(buffer);
         if (sig != Signature)
         {
             throw new IOException("Invalid signature for registry bin");
         }
 
-        FileOffset = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
-        BinSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x08);
-        NextOffset = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x1C);
+        FileOffset = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x04));
+        BinSize = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x08));
+        NextOffset = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x1C));
         return HeaderSize;
     }
 
-    public void WriteTo(byte[] buffer, int offset) => WriteTo(buffer.AsSpan(offset));
-
     public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(Signature, buffer.Slice(0x00));
+        EndianUtilities.WriteBytesLittleEndian(Signature, buffer);
         EndianUtilities.WriteBytesLittleEndian(FileOffset, buffer.Slice(0x04));
         EndianUtilities.WriteBytesLittleEndian(BinSize, buffer.Slice(0x08));
         EndianUtilities.WriteBytesLittleEndian(NextOffset, buffer.Slice(0x1C));

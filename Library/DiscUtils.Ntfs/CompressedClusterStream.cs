@@ -104,7 +104,6 @@ internal sealed class CompressedClusterStream : ClusterStream
         }
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override void ReadClusters(long startVcn, int count, Span<byte> buffer)
     {
         if (buffer.Length < count * _bytesPerCluster + buffer.Length)
@@ -121,12 +120,11 @@ internal sealed class CompressedClusterStream : ClusterStream
             var cacheOffset = (int)(focusVcn - _cacheBufferVcn);
             var toCopy = Math.Min(_attr.CompressionUnitSize - cacheOffset, count - totalRead);
 
-            _cacheBuffer.AsSpan(cacheOffset * _bytesPerCluster, toCopy * _bytesPerCluster).CopyTo(buffer[(totalRead * _bytesPerCluster)..]);
+            _cacheBuffer.AsSpan(cacheOffset * _bytesPerCluster, toCopy * _bytesPerCluster).CopyTo(buffer.Slice(totalRead * _bytesPerCluster));
 
             totalRead += toCopy;
         }
     }
-#endif
 
     public override int WriteClusters(long startVcn, int count, byte[] buffer, int offset)
     {
@@ -146,8 +144,8 @@ internal sealed class CompressedClusterStream : ClusterStream
             if (cuStart == focusVcn && count - totalWritten >= _attr.CompressionUnitSize)
             {
                 // Aligned write...
-                totalAllocated += CompressAndWriteClusters(focusVcn, _attr.CompressionUnitSize, buffer,
-                    offset + totalWritten * _bytesPerCluster);
+                totalAllocated += CompressAndWriteClusters(focusVcn, _attr.CompressionUnitSize,
+                    buffer.AsSpan(offset + totalWritten * _bytesPerCluster));
 
                 totalWritten += _attr.CompressionUnitSize;
             }
@@ -162,8 +160,7 @@ internal sealed class CompressedClusterStream : ClusterStream
                 Array.Copy(buffer, offset + totalWritten * _bytesPerCluster, _cacheBuffer,
                     cacheOffset * _bytesPerCluster, toCopy * _bytesPerCluster);
 
-                totalAllocated += CompressAndWriteClusters(_cacheBufferVcn, _attr.CompressionUnitSize, _cacheBuffer,
-                    0);
+                totalAllocated += CompressAndWriteClusters(_cacheBufferVcn, _attr.CompressionUnitSize, _cacheBuffer);
 
                 totalWritten += toCopy;
             }
@@ -172,7 +169,6 @@ internal sealed class CompressedClusterStream : ClusterStream
         return totalAllocated;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer)
     {
         if (buffer.Length < count * _bytesPerCluster + buffer.Length)
@@ -191,8 +187,8 @@ internal sealed class CompressedClusterStream : ClusterStream
             if (cuStart == focusVcn && count - totalWritten >= _attr.CompressionUnitSize)
             {
                 // Aligned write...
-                var bytes = buffer[(totalWritten * _bytesPerCluster)..].ToArray();
-                totalAllocated += CompressAndWriteClusters(focusVcn, _attr.CompressionUnitSize, bytes, 0);
+                var bytes = buffer.Slice(totalWritten * _bytesPerCluster);
+                totalAllocated += CompressAndWriteClusters(focusVcn, _attr.CompressionUnitSize, bytes);
 
                 totalWritten += _attr.CompressionUnitSize;
             }
@@ -206,8 +202,7 @@ internal sealed class CompressedClusterStream : ClusterStream
 
                 buffer.Slice(totalWritten * _bytesPerCluster, toCopy * _bytesPerCluster).CopyTo(_cacheBuffer.AsSpan(cacheOffset * _bytesPerCluster));
 
-                totalAllocated += CompressAndWriteClusters(_cacheBufferVcn, _attr.CompressionUnitSize, _cacheBuffer,
-                    0);
+                totalAllocated += CompressAndWriteClusters(_cacheBufferVcn, _attr.CompressionUnitSize, _cacheBuffer);
 
                 totalWritten += toCopy;
             }
@@ -215,7 +210,6 @@ internal sealed class CompressedClusterStream : ClusterStream
 
         return totalAllocated;
     }
-#endif
 
     public override int ClearClusters(long startVcn, int count)
     {
@@ -271,16 +265,15 @@ internal sealed class CompressedClusterStream : ClusterStream
         }
     }
 
-    private int CompressAndWriteClusters(long focusVcn, int count, byte[] buffer, int offset)
+    private int CompressAndWriteClusters(long focusVcn, int count, ReadOnlySpan<byte> buffer)
     {
         var compressor = _context.Options.Compressor;
         compressor.BlockSize = _bytesPerCluster;
 
         var totalAllocated = 0;
 
-        var compressedLength = _ioBuffer.Length;
-        var result = compressor.Compress(buffer, offset, _attr.CompressionUnitSize * _bytesPerCluster, _ioBuffer, 0,
-            ref compressedLength);
+        var result = compressor.Compress(buffer.Slice(_attr.CompressionUnitSize * _bytesPerCluster), _ioBuffer,
+            out var compressedLength);
         if (result == CompressionResult.AllZeros)
         {
             totalAllocated -= _rawStream.ReleaseClusters(focusVcn, count);
@@ -297,7 +290,7 @@ internal sealed class CompressedClusterStream : ClusterStream
         else
         {
             totalAllocated += _rawStream.AllocateClusters(focusVcn, _attr.CompressionUnitSize);
-            totalAllocated += _rawStream.WriteClusters(focusVcn, _attr.CompressionUnitSize, buffer, offset);
+            totalAllocated += _rawStream.WriteClusters(focusVcn, _attr.CompressionUnitSize, buffer);
         }
 
         return totalAllocated;
@@ -327,7 +320,7 @@ internal sealed class CompressedClusterStream : ClusterStream
                     (int)
                     Math.Min(_attr.Length - vcn * _bytesPerCluster, _attr.CompressionUnitSize * _bytesPerCluster);
 
-                var decomp = _context.Options.Compressor.Decompress(_ioBuffer, 0, _ioBuffer.Length, _cacheBuffer, 0);
+                var decomp = _context.Options.Compressor.Decompress(_ioBuffer, _cacheBuffer);
                 if (decomp < expected)
                 {
                     throw new IOException("Decompression returned too little data");

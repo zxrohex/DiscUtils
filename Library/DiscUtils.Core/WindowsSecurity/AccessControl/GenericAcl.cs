@@ -44,7 +44,9 @@ public abstract class GenericAcl : ICollection
         CopyTo((GenericAce[])array, index);
     }
 
-    public abstract void GetBinaryForm(byte[] binaryForm, int offset);
+    public void GetBinaryForm(byte[] binaryForm, int offset) => GetBinaryForm(binaryForm.AsSpan(offset));
+
+    public abstract void GetBinaryForm(Span<byte> binaryForm);
 
     public AceEnumerator GetEnumerator()
     {

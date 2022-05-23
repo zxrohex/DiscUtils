@@ -64,7 +64,7 @@ internal class SizedDeflateStream : DeflateStream
         return read;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
         ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
 
@@ -77,8 +77,8 @@ internal class SizedDeflateStream : DeflateStream
         return read;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(Span<byte> buffer)
     {
         var read = base.Read(buffer);
@@ -92,8 +92,8 @@ internal class SizedDeflateStream : DeflateStream
         _position += read;
         return read;
     }
-
 #endif
 
-#endif
+
+
 }

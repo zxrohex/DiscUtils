@@ -92,25 +92,25 @@ internal class ExtentData : BaseItem
         get { return Type == ExtentDataType.Inline ? InlineData.Length + 0x15 : 0x35; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Generation = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-        DecodedSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset+0x8);
-        Compression = (ExtentDataCompression)buffer[offset + 0x10];
-        Encryption = buffer[offset + 0x11] != 0;
+        Generation = EndianUtilities.ToUInt64LittleEndian(buffer);
+        DecodedSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x8));
+        Compression = (ExtentDataCompression)buffer[0x10];
+        Encryption = buffer[0x11] != 0;
         //12 	2 	UINT 	other encoding (0=none)
-        Type = (ExtentDataType)buffer[offset + 0x14];
+        Type = (ExtentDataType)buffer[0x14];
 
         if (Type == ExtentDataType.Inline)
         {
-            InlineData = EndianUtilities.ToByteArray(buffer, offset + 0x15, buffer.Length - (offset + 0x15));
+            InlineData = EndianUtilities.ToByteArray(buffer.Slice(0x15, buffer.Length - (0x15)));
         }
         else
         {
-            ExtentAddress = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x15);
-            ExtentSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x1d);
-            ExtentOffset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x25);
-            LogicalSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x2d);
+            ExtentAddress = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x15));
+            ExtentSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x1d));
+            ExtentOffset = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x25));
+            LogicalSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x2d));
         }
 
         return Size;

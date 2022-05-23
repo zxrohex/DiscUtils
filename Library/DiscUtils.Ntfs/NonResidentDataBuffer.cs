@@ -158,7 +158,6 @@ internal class NonResidentDataBuffer : Buffer, IMappedBuffer
         throw new NotSupportedException();
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(long pos, Span<byte> buffer)
     {
         if (!CanRead)
@@ -187,7 +186,7 @@ internal class NonResidentDataBuffer : Buffer, IMappedBuffer
 
                 var toRead = (int)Math.Min(remaining, _bytesPerCluster - clusterOffset);
 
-                _ioBuffer.AsSpan((int)clusterOffset, toRead).CopyTo(buffer[(int)(focusPos - pos)..]);
+                _ioBuffer.AsSpan((int)clusterOffset, toRead).CopyTo(buffer.Slice((int)(focusPos - pos)));
 
                 focusPos += toRead;
             }
@@ -195,7 +194,7 @@ internal class NonResidentDataBuffer : Buffer, IMappedBuffer
             {
                 // Aligned, full cluster reads...
                 var fullClusters = (int)(remaining / _bytesPerCluster);
-                _activeStream.ReadClusters(vcn, fullClusters, buffer[(int)(focusPos - pos)..]);
+                _activeStream.ReadClusters(vcn, fullClusters, buffer.Slice((int)(focusPos - pos)));
 
                 focusPos += fullClusters * _bytesPerCluster;
             }
@@ -206,7 +205,6 @@ internal class NonResidentDataBuffer : Buffer, IMappedBuffer
 
     public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
         throw new NotSupportedException();
-#endif
 
     public override void SetCapacity(long value)
     {

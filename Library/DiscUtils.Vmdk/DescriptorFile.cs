@@ -27,6 +27,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vmdk;
 
@@ -176,7 +177,7 @@ internal class DescriptorFile
 
     public Guid UniqueId
     {
-        get { return ParseUuid(GetDiskDatabase(DiskDbUuid)); }
+        get { return ParseUuid(GetDiskDatabase(DiskDbUuid).AsSpan()); }
         set { SetDiskDatabase(DiskDbUuid, FormatUuid(value)); }
     }
 
@@ -281,18 +282,35 @@ internal class DescriptorFile
         };
     }
 
-    private static Guid ParseUuid(string value)
+    private static Guid ParseUuid(ReadOnlySpan<char> chars)
     {
         Span<byte> data = stackalloc byte[16];
-        var bytesAsHex = value.Split(' ', '-');
-        if (bytesAsHex.Length != 16)
-        {
-            throw new ArgumentException("Invalid UUID", nameof(value));
-        }
 
         for (var i = 0; i < 16; ++i)
         {
-            data[i] = byte.Parse(bytesAsHex[i], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+            var field = chars;
+
+            var fieldEnd = field.IndexOfAny(' ', '-');
+            if (fieldEnd > 0)
+            {
+                field = chars.Slice(0, fieldEnd);
+                chars = chars.Slice(fieldEnd + 1);
+            }
+            else
+            {
+                chars = default;
+            }
+
+            if (field.IsEmpty)
+            {
+                throw new ArgumentException("Invalid UUID", nameof(chars));
+            }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            data[i] = byte.Parse(field, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+#else
+            data[i] = byte.Parse(field.ToString(), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+#endif
         }
 
         return MemoryMarshal.Read<Guid>(data);
@@ -301,25 +319,7 @@ internal class DescriptorFile
     private static string FormatUuid(Guid value)
     {
         var data = value.ToByteArray();
-        return string.Format(
-            CultureInfo.InvariantCulture,
-            "{0:x2} {1:x2} {2:x2} {3:x2} {4:x2} {5:x2} {6:x2} {7:x2}-{8:x2} {9:x2} {10:x2} {11:x2} {12:x2} {13:x2} {14:x2} {15:x2}",
-            data[0],
-            data[1],
-            data[2],
-            data[3],
-            data[4],
-            data[5],
-            data[6],
-            data[7],
-            data[8],
-            data[9],
-            data[10],
-            data[11],
-            data[12],
-            data[13],
-            data[14],
-            data[15]);
+        return $"{data[0]:x2} {data[1]:x2} {data[2]:x2} {data[3]:x2} {data[4]:x2} {data[5]:x2} {data[6]:x2} {data[7]:x2}-{data[8]:x2} {data[9]:x2} {data[10]:x2} {data[11]:x2} {data[12]:x2} {data[13]:x2} {data[14]:x2} {data[15]:x2}";
     }
 
     private string GetHeader(string key)
@@ -382,36 +382,36 @@ internal class DescriptorFile
 
         var reader = new StreamReader(source);
         
-        var line = reader.ReadLine();
+        var lineStr = reader.ReadLine();
         
-        if (line != null &&
-            !line.Equals("# Disk DescriptorFile", StringComparison.OrdinalIgnoreCase) &&
+        if (lineStr != null &&
+            !lineStr.Equals("# Disk DescriptorFile", StringComparison.OrdinalIgnoreCase) &&
             descriptor_size > MaxSize)
         {
             throw new IOException($"Too large VMDK descriptor file, {descriptor_size} bytes. Largest allowed size is {MaxSize} bytes. Please verify that you open a descriptor VMDK file and not an actual image file.");
         }
 
-        while (line != null)
+        while (lineStr != null)
         {
-            line = line.Trim('\0');
+            var line = lineStr.AsMemory().Trim('\0');
 
-            var commentPos = line.IndexOf('#');
+            var commentPos = line.Span.IndexOf('#');
             if (commentPos >= 0)
             {
-                line = line.Substring(0, commentPos);
+                line = line.Slice(0, commentPos);
             }
 
             if (line.Length > 0)
             {
-                if (line.StartsWith("RW", StringComparison.Ordinal)
-                    || line.StartsWith("RDONLY", StringComparison.Ordinal)
-                    || line.StartsWith("NOACCESS", StringComparison.Ordinal))
+                if (line.Span.StartsWith("RW".AsSpan(), StringComparison.Ordinal)
+                    || line.Span.StartsWith("RDONLY".AsSpan(), StringComparison.Ordinal)
+                    || line.Span.StartsWith("NOACCESS".AsSpan(), StringComparison.Ordinal))
                 {
                     Extents.Add(ExtentDescriptor.Parse(line));
                 }
                 else
                 {
-                    var entry = DescriptorFileEntry.Parse(line);
+                    var entry = DescriptorFileEntry.Parse(line.ToString());
                     if (entry.Key.StartsWith("ddb.", StringComparison.Ordinal))
                     {
                         _diskDataBase.Add(entry);
@@ -423,7 +423,7 @@ internal class DescriptorFile
                 }
             }
 
-            line = reader.ReadLine();
+            lineStr = reader.ReadLine();
         }
     }
 }

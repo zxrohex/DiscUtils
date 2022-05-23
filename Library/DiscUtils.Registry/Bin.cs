@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Registry;
 
@@ -51,7 +52,7 @@ internal sealed class Bin
         stream.Position = _streamPos;
         var buffer = StreamUtilities.ReadExact(stream, 0x20);
         _header = new BinHeader();
-        _header.ReadFrom(buffer, 0);
+        _header.ReadFrom(buffer);
 
         _fileStream.Position = _streamPos;
         _buffer = StreamUtilities.ReadExact(_fileStream, _header.BinSize);
@@ -79,7 +80,7 @@ internal sealed class Bin
             return null;
         }
 
-        return Cell.Parse(_hive, index, _buffer, index + 4 - _header.FileOffset);
+        return Cell.Parse(_hive, index, _buffer.AsSpan(index + 4 - _header.FileOffset));
     }
 
     public void FreeCell(int index)

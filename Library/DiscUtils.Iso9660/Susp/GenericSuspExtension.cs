@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Text;
 
 namespace DiscUtils.Iso9660;
@@ -33,8 +34,8 @@ internal sealed class GenericSuspExtension : SuspExtension
 
     public override string Identifier { get; }
 
-    public override SystemUseEntry Parse(string name, byte length, byte version, byte[] data, int offset, Encoding encoding)
+    public override SystemUseEntry Parse(string name, byte length, byte version, ReadOnlySpan<byte> data, Encoding encoding)
     {
-        return new GenericSystemUseEntry(name, length, version, data, offset);
+        return new GenericSystemUseEntry(name, length, version, data);
     }
 }

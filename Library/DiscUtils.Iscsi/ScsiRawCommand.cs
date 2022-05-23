@@ -26,21 +26,17 @@ namespace DiscUtils.Iscsi;
 
 internal class ScsiRawCommand : ScsiCommand
 {
-    private readonly byte[] _buffer;
-    private readonly int _length;
-    private readonly int _offset;
+    private readonly ReadOnlyMemory<byte> _buffer;
 
-    public ScsiRawCommand(ulong targetLun, byte[] buffer, int offset, int length)
+    public ScsiRawCommand(ulong targetLun, ReadOnlyMemory<byte> buffer)
         : base(targetLun)
     {
         _buffer = buffer;
-        _offset = offset;
-        _length = length;
     }
 
     public override int Size
     {
-        get { return _length; }
+        get { return _buffer.Length; }
     }
 
     public override TaskAttributes TaskAttributes
@@ -48,13 +44,13 @@ internal class ScsiRawCommand : ScsiCommand
         get { return TaskAttributes.Simple; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
-        Array.Copy(_buffer, _offset, buffer, offset, _length);
+        _buffer.Span.CopyTo(buffer);
     }
 }

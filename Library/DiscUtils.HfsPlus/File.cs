@@ -105,7 +105,7 @@ internal class File : IVfsFileWithStreams
                 var compressionAttributeData =
                     Context.Attributes.Find(new AttributeKey(_catalogInfo.FileId, "com.apple.decmpfs"));
                 var compressionAttribute = new CompressionAttribute();
-                compressionAttribute.ReadFrom(compressionAttributeData, 0);
+                compressionAttribute.ReadFrom(compressionAttributeData);
 
                 // There are multiple possibilities, not all of which are supported by DiscUtils.HfsPlus.
                 // See FileCompressionType for a full description of all possibilities.
@@ -144,7 +144,7 @@ internal class File : IVfsFileWithStreams
                         var compressionFork = new CompressionResourceHeader();
                         var compressionForkData = new byte[CompressionResourceHeader.Size];
                         buffer.Read(0, compressionForkData, 0, CompressionResourceHeader.Size);
-                        compressionFork.ReadFrom(compressionForkData, 0);
+                        compressionFork.ReadFrom(compressionForkData);
 
                         // The data is compressed in a number of blocks. Each block originally accounted for
                         // 0x10000 bytes (that's 64 KB) of data. The compressed size may vary.
@@ -154,7 +154,7 @@ internal class File : IVfsFileWithStreams
                         var blockHeader = new CompressionResourceBlockHead();
                         var blockHeaderData = new byte[CompressionResourceBlockHead.Size];
                         buffer.Read(compressionFork.HeaderSize, blockHeaderData, 0, CompressionResourceBlockHead.Size);
-                        blockHeader.ReadFrom(blockHeaderData, 0);
+                        blockHeader.ReadFrom(blockHeaderData);
 
                         var blockCount = blockHeader.NumBlocks;
                         var blocks = new CompressionResourceBlock[blockCount];
@@ -171,7 +171,7 @@ internal class File : IVfsFileWithStreams
                                 blockData,
                                 0,
                                 blockData.Length);
-                            blocks[i].ReadFrom(blockData, 0);
+                            blocks[i].ReadFrom(blockData);
 
                             // Create a SubBuffer which points to the data window that corresponds to the block.
                             var subBuffer = new SubBuffer(

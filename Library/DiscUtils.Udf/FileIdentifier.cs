@@ -93,21 +93,21 @@ internal class FileIdentifier : VfsDirEntry, IByteArraySerializable
         get { throw new NotImplementedException(); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer, offset);
-        FileVersionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 16);
-        FileCharacteristics = (FileCharacteristic)buffer[offset + 18];
-        NameLength = buffer[offset + 19];
-        FileLocation = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer, offset + 20);
-        ImplementationUseLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
-        ImplementationUse = EndianUtilities.ToByteArray(buffer, offset + 38, ImplementationUseLength);
-        Name = UdfUtilities.ReadDCharacters(buffer, offset + 38 + ImplementationUseLength, NameLength);
+        DescriptorTag = EndianUtilities.ToStruct<DescriptorTag>(buffer);
+        FileVersionNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(16));
+        FileCharacteristics = (FileCharacteristic)buffer[18];
+        NameLength = buffer[19];
+        FileLocation = EndianUtilities.ToStruct<LongAllocationDescriptor>(buffer.Slice(20));
+        ImplementationUseLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(36));
+        ImplementationUse = EndianUtilities.ToByteArray(buffer.Slice(38, ImplementationUseLength));
+        Name = UdfUtilities.ReadDCharacters(buffer.Slice(38 + ImplementationUseLength, NameLength));
 
         return MathUtilities.RoundUp(38 + ImplementationUseLength + NameLength, 4);
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

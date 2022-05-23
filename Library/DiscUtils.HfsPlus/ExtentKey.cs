@@ -74,16 +74,16 @@ internal sealed class ExtentKey : BTreeKey, IComparable<ExtentKey>
         return 0;
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        _keyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
-        _forkType = buffer[offset + 2];
-        NodeId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 4));
-        _startBlock = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
+        _keyLength = EndianUtilities.ToUInt16BigEndian(buffer);
+        _forkType = buffer[2];
+        NodeId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer.Slice(4)));
+        _startBlock = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
         return _keyLength + 2;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

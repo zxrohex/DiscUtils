@@ -43,29 +43,29 @@ internal class CompressedBlock : IByteArraySerializable
         get { throw new NotImplementedException(); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Signature = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-        InfoVersion = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-        FirstSector = EndianUtilities.ToInt64BigEndian(buffer, offset + 8);
-        SectorCount = EndianUtilities.ToInt64BigEndian(buffer, offset + 16);
-        DataStart = EndianUtilities.ToUInt64BigEndian(buffer, offset + 24);
-        DecompressBufferRequested = EndianUtilities.ToUInt32BigEndian(buffer, offset + 32);
-        BlocksDescriptor = EndianUtilities.ToUInt32BigEndian(buffer, offset + 36);
+        Signature = EndianUtilities.ToUInt32BigEndian(buffer);
+        InfoVersion = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        FirstSector = EndianUtilities.ToInt64BigEndian(buffer.Slice(8));
+        SectorCount = EndianUtilities.ToInt64BigEndian(buffer.Slice(16));
+        DataStart = EndianUtilities.ToUInt64BigEndian(buffer.Slice(24));
+        DecompressBufferRequested = EndianUtilities.ToUInt32BigEndian(buffer.Slice(32));
+        BlocksDescriptor = EndianUtilities.ToUInt32BigEndian(buffer.Slice(36));
 
-        CheckSum = EndianUtilities.ToStruct<UdifChecksum>(buffer, offset + 60);
+        CheckSum = EndianUtilities.ToStruct<UdifChecksum>(buffer.Slice(60));
 
         Runs = new List<CompressedRun>();
-        var numRuns = EndianUtilities.ToInt32BigEndian(buffer, offset + 200);
+        var numRuns = EndianUtilities.ToInt32BigEndian(buffer.Slice(200));
         for (var i = 0; i < numRuns; ++i)
         {
-            Runs.Add(EndianUtilities.ToStruct<CompressedRun>(buffer, offset + 204 + i * 40));
+            Runs.Add(EndianUtilities.ToStruct<CompressedRun>(buffer.Slice(204 + i * 40)));
         }
 
         return 0;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

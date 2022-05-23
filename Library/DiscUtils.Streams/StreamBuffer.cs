@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -122,7 +123,6 @@ public sealed class StreamBuffer : Buffer, IDisposable
         return _stream.Read(buffer, offset, count);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <summary>
     /// Reads from the buffer into a byte array.
     /// </summary>
@@ -131,14 +131,12 @@ public sealed class StreamBuffer : Buffer, IDisposable
     /// <param name="offset">The start offset within the destination buffer.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The actual number of bytes read.</returns>
-    public override Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         _stream.Position = pos;
-        return _stream.ReadAsync(buffer, offset, count, cancellationToken);
+        return new(_stream.ReadAsync(buffer, offset, count, cancellationToken));
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Reads from the buffer into a byte array.
     /// </summary>
@@ -166,7 +164,6 @@ public sealed class StreamBuffer : Buffer, IDisposable
         _stream.Position = pos;
         return _stream.Read(buffer);
     }
-#endif
 
     /// <summary>
     /// Writes a byte array into the buffer.
@@ -181,7 +178,6 @@ public sealed class StreamBuffer : Buffer, IDisposable
         _stream.Write(buffer, offset, count);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <summary>
     /// Writes a byte array into the buffer.
     /// </summary>
@@ -189,21 +185,17 @@ public sealed class StreamBuffer : Buffer, IDisposable
     /// <param name="buffer">The source byte array.</param>
     /// <param name="offset">The start offset within the source byte array.</param>
     /// <param name="count">The number of bytes to write.</param>
-    public override Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override ValueTask WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         _stream.Position = pos;
-        return _stream.WriteAsync(buffer, offset, count, cancellationToken);
+        return new(_stream.WriteAsync(buffer, offset, count, cancellationToken));
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Writes a byte array into the buffer.
     /// </summary>
     /// <param name="pos">The start offset within the buffer.</param>
     /// <param name="buffer">The source byte array.</param>
-    /// <param name="offset">The start offset within the source byte array.</param>
-    /// <param name="count">The number of bytes to write.</param>
     public override ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         _stream.Position = pos;
@@ -215,14 +207,11 @@ public sealed class StreamBuffer : Buffer, IDisposable
     /// </summary>
     /// <param name="pos">The start offset within the buffer.</param>
     /// <param name="buffer">The source byte array.</param>
-    /// <param name="offset">The start offset within the source byte array.</param>
-    /// <param name="count">The number of bytes to write.</param>
     public override void Write(long pos, ReadOnlySpan<byte> buffer)
     {
         _stream.Position = pos;
         _stream.Write(buffer);
     }
-#endif
 
     /// <summary>
     /// Flushes all data to the underlying storage.

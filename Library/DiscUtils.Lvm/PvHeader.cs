@@ -37,16 +37,16 @@ internal class PvHeader : IByteArraySerializable
     public int Size { get { return PhysicalVolume.SECTOR_SIZE; } }
 
     /// <inheritdoc />
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Uuid = ReadUuid(buffer, offset);
-        DeviceSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x20);
+        Uuid = ReadUuid(buffer);
+        DeviceSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x20));
         var areas = new List<DiskArea>();
-        var areaOffset = offset + 0x28;
+        var areaOffset = 0x28;
         while (true)
         {
             var area = new DiskArea();
-            areaOffset += area.ReadFrom(buffer, areaOffset);
+            areaOffset += area.ReadFrom(buffer.Slice(areaOffset));
             if (area.Offset == 0 && area.Length == 0) break;
             areas.Add(area);
         }
@@ -55,7 +55,7 @@ internal class PvHeader : IByteArraySerializable
         while (true)
         {
             var area = new DiskArea();
-            areaOffset += area.ReadFrom(buffer, areaOffset);
+            areaOffset += area.ReadFrom(buffer.Slice(areaOffset));
             if (area.Offset == 0 && area.Length == 0) break;
             areas.Add(area);
         }
@@ -64,21 +64,22 @@ internal class PvHeader : IByteArraySerializable
     }
 
     /// <inheritdoc />
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    private static string ReadUuid(byte[] buffer, int offset)
+    private static string ReadUuid(ReadOnlySpan<byte> buffer)
     {
-        var sb = new StringBuilder();
-        sb.Append(EndianUtilities.BytesToString(buffer, offset, 0x6)).Append('-');
-        sb.Append(EndianUtilities.BytesToString(buffer, offset + 0x6, 0x4)).Append('-');
-        sb.Append(EndianUtilities.BytesToString(buffer, offset + 0xA, 0x4)).Append('-');
-        sb.Append(EndianUtilities.BytesToString(buffer, offset + 0xE, 0x4)).Append('-');
-        sb.Append(EndianUtilities.BytesToString(buffer, offset + 0x12, 0x4)).Append('-');
-        sb.Append(EndianUtilities.BytesToString(buffer, offset + 0x16, 0x4)).Append('-');
-        sb.Append(EndianUtilities.BytesToString(buffer, offset + 0x1A, 0x6));
+        var sb = new StringBuilder()
+        .Append(EndianUtilities.BytesToString(buffer.Slice(0, 0x6))).Append('-')
+        .Append(EndianUtilities.BytesToString(buffer.Slice(0x6, 0x4))).Append('-')
+        .Append(EndianUtilities.BytesToString(buffer.Slice(0xA, 0x4))).Append('-')
+        .Append(EndianUtilities.BytesToString(buffer.Slice(0xE, 0x4))).Append('-')
+        .Append(EndianUtilities.BytesToString(buffer.Slice(0x12, 0x4))).Append('-')
+        .Append(EndianUtilities.BytesToString(buffer.Slice(0x16, 0x4))).Append('-')
+        .Append(EndianUtilities.BytesToString(buffer.Slice(0x1A, 0x6)));
+        
         return sb.ToString();
     }
 }

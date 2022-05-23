@@ -37,17 +37,17 @@ internal class FileInfo : IByteArraySerializable
         get { return 16; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        FileType = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-        FileCreator = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-        FinderFlags = (FinderFlags)EndianUtilities.ToUInt16BigEndian(buffer, offset + 8);
-        Point = EndianUtilities.ToStruct<Point>(buffer, offset + 10);
+        FileType = EndianUtilities.ToUInt32BigEndian(buffer);
+        FileCreator = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        FinderFlags = (FinderFlags)EndianUtilities.ToUInt16BigEndian(buffer.Slice(8));
+        Point = EndianUtilities.ToStruct<Point>(buffer.Slice(10));
 
         return 16;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

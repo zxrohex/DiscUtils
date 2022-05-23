@@ -35,15 +35,15 @@ internal sealed class ExtentDescriptor : IByteArraySerializable
         get { return 8; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        StartBlock = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-        BlockCount = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
+        StartBlock = EndianUtilities.ToUInt32BigEndian(buffer);
+        BlockCount = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
 
         return 8;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

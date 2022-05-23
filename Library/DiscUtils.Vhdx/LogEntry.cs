@@ -28,6 +28,7 @@ using System.IO;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vhdx;
 
@@ -204,9 +205,9 @@ internal sealed class LogEntry
             get { return 32; }
         }
 
-        public abstract int ReadFrom(byte[] buffer, int offset);
+        public abstract int ReadFrom(ReadOnlySpan<byte> buffer);
 
-        public abstract void WriteTo(byte[] buffer, int offset);
+        public abstract void WriteTo(Span<byte> buffer);
 
         public abstract bool IsValid(ulong sequenceNumber);
 
@@ -222,16 +223,16 @@ internal sealed class LogEntry
             get { return ZeroLength; }
         }
 
-        public override int ReadFrom(byte[] buffer, int offset)
+        public override int ReadFrom(ReadOnlySpan<byte> buffer)
         {
-            ZeroLength = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 8);
-            FileOffset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 16);
-            SequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 24);
+            ZeroLength = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(8));
+            FileOffset = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(16));
+            SequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(24));
 
             return 32;
         }
 
-        public override void WriteTo(byte[] buffer, int offset)
+        public override void WriteTo(Span<byte> buffer)
         {
             throw new NotImplementedException();
         }
@@ -284,19 +285,19 @@ internal sealed class LogEntry
             get { return LogSectorSize; }
         }
 
-        public override int ReadFrom(byte[] buffer, int offset)
+        public override int ReadFrom(ReadOnlySpan<byte> buffer)
         {
-            TrailingBytes = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-            LeadingBytes = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 8);
-            FileOffset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 16);
-            SequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 24);
+            TrailingBytes = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(4));
+            LeadingBytes = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(8));
+            FileOffset = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(16));
+            SequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(24));
 
             DataSignature = EndianUtilities.ToUInt32LittleEndian(_data, _offset);
 
             return 32;
         }
 
-        public override void WriteTo(byte[] buffer, int offset)
+        public override void WriteTo(Span<byte> buffer)
         {
             throw new NotImplementedException();
         }

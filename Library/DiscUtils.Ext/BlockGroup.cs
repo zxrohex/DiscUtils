@@ -43,16 +43,16 @@ internal class BlockGroup64 : BlockGroup
 
     public override int Size { get { return this._descriptorSize; } }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        base.ReadFrom(buffer, offset);
+        base.ReadFrom(buffer);
 
-        BlockBitmapBlockHigh = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x20);
-        InodeBitmapBlockHigh = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x24);
-        InodeTableBlockHigh = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x28);
-        FreeBlocksCountHigh = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x2C);
-        FreeInodesCountHigh = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x2E);
-        UsedDirsCountHigh = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x30);
+        BlockBitmapBlockHigh = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x20));
+        InodeBitmapBlockHigh = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x24));
+        InodeTableBlockHigh = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x28));
+        FreeBlocksCountHigh = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x2C));
+        FreeInodesCountHigh = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x2E));
+        UsedDirsCountHigh = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x30));
 
         return this._descriptorSize;
     }
@@ -74,19 +74,19 @@ internal class BlockGroup : IByteArraySerializable
         get { return DescriptorSize; }
     }
 
-    public virtual int ReadFrom(byte[] buffer, int offset)
+    public virtual int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        BlockBitmapBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-        InodeBitmapBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-        InodeTableBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
-        FreeBlocksCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 12);
-        FreeInodesCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 14);
-        UsedDirsCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 16);
+        BlockBitmapBlock = EndianUtilities.ToUInt32LittleEndian(buffer);
+        InodeBitmapBlock = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(4));
+        InodeTableBlock = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(8));
+        FreeBlocksCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(12));
+        FreeInodesCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(14));
+        UsedDirsCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(16));
 
         return DescriptorSize;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

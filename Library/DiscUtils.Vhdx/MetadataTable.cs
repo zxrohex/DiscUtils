@@ -80,9 +80,9 @@ internal sealed class MetadataTable : IByteArraySerializable
         get { return FixedSize; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Array.Copy(buffer, offset, _headerData, 0, 32);
+        buffer.Slice(0, 32).CopyTo(_headerData);
 
         Signature = EndianUtilities.ToUInt64LittleEndian(_headerData, 0);
         EntryCount = EndianUtilities.ToUInt16LittleEndian(_headerData, 10);
@@ -92,7 +92,7 @@ internal sealed class MetadataTable : IByteArraySerializable
         {
             for (var i = 0; i < EntryCount; ++i)
             {
-                var entry = EndianUtilities.ToStruct<MetadataEntry>(buffer, offset + 32 + i * 32);
+                var entry = EndianUtilities.ToStruct<MetadataEntry>(buffer.Slice(32 + i * 32));
                 Entries[MetadataEntryKey.FromEntry(entry)] = entry;
             }
         }
@@ -100,18 +100,18 @@ internal sealed class MetadataTable : IByteArraySerializable
         return FixedSize;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         EntryCount = (ushort)Entries.Count;
         EndianUtilities.WriteBytesLittleEndian(Signature, _headerData, 0);
         EndianUtilities.WriteBytesLittleEndian(EntryCount, _headerData, 10);
 
-        Array.Copy(_headerData, 0, buffer, offset, 32);
+        _headerData.AsSpan(0, 32).CopyTo(buffer);
 
-        var bufferOffset = 32 + offset;
+        var bufferOffset = 32;
         foreach (var entry in Entries)
         {
-            entry.Value.WriteTo(buffer, bufferOffset);
+            entry.Value.WriteTo(buffer.Slice(bufferOffset));
             bufferOffset += 32;
         }
     }

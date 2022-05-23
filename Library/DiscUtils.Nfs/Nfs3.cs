@@ -20,7 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Nfs;
 
@@ -133,6 +136,24 @@ internal sealed class Nfs3 : RpcProgram
         writer.Write(count);
         writer.Write((int)Nfs3StableHow.Unstable);
         writer.WriteBuffer(buffer, bufferOffset, count);
+
+        var reply = DoSend(ms);
+        if (reply.Header.IsSuccess)
+        {
+            return new Nfs3WriteResult(reply.BodyReader);
+        }
+        throw new RpcException(reply.Header.ReplyHeader);
+    }
+
+    public Nfs3WriteResult Write(Nfs3FileHandle handle, long position, ReadOnlySpan<byte> buffer)
+    {
+        var ms = new MemoryStream();
+        var writer = StartCallMessage(ms, _client.Credentials, NfsProc3.Write);
+        handle.Write(writer);
+        writer.Write(position);
+        writer.Write(buffer.Length);
+        writer.Write((int)Nfs3StableHow.Unstable);
+        writer.WriteBuffer(buffer);
 
         var reply = DoSend(ms);
         if (reply.Header.IsSuccess)

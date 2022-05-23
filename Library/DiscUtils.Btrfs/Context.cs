@@ -28,6 +28,7 @@ using DiscUtils.Btrfs.Base.Items;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.Btrfs;
@@ -102,9 +103,9 @@ internal class Context : VfsContext
         RawStream.Seek((long)physical, SeekOrigin.Begin);
         var dataSize = level > 0 ? SuperBlock.NodeSize : SuperBlock.LeafSize;
         Span<byte> buffer = stackalloc byte[checked((int)dataSize)];
-        RawStream.Read(buffer);
+        buffer = buffer.Slice(0, RawStream.Read(buffer));
         var result = NodeHeader.Create(buffer);
-        VerifyChecksum(result.Checksum, buffer.Slice(0x20, (int)dataSize-0x20));
+        VerifyChecksum(result.Checksum, buffer.Slice(0x20, (int)dataSize - 0x20));
         return result;
     }
 

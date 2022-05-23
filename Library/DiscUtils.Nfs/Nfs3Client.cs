@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Nfs;
 
@@ -157,6 +159,19 @@ internal sealed class Nfs3Client : IDisposable
     public int Write(Nfs3FileHandle fileHandle, long position, byte[] buffer, int offset, int count)
     {
         var result = _nfsClient.Write(fileHandle, position, buffer, offset, count);
+
+        _cachedAttributes[fileHandle] = result.CacheConsistency.After;
+
+        if (result.Status == Nfs3Status.Ok)
+        {
+            return result.Count;
+        }
+        throw new Nfs3Exception(result.Status);
+    }
+
+    public int Write(Nfs3FileHandle fileHandle, long position, ReadOnlySpan<byte> buffer)
+    {
+        var result = _nfsClient.Write(fileHandle, position, buffer);
 
         _cachedAttributes[fileHandle] = result.CacheConsistency.After;
 

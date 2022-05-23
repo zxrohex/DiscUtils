@@ -20,8 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Text;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Btrfs.Base.Items;
 
@@ -52,11 +55,11 @@ internal class InodeRef : BaseItem
         get { return 0xa+NameLength; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Index = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-        NameLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x8);
-        Name = Encoding.UTF8.GetString(buffer, offset + 0xa, NameLength);
+        Index = EndianUtilities.ToUInt64LittleEndian(buffer);
+        NameLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x8));
+        Name = Encoding.UTF8.GetString(buffer.Slice(0xa, NameLength));
         return Size;
     }
 }

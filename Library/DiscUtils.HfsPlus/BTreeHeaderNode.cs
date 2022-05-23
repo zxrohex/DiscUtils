@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
@@ -35,24 +36,24 @@ internal class BTreeHeaderNode : BTreeNode
         get { return Records[0] as BTreeHeaderRecord; }
     }
 
-    protected override IList<BTreeNodeRecord> ReadRecords(byte[] buffer, int offset)
+    protected override IList<BTreeNodeRecord> ReadRecords(ReadOnlySpan<byte> buffer)
     {
         int totalRecords = Descriptor.NumRecords;
         var nodeSize = Tree.NodeSize;
 
-        int headerRecordOffset = EndianUtilities.ToUInt16BigEndian(buffer, nodeSize - 2);
-        int userDataRecordOffset = EndianUtilities.ToUInt16BigEndian(buffer, nodeSize - 4);
-        int mapRecordOffset = EndianUtilities.ToUInt16BigEndian(buffer, nodeSize - 6);
+        int headerRecordOffset = EndianUtilities.ToUInt16BigEndian(buffer.Slice(nodeSize - 2));
+        int userDataRecordOffset = EndianUtilities.ToUInt16BigEndian(buffer.Slice(nodeSize - 4));
+        int mapRecordOffset = EndianUtilities.ToUInt16BigEndian(buffer.Slice(nodeSize - 6));
 
         var results = new BTreeNodeRecord[3];
         results[0] = new BTreeHeaderRecord();
-        results[0].ReadFrom(buffer, offset + headerRecordOffset);
+        results[0].ReadFrom(buffer.Slice(headerRecordOffset));
 
         results[1] = new BTreeGenericRecord(mapRecordOffset - userDataRecordOffset);
-        results[1].ReadFrom(buffer, offset + userDataRecordOffset);
+        results[1].ReadFrom(buffer.Slice(userDataRecordOffset));
 
         results[2] = new BTreeGenericRecord(nodeSize - (totalRecords * 2 + mapRecordOffset));
-        results[2].ReadFrom(buffer, offset + mapRecordOffset);
+        results[2].ReadFrom(buffer.Slice(mapRecordOffset));
 
         return results;
     }

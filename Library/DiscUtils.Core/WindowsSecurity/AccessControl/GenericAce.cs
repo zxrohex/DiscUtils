@@ -82,23 +82,6 @@ public abstract class GenericAce
         AceFlags = flags;
     }
 
-    internal GenericAce(byte[] binaryForm, int offset)
-    {
-        if (binaryForm == null)
-        {
-            throw new ArgumentNullException(nameof(binaryForm));
-        }
-
-        if (offset < 0 || offset > binaryForm.Length - 2)
-        {
-            throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset out of range");
-        }
-
-        AceType = (AceType)binaryForm[offset];
-        AceFlags = (AceFlags)binaryForm[offset + 1];
-    }
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     internal GenericAce(ReadOnlySpan<byte> binaryForm)
     {
         if (binaryForm.IsEmpty)
@@ -114,7 +97,6 @@ public abstract class GenericAce
         AceType = (AceType)binaryForm[0];
         AceFlags = (AceFlags)binaryForm[1];
     }
-#endif
 
     public GenericAce Copy()
     {
@@ -123,59 +105,12 @@ public abstract class GenericAce
         return CreateFromBinaryForm(buffer, 0);
     }
 
-    public static GenericAce CreateFromBinaryForm(byte[] binaryForm, int offset)
-    {
-        if (binaryForm == null)
-        {
-            throw new ArgumentNullException(nameof(binaryForm));
-        }
+    public static GenericAce CreateFromBinaryForm(byte[] binaryForm, int offset) =>
+        CreateFromBinaryForm(binaryForm.AsSpan(offset));
 
-        if (offset < 0 || offset > binaryForm.Length - 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset out of range");
-        }
+    public static bool TryCreateFromBinaryForm(byte[] binaryForm, int offset, out GenericAce genericAce) =>
+        TryCreateFromBinaryForm(binaryForm.AsSpan(offset), out genericAce);
 
-        var type = (AceType)binaryForm[offset];
-        if (IsObjectType(type))
-        {
-            return new ObjectAce(binaryForm, offset);
-        }
-        else
-        {
-            return new CommonAce(binaryForm, offset);
-        }
-    }
-
-    public static bool TryCreateFromBinaryForm(byte[] binaryForm, int offset, out GenericAce genericAce)
-    {
-        genericAce = null;
-
-        if (binaryForm == null || offset < 0 || offset > binaryForm.Length - 1)
-        {
-            return false;
-        }
-
-        try
-        {
-            var type = (AceType)binaryForm[offset];
-            if (IsObjectType(type))
-            {
-                genericAce = new ObjectAce(binaryForm, offset);
-            }
-            else
-            {
-                genericAce = new CommonAce(binaryForm, offset);
-            }
-
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public static GenericAce CreateFromBinaryForm(ReadOnlySpan<byte> binaryForm)
     {
         if (binaryForm == null)
@@ -228,11 +163,11 @@ public abstract class GenericAce
         }
     }
 
-#endif
-
     public sealed override bool Equals(object o) => this == (o as GenericAce);
 
-    public abstract void GetBinaryForm(byte[] binaryForm, int offset);
+    public void GetBinaryForm(byte[] binaryForm, int offset) => GetBinaryForm(binaryForm.AsSpan(offset));
+
+    public abstract void GetBinaryForm(Span<byte> binaryForm);
 
     public sealed override int GetHashCode()
     {
@@ -321,22 +256,23 @@ public abstract class GenericAce
 
     internal abstract string GetSddlForm();
 
-    internal static GenericAce CreateFromSddlForm(string sddlForm, ref int pos)
+    internal static GenericAce CreateFromSddlForm(ReadOnlySpan<char> sddlForm, ref int pos)
     {
         if (sddlForm[pos] != '(')
         {
             throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
         }
 
-        var endPos = sddlForm.IndexOf(')', pos);
+        sddlForm = sddlForm.Slice(pos + 1);
+
+        var endPos = sddlForm.IndexOf(')');
         if (endPos < 0)
         {
             throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
         }
 
-        var count = endPos - (pos + 1);
-        var elementsStr = sddlForm.Substring(pos + 1,
-            count);
+        var count = endPos;
+        var elementsStr = sddlForm.Slice(0, count).ToString();
         elementsStr = elementsStr.ToUpperInvariant();
         var elements = elementsStr.Split(';');
         if (elements.Length != 6)
@@ -375,7 +311,7 @@ public abstract class GenericAce
             throw new NotImplementedException("Conditional ACEs not supported");
         }
 
-        pos = endPos + 1;
+        pos += endPos + 2;
 
         if (IsObjectType(type))
         {
@@ -515,9 +451,15 @@ public abstract class GenericAce
     {
         if (accessMask.StartsWith("0X"))
         {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            return int.Parse(accessMask.AsSpan(2),
+                NumberStyles.HexNumber,
+                CultureInfo.InvariantCulture);
+#else
             return int.Parse(accessMask.Substring(2),
                 NumberStyles.HexNumber,
                 CultureInfo.InvariantCulture);
+#endif
         }
         else if (char.IsDigit(accessMask, 0))
         {
@@ -538,7 +480,7 @@ public abstract class GenericAce
         var pos = 0;
         while (pos < accessMask.Length - 1)
         {
-            var flag = accessMask.Substring(pos, 2);
+            var flag = accessMask.AsSpan(pos, 2);
             var right = SddlAccessRight.LookupByName(flag);
             if (right == null)
             {
@@ -571,7 +513,6 @@ public abstract class GenericAce
                | (((int)buffer[offset + 3]) << 24);
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     internal static ushort ReadUShort(ReadOnlySpan<byte> buffer)
     {
         return (ushort)((((int)buffer[0]) << 0)
@@ -585,7 +526,6 @@ public abstract class GenericAce
                | (((int)buffer[2]) << 16)
                | (((int)buffer[3]) << 24);
     }
-#endif
 
     internal static void WriteInt(int val, byte[] buffer, int offset)
     {
@@ -595,10 +535,24 @@ public abstract class GenericAce
         buffer[offset + 3] = (byte)(val >> 24);
     }
 
+    internal static void WriteInt(int val, Span<byte> buffer)
+    {
+        buffer[0] = (byte)val;
+        buffer[1] = (byte)(val >> 8);
+        buffer[2] = (byte)(val >> 16);
+        buffer[3] = (byte)(val >> 24);
+    }
+
     internal static void WriteUShort(ushort val, byte[] buffer,
                                      int offset)
     {
         buffer[offset] = (byte)val;
         buffer[offset + 1] = (byte)(val >> 8);
+    }
+
+    internal static void WriteUShort(ushort val, Span<byte> buffer)
+    {
+        buffer[0] = (byte)val;
+        buffer[1] = (byte)(val >> 8);
     }
 }

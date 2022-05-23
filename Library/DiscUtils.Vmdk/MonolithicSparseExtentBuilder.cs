@@ -273,7 +273,6 @@ internal sealed class MonolithicSparseExtentBuilder : StreamBuilder
             return _content.Read(block, offset, toRead);
         }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
         public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
         {
             long start = diskOffset - Start;
@@ -296,9 +295,7 @@ internal sealed class MonolithicSparseExtentBuilder : StreamBuilder
             _content.Position = readStart;
             return _content.ReadAsync(block, offset, toRead, cancellationToken);
         }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
         {
             long start = diskOffset - Start;
@@ -315,11 +312,11 @@ internal sealed class MonolithicSparseExtentBuilder : StreamBuilder
 
             if (readStart > _content.Length)
             {
-                block.Span[..toRead].Clear();
+                block.Span.Slice(0, toRead).Clear();
                 return new(toRead);
             }
             _content.Position = readStart;
-            return _content.ReadAsync(block[..toRead], cancellationToken);
+            return _content.ReadAsync(block.Slice(0, toRead), cancellationToken);
         }
 
         public override int Read(long diskOffset, Span<byte> block)
@@ -338,13 +335,12 @@ internal sealed class MonolithicSparseExtentBuilder : StreamBuilder
 
             if (readStart > _content.Length)
             {
-                block[..toRead].Clear();
+                block.Slice(0, toRead).Clear();
                 return toRead;
             }
             _content.Position = readStart;
-            return _content.Read(block[..toRead]);
+            return _content.Read(block.Slice(0, toRead));
         }
-#endif
 
         public override void DisposeReadState()
         {

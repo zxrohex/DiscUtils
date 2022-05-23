@@ -36,18 +36,17 @@ internal class ExtendedAttributeRecord : IByteArraySerializable
         get { return 12 + AttributeData.Length; }
     }
 
-    public virtual int ReadFrom(byte[] buffer, int offset)
+    public virtual int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        AttributeType = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-        AttributeSubType = buffer[offset + 4];
-        var dataLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8) - 12;
-        AttributeData = new byte[dataLength];
-        Array.Copy(buffer, offset + 12, AttributeData, 0, dataLength);
+        AttributeType = EndianUtilities.ToUInt32LittleEndian(buffer);
+        AttributeSubType = buffer[4];
+        var dataLength = EndianUtilities.ToInt32LittleEndian(buffer.Slice(8));
+        AttributeData = buffer.Slice(12, dataLength - 12).ToArray();
 
-        return 12 + dataLength;
+        return dataLength;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

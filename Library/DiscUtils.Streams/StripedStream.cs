@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -142,7 +143,7 @@ public class StripedStream : SparseStream
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (!CanRead)
@@ -172,9 +173,9 @@ public class StripedStream : SparseStream
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (!CanRead)
@@ -234,7 +235,7 @@ public class StripedStream : SparseStream
 
         return totalRead;
     }
-#endif
+
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -295,7 +296,7 @@ public class StripedStream : SparseStream
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (!CanWrite)
@@ -326,9 +327,9 @@ public class StripedStream : SparseStream
             totalWritten += stripeToWrite;
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         if (!CanWrite)
@@ -390,12 +391,12 @@ public class StripedStream : SparseStream
             totalWritten += stripeToWrite;
         }
     }
-#endif
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
+
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         Task.WhenAll(_wrapped.Select(stream => stream.FlushAsync(cancellationToken)));
-#endif
+
 
     protected override void Dispose(bool disposing)
     {

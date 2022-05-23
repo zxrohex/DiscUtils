@@ -357,7 +357,7 @@ public class FileChecker
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
         var sector = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
 
-        _footer = Footer.FromBytes(sector, 0);
+        _footer = Footer.FromBytes(sector);
         if (!_footer.IsValid())
         {
             ReportError("Invalid VHD footer at end of file");
@@ -369,7 +369,7 @@ public class FileChecker
         _fileStream.Position = 0;
         var headerSector = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
 
-        var header = Footer.FromBytes(headerSector, 0);
+        var header = Footer.FromBytes(headerSector);
         if (!header.IsValid())
         {
             ReportError("Invalid VHD footer at start of file");

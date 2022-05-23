@@ -53,11 +53,16 @@ internal sealed class FileName : IEquatable<FileName>
         var offset = 0;
 
         // LFN
+        // ToDo: This code is not endian-safe. Long file names will be messed
+        // up when this code runs on big endian machines.
         if ((data[0] & 0xc0) == 0x40 && data[11] == 0x0f)
         {
             var lfn_entries = data[0] & 0x3f;
 
             Span<char> lfn_chars = stackalloc char[13 * lfn_entries];
+            
+            lfn_chars.Clear();
+
             var lfn_bytes = MemoryMarshal.AsBytes(lfn_chars);
 
             for (var i = lfn_entries;

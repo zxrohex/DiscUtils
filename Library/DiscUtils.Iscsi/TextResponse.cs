@@ -21,38 +21,36 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Iscsi;
 
 internal class TextResponse : BaseResponse
 {
-    private ulong _lun;
-    private uint _targetTransferTag = 0xFFFFFFFF;
     public bool Continue;
     public byte[] TextData;
 
     public override void Parse(ProtocolDataUnit pdu)
     {
-        Parse(pdu.HeaderData, 0, pdu.ContentData);
+        Parse(pdu.HeaderData, pdu.ContentData);
     }
 
-    public void Parse(byte[] headerData, int headerOffset, byte[] bodyData)
+    public void Parse(ReadOnlySpan<byte> headerData, byte[] bodyData)
     {
         var _headerSegment = new BasicHeaderSegment();
-        _headerSegment.ReadFrom(headerData, headerOffset);
+        _headerSegment.ReadFrom(headerData);
 
         if (_headerSegment.OpCode != OpCode.TextResponse)
         {
-            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.TextResponse +
-                                               " was " + _headerSegment.OpCode);
+            throw new InvalidProtocolException($"Invalid opcode in response, expected {OpCode.TextResponse} was {_headerSegment.OpCode}");
         }
 
-        Continue = (headerData[headerOffset + 1] & 0x40) != 0;
-        _lun = EndianUtilities.ToUInt64BigEndian(headerData, headerOffset + 8);
-        _targetTransferTag = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 20);
-        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
+        Continue = (headerData[1] & 0x40) != 0;
+        //_lun = EndianUtilities.ToUInt64BigEndian(headerData.Slice(8));
+        //_targetTransferTag = EndianUtilities.ToUInt32BigEndian(headerData.Slice(20));
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(24));
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(28));
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(32));
 
         TextData = bodyData;
     }

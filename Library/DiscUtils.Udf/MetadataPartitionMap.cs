@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Udf;
 
@@ -40,16 +41,16 @@ internal sealed class MetadataPartitionMap : PartitionMap
         get { return 64; }
     }
 
-    protected override int Parse(byte[] buffer, int offset)
+    protected override int Parse(ReadOnlySpan<byte> buffer)
     {
-        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
-        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 38);
-        MetadataFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40);
-        MetadataMirrorFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
-        MetadataBitmapFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 48);
-        AllocationUnitSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 52);
-        AlignmentUnitSize = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 56);
-        Flags = buffer[offset + 58];
+        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(36));
+        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(38));
+        MetadataFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(40));
+        MetadataMirrorFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(44));
+        MetadataBitmapFileLocation = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(48));
+        AllocationUnitSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(52));
+        AlignmentUnitSize = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(56));
+        Flags = buffer[58];
 
         return 64;
     }

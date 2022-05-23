@@ -34,17 +34,14 @@ internal static class Plist
     internal static Dictionary<string, object> Parse(Stream stream)
     {
         var xmlDoc = new XmlDocument();
-#if !NETSTANDARD1_5
         xmlDoc.XmlResolver = null;
-#endif
 
         var settings = new XmlReaderSettings();
-#if !NET20 && !NET35
+
         // DTD processing is disabled on anything but .NET 2.0, so this must be set to
         // Ignore.
         // See https://msdn.microsoft.com/en-us/magazine/ee335713.aspx for additional information.
         settings.DtdProcessing = DtdProcessing.Ignore;
-#endif
 
         using (var reader = XmlReader.Create(stream, settings))
         {
@@ -63,17 +60,13 @@ internal static class Plist
     internal static void Write(Stream stream, Dictionary<string, object> plist)
     {
         var xmlDoc = new XmlDocument();
-#if !NETSTANDARD1_5
         xmlDoc.XmlResolver = null;
-#endif
 
         var xmlDecl = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", null);
         xmlDoc.AppendChild(xmlDecl);
 
-#if !NETSTANDARD1_5
         var xmlDocType = xmlDoc.CreateDocumentType("plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd", null);
         xmlDoc.AppendChild(xmlDocType);
-#endif
 
         var rootElement = xmlDoc.CreateElement("plist");
         rootElement.SetAttribute("Version", "1.0");

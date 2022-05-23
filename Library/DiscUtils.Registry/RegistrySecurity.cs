@@ -10,7 +10,7 @@ public class RegistrySecurity : RawSecurityDescriptor
     {
     }
 
-    public RegistrySecurity(byte[] binaryForm, int offset) : base(binaryForm, offset)
+    public RegistrySecurity(ReadOnlySpan<byte> binaryForm) : base(binaryForm)
     {
     }
 

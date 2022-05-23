@@ -117,18 +117,17 @@ internal sealed class Connection : IDisposable
     /// </summary>
     /// <param name="cmd">The command to send.</param>
     /// <param name="outBuffer">The data to send with the command.</param>
-    /// <param name="outBufferOffset">The offset of the first byte to send.</param>
-    /// <param name="outBufferCount">The number of bytes to send, if any.</param>
     /// <param name="inBuffer">The buffer to fill with returned data.</param>
-    /// <param name="inBufferOffset">The first byte to fill with returned data.</param>
-    /// <param name="inBufferMax">The maximum amount of data to receive.</param>
     /// <returns>The number of bytes received.</returns>
-    public int Send(ScsiCommand cmd, byte[] outBuffer, int outBufferOffset, int outBufferCount, byte[] inBuffer, int inBufferOffset, int inBufferMax)
+    public int Send(ScsiCommand cmd, ReadOnlySpan<byte> outBuffer, Span<byte> inBuffer)
     {
         var req = new CommandRequest(this, cmd.TargetLun);
 
+        var outBufferCount = outBuffer.Length;
+        var inBufferMax = inBuffer.Length;
+
         var toSend = Math.Min(Math.Min(outBufferCount, Session.ImmediateData ? Session.FirstBurstLength : 0), MaxTargetReceiveDataSegmentLength);
-        var packet = req.GetBytes(cmd, outBuffer, outBufferOffset, toSend, true, inBufferMax != 0, outBufferCount != 0, (uint)(outBufferCount != 0 ? outBufferCount : inBufferMax));
+        var packet = req.GetBytes(cmd, outBuffer.Slice(0, toSend), true, inBufferMax != 0, outBufferCount != 0, (uint)(outBufferCount != 0 ? outBufferCount : inBufferMax));
         _stream.Write(packet, 0, packet.Length);
         _stream.Flush();
         var numSent = toSend;
@@ -146,7 +145,7 @@ internal sealed class Connection : IDisposable
                 toSend = Math.Min(Math.Min(outBufferCount - numSent, numApproved), MaxTargetReceiveDataSegmentLength);
 
                 var pkt = new DataOutPacket(this, cmd.TargetLun);
-                packet = pkt.GetBytes(outBuffer, outBufferOffset + numSent, toSend, toSend == numApproved, pktsSent++, (uint)numSent, targetTransferTag);
+                packet = pkt.GetBytes(outBuffer.Slice(numSent, toSend), toSend == numApproved, pktsSent++, (uint)numSent, targetTransferTag);
                 _stream.Write(packet, 0, packet.Length);
                 _stream.Flush();
 
@@ -190,7 +189,7 @@ internal sealed class Connection : IDisposable
 
                 if (resp.ReadData != null)
                 {
-                    Array.Copy(resp.ReadData, 0, inBuffer, (int)(inBufferOffset + resp.BufferOffset), resp.ReadData.Length);
+                    resp.ReadData.AsSpan().CopyTo(inBuffer.Slice((int)resp.BufferOffset));
                     numRead += resp.ReadData.Length;
                 }
 
@@ -215,12 +214,15 @@ internal sealed class Connection : IDisposable
     /// <param name="inBufferOffset">The first byte to fill with returned data.</param>
     /// <param name="inBufferMax">The maximum amount of data to receive.</param>
     /// <returns>The number of bytes received.</returns>
-    public async Task<int> SendAsync(ScsiCommand cmd, byte[] outBuffer, int outBufferOffset, int outBufferCount, byte[] inBuffer, int inBufferOffset, int inBufferMax, CancellationToken cancellationToken)
+    public async ValueTask<int> SendAsync(ScsiCommand cmd, ReadOnlyMemory<byte> outBuffer, Memory<byte> inBuffer, CancellationToken cancellationToken)
     {
         var req = new CommandRequest(this, cmd.TargetLun);
 
+        var outBufferCount = outBuffer.Length;
+        var inBufferMax = inBuffer.Length;
+
         var toSend = Math.Min(Math.Min(outBufferCount, Session.ImmediateData ? Session.FirstBurstLength : 0), MaxTargetReceiveDataSegmentLength);
-        var packet = req.GetBytes(cmd, outBuffer, outBufferOffset, toSend, true, inBufferMax != 0, outBufferCount != 0, (uint)(outBufferCount != 0 ? outBufferCount : inBufferMax));
+        var packet = req.GetBytes(cmd, outBuffer.Span.Slice(0, toSend), true, inBufferMax != 0, outBufferCount != 0, (uint)(outBufferCount != 0 ? outBufferCount : inBufferMax));
         await _stream.WriteAsync(packet, 0, packet.Length, cancellationToken).ConfigureAwait(false);
         await _stream.FlushAsync(cancellationToken).ConfigureAwait(false);
         var numSent = toSend;
@@ -238,7 +240,7 @@ internal sealed class Connection : IDisposable
                 toSend = Math.Min(Math.Min(outBufferCount - numSent, numApproved), MaxTargetReceiveDataSegmentLength);
 
                 var pkt = new DataOutPacket(this, cmd.TargetLun);
-                packet = pkt.GetBytes(outBuffer, outBufferOffset + numSent, toSend, toSend == numApproved, pktsSent++, (uint)numSent, targetTransferTag);
+                packet = pkt.GetBytes(outBuffer.Span.Slice(numSent, toSend), toSend == numApproved, pktsSent++, (uint)numSent, targetTransferTag);
                 await _stream.WriteAsync(packet, 0, packet.Length, cancellationToken).ConfigureAwait(false);
                 await _stream.FlushAsync(cancellationToken).ConfigureAwait(false);
 
@@ -282,7 +284,7 @@ internal sealed class Connection : IDisposable
 
                 if (resp.ReadData != null)
                 {
-                    Array.Copy(resp.ReadData, 0, inBuffer, (int)(inBufferOffset + resp.BufferOffset), resp.ReadData.Length);
+                    resp.ReadData.CopyTo(inBuffer.Slice((int)resp.BufferOffset));
                     numRead += resp.ReadData.Length;
                 }
 
@@ -296,13 +298,13 @@ internal sealed class Connection : IDisposable
         return numRead;
     }
 
-    public T Send<T>(ScsiCommand cmd, byte[] buffer, int offset, int count, int expected)
+    public T Send<T>(ScsiCommand cmd, ReadOnlySpan<byte> buffer, int expected)
         where T : ScsiResponse, new()
     {
         var tempBuffer = ArrayPool<byte>.Shared.Rent(expected);
         try
         {
-            var numRead = Send(cmd, buffer, offset, count, tempBuffer, 0, expected);
+            var numRead = Send(cmd, buffer, tempBuffer.AsSpan(0, expected));
 
             var result = new T();
             result.ReadFrom(tempBuffer, 0, numRead);

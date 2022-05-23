@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using DiscUtils.Streams;
 
@@ -51,9 +52,9 @@ internal sealed class ParentLocator : IByteArraySerializable
         }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        LocatorType = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0);
+        LocatorType = EndianUtilities.ToGuidLittleEndian(buffer);
         if (LocatorType != LocatorTypeGuid)
         {
             throw new IOException("Unrecognized Parent Locator type: " + LocatorType);
@@ -61,17 +62,17 @@ internal sealed class ParentLocator : IByteArraySerializable
 
         Entries = new Dictionary<string, string>();
 
-        Count = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 18);
+        Count = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(18));
         for (ushort i = 0; i < Count; ++i)
         {
-            var kvOffset = offset + 20 + i * 12;
-            var keyOffset = EndianUtilities.ToInt32LittleEndian(buffer, kvOffset + 0);
-            var valueOffset = EndianUtilities.ToInt32LittleEndian(buffer, kvOffset + 4);
-            int keyLength = EndianUtilities.ToUInt16LittleEndian(buffer, kvOffset + 8);
-            int valueLength = EndianUtilities.ToUInt16LittleEndian(buffer, kvOffset + 10);
+            var kvOffset = 20 + i * 12;
+            var keyOffset = EndianUtilities.ToInt32LittleEndian(buffer.Slice(kvOffset + 0));
+            var valueOffset = EndianUtilities.ToInt32LittleEndian(buffer.Slice(kvOffset + 4));
+            int keyLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(kvOffset + 8));
+            int valueLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(kvOffset + 10));
 
-            var key = Encoding.Unicode.GetString(buffer, keyOffset, keyLength);
-            var value = Encoding.Unicode.GetString(buffer, valueOffset, valueLength);
+            var key = EndianUtilities.LittleEndianUnicodeBytesToString(buffer.Slice(keyOffset, keyLength));
+            var value = EndianUtilities.LittleEndianUnicodeBytesToString(buffer.Slice(valueOffset, valueLength));
 
             Entries[key] = value;
         }
@@ -79,7 +80,7 @@ internal sealed class ParentLocator : IByteArraySerializable
         return 0;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         if (Entries.Count != 0)
         {
@@ -88,8 +89,8 @@ internal sealed class ParentLocator : IByteArraySerializable
 
         Count = (ushort)Entries.Count;
 
-        EndianUtilities.WriteBytesLittleEndian(LocatorType, buffer, offset + 0);
-        EndianUtilities.WriteBytesLittleEndian(Reserved, buffer, offset + 16);
-        EndianUtilities.WriteBytesLittleEndian(Count, buffer, offset + 18);
+        EndianUtilities.WriteBytesLittleEndian(LocatorType, buffer);
+        EndianUtilities.WriteBytesLittleEndian(Reserved, buffer.Slice(16));
+        EndianUtilities.WriteBytesLittleEndian(Count, buffer.Slice(18));
     }
 }

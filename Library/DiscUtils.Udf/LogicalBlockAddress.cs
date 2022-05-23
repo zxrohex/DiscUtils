@@ -35,14 +35,14 @@ internal struct LogicalBlockAddress : IByteArraySerializable
         get { return 6; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        LogicalBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-        Partition = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
+        LogicalBlock = EndianUtilities.ToUInt32LittleEndian(buffer);
+        Partition = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(4));
         return 6;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

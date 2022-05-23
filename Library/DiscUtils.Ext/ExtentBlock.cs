@@ -37,9 +37,9 @@ internal class ExtentBlock : IByteArraySerializable
         get { return 12 + Header.MaxEntries * 12; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Header = EndianUtilities.ToStruct<ExtentHeader>(buffer, offset + 0);
+        Header = EndianUtilities.ToStruct<ExtentHeader>(buffer);
         if (Header.Magic != ExtentHeader.HeaderMagic)
         {
             throw new IOException("Invalid extent header reading inode");
@@ -51,7 +51,7 @@ internal class ExtentBlock : IByteArraySerializable
             Extents = new Extent[Header.Entries];
             for (var i = 0; i < Extents.Length; ++i)
             {
-                Extents[i] = EndianUtilities.ToStruct<Extent>(buffer, offset + 12 + i * 12);
+                Extents[i] = EndianUtilities.ToStruct<Extent>(buffer.Slice(12 + i * 12));
             }
         }
         else
@@ -60,14 +60,14 @@ internal class ExtentBlock : IByteArraySerializable
             Index = new ExtentIndex[Header.Entries];
             for (var i = 0; i < Index.Length; ++i)
             {
-                Index[i] = EndianUtilities.ToStruct<ExtentIndex>(buffer, offset + 12 + i * 12);
+                Index[i] = EndianUtilities.ToStruct<ExtentIndex>(buffer.Slice(12 + i * 12));
             }
         }
 
         return 12 + Header.MaxEntries * 12;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

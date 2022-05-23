@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Udf;
 
@@ -38,17 +39,17 @@ internal sealed class SparablePartitionMap : PartitionMap
         get { return 64; }
     }
 
-    protected override int Parse(byte[] buffer, int offset)
+    protected override int Parse(ReadOnlySpan<byte> buffer)
     {
-        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 36);
-        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 38);
-        PacketLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 40);
-        NumSparingTables = buffer[offset + 42];
-        SparingTableSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 44);
+        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(36));
+        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(38));
+        PacketLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(40));
+        NumSparingTables = buffer[42];
+        SparingTableSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(44));
         LocationsOfSparingTables = new uint[NumSparingTables];
         for (var i = 0; i < NumSparingTables; ++i)
         {
-            LocationsOfSparingTables[i] = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 48 + 4 * i);
+            LocationsOfSparingTables[i] = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(48 + 4 * i));
         }
 
         return 64;

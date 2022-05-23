@@ -128,7 +128,6 @@ internal class FileContentBuffer : Streams.Buffer
         throw new NotSupportedException();
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(long pos, Span<byte> buffer)
     {
         if (pos > _inode.FileSize)
@@ -146,7 +145,7 @@ internal class FileContentBuffer : Streams.Buffer
         {
             if (currentPos >= startOfFragment)
             {
-                var read = ReadFrag((int)(currentPos - startOfFragment), buffer[totalRead..totalToRead]);
+                var read = ReadFrag((int)(currentPos - startOfFragment), buffer.Slice(totalRead, totalToRead - totalRead));
                 return totalRead + read;
             }
 
@@ -162,7 +161,7 @@ internal class FileContentBuffer : Streams.Buffer
             var block = _context.ReadBlock(currentBlockDiskStart, _blockLengths[currentBlock]);
 
             var toCopy = Math.Min(block.Available - blockOffset, totalToRead - totalRead);
-            block.Data.AsSpan(blockOffset, toCopy).CopyTo(buffer[totalRead..]);
+            block.Data.AsSpan(blockOffset, toCopy).CopyTo(buffer.Slice(totalRead));
             totalRead += toCopy;
             currentPos += toCopy;
         }
@@ -172,7 +171,6 @@ internal class FileContentBuffer : Streams.Buffer
 
     public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
         throw new NotSupportedException();
-#endif
 
     public override void Clear(long pos, int count)
     {
@@ -203,7 +201,7 @@ internal class FileContentBuffer : Streams.Buffer
         _context.FragmentTableReaders[fragTable].Read(fragRecordData, 0, fragRecordData.Length);
 
         var fragRecord = new FragmentRecord();
-        fragRecord.ReadFrom(fragRecordData, 0);
+        fragRecord.ReadFrom(fragRecordData);
 
         var frag = _context.ReadBlock(fragRecord.StartBlock, fragRecord.CompressedSize);
 
@@ -218,7 +216,6 @@ internal class FileContentBuffer : Streams.Buffer
         return toCopy;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     private int ReadFrag(int pos, Span<byte> buffer)
     {
         var fragRecordsPerBlock = 8192 / FragmentRecord.RecordSize;
@@ -231,7 +228,7 @@ internal class FileContentBuffer : Streams.Buffer
         _context.FragmentTableReaders[fragTable].Read(fragRecordData, 0, fragRecordData.Length);
 
         var fragRecord = new FragmentRecord();
-        fragRecord.ReadFrom(fragRecordData, 0);
+        fragRecord.ReadFrom(fragRecordData);
 
         var frag = _context.ReadBlock(fragRecord.StartBlock, fragRecord.CompressedSize);
 
@@ -245,5 +242,4 @@ internal class FileContentBuffer : Streams.Buffer
         frag.Data.AsSpan((int)(_inode.FragmentOffset + pos), toCopy).CopyTo(buffer);
         return toCopy;
     }
-#endif
 }

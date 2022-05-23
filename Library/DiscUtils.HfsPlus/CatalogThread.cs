@@ -36,16 +36,16 @@ internal sealed class CatalogThread : IByteArraySerializable
         get { return 0; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        RecordType = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(buffer, offset + 0);
-        ParentId = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-        Name = HfsPlusUtilities.ReadUniStr255(buffer, offset + 8);
+        RecordType = (CatalogRecordType)EndianUtilities.ToInt16BigEndian(buffer);
+        ParentId = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        Name = HfsPlusUtilities.ReadUniStr255(buffer.Slice(8));
 
         return 0;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

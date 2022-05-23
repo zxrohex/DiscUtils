@@ -36,7 +36,7 @@ namespace DiskClone;
 /// To support the stream interface, which permits unaligned access, all accesses
 /// are routed through an appropriately aligned buffer.
 /// </remarks>
-public class UnbufferedNativeStream : SparseStream
+public class UnbufferedNativeStream : SparseStream.ReadOnlySparseStream
 {
     private const int BufferSize = 64 * 1024;
     private const int Alignment = 512;
@@ -83,15 +83,6 @@ public class UnbufferedNativeStream : SparseStream
         get { return true; }
     }
 
-    public override bool CanWrite
-    {
-        get { return false; }
-    }
-
-    public override void Flush()
-    {
-    }
-
     public override long Length
     {
         get
@@ -120,11 +111,14 @@ public class UnbufferedNativeStream : SparseStream
     }
 
     public override int Read(byte[] buffer, int offset, int count)
+        => Read(buffer.AsSpan(offset, count));
+
+    public override unsafe int Read(Span<byte> buffer)
     {
         var totalBytesRead = 0;
         var length = Length;
 
-        while (totalBytesRead < count)
+        while (totalBytesRead < buffer.Length)
         {
             var alignedStart = (_position / Alignment) * Alignment;
             var alignmentOffset = (int)(_position - alignedStart);
@@ -146,9 +140,9 @@ public class UnbufferedNativeStream : SparseStream
                 return totalBytesRead;
             }
 
-            var toCopy = Math.Min(count - totalBytesRead, usefulData);
+            var toCopy = Math.Min(buffer.Length - totalBytesRead, usefulData);
 
-            Marshal.Copy(_buffer + alignmentOffset, buffer, offset + totalBytesRead, toCopy);
+            new ReadOnlySpan<byte>((_buffer + alignmentOffset).ToPointer(), toCopy).CopyTo(buffer.Slice(totalBytesRead));
 
             totalBytesRead += toCopy;
             _position += toCopy;
@@ -180,21 +174,11 @@ public class UnbufferedNativeStream : SparseStream
         }
     }
 
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
-    }
-
     public override IEnumerable<StreamExtent> Extents
     {
         get
         {
-            return new StreamExtent[] { new StreamExtent(0, Length) };
+            yield return new(0, Length);
         }
     }
 }

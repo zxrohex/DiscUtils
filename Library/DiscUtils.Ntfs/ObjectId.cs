@@ -35,19 +35,19 @@ internal struct ObjectId : IByteArraySerializable, IDiagnosticTraceable
         get { return 16; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Id = EndianUtilities.ToGuidLittleEndian(buffer, offset);
+        Id = EndianUtilities.ToGuidLittleEndian(buffer);
         return 16;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(Id, buffer, offset);
+        EndianUtilities.WriteBytesLittleEndian(Id, buffer);
     }
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "  Object ID: " + Id);
+        writer.WriteLine($"{indent}  Object ID: {Id}");
     }
 }

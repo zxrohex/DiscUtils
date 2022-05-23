@@ -20,8 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Text;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Btrfs.Base.Items;
 
@@ -73,15 +76,15 @@ internal class DirItem : BaseItem
         get { return 0x1e+NameLength+DataLength; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        ChildLocation = EndianUtilities.ToStruct<Key>(buffer, offset);
-        TransId = EndianUtilities.ToUInt64LittleEndian(buffer, offset+0x11);
-        DataLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x19);
-        NameLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x1b);
-        ChildType = (DirItemChildType)buffer[offset + 0x1d];
-        Name = Encoding.UTF8.GetString(buffer, offset + 0x1e, NameLength);
-        Data = EndianUtilities.ToByteArray(buffer, offset + 0x1e + NameLength, DataLength);
+        ChildLocation = EndianUtilities.ToStruct<Key>(buffer);
+        TransId = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x11));
+        DataLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x19));
+        NameLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x1b));
+        ChildType = (DirItemChildType)buffer[0x1d];
+        Name = Encoding.UTF8.GetString(buffer.Slice(0x1e, NameLength));
+        Data = EndianUtilities.ToByteArray(buffer.Slice(0x1e + NameLength, DataLength));
         return Size;
     }
 }

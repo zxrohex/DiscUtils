@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.HfsPlus;
 
@@ -39,12 +40,12 @@ internal class CompressionResourceHeader
 
     public uint TotalSize { get; private set; }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        HeaderSize = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-        TotalSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-        DataSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-        Flags = EndianUtilities.ToUInt32BigEndian(buffer, offset + 12);
+        HeaderSize = EndianUtilities.ToUInt32BigEndian(buffer);
+        TotalSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        DataSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
+        Flags = EndianUtilities.ToUInt32BigEndian(buffer.Slice(12));
 
         return Size;
     }

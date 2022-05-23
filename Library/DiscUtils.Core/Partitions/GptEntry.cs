@@ -22,8 +22,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Partitions;
 
@@ -88,23 +90,27 @@ internal class GptEntry : IComparable<GptEntry>
         return FirstUsedLogicalBlock.CompareTo(other.FirstUsedLogicalBlock);
     }
 
-    public void ReadFrom(byte[] buffer, int offset)
+    public void ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        PartitionType = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0);
-        Identity = EndianUtilities.ToGuidLittleEndian(buffer, offset + 16);
-        FirstUsedLogicalBlock = EndianUtilities.ToInt64LittleEndian(buffer, offset + 32);
-        LastUsedLogicalBlock = EndianUtilities.ToInt64LittleEndian(buffer, offset + 40);
-        Attributes = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 48);
-        Name = Encoding.Unicode.GetString(buffer, offset + 56, 72).TrimEnd('\0');
+        PartitionType = EndianUtilities.ToGuidLittleEndian(buffer);
+        Identity = EndianUtilities.ToGuidLittleEndian(buffer.Slice(16));
+        FirstUsedLogicalBlock = EndianUtilities.ToInt64LittleEndian(buffer.Slice(32));
+        LastUsedLogicalBlock = EndianUtilities.ToInt64LittleEndian(buffer.Slice(40));
+        Attributes = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(48));
+        Name = Encoding.Unicode.GetString(buffer.Slice(56, 72)).TrimEnd('\0');
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(PartitionType, buffer, offset + 0);
-        EndianUtilities.WriteBytesLittleEndian(Identity, buffer, offset + 16);
-        EndianUtilities.WriteBytesLittleEndian(FirstUsedLogicalBlock, buffer, offset + 32);
-        EndianUtilities.WriteBytesLittleEndian(LastUsedLogicalBlock, buffer, offset + 40);
-        EndianUtilities.WriteBytesLittleEndian(Attributes, buffer, offset + 48);
-        Encoding.Unicode.GetBytes(Name + new string('\0', 36), 0, 36, buffer, offset + 56);
+        EndianUtilities.WriteBytesLittleEndian(PartitionType, buffer);
+        EndianUtilities.WriteBytesLittleEndian(Identity, buffer.Slice(16));
+        EndianUtilities.WriteBytesLittleEndian(FirstUsedLogicalBlock, buffer.Slice(32));
+        EndianUtilities.WriteBytesLittleEndian(LastUsedLogicalBlock, buffer.Slice(40));
+        EndianUtilities.WriteBytesLittleEndian(Attributes, buffer.Slice(48));
+        var nameBytes = Encoding.Unicode.GetBytes(Name.AsSpan(), buffer.Slice(56));
+        if (Name.Length < 36)
+        {
+            buffer.Slice(56 + nameBytes, 36 * 2 - nameBytes).Clear();
+        }
     }
 }

@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -34,7 +35,7 @@ namespace DiscUtils.Streams;
 /// </summary>
 /// <remarks>A sparse stream is a logically contiguous stream where some parts of the stream
 /// aren't stored.  The unstored parts are implicitly zero-byte ranges.</remarks>
-public abstract class SparseStream : Stream
+public abstract class SparseStream : CompatibilityStream
 {
     public event EventHandler Disposing;
 
@@ -143,7 +144,7 @@ public abstract class SparseStream : Stream
         return StreamExtent.Intersect(Extents, new StreamExtent(start, count));
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
         ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
 
@@ -166,32 +167,49 @@ public abstract class SparseStream : Stream
         return Task.FromResult(0);
 #endif
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override int ReadByte()
     {
-        byte b = 0;
-        if (Read(MemoryMarshal.CreateSpan(ref b, sizeof(byte))) != 1)
+        Span<byte> b = stackalloc byte[1];
+        if (Read(b) != 1)
         {
             return -1;
         }
-        return b;
+        return b[0];
     }
 
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
         new(Read(buffer.Span));
 
-    public override void WriteByte(byte value) => base.Write(MemoryMarshal.CreateReadOnlySpan(ref value, sizeof(byte)));
+    public override void WriteByte(byte value)
+    {
+        ReadOnlySpan<byte> b = stackalloc byte[1] { value };
+        Write(b);
+    }
 
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         Write(buffer.Span);
         return new();
     }
-#endif
 
-    private class SparseReadOnlyWrapperStream : SparseStream
+
+    public abstract class ReadOnlySparseStream : SparseStream
+    {
+        public override sealed bool CanWrite => false;
+        public override sealed void Write(byte[] buffer, int offset, int count) => throw new InvalidOperationException("Attempt to write to read-only stream");
+        public override sealed void Write(ReadOnlySpan<byte> buffer) => throw new InvalidOperationException("Attempt to write to read-only stream");
+        public override sealed Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new InvalidOperationException("Attempt to write to read-only stream");
+        public override sealed ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new InvalidOperationException("Attempt to write to read-only stream");
+        public override sealed void WriteByte(byte value) => throw new InvalidOperationException("Attempt to write to read-only stream");
+        public override sealed void Flush() { }
+        public override sealed Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public override sealed void SetLength(long value) => throw new InvalidOperationException("Attempt to change length of read-only stream");
+    }
+
+    private class SparseReadOnlyWrapperStream : ReadOnlySparseStream
     {
         private readonly Ownership _ownsWrapped;
         private SparseStream _wrapped;
@@ -212,11 +230,6 @@ public abstract class SparseStream : Stream
             get { return _wrapped.CanSeek; }
         }
 
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
-
         public override IEnumerable<StreamExtent> Extents
         {
             get { return _wrapped.Extents; }
@@ -234,21 +247,19 @@ public abstract class SparseStream : Stream
             set { _wrapped.Position = value; }
         }
 
-        public override void Flush() {}
-
         public override int Read(byte[] buffer, int offset, int count)
         {
             return _wrapped.Read(buffer, offset, count);
         }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
         }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
         {
             return _wrapped.ReadAsync(buffer, cancellationToken);
@@ -258,21 +269,11 @@ public abstract class SparseStream : Stream
         {
             return _wrapped.Read(buffer);
         }
-#endif
+
 
         public override long Seek(long offset, SeekOrigin origin)
         {
             return _wrapped.Seek(offset, origin);
-        }
-
-        public override void SetLength(long value)
-        {
-            throw new InvalidOperationException("Attempt to change length of read-only stream");
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new InvalidOperationException("Attempt to write to read-only stream");
         }
 
         protected override void Dispose(bool disposing)
@@ -361,14 +362,14 @@ public abstract class SparseStream : Stream
             return _wrapped.Read(buffer, offset, count);
         }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
         }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
         {
             return _wrapped.ReadAsync(buffer, cancellationToken);
@@ -378,7 +379,7 @@ public abstract class SparseStream : Stream
         {
             return _wrapped.Read(buffer);
         }
-#endif
+
 
         public override long Seek(long offset, SeekOrigin origin)
         {
@@ -400,7 +401,7 @@ public abstract class SparseStream : Stream
             _wrapped.Write(buffer, offset, count);
         }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             if (_extents != null)
@@ -410,9 +411,9 @@ public abstract class SparseStream : Stream
 
             return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
         }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
         {
             if (_extents != null)
@@ -432,12 +433,12 @@ public abstract class SparseStream : Stream
 
             _wrapped.Write(buffer);
         }
-#endif
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
+
         public override Task FlushAsync(CancellationToken cancellationToken) =>
             _wrapped.FlushAsync(cancellationToken);
-#endif
+
 
         protected override void Dispose(bool disposing)
         {

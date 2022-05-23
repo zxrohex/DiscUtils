@@ -27,6 +27,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 

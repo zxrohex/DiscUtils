@@ -65,9 +65,9 @@ internal sealed class LzWindowDictionary
         }
     }
 
-    public int[] Search(byte[] decompressedData, int decompressedDataOffset, uint index, uint length)
+    public int[] Search(ReadOnlySpan<byte> decompressedData, int index, uint length)
     {
-        RemoveOldEntries(decompressedData[decompressedDataOffset + index]); // Remove old entries for this index 
+        RemoveOldEntries(decompressedData[index]); // Remove old entries for this index 
 
         int[] match = { 0, 0 };
 
@@ -77,9 +77,9 @@ internal sealed class LzWindowDictionary
             return match;
         }
 
-        for (var i = 0; i < _offsetList[decompressedData[decompressedDataOffset + index]].Count; i++)
+        for (var i = 0; i < _offsetList[decompressedData[index]].Count; i++)
         {
-            var matchStart = _offsetList[decompressedData[decompressedDataOffset + index]][i];
+            var matchStart = _offsetList[decompressedData[index]][i];
             var matchSize = 1;
 
             if (index - matchStart > BlockSize)
@@ -90,8 +90,8 @@ internal sealed class LzWindowDictionary
             var maxMatchSize =
                 (int)Math.Min(Math.Min(MaxMatchAmount, BlockSize), Math.Min(length - index, length - matchStart));
             while (matchSize < maxMatchSize &&
-                   decompressedData[decompressedDataOffset + index + matchSize] ==
-                   decompressedData[decompressedDataOffset + matchStart + matchSize])
+                   decompressedData[index + matchSize] ==
+                   decompressedData[matchStart + matchSize])
             {
                 matchSize++;
             }
@@ -114,16 +114,16 @@ internal sealed class LzWindowDictionary
     }
 
     // Add entries 
-    public void AddEntry(byte[] decompressedData, int decompressedDataOffset, int index)
+    public void AddEntry(ReadOnlySpan<byte> decompressedData, int index)
     {
-        _offsetList[decompressedData[decompressedDataOffset + index]].Add(index);
+        _offsetList[decompressedData[index]].Add(index);
     }
 
-    public void AddEntryRange(byte[] decompressedData, int decompressedDataOffset, int index, int length)
+    public void AddEntryRange(ReadOnlySpan<byte> decompressedData, int index, int length)
     {
         for (var i = 0; i < length; i++)
         {
-            AddEntry(decompressedData, decompressedDataOffset, index + i);
+            AddEntry(decompressedData, index + i);
         }
     }
 

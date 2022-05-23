@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Btrfs.Base.Items;
 
@@ -83,23 +84,23 @@ internal class ChunkItem : BaseItem
         get { return 0x30 + StripeCount * Stripe.Length; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        ChunkSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-        ObjectId = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-        StripeLength = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x10);
-        Type = (BlockGroupFlag)EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x18);
-        OptimalIoAlignment = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x20);
-        OptimalIoWidth = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x24);
-        MinimalIoSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x28);
-        StripeCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x2c);
-        SubStripes = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x2e);
+        ChunkSize = EndianUtilities.ToUInt64LittleEndian(buffer);
+        ObjectId = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x8));
+        StripeLength = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x10));
+        Type = (BlockGroupFlag)EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x18));
+        OptimalIoAlignment = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x20));
+        OptimalIoWidth = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x24));
+        MinimalIoSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x28));
+        StripeCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x2c));
+        SubStripes = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x2e));
         Stripes = new Stripe[StripeCount];
-        offset += 0x30;
+        var offset = 0x30;
         for (var i = 0; i < StripeCount; i++)
         {
             Stripes[i] = new Stripe();
-            offset += Stripes[i].ReadFrom(buffer, offset);
+            offset += Stripes[i].ReadFrom(buffer.Slice(offset));
         }
         return Size;
     }

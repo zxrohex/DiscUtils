@@ -432,10 +432,17 @@ public static class Utilities
             attr |= FileAttributes.ReadOnly;
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        if (Path.GetFileName(name.AsSpan()).StartsWith(".", StringComparison.Ordinal))
+        {
+            attr |= FileAttributes.Hidden;
+        }
+#else
         if (Path.GetFileName(name).StartsWith(".", StringComparison.Ordinal))
         {
             attr |= FileAttributes.Hidden;
         }
+#endif
 
         return attr;
     }

@@ -51,7 +51,7 @@ internal class AllocationGroup
         FreeBlockInfo = new AllocationGroupFreeBlockInfo(superblock);
         data.Position = offset + superblock.SectorSize;
         var agfData = StreamUtilities.ReadExact(data, FreeBlockInfo.Size); 
-        FreeBlockInfo.ReadFrom(agfData, 0);
+        FreeBlockInfo.ReadFrom(agfData);
         if (FreeBlockInfo.Magic != AllocationGroupFreeBlockInfo.AgfMagic)
         {
             throw new IOException("Invalid AGF magic - probably not an xfs file system");
@@ -61,7 +61,7 @@ internal class AllocationGroup
         data.Position = offset + superblock.SectorSize * 2;
         var agiData = StreamUtilities.ReadExact(data, InodeBtreeInfo.Size);
 
-        InodeBtreeInfo.ReadFrom(agiData, 0);
+        InodeBtreeInfo.ReadFrom(agiData);
         if (InodeBtreeInfo.Magic != AllocationGroupInodeBtreeInfo.AgiMagic)
         {
             throw new IOException("Invalid AGI magic - probably not an xfs file system");
@@ -82,6 +82,6 @@ internal class AllocationGroup
         var offset = Offset + ((long)inode.AgBlock*Context.SuperBlock.Blocksize) + ((long)inode.BlockOffset * Context.SuperBlock.InodeSize);
         Context.RawStream.Position = offset;
         var data = StreamUtilities.ReadExact(Context.RawStream, (int) Context.SuperBlock.InodeSize);
-        inode.ReadFrom(data, 0);
+        inode.ReadFrom(data);
     }
 }

@@ -31,114 +31,15 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
     }
 
     public RawSecurityDescriptor(byte[] binaryForm, int offset)
+        : this(binaryForm.AsSpan(offset))
     {
-        if (binaryForm == null)
-        {
-            throw new ArgumentNullException(nameof(binaryForm));
-        }
-
-        if (offset < 0 || offset > binaryForm.Length - 0x14)
-        {
-            throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset out of range");
-        }
-
-        if (binaryForm[offset] != 1)
-        {
-            throw new ArgumentException("Unrecognized Security Descriptor revision.", nameof(binaryForm));
-        }
-
-        ResourceManagerControl = binaryForm[offset + 0x01];
-        _controlFlags = (ControlFlags)ReadUShort(binaryForm, offset + 0x02);
-
-        var ownerPos = ReadInt(binaryForm, offset + 0x04);
-        var groupPos = ReadInt(binaryForm, offset + 0x08);
-        var saclPos = ReadInt(binaryForm, offset + 0x0C);
-        var daclPos = ReadInt(binaryForm, offset + 0x10);
-
-        if (ownerPos != 0)
-        {
-            Owner = new SecurityIdentifier(binaryForm, ownerPos);
-        }
-
-        if (groupPos != 0)
-        {
-            Group = new SecurityIdentifier(binaryForm, groupPos);
-        }
-
-        if (saclPos != 0)
-        {
-            SystemAcl = new RawAcl(binaryForm, saclPos);
-        }
-
-        if (daclPos != 0)
-        {
-            DiscretionaryAcl = new RawAcl(binaryForm, daclPos);
-        }
     }
 
     private RawSecurityDescriptor() { }
 
-    public static bool TryParse(byte[] binaryForm, int offset, out RawSecurityDescriptor securityDescriptor)
-    {
-        securityDescriptor = null;
+    public static bool TryParse(byte[] binaryForm, int offset, out RawSecurityDescriptor securityDescriptor) =>
+        TryParse(binaryForm.AsSpan(offset), out securityDescriptor);
 
-        if (binaryForm == null || offset < 0 || offset > binaryForm.Length - 0x14 || binaryForm[offset] != 1)
-        {
-            return false;
-        }
-
-        var sd = new RawSecurityDescriptor
-        {
-            ResourceManagerControl = binaryForm[offset + 0x01],
-            _controlFlags = (ControlFlags)ReadUShort(binaryForm, offset + 0x02)
-        };
-
-        var ownerPos = ReadInt(binaryForm, offset + 0x04);
-        var groupPos = ReadInt(binaryForm, offset + 0x08);
-        var saclPos = ReadInt(binaryForm, offset + 0x0C);
-        var daclPos = ReadInt(binaryForm, offset + 0x10);
-
-        if (ownerPos != 0)
-        {
-            if (!SecurityIdentifier.TryParse(binaryForm, ownerPos, out var owner))
-            {
-                return false;
-            }
-            sd.Owner = owner;
-        }
-
-        if (groupPos != 0)
-        {
-            if (!SecurityIdentifier.TryParse(binaryForm, groupPos, out var group))
-            {
-                return false;
-            }
-            sd.Group = group;
-        }
-
-        if (saclPos != 0)
-        {
-            if (!RawAcl.TryParse(binaryForm, saclPos, out var systemAcl))
-            {
-                return false;
-            }
-            sd.SystemAcl = systemAcl;
-        }
-
-        if (daclPos != 0)
-        {
-            if (!RawAcl.TryParse(binaryForm, daclPos, out var discretionaryAcl))
-            {
-                return false;
-            }
-            sd.DiscretionaryAcl = discretionaryAcl;
-        }
-
-        securityDescriptor = sd;
-        return true;
-    }
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public RawSecurityDescriptor(ReadOnlySpan<byte> binaryForm)
     {
         if (binaryForm.IsEmpty || binaryForm.Length < 0x14)
@@ -152,31 +53,31 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
         }
 
         ResourceManagerControl = binaryForm[0x01];
-        _controlFlags = (ControlFlags)ReadUShort(binaryForm[0x02..]);
+        _controlFlags = (ControlFlags)ReadUShort(binaryForm.Slice(0x02));
 
-        var ownerPos = ReadInt(binaryForm[0x04..]);
-        var groupPos = ReadInt(binaryForm[0x08..]);
-        var saclPos = ReadInt(binaryForm[0x0C..]);
-        var daclPos = ReadInt(binaryForm[0x10..]);
+        var ownerPos = ReadInt(binaryForm.Slice(0x04));
+        var groupPos = ReadInt(binaryForm.Slice(0x08));
+        var saclPos = ReadInt(binaryForm.Slice(0x0C));
+        var daclPos = ReadInt(binaryForm.Slice(0x10));
 
         if (ownerPos != 0)
         {
-            Owner = new SecurityIdentifier(binaryForm[ownerPos..]);
+            Owner = new SecurityIdentifier(binaryForm.Slice(ownerPos));
         }
 
         if (groupPos != 0)
         {
-            Group = new SecurityIdentifier(binaryForm[groupPos..]);
+            Group = new SecurityIdentifier(binaryForm.Slice(groupPos));
         }
 
         if (saclPos != 0)
         {
-            SystemAcl = new RawAcl(binaryForm[saclPos..]);
+            SystemAcl = new RawAcl(binaryForm.Slice(saclPos));
         }
 
         if (daclPos != 0)
         {
-            DiscretionaryAcl = new RawAcl(binaryForm[daclPos..]);
+            DiscretionaryAcl = new RawAcl(binaryForm.Slice(daclPos));
         }
     }
 
@@ -192,17 +93,17 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
         var sd = new RawSecurityDescriptor
         {
             ResourceManagerControl = binaryForm[0x01],
-            _controlFlags = (ControlFlags)ReadUShort(binaryForm[0x02..])
+            _controlFlags = (ControlFlags)ReadUShort(binaryForm.Slice(0x02))
         };
 
-        var ownerPos = ReadInt(binaryForm[0x04..]);
-        var groupPos = ReadInt(binaryForm[0x08..]);
-        var saclPos = ReadInt(binaryForm[0x0C..]);
-        var daclPos = ReadInt(binaryForm[0x10..]);
+        var ownerPos = ReadInt(binaryForm.Slice(0x04));
+        var groupPos = ReadInt(binaryForm.Slice(0x08));
+        var saclPos = ReadInt(binaryForm.Slice(0x0C));
+        var daclPos = ReadInt(binaryForm.Slice(0x10));
 
         if (ownerPos != 0)
         {
-            if (!SecurityIdentifier.TryParse(binaryForm[ownerPos..], out var owner))
+            if (!SecurityIdentifier.TryParse(binaryForm.Slice(ownerPos), out var owner))
             {
                 return false;
             }
@@ -211,7 +112,7 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
 
         if (groupPos != 0)
         {
-            if (!SecurityIdentifier.TryParse(binaryForm[groupPos..], out var group))
+            if (!SecurityIdentifier.TryParse(binaryForm.Slice(groupPos), out var group))
             {
                 return false;
             }
@@ -220,7 +121,7 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
 
         if (saclPos != 0)
         {
-            if (!RawAcl.TryParse(binaryForm[saclPos..], out var systemAcl))
+            if (!RawAcl.TryParse(binaryForm.Slice(saclPos), out var systemAcl))
             {
                 return false;
             }
@@ -229,7 +130,7 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
 
         if (daclPos != 0)
         {
-            if (!RawAcl.TryParse(binaryForm[daclPos..], out var discretionaryAcl))
+            if (!RawAcl.TryParse(binaryForm.Slice(daclPos), out var discretionaryAcl))
             {
                 return false;
             }
@@ -239,8 +140,6 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
         securityDescriptor = sd;
         return true;
     }
-
-#endif
 
     public RawSecurityDescriptor(ControlFlags flags,
                                  SecurityIdentifier owner,
@@ -256,13 +155,16 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
     }
 
     public void SetSddlForm(string sddlForm)
+        => SetSddlForm(sddlForm.AsSpan());
+
+    public void SetSddlForm(ReadOnlySpan<char> sddlForm)
     {
         var flags = ControlFlags.None;
 
         var pos = 0;
         while (pos < sddlForm.Length - 2)
         {
-            switch (sddlForm.Substring(pos, 2))
+            switch (sddlForm.Slice(pos, 2).ToString())
             {
                 case "O:":
                     pos += 2;
@@ -315,7 +217,6 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
                | (((int)buffer[offset + 3]) << 24);
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     private static ushort ReadUShort(ReadOnlySpan<byte> buffer)
     {
         return (ushort)((((int)buffer[0]) << 0)
@@ -329,5 +230,4 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
                | (((int)buffer[2]) << 16)
                | (((int)buffer[3]) << 24);
     }
-#endif
 }

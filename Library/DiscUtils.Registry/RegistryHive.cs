@@ -29,6 +29,7 @@ using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Registry;
 
@@ -142,7 +143,7 @@ public class RegistryHive : IDisposable
         var buffer = StreamUtilities.ReadExact(_fileStream, HiveHeader.HeaderSize);
 
         _header = new();
-        var headerSize = _header.ReadFrom(buffer, 0, throwOnInvalidData: false);
+        var headerSize = _header.ReadFrom(buffer, throwOnInvalidData: false);
 
         // If header validation failed or dirty state, look for transaction logs
         if (headerSize == 0 || _header.Sequence1 != _header.Sequence2)
@@ -239,7 +240,7 @@ public class RegistryHive : IDisposable
                 // Store latest recovered sequence number in the hive header
                 // and write this modified header to the hive file
                 _header.Sequence1 = _header.Sequence2 = lastSequenceNumber + 1;
-                _header.WriteTo(buffer, 0);
+                _header.WriteTo(buffer);
                 _fileStream.Position = 0;
                 _fileStream.Write(buffer, 0, buffer.Length);
                 _fileStream.Position = 0;
@@ -266,7 +267,7 @@ public class RegistryHive : IDisposable
             _fileStream.Position = BinStart + pos;
             StreamUtilities.ReadExact(_fileStream, buffer, 0, BinHeader.HeaderSize);
             var header = new BinHeader();
-            header.ReadFrom(buffer, 0);
+            header.ReadFrom(buffer);
             _bins.Add(header);
 
             pos += header.BinSize;
@@ -334,11 +335,11 @@ public class RegistryHive : IDisposable
         stream.Position = 0;
 
         var buffer = new byte[hiveHeader.Size];
-        hiveHeader.WriteTo(buffer, 0);
+        hiveHeader.WriteTo(buffer);
         stream.Write(buffer, 0, buffer.Length);
 
         buffer = new byte[binHeader.Size];
-        binHeader.WriteTo(buffer, 0);
+        binHeader.WriteTo(buffer);
         stream.Position = BinStart;
         stream.Write(buffer, 0, buffer.Length);
 
@@ -371,7 +372,7 @@ public class RegistryHive : IDisposable
         // Ref the root cell from the hive header
         hiveHeader.RootCell = rootCell.Index;
         buffer = new byte[hiveHeader.Size];
-        hiveHeader.WriteTo(buffer, 0);
+        hiveHeader.WriteTo(buffer);
         stream.Position = 0;
         stream.Write(buffer, 0, buffer.Length);
 

@@ -36,16 +36,16 @@ internal class UdifChecksum : IByteArraySerializable
         get { return 136; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Type = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-        ChecksumSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-        Data = EndianUtilities.ToByteArray(buffer, offset + 8, 128);
+        Type = EndianUtilities.ToUInt32BigEndian(buffer);
+        ChecksumSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        Data = EndianUtilities.ToByteArray(buffer.Slice(8, 128));
 
         return 136;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

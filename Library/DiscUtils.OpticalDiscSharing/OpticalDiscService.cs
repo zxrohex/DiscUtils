@@ -209,7 +209,11 @@ public sealed class OpticalDiscService
     {
         if (volFlagsStr.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
         {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            return int.Parse(volFlagsStr.AsSpan(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+#else
             return int.Parse(volFlagsStr.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+#endif
         }
         return int.Parse(volFlagsStr, NumberStyles.Integer, CultureInfo.InvariantCulture);
     }

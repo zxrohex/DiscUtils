@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Globalization;
 using System.IO;
 using DiscUtils.Streams;
@@ -38,7 +39,7 @@ internal abstract class TaggedDescriptor<T> : BaseTaggedDescriptor
         var buffer = StreamUtilities.ReadExact(stream, 512);
 
         var result = new T();
-        result.ReadFrom(buffer, 0);
+        result.ReadFrom(buffer);
         if (result.Tag.TagIdentifier != result.RequiredTagIdentifier
             || result.Tag.TagLocation != sector)
         {
@@ -48,5 +49,5 @@ internal abstract class TaggedDescriptor<T> : BaseTaggedDescriptor
         return result;
     }
 
-    public abstract override int Parse(byte[] buffer, int offset);
+    public abstract override int Parse(ReadOnlySpan<byte> buffer);
 }

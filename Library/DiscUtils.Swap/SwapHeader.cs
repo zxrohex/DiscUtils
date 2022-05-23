@@ -23,6 +23,7 @@
 using System;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Swap;
 
@@ -50,23 +51,23 @@ public class SwapHeader : IByteArraySerializable
         get { return PageSize; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Magic = EndianUtilities.BytesToString(buffer, PageSize - 10, 10);
+        Magic = EndianUtilities.BytesToString(buffer.Slice(PageSize - 10, 10));
         if (Magic != Magic1 && Magic != Magic2) return Size;
 
-        Version = EndianUtilities.ToUInt32LittleEndian(buffer, 0x400);
-        LastPage = EndianUtilities.ToUInt32LittleEndian(buffer, 0x404);
-        BadPages = EndianUtilities.ToUInt32LittleEndian(buffer, 0x408);
-        Uuid = EndianUtilities.ToGuidLittleEndian(buffer, 0x40c);
-        var volume = EndianUtilities.ToByteArray(buffer, 0x41c, 16);
-        var nullIndex = Array.IndexOf(volume, (byte)0);
+        Version = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x400));
+        LastPage = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x404));
+        BadPages = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x408));
+        Uuid = EndianUtilities.ToGuidLittleEndian(buffer.Slice(0x40c));
+        var volume = buffer.Slice(0x41c, 16);
+        var nullIndex = volume.IndexOf((byte)0);
         if (nullIndex > 0)
-            Volume = Encoding.UTF8.GetString(volume, 0, nullIndex);
+            Volume = Encoding.UTF8.GetString(volume.Slice(0, nullIndex));
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

@@ -38,31 +38,30 @@ internal class DirectoryRecord
     public byte[] SystemUseData;
     public ushort VolumeSequenceNumber;
 
-    public static int ReadFrom(byte[] src, int offset, Encoding enc, out DirectoryRecord record)
+    public static int ReadFrom(ReadOnlySpan<byte> src, Encoding enc, out DirectoryRecord record)
     {
-        int length = src[offset + 0];
+        int length = src[0];
 
         record = new DirectoryRecord
         {
-            ExtendedAttributeRecordLength = src[offset + 1],
-            LocationOfExtent = IsoUtilities.ToUInt32FromBoth(src, offset + 2),
-            DataLength = IsoUtilities.ToUInt32FromBoth(src, offset + 10),
-            RecordingDateAndTime = IsoUtilities.ToUTCDateTimeFromDirectoryTime(src, offset + 18),
-            Flags = (FileFlags)src[offset + 25],
-            FileUnitSize = src[offset + 26],
-            InterleaveGapSize = src[offset + 27],
-            VolumeSequenceNumber = IsoUtilities.ToUInt16FromBoth(src, offset + 28)
+            ExtendedAttributeRecordLength = src[1],
+            LocationOfExtent = IsoUtilities.ToUInt32FromBoth(src.Slice(2)),
+            DataLength = IsoUtilities.ToUInt32FromBoth(src.Slice(10)),
+            RecordingDateAndTime = IsoUtilities.ToUTCDateTimeFromDirectoryTime(src.Slice(18)),
+            Flags = (FileFlags)src[25],
+            FileUnitSize = src[26],
+            InterleaveGapSize = src[27],
+            VolumeSequenceNumber = IsoUtilities.ToUInt16FromBoth(src.Slice(28))
         };
-        var lengthOfFileIdentifier = src[offset + 32];
-        record.FileIdentifier = IsoUtilities.ReadChars(src, offset + 33, lengthOfFileIdentifier, enc);
+        var lengthOfFileIdentifier = src[32];
+        record.FileIdentifier = IsoUtilities.ReadChars(src.Slice(33, lengthOfFileIdentifier), enc);
 
         var padding = (lengthOfFileIdentifier & 1) == 0 ? 1 : 0;
         var startSystemArea = lengthOfFileIdentifier + padding + 33;
         var lenSystemArea = length - startSystemArea;
         if (lenSystemArea > 0)
         {
-            record.SystemUseData = new byte[lenSystemArea];
-            Array.Copy(src, offset + startSystemArea, record.SystemUseData, 0, lenSystemArea);
+            record.SystemUseData = src.Slice(startSystemArea, lenSystemArea).ToArray();
         }
 
         return length;
@@ -83,33 +82,33 @@ internal class DirectoryRecord
         return (uint)(33 + nameBytes + ((nameBytes & 0x1) == 0 ? 1 : 0));
     }
 
-    internal int WriteTo(byte[] buffer, int offset, Encoding enc)
+    internal int WriteTo(Span<byte> buffer, Encoding enc)
     {
         var length = CalcLength(FileIdentifier, enc);
-        buffer[offset] = (byte)length;
-        buffer[offset + 1] = ExtendedAttributeRecordLength;
-        IsoUtilities.ToBothFromUInt32(buffer, offset + 2, LocationOfExtent);
-        IsoUtilities.ToBothFromUInt32(buffer, offset + 10, DataLength);
-        IsoUtilities.ToDirectoryTimeFromUTC(buffer, offset + 18, RecordingDateAndTime);
-        buffer[offset + 25] = (byte)Flags;
-        buffer[offset + 26] = FileUnitSize;
-        buffer[offset + 27] = InterleaveGapSize;
-        IsoUtilities.ToBothFromUInt16(buffer, offset + 28, VolumeSequenceNumber);
+        buffer[0] = (byte)length;
+        buffer[1] = ExtendedAttributeRecordLength;
+        IsoUtilities.ToBothFromUInt32(buffer.Slice(2), LocationOfExtent);
+        IsoUtilities.ToBothFromUInt32(buffer.Slice(10), DataLength);
+        IsoUtilities.ToDirectoryTimeFromUTC(buffer.Slice(18), RecordingDateAndTime);
+        buffer[25] = (byte)Flags;
+        buffer[26] = FileUnitSize;
+        buffer[27] = InterleaveGapSize;
+        IsoUtilities.ToBothFromUInt16(buffer.Slice(28), VolumeSequenceNumber);
         byte lengthOfFileIdentifier;
 
         if (FileIdentifier.Length == 1 && FileIdentifier[0] <= 1)
         {
-            buffer[offset + 33] = (byte)FileIdentifier[0];
+            buffer[33] = (byte)FileIdentifier[0];
             lengthOfFileIdentifier = 1;
         }
         else
         {
             lengthOfFileIdentifier =
                 (byte)
-                IsoUtilities.WriteString(buffer, offset + 33, (int)(length - 33), false, FileIdentifier, enc);
+                IsoUtilities.WriteString(buffer.Slice(33, (int)(length - 33)), false, FileIdentifier, enc);
         }
 
-        buffer[offset + 32] = lengthOfFileIdentifier;
+        buffer[32] = lengthOfFileIdentifier;
         return (int)length;
     }
 }

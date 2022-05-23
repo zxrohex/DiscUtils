@@ -72,12 +72,12 @@ internal sealed class SparseClusterStream : ClusterStream
         _rawStream.ReadClusters(startVcn, count, buffer, offset);
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     public override void ReadClusters(long startVcn, int count, Span<byte> buffer)
     {
         _rawStream.ReadClusters(startVcn, count, buffer);
     }
-#endif
+
 
     public override int WriteClusters(long startVcn, int count, byte[] buffer, int offset)
     {
@@ -87,7 +87,7 @@ internal sealed class SparseClusterStream : ClusterStream
         return clustersAllocated;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     public override int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer)
     {
         var clustersAllocated = 0;
@@ -95,7 +95,7 @@ internal sealed class SparseClusterStream : ClusterStream
         clustersAllocated += _rawStream.WriteClusters(startVcn, count, buffer);
         return clustersAllocated;
     }
-#endif
+
 
     public override int ClearClusters(long startVcn, int count)
     {

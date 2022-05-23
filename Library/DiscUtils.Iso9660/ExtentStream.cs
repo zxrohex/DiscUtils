@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.IO;
 using System.Threading;
@@ -27,7 +28,7 @@ using System.Threading.Tasks;
 
 namespace DiscUtils.Iso9660;
 
-internal class ExtentStream : Stream
+internal class ExtentStream : ReadOnlyCompatibilityStream
 {
     private readonly uint _dataLength;
     private readonly byte _fileUnitSize;
@@ -63,11 +64,6 @@ internal class ExtentStream : Stream
         get { return true; }
     }
 
-    public override bool CanWrite
-    {
-        get { return false; }
-    }
-
     public override long Length
     {
         get { return _dataLength; }
@@ -78,8 +74,6 @@ internal class ExtentStream : Stream
         get { return _position; }
         set { _position = value; }
     }
-
-    public override void Flush() {}
 
     public override int Read(byte[] buffer, int offset, int count)
     {
@@ -96,7 +90,6 @@ internal class ExtentStream : Stream
         return numRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (_position > _dataLength)
@@ -111,9 +104,7 @@ internal class ExtentStream : Stream
         _position += numRead;
         return numRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(Span<byte> buffer)
     {
         if (_position > _dataLength)
@@ -124,7 +115,7 @@ internal class ExtentStream : Stream
         var toRead = (int)Math.Min((uint)buffer.Length, _dataLength - _position);
 
         _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
-        var numRead = _isoStream.Read(buffer[..toRead]);
+        var numRead = _isoStream.Read(buffer.Slice(0, toRead));
         _position += numRead;
         return numRead;
     }
@@ -139,11 +130,10 @@ internal class ExtentStream : Stream
         var toRead = (int)Math.Min((uint)buffer.Length, _dataLength - _position);
 
         _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
-        var numRead = await _isoStream.ReadAsync(buffer[..toRead], cancellationToken).ConfigureAwait(false);
+        var numRead = await _isoStream.ReadAsync(buffer.Slice(0, toRead), cancellationToken).ConfigureAwait(false);
         _position += numRead;
         return numRead;
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -159,15 +149,5 @@ internal class ExtentStream : Stream
 
         _position = newPos;
         return newPos;
-    }
-
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
     }
 }

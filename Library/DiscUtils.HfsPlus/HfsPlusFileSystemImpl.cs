@@ -38,7 +38,7 @@ internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Dire
 
         var headerBuf = StreamUtilities.ReadExact(s, 512);
         var hdr = new VolumeHeader();
-        hdr.ReadFrom(headerBuf, 0);
+        hdr.ReadFrom(headerBuf);
 
         Context = new Context
         {
@@ -58,7 +58,7 @@ internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Dire
         // Establish Root directory
         var rootThreadData = Context.Catalog.Find(new CatalogKey(CatalogNodeId.RootFolderId, string.Empty));
         var rootThread = new CatalogThread();
-        rootThread.ReadFrom(rootThreadData, 0);
+        rootThread.ReadFrom(rootThreadData);
         var rootDirEntryData = Context.Catalog.Find(new CatalogKey(rootThread.ParentId, rootThread.Name));
         var rootDirEntry = new DirEntry(rootThread.Name, rootDirEntryData);
         RootDirectory = (Directory)GetFile(rootDirEntry);
@@ -75,7 +75,7 @@ internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Dire
         {
             var rootThreadData = Context.Catalog.Find(new CatalogKey(CatalogNodeId.RootFolderId, string.Empty));
             var rootThread = new CatalogThread();
-            rootThread.ReadFrom(rootThreadData, 0);
+            rootThread.ReadFrom(rootThreadData);
 
             return rootThread.Name;
         }

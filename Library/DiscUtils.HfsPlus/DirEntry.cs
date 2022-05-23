@@ -110,7 +110,7 @@ internal sealed class DirEntry : VfsDirEntry
             CatalogRecordType.FileRecord => new CatalogFileInfo(),
             _ => throw new NotImplementedException("Unknown catalog record type: " + type),
         };
-        result.ReadFrom(dirEntryData, 0);
+        result.ReadFrom(dirEntryData);
         return result;
     }
 }

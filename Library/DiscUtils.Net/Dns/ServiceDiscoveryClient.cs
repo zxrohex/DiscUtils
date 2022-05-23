@@ -82,7 +82,7 @@ public sealed class ServiceDiscoveryClient : IDisposable
     /// <returns>An array of service types, for example "_http._tcp".</returns>
     public IEnumerable<string> LookupServiceTypes(string domain)
     {
-        var records = DoLookup("_services._dns-sd._udp" + "." + domain, RecordType.Pointer);
+        var records = DoLookup($"_services._dns-sd._udp.{domain}", RecordType.Pointer);
 
         foreach (PointerRecord record in records)
         {
@@ -162,7 +162,7 @@ public sealed class ServiceDiscoveryClient : IDisposable
 
     private static string EncodeName(string fullName, string suffix)
     {
-        var instanceName = fullName.Substring(0, fullName.Length - (suffix.Length + 1));
+        var instanceName = fullName.AsSpan(0, fullName.Length - (suffix.Length + 1));
 
         var sb = new StringBuilder();
         foreach (var ch in instanceName)
@@ -175,7 +175,7 @@ public sealed class ServiceDiscoveryClient : IDisposable
             sb.Append(ch);
         }
 
-        return sb + "." + suffix;
+        return $"{sb}.{suffix}";
     }
 
     private static string DecodeDisplayName(string fullName)

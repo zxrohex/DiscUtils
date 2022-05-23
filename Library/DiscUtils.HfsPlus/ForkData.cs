@@ -39,22 +39,22 @@ internal sealed class ForkData : IByteArraySerializable
         get { return StructSize; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        LogicalSize = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0);
-        ClumpSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-        TotalBlocks = EndianUtilities.ToUInt32BigEndian(buffer, offset + 12);
+        LogicalSize = EndianUtilities.ToUInt64BigEndian(buffer);
+        ClumpSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
+        TotalBlocks = EndianUtilities.ToUInt32BigEndian(buffer.Slice(12));
 
         Extents = new ExtentDescriptor[8];
         for (var i = 0; i < 8; ++i)
         {
-            Extents[i] = EndianUtilities.ToStruct<ExtentDescriptor>(buffer, offset + 16 + i * 8);
+            Extents[i] = EndianUtilities.ToStruct<ExtentDescriptor>(buffer.Slice(16 + i * 8));
         }
 
         return StructSize;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

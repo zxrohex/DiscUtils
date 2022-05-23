@@ -104,8 +104,8 @@ public sealed class SparseMemoryBuffer : Buffer
     {
         get
         {
-            var buffer = new byte[1];
-            if (Read(pos, buffer, 0, 1) != 0)
+            Span<byte> buffer = stackalloc byte[1];
+            if (Read(pos, buffer) != 0)
             {
                 return buffer[0];
             }
@@ -114,9 +114,8 @@ public sealed class SparseMemoryBuffer : Buffer
 
         set
         {
-            var buffer = new byte[1];
-            buffer[0] = value;
-            Write(pos, buffer, 0, 1);
+            ReadOnlySpan<byte> buffer = stackalloc byte[1] { value };
+            Write(pos, buffer);
         }
     }
 
@@ -156,7 +155,6 @@ public sealed class SparseMemoryBuffer : Buffer
         return totalRead;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Reads a section of the sparse buffer into a byte array.
     /// </summary>
@@ -177,7 +175,7 @@ public sealed class SparseMemoryBuffer : Buffer
 
             if (!_buffers.TryGetValue(chunk, out var chunkBuffer))
             {
-                buffer[..numToRead].Clear();
+                buffer.Slice(0, numToRead).Clear();
             }
             else
             {
@@ -185,13 +183,12 @@ public sealed class SparseMemoryBuffer : Buffer
             }
 
             totalRead += numToRead;
-            buffer = buffer[numToRead..];
+            buffer = buffer.Slice(numToRead);
             pos += numToRead;
         }
 
         return totalRead;
     }
-#endif
 
     /// <summary>
     /// Writes a byte array into the sparse buffer.
@@ -224,7 +221,6 @@ public sealed class SparseMemoryBuffer : Buffer
         _capacity = Math.Max(_capacity, pos);
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override void Write(long pos, ReadOnlySpan<byte> buffer)
     {
         while (buffer.Length > 0)
@@ -239,16 +235,15 @@ public sealed class SparseMemoryBuffer : Buffer
                 _buffers[chunk] = chunkBuffer;
             }
 
-            buffer[..numToWrite].CopyTo(chunkBuffer.AsSpan(chunkOffset));
+            buffer.Slice(0, numToWrite).CopyTo(chunkBuffer.AsSpan(chunkOffset));
 
-            buffer = buffer[numToWrite..];
+            buffer = buffer.Slice(numToWrite);
 
             pos += numToWrite;
         }
 
         _capacity = Math.Max(_capacity, pos);
     }
-#endif
 
     /// <summary>
     /// Clears bytes from the buffer.

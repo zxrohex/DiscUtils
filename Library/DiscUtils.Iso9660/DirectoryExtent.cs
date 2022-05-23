@@ -49,7 +49,7 @@ internal class DirectoryExtent : BuilderExtent
     public override void PrepareForRead()
     {
         _readCache = new byte[Length];
-        _dirInfo.Write(_readCache, 0, _locationTable, _enc);
+        _dirInfo.Write(_readCache, _locationTable, _enc);
     }
 
     public override int Read(long diskOffset, byte[] buffer, int offset, int count)
@@ -63,7 +63,6 @@ internal class DirectoryExtent : BuilderExtent
         return numRead;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(long diskOffset, Span<byte> block)
     {
         var relPos = diskOffset - Start;
@@ -74,7 +73,6 @@ internal class DirectoryExtent : BuilderExtent
 
         return numRead;
     }
-#endif
 
     public override void DisposeReadState()
     {

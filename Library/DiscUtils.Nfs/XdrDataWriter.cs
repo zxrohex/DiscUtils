@@ -20,9 +20,14 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+using System.Buffers;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Nfs;
 
@@ -41,14 +46,72 @@ public sealed class XdrDataWriter : BigEndianDataWriter
         _stream.Write(buffer, offset, count);
         if ((count & 0x3) != 0)
         {
-            var padding = 4 - (buffer.Length & 0x3);
-            _stream.Write(new byte[padding], 0, padding);
+            Span<byte> padding = stackalloc byte[4 - (buffer.Length & 0x3)];
+            padding.Clear();
+            _stream.Write(padding);
         }
     }
 
-    public void WriteBuffer(byte[] buffer)
+    public override void WriteBytes(ReadOnlySpan<byte> buffer)
     {
-        WriteBuffer(buffer, 0, buffer.Length);
+        _stream.Write(buffer);
+        if ((buffer.Length & 0x3) != 0)
+        {
+            Span<byte> padding = stackalloc byte[4 - (buffer.Length & 0x3)];
+            padding.Clear();
+            _stream.Write(padding);
+        }
+    }
+
+    public override async ValueTask WriteBytesAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        await _stream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        if ((count & 0x3) != 0)
+        {
+            var paddingSize = 4 - (buffer.Length & 0x3);
+            var padding = ArrayPool<byte>.Shared.Rent(paddingSize);
+            try
+            {
+                Array.Clear(padding, 0, paddingSize);
+                await _stream.WriteAsync(padding.AsMemory(0, paddingSize), cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(padding);
+            }
+        }
+    }
+
+    public override async ValueTask WriteBytesAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        await _stream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+        if ((buffer.Length & 0x3) != 0)
+        {
+            var paddingSize = 4 - (buffer.Length & 0x3);
+            var padding = ArrayPool<byte>.Shared.Rent(paddingSize);
+            try
+            {
+                Array.Clear(padding, 0, paddingSize);
+                await _stream.WriteAsync(padding.AsMemory(0, paddingSize), cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(padding);
+            }
+        }
+    }
+
+    public void WriteBuffer(ReadOnlySpan<byte> buffer)
+    {
+        if (buffer.IsEmpty)
+        {
+            Write(0);
+        }
+        else
+        {
+            Write(buffer.Length);
+            WriteBytes(buffer);
+        }
     }
 
     public void WriteBuffer(byte[] buffer, int offset, int count)

@@ -23,6 +23,7 @@
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.Ext;
@@ -45,7 +46,7 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
         var superblockData = StreamUtilities.ReadExact(stream, 1024);
 
         var superblock = new SuperBlock();
-        superblock.ReadFrom(superblockData, 0);
+        superblock.ReadFrom(superblockData);
 
         if (superblock.Magic != SuperBlock.Ext2Magic)
         {

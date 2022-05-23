@@ -143,7 +143,11 @@ public class LunInfo
         {
             if (queryElem.StartsWith("LUN=", StringComparison.OrdinalIgnoreCase))
             {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+                lun = ulong.Parse(queryElem.AsSpan(4), NumberStyles.None, CultureInfo.InvariantCulture);
+#else
                 lun = ulong.Parse(queryElem.Substring(4), CultureInfo.InvariantCulture);
+#endif
                 if (lun < 256)
                 {
                     lun = lun << (6 * 8);

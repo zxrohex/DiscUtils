@@ -22,10 +22,12 @@
 
 namespace DiscUtils.Lvm;
 
+using System;
 using System.IO;
 using System.Linq;
 using DiscUtils.Partitions;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 internal class PhysicalVolume
 {
@@ -50,7 +52,7 @@ internal class PhysicalVolume
             var metadata = new VolumeGroupMetadata();
             content.Position = (long) area.Offset;
             buffer = StreamUtilities.ReadExact(content, (int) area.Length);
-            metadata.ReadFrom(buffer, 0x0);
+            metadata.ReadFrom(buffer);
             VgMetadata = metadata;
         }
 
@@ -94,7 +96,7 @@ internal class PhysicalVolume
             if (label == PhysicalVolumeLabel.LABEL_ID)
             {
                 pvLabel = new PhysicalVolumeLabel();
-                pvLabel.ReadFrom(buffer, 0x0);
+                pvLabel.ReadFrom(buffer);
                 if (pvLabel.Sector != i)
                 {
                     //Invalid PV Sector;
@@ -119,7 +121,7 @@ internal class PhysicalVolume
     /// <summary>
     /// LVM2.2.02.79:lib/misc/crc.c:_calc_crc_old()
     /// </summary>
-    internal static uint CalcCrc(byte[] buffer, int offset, int length)
+    internal static uint CalcCrc(ReadOnlySpan<byte> buffer)
     {
         var crc = INITIAL_CRC;
         var crctab = new uint[]
@@ -129,8 +131,8 @@ internal class PhysicalVolume
             0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
             0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
         };
-        var i = offset;
-        while (i < offset + length)
+        var i = 0;
+        while (i < buffer.Length)
         {
             crc ^= buffer[i];
             crc = (crc >> 4) ^ crctab[crc & 0xf];

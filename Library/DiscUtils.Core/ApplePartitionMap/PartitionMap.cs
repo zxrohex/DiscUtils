@@ -48,10 +48,10 @@ public sealed class PartitionMap : PartitionTable
         var initialBytes = StreamUtilities.ReadExact(stream, 1024);
 
         var b0 = new BlockZero();
-        b0.ReadFrom(initialBytes, 0);
+        b0.ReadFrom(initialBytes);
 
         var initialPart = new PartitionMapEntry(_stream);
-        initialPart.ReadFrom(initialBytes, 512);
+        initialPart.ReadFrom(initialBytes.AsSpan(512));
 
         var partTableData = StreamUtilities.ReadExact(stream, (int)(initialPart.MapEntries - 1) * 512);
 
@@ -59,7 +59,7 @@ public sealed class PartitionMap : PartitionTable
         for (uint i = 0; i < initialPart.MapEntries - 1; ++i)
         {
             _partitions[i] = new PartitionMapEntry(_stream);
-            _partitions[i].ReadFrom(partTableData, (int)(512 * i));
+            _partitions[i].ReadFrom(partTableData.AsSpan((int)(512 * i)));
         }
     }
 

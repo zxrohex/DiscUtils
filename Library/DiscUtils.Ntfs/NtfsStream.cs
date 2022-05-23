@@ -63,7 +63,7 @@ internal struct NtfsStream
         }
 
         var value = new T();
-        value.ReadFrom(buffer, 0);
+        value.ReadFrom(buffer);
         return value;
     }
 
@@ -76,7 +76,7 @@ internal struct NtfsStream
         where T : IByteArraySerializable, IDiagnosticTraceable, new()
     {
         var buffer = new byte[value.Size];
-        value.WriteTo(buffer, 0);
+        value.WriteTo(buffer);
         using Stream s = Open(FileAccess.Write);
         s.Write(buffer, 0, buffer.Length);
         s.SetLength(buffer.Length);

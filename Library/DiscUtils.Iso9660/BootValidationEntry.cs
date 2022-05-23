@@ -46,7 +46,7 @@ internal class BootValidationEntry
 
         HeaderId = _data[0];
         PlatformId = _data[1];
-        ManfId = EndianUtilities.BytesToString(_data, 4, 24).TrimEnd('\0').TrimEnd(' ');
+        ManfId = EndianUtilities.BytesToString(_data, 4, 24).AsSpan().TrimEnd('\0').TrimEnd(' ').ToString();
     }
 
     public bool ChecksumValid

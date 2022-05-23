@@ -78,48 +78,48 @@ internal sealed class KeyNodeCell : Cell
         get { return 0x4C + Name.Length; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Flags = (RegistryKeyFlags)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x02);
-        Timestamp = DateTime.FromFileTimeUtc(EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x04));
-        ParentIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x10);
-        NumSubKeys = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x14);
-        SubKeysIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x1C);
-        NumValues = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x24);
-        ValueListIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x28);
-        SecurityIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x2C);
-        ClassNameIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x30);
-        MaxSubKeyNameBytes = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x34);
-        MaxValNameBytes = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x3C);
-        MaxValDataBytes = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x40);
-        IndexInParent = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x44);
-        int nameLength = EndianUtilities.ToInt16LittleEndian(buffer, offset + 0x48);
-        ClassNameLength = EndianUtilities.ToInt16LittleEndian(buffer, offset + 0x4A);
-        Name = EndianUtilities.BytesToString(buffer, offset + 0x4C, nameLength);
+        Flags = (RegistryKeyFlags)EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x02));
+        Timestamp = DateTime.FromFileTimeUtc(EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x04)));
+        ParentIndex = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x10));
+        NumSubKeys = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x14));
+        SubKeysIndex = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x1C));
+        NumValues = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x24));
+        ValueListIndex = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x28));
+        SecurityIndex = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x2C));
+        ClassNameIndex = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x30));
+        MaxSubKeyNameBytes = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x34));
+        MaxValNameBytes = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x3C));
+        MaxValDataBytes = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x40));
+        IndexInParent = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x44));
+        int nameLength = EndianUtilities.ToInt16LittleEndian(buffer.Slice(0x48));
+        ClassNameLength = EndianUtilities.ToInt16LittleEndian(buffer.Slice(0x4A));
+        Name = EndianUtilities.BytesToString(buffer.Slice(0x4C, nameLength));
 
         return 0x4C + nameLength;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.StringToBytes("nk", buffer, offset, 2);
-        EndianUtilities.WriteBytesLittleEndian((ushort)Flags, buffer, offset + 0x02);
-        EndianUtilities.WriteBytesLittleEndian(Timestamp.ToFileTimeUtc(), buffer, offset + 0x04);
-        EndianUtilities.WriteBytesLittleEndian(ParentIndex, buffer, offset + 0x10);
-        EndianUtilities.WriteBytesLittleEndian(NumSubKeys, buffer, offset + 0x14);
-        EndianUtilities.WriteBytesLittleEndian(SubKeysIndex, buffer, offset + 0x1C);
-        EndianUtilities.WriteBytesLittleEndian(NumValues, buffer, offset + 0x24);
-        EndianUtilities.WriteBytesLittleEndian(ValueListIndex, buffer, offset + 0x28);
-        EndianUtilities.WriteBytesLittleEndian(SecurityIndex, buffer, offset + 0x2C);
-        EndianUtilities.WriteBytesLittleEndian(ClassNameIndex, buffer, offset + 0x30);
-        EndianUtilities.WriteBytesLittleEndian(IndexInParent, buffer, offset + 0x44);
-        EndianUtilities.WriteBytesLittleEndian((ushort)Name.Length, buffer, offset + 0x48);
-        EndianUtilities.WriteBytesLittleEndian(ClassNameLength, buffer, offset + 0x4A);
-        EndianUtilities.StringToBytes(Name, buffer, offset + 0x4C, Name.Length);
+        EndianUtilities.StringToBytes("nk", buffer.Slice(0, 2));
+        EndianUtilities.WriteBytesLittleEndian((ushort)Flags, buffer.Slice(0x02));
+        EndianUtilities.WriteBytesLittleEndian(Timestamp.ToFileTimeUtc(), buffer.Slice(0x04));
+        EndianUtilities.WriteBytesLittleEndian(ParentIndex, buffer.Slice(0x10));
+        EndianUtilities.WriteBytesLittleEndian(NumSubKeys, buffer.Slice(0x14));
+        EndianUtilities.WriteBytesLittleEndian(SubKeysIndex, buffer.Slice(0x1C));
+        EndianUtilities.WriteBytesLittleEndian(NumValues, buffer.Slice(0x24));
+        EndianUtilities.WriteBytesLittleEndian(ValueListIndex, buffer.Slice(0x28));
+        EndianUtilities.WriteBytesLittleEndian(SecurityIndex, buffer.Slice(0x2C));
+        EndianUtilities.WriteBytesLittleEndian(ClassNameIndex, buffer.Slice(0x30));
+        EndianUtilities.WriteBytesLittleEndian(IndexInParent, buffer.Slice(0x44));
+        EndianUtilities.WriteBytesLittleEndian((ushort)Name.Length, buffer.Slice(0x48));
+        EndianUtilities.WriteBytesLittleEndian(ClassNameLength, buffer.Slice(0x4A));
+        EndianUtilities.StringToBytes(Name, buffer.Slice(0x4C, Name.Length));
     }
 
     public override string ToString()
     {
-        return "Key:" + Name + "[" + Flags + "] <" + Timestamp + ">";
+        return $"Key:{Name}[{Flags}] <{Timestamp}>";
     }
 }

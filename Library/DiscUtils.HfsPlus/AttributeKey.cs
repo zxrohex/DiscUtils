@@ -48,18 +48,18 @@ internal class AttributeKey : BTreeKey
         get { throw new NotImplementedException(); }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        _keyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
-        _pad = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
-        FileId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 4));
-        _startBlock = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-        Name = HfsPlusUtilities.ReadUniStr255(buffer, offset + 12);
+        _keyLength = EndianUtilities.ToUInt16BigEndian(buffer);
+        _pad = EndianUtilities.ToUInt16BigEndian(buffer.Slice(2));
+        FileId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer.Slice(4)));
+        _startBlock = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
+        Name = HfsPlusUtilities.ReadUniStr255(buffer.Slice(12));
 
         return _keyLength + 2;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }
@@ -86,6 +86,6 @@ internal class AttributeKey : BTreeKey
 
     public override string ToString()
     {
-        return Name + " (" + FileId + ")";
+        return $"{Name} ({FileId})";
     }
 }

@@ -45,19 +45,20 @@ internal class MetadataLogicalVolumeSection
     internal void Parse(string head, TextReader data)
     {
         var segments = new List<MetadataSegmentSection>();
-        Name = head.Trim().TrimEnd('{').TrimEnd();
+        Name = head.AsSpan().Trim().TrimEnd('{').TrimEnd().ToString();
         string line;
         Span<byte> guid = stackalloc byte[16];
+        
         while ((line = Metadata.ReadLine(data)) != null)
         {
             if (line == String.Empty) continue;
-            if (line.Contains('='))
+            if (line.AsSpan().Contains("=".AsSpan(), StringComparison.Ordinal))
             {
-                var parameter = Metadata.ParseParameter(line);
-                switch (parameter.Key.Trim().ToLowerInvariant())
+                var parameter = Metadata.ParseParameter(line.AsMemory());
+                switch (parameter.Key.ToString().ToLowerInvariant())
                 {
                     case "id":
-                        Id = Metadata.ParseStringValue(parameter.Value);
+                        Id = Metadata.ParseStringValue(parameter.Value.Span);
                         EndianUtilities.StringToBytes(Id.Replace("-", String.Empty), guid);
                         // Mark it as a version 4 GUID
                         guid[7] = (byte)((guid[7] | 0x40) & 0x4f);
@@ -65,7 +66,7 @@ internal class MetadataLogicalVolumeSection
                         Identity = MemoryMarshal.Read<Guid>(guid);
                         break;
                     case "status":
-                        var values = Metadata.ParseArrayValue(parameter.Value);
+                        var values = Metadata.ParseArrayValue(parameter.Value.Span);
                         foreach (var value in values)
                         {
                             Status |= value.ToLowerInvariant().Trim() switch
@@ -78,19 +79,19 @@ internal class MetadataLogicalVolumeSection
                         }
                         break;
                     case "flags":
-                        Flags = Metadata.ParseArrayValue(parameter.Value);
+                        Flags = Metadata.ParseArrayValue(parameter.Value.Span);
                         break;
                     case "creation_host":
-                        CreationHost = Metadata.ParseStringValue(parameter.Value);
+                        CreationHost = Metadata.ParseStringValue(parameter.Value.Span);
                         break;
                     case "creation_time":
-                        CreationTime = Metadata.ParseDateTimeValue(parameter.Value);
+                        CreationTime = Metadata.ParseDateTimeValue(parameter.Value.Span);
                         break;
                     case "segment_count":
-                        SegmentCount = Metadata.ParseNumericValue(parameter.Value);
+                        SegmentCount = Metadata.ParseNumericValue(parameter.Value.Span);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in global metadata");
+                        throw new ArgumentOutOfRangeException(parameter.Key.ToString(), "Unexpected parameter in global metadata");
                 }
             }
             else if (line.EndsWith("{"))

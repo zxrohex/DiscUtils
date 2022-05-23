@@ -159,7 +159,7 @@ internal sealed class BuilderDirectory : BuilderNode
                 StartBlock = (int)thisBlock
             };
 
-            hdr.WriteTo(context.IoBuffer, 0);
+            hdr.WriteTo(context.IoBuffer);
             context.DirectoryWriter.Write(context.IoBuffer, 0, hdr.Size);
 
             for (var i = 0; i < count; ++i)
@@ -173,7 +173,7 @@ internal sealed class BuilderDirectory : BuilderNode
                     Name = child.Name
                 };
 
-                record.WriteTo(context.IoBuffer, 0);
+                record.WriteTo(context.IoBuffer);
                 context.DirectoryWriter.Write(context.IoBuffer, 0, record.Size);
 
                 if (child.Node.Inode.Type == InodeType.Directory
@@ -206,7 +206,7 @@ internal sealed class BuilderDirectory : BuilderNode
 
         InodeRef = context.InodeWriter.Position;
 
-        _inode.WriteTo(context.IoBuffer, 0);
+        _inode.WriteTo(context.IoBuffer);
 
         context.InodeWriter.Write(context.IoBuffer, 0, _inode.Size);
     }

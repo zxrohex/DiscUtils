@@ -28,39 +28,14 @@ public sealed class CommonAce : QualifiedAce
     }
 
     internal CommonAce(byte[] binaryForm, int offset)
-        : base(binaryForm, offset)
+        : this(binaryForm.AsSpan(offset))
     {
-        int len = ReadUShort(binaryForm, offset + 2);
-        if (offset > binaryForm.Length - len)
-        {
-            throw new ArgumentException("Invalid ACE - truncated", nameof(binaryForm));
-        }
-
-        if (len < 8 + SecurityIdentifier.MinBinaryLength)
-        {
-            throw new ArgumentException("Invalid ACE", nameof(binaryForm));
-        }
-
-        AccessMask = ReadInt(binaryForm, offset + 4);
-        SecurityIdentifier = new SecurityIdentifier(binaryForm,
-            offset + 8);
-
-        var opaqueLen = len - (8 + SecurityIdentifier.BinaryLength);
-        if (opaqueLen > 0)
-        {
-            Span<byte> opaque = stackalloc byte[opaqueLen];
-            binaryForm.AsSpan(
-                offset + 8 + SecurityIdentifier.BinaryLength,
-                opaqueLen).CopyTo(opaque);
-            SetOpaque(opaque);
-        }
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     internal CommonAce(ReadOnlySpan<byte> binaryForm)
         : base(binaryForm)
     {
-        int len = ReadUShort(binaryForm[2..]);
+        int len = ReadUShort(binaryForm.Slice(2));
         if (len > binaryForm.Length)
         {
             throw new ArgumentException("Invalid ACE - truncated", nameof(binaryForm));
@@ -71,8 +46,8 @@ public sealed class CommonAce : QualifiedAce
             throw new ArgumentException("Invalid ACE", nameof(binaryForm));
         }
 
-        AccessMask = ReadInt(binaryForm[4..]);
-        SecurityIdentifier = new SecurityIdentifier(binaryForm[8..]);
+        AccessMask = ReadInt(binaryForm.Slice(4));
+        SecurityIdentifier = new SecurityIdentifier(binaryForm.Slice(8));
 
         var opaqueLen = len - (8 + SecurityIdentifier.BinaryLength);
         if (opaqueLen > 0)
@@ -81,25 +56,21 @@ public sealed class CommonAce : QualifiedAce
             SetOpaque(opaque);
         }
     }
-#endif
 
-    public override void GetBinaryForm(byte[] binaryForm, int offset)
+    public override void GetBinaryForm(Span<byte> binaryForm)
     {
         var len = BinaryLength;
-        binaryForm[offset] = (byte)AceType;
-        binaryForm[offset + 1] = (byte)AceFlags;
-        WriteUShort((ushort)len, binaryForm, offset + 2);
-        WriteInt(AccessMask, binaryForm, offset + 4);
+        binaryForm[0] = (byte)AceType;
+        binaryForm[1] = (byte)AceFlags;
+        WriteUShort((ushort)len, binaryForm.Slice(2));
+        WriteInt(AccessMask, binaryForm.Slice(4));
 
-        SecurityIdentifier.GetBinaryForm(binaryForm,
-            offset + 8);
+        SecurityIdentifier.GetBinaryForm(binaryForm.Slice(8));
 
         var opaque = GetOpaque();
         if (opaque != null)
         {
-            Array.Copy(opaque, 0, binaryForm,
-                offset + 8 + SecurityIdentifier.BinaryLength,
-                opaque.Length);
+            opaque.CopyTo(binaryForm.Slice(8 + SecurityIdentifier.BinaryLength));
         }
     }
 

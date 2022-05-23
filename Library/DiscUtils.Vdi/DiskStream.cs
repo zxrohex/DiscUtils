@@ -29,6 +29,7 @@ using System.Threading.Tasks;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vdi;
 
@@ -199,7 +200,6 @@ internal class DiskStream : SparseStream
         return numRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -250,9 +250,7 @@ internal class DiskStream : SparseStream
 
         return numRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -354,7 +352,6 @@ internal class DiskStream : SparseStream
 
         return numRead;
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -501,7 +498,6 @@ internal class DiskStream : SparseStream
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -613,9 +609,7 @@ internal class DiskStream : SparseStream
             _position += toWrite;
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         CheckDisposed();
@@ -835,7 +829,6 @@ internal class DiskStream : SparseStream
             _position += toWrite;
         }
     }
-#endif
 
     protected override void Dispose(bool disposing)
     {

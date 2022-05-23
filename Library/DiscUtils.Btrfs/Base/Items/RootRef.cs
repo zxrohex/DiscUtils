@@ -20,8 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Text;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Btrfs.Base.Items;
 
@@ -57,12 +60,12 @@ internal class RootRef : BaseItem
         get { return 0x12+NameLength; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        DirectoryId = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-        Sequence = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-        NameLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x10);
-        Name = Encoding.UTF8.GetString(buffer, offset + 0x12, NameLength);
+        DirectoryId = EndianUtilities.ToUInt64LittleEndian(buffer);
+        Sequence = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x8));
+        NameLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x10));
+        Name = Encoding.UTF8.GetString(buffer.Slice(0x12, NameLength));
         return Size;
     }
 }

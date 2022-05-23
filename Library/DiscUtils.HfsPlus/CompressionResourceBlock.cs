@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.HfsPlus;
 
@@ -35,10 +36,10 @@ internal class CompressionResourceBlock
         get { return 8; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Offset = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-        DataSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+        Offset = EndianUtilities.ToUInt32LittleEndian(buffer);
+        DataSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(4));
 
         return Size;
     }

@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -29,7 +30,7 @@ using System.Threading.Tasks;
 
 namespace DiscUtils.Fat;
 
-internal class ClusterStream : Stream
+internal class ClusterStream : CompatibilityStream
 {
     private readonly FileAccess _access;
     private readonly byte[] _clusterBuffer;
@@ -113,6 +114,9 @@ internal class ClusterStream : Stream
     public override void Flush() { }
 
     public override int Read(byte[] buffer, int offset, int count)
+        => Read(buffer.AsSpan(offset, count));
+
+    public override int Read(Span<byte> buffer)
     {
         if (!CanRead)
         {
@@ -124,13 +128,8 @@ internal class ClusterStream : Stream
             throw new IOException("Attempt to read beyond end of file");
         }
 
-        if (count < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to read negative number of bytes");
-        }
-
-        var target = count;
-        if (_length - _position < count)
+        var target = buffer.Length;
+        if (_length - _position < buffer.Length)
         {
             target = (int)(_length - _position);
         }
@@ -150,7 +149,7 @@ internal class ClusterStream : Stream
         {
             var clusterOffset = (int)(_position % _reader.ClusterSize);
             var toCopy = Math.Min(_reader.ClusterSize - clusterOffset, target - numRead);
-            Array.Copy(_clusterBuffer, clusterOffset, buffer, offset + numRead, toCopy);
+            _clusterBuffer.AsSpan(clusterOffset, toCopy).CopyTo(buffer.Slice(numRead));
 
             // Remember how many we've read in total
             numRead += toCopy;
@@ -172,6 +171,12 @@ internal class ClusterStream : Stream
 
         return numRead;
     }
+
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        => Task.FromResult(Read(buffer, offset, count));
+
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        => new(Read(buffer.Span));
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -238,23 +243,27 @@ internal class ClusterStream : Stream
     }
 
     public override void Write(byte[] buffer, int offset, int count)
+        => Write(buffer.AsSpan(offset, count));
+
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        var bytesRemaining = count;
+        Write(buffer.AsSpan(offset, count));
+        return Task.CompletedTask;
+    }
+
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        Write(buffer.Span);
+        return new();
+    }
+
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        var bytesRemaining = buffer.Length;
 
         if (!CanWrite)
         {
             throw new IOException("Attempting to write to file not opened for writing");
-        }
-
-        if (count < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count), count,
-                "Attempting to write negative number of bytes");
-        }
-
-        if (offset > buffer.Length || offset + count > buffer.Length)
-        {
-            throw new ArgumentException("Attempt to write bytes outside of the buffer");
         }
 
         // TODO: Free space check...
@@ -272,9 +281,8 @@ internal class ClusterStream : Stream
 
                 // Fill this cluster with as much data as we can (WriteToCluster preserves existing cluster
                 // data, if necessary)
-                var numWritten = WriteToCluster(cluster, (int)(_position % _reader.ClusterSize), buffer, offset,
-                    bytesRemaining);
-                offset += numWritten;
+                var numWritten = WriteToCluster(cluster, (int)(_position % _reader.ClusterSize), buffer.Slice(0, bytesRemaining));
+                buffer = buffer.Slice(numWritten);
                 bytesRemaining -= numWritten;
                 _position += numWritten;
             }
@@ -300,12 +308,12 @@ internal class ClusterStream : Stream
     /// <param name="count">The maximum number of bytes to write.</param>
     /// <returns>The number of bytes written - either count, or the number that fit up to
     /// the cluster boundary.</returns>
-    private int WriteToCluster(uint cluster, int pos, byte[] buffer, int offset, int count)
+    private int WriteToCluster(uint cluster, int pos, ReadOnlySpan<byte> buffer)
     {
-        if (pos == 0 && count >= _reader.ClusterSize)
+        if (pos == 0 && buffer.Length >= _reader.ClusterSize)
         {
             _currentCluster = cluster;
-            Array.Copy(buffer, offset, _clusterBuffer, 0, _reader.ClusterSize);
+            buffer.Slice(0, _reader.ClusterSize).CopyTo(_clusterBuffer);
 
             WriteCurrentCluster();
 
@@ -315,8 +323,8 @@ internal class ClusterStream : Stream
         // Partial cluster, so need to read existing cluster data first
         LoadCluster(cluster);
 
-        var copyLength = Math.Min(count, _reader.ClusterSize - pos % _reader.ClusterSize);
-        Array.Copy(buffer, offset, _clusterBuffer, pos, copyLength);
+        var copyLength = Math.Min(buffer.Length, _reader.ClusterSize - pos % _reader.ClusterSize);
+        buffer.Slice(0, copyLength).CopyTo(_clusterBuffer.AsSpan(pos));
 
         WriteCurrentCluster();
 

@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -235,7 +236,7 @@ public sealed class SnapshotStream : SparseStream
         _baseStream.Flush();
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Flushes the stream.
     /// </summary>
@@ -245,7 +246,7 @@ public sealed class SnapshotStream : SparseStream
 
         return _baseStream.FlushAsync(cancellationToken);
     }
-#endif
+
 
     /// <summary>
     /// Reads data from the stream.
@@ -310,7 +311,7 @@ public sealed class SnapshotStream : SparseStream
         return numRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Reads data from the stream.
     /// </summary>
@@ -373,9 +374,9 @@ public sealed class SnapshotStream : SparseStream
 
         return numRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     /// <summary>
     /// Reads data from the stream.
     /// </summary>
@@ -411,7 +412,7 @@ public sealed class SnapshotStream : SparseStream
                 var totalBaseRead = 0;
                 while (totalBaseRead < baseToRead)
                 {
-                    totalBaseRead += await _baseStream.ReadAsync(buffer[totalBaseRead..baseToRead], cancellationToken).ConfigureAwait(false);
+                    totalBaseRead += await _baseStream.ReadAsync(buffer.Slice(totalBaseRead, baseToRead - totalBaseRead), cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -474,7 +475,7 @@ public sealed class SnapshotStream : SparseStream
                 var totalBaseRead = 0;
                 while (totalBaseRead < baseToRead)
                 {
-                    totalBaseRead += _baseStream.Read(buffer[totalBaseRead..baseToRead]);
+                    totalBaseRead += _baseStream.Read(buffer.Slice(totalBaseRead, baseToRead - totalBaseRead));
                 }
             }
 
@@ -501,7 +502,7 @@ public sealed class SnapshotStream : SparseStream
 
         return numRead;
     }
-#endif
+
 
     /// <summary>
     /// Moves the stream position.
@@ -579,7 +580,7 @@ public sealed class SnapshotStream : SparseStream
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Writes data to the stream at the current location.
     /// </summary>
@@ -609,9 +610,9 @@ public sealed class SnapshotStream : SparseStream
             _position += count;
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     /// <summary>
     /// Writes data to the stream at the current location.
     /// </summary>
@@ -671,7 +672,7 @@ public sealed class SnapshotStream : SparseStream
             _position += buffer.Length;
         }
     }
-#endif
+
 
     /// <summary>
     /// Disposes of this instance.

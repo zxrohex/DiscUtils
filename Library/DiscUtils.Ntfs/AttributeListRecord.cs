@@ -22,8 +22,11 @@
 
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -47,19 +50,19 @@ internal class AttributeListRecord : IDiagnosticTraceable, IByteArraySerializabl
         }
     }
 
-    public int ReadFrom(byte[] data, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> data)
     {
-        Type = (AttributeType)EndianUtilities.ToUInt32LittleEndian(data, offset + 0x00);
-        RecordLength = EndianUtilities.ToUInt16LittleEndian(data, offset + 0x04);
-        NameLength = data[offset + 0x06];
-        NameOffset = data[offset + 0x07];
-        StartVcn = EndianUtilities.ToUInt64LittleEndian(data, offset + 0x08);
-        BaseFileReference = new FileRecordReference(EndianUtilities.ToUInt64LittleEndian(data, offset + 0x10));
-        AttributeId = EndianUtilities.ToUInt16LittleEndian(data, offset + 0x18);
+        Type = (AttributeType)EndianUtilities.ToUInt32LittleEndian(data);
+        RecordLength = EndianUtilities.ToUInt16LittleEndian(data.Slice(0x04));
+        NameLength = data[0x06];
+        NameOffset = data[0x07];
+        StartVcn = EndianUtilities.ToUInt64LittleEndian(data.Slice(0x08));
+        BaseFileReference = new FileRecordReference(EndianUtilities.ToUInt64LittleEndian(data.Slice(0x10)));
+        AttributeId = EndianUtilities.ToUInt16LittleEndian(data.Slice(0x18));
 
         if (NameLength > 0)
         {
-            Name = Encoding.Unicode.GetString(data, offset + NameOffset, NameLength * 2);
+            Name = Encoding.Unicode.GetString(data.Slice(NameOffset, NameLength * 2));
         }
         else
         {
@@ -74,7 +77,7 @@ internal class AttributeListRecord : IDiagnosticTraceable, IByteArraySerializabl
         return RecordLength;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
         NameOffset = 0x20;
         if (string.IsNullOrEmpty(Name))
@@ -83,18 +86,18 @@ internal class AttributeListRecord : IDiagnosticTraceable, IByteArraySerializabl
         }
         else
         {
-            NameLength = (byte)(Encoding.Unicode.GetBytes(Name, 0, Name.Length, buffer, offset + NameOffset) / 2);
+            NameLength = (byte)(Encoding.Unicode.GetBytes(Name.AsSpan(), buffer.Slice(NameOffset)) / 2);
         }
 
         RecordLength = (ushort)MathUtilities.RoundUp(NameOffset + NameLength * 2, 8);
 
-        EndianUtilities.WriteBytesLittleEndian((uint)Type, buffer, offset);
-        EndianUtilities.WriteBytesLittleEndian(RecordLength, buffer, offset + 0x04);
-        buffer[offset + 0x06] = NameLength;
-        buffer[offset + 0x07] = NameOffset;
-        EndianUtilities.WriteBytesLittleEndian(StartVcn, buffer, offset + 0x08);
-        EndianUtilities.WriteBytesLittleEndian(BaseFileReference.Value, buffer, offset + 0x10);
-        EndianUtilities.WriteBytesLittleEndian(AttributeId, buffer, offset + 0x18);
+        EndianUtilities.WriteBytesLittleEndian((uint)Type, buffer);
+        EndianUtilities.WriteBytesLittleEndian(RecordLength, buffer.Slice(0x04));
+        buffer[0x06] = NameLength;
+        buffer[0x07] = NameOffset;
+        EndianUtilities.WriteBytesLittleEndian(StartVcn, buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian(BaseFileReference.Value, buffer.Slice(0x10));
+        EndianUtilities.WriteBytesLittleEndian(AttributeId, buffer.Slice(0x18));
     }
 
     public int CompareTo(AttributeListRecord other)

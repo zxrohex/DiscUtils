@@ -54,17 +54,15 @@ public abstract class BuilderExtent : IDisposable
 
     public abstract int Read(long diskOffset, byte[] block, int offset, int count);
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public virtual Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
         Task.FromResult(Read(diskOffset, block, offset, count));
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     public abstract int Read(long diskOffset, Span<byte> block);
 
     public virtual ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken) =>
         new(Read(diskOffset, block.Span));
-#endif
 
     public abstract void DisposeReadState();
 }

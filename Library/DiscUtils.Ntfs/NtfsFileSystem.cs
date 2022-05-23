@@ -30,6 +30,7 @@ using DiscUtils.Internal;
 using DiscUtils.Streams;
 using System.Linq;
 using DiscUtils.CoreCompat;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -1254,7 +1255,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
 
                 using Stream contentStream = stream.Value.Open(FileAccess.Read);
                 var buffer = StreamUtilities.ReadExact(contentStream, (int)contentStream.Length);
-                rp.ReadFrom(buffer, 0);
+                rp.ReadFrom(buffer);
                 return new ReparsePoint((int)rp.Tag, rp.Content);
             }
         }
@@ -2223,7 +2224,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             using (Stream contentStream = stream.Value.Open(FileAccess.Read))
             {
                 var buffer = StreamUtilities.ReadExact(contentStream, (int)contentStream.Length);
-                rp.ReadFrom(buffer, 0);
+                rp.ReadFrom(buffer);
             }
 
             file.RemoveStream(stream.Value);

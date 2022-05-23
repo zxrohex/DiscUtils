@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.PowerShell.VirtualDiskProvider;
@@ -220,6 +222,27 @@ internal sealed class OnDemandVirtualDisk : VirtualDisk
             return disk.Content.Read(buffer, offset, count);
         }
 
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            using var disk = OpenDisk();
+            disk.Content.Position = _position;
+            return await disk.Content.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            using var disk = OpenDisk();
+            disk.Content.Position = _position;
+            return disk.Content.Read(buffer);
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            using var disk = OpenDisk();
+            disk.Content.Position = _position;
+            return await disk.Content.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+        }
+
         public override long Seek(long offset, SeekOrigin origin)
         {
             var effectiveOffset = offset;
@@ -254,6 +277,27 @@ internal sealed class OnDemandVirtualDisk : VirtualDisk
             using var disk = OpenDisk();
             disk.Content.Position = _position;
             disk.Content.Write(buffer, offset, count);
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            using var disk = OpenDisk();
+            disk.Content.Position = _position;
+            disk.Content.Write(buffer);
+        }
+
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            using var disk = OpenDisk();
+            disk.Content.Position = _position;
+            await disk.Content.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        }
+
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            using var disk = OpenDisk();
+            disk.Content.Position = _position;
+            await disk.Content.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
 
         private VirtualDisk OpenDisk()

@@ -35,16 +35,16 @@ internal class BTreeExtentLeafV5 : BTreeExtentHeaderV5
         get { return base.Size + (NumberOfRecords * 0x10); }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        offset += base.ReadFrom(buffer, offset);
+        var offset = base.ReadFrom(buffer);
         if (Level != 0)
             throw new IOException("invalid B+tree level - expected 0");
         Extents = new Extent[NumberOfRecords];
         for (var i = 0; i < NumberOfRecords; i++)
         {
             var rec = new Extent();
-            offset += rec.ReadFrom(buffer, offset);
+            offset += rec.ReadFrom(buffer.Slice(offset));
             Extents[i] = rec;
         }
         return Size;

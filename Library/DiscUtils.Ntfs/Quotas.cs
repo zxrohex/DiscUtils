@@ -101,15 +101,15 @@ internal sealed class Quotas
             get { return Sid.BinaryLength; }
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
+        public int ReadFrom(ReadOnlySpan<byte> buffer)
         {
-            Sid = new SecurityIdentifier(buffer, offset);
+            Sid = new SecurityIdentifier(buffer);
             return Sid.BinaryLength;
         }
 
-        public void WriteTo(byte[] buffer, int offset)
+        void IByteArraySerializable.WriteTo(Span<byte> buffer)
         {
-            Sid.GetBinaryForm(buffer, offset);
+            Sid.GetBinaryForm(buffer);
         }
 
         public override string ToString() => $"[Sid:{Sid}]";
@@ -129,20 +129,20 @@ internal sealed class Quotas
             get { return 4; }
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
+        public int ReadFrom(ReadOnlySpan<byte> buffer)
         {
-            OwnerId = EndianUtilities.ToInt32LittleEndian(buffer, offset);
+            OwnerId = EndianUtilities.ToInt32LittleEndian(buffer);
             return 4;
         }
 
-        public void WriteTo(byte[] buffer, int offset)
+        void IByteArraySerializable.WriteTo(Span<byte> buffer)
         {
-            EndianUtilities.WriteBytesLittleEndian(OwnerId, buffer, offset);
+            EndianUtilities.WriteBytesLittleEndian(OwnerId, buffer);
         }
 
         public override string ToString()
         {
-            return "[OwnerId:" + OwnerId + "]";
+            return $"[OwnerId:{OwnerId}]";
         }
     }
 
@@ -174,43 +174,42 @@ internal sealed class Quotas
             get { return 0x30 + (Sid == null ? 0 : Sid.BinaryLength); }
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
+        public int ReadFrom(ReadOnlySpan<byte> buffer)
         {
-            Version = EndianUtilities.ToInt32LittleEndian(buffer, offset);
-            Flags = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
-            BytesUsed = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x08);
-            ChangeTime = DateTime.FromFileTimeUtc(EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x10));
-            WarningLimit = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x18);
-            HardLimit = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x20);
-            ExceededTime = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x28);
-            if (buffer.Length - offset > 0x30)
+            Version = EndianUtilities.ToInt32LittleEndian(buffer);
+            Flags = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x04));
+            BytesUsed = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x08));
+            ChangeTime = DateTime.FromFileTimeUtc(EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x10)));
+            WarningLimit = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x18));
+            HardLimit = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x20));
+            ExceededTime = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x28));
+            if (buffer.Length > 0x30)
             {
-                Sid = new SecurityIdentifier(buffer, offset + 0x30);
+                Sid = new SecurityIdentifier(buffer.Slice(0x30));
                 return 0x30 + Sid.BinaryLength;
             }
 
             return 0x30;
         }
 
-        public void WriteTo(byte[] buffer, int offset)
+        public void WriteTo(Span<byte> buffer)
         {
-            EndianUtilities.WriteBytesLittleEndian(Version, buffer, offset);
-            EndianUtilities.WriteBytesLittleEndian(Flags, buffer, offset + 0x04);
-            EndianUtilities.WriteBytesLittleEndian(BytesUsed, buffer, offset + 0x08);
-            EndianUtilities.WriteBytesLittleEndian(ChangeTime.ToFileTimeUtc(), buffer, offset + 0x10);
-            EndianUtilities.WriteBytesLittleEndian(WarningLimit, buffer, offset + 0x18);
-            EndianUtilities.WriteBytesLittleEndian(HardLimit, buffer, offset + 0x20);
-            EndianUtilities.WriteBytesLittleEndian(ExceededTime, buffer, offset + 0x28);
+            EndianUtilities.WriteBytesLittleEndian(Version, buffer);
+            EndianUtilities.WriteBytesLittleEndian(Flags, buffer.Slice(0x04));
+            EndianUtilities.WriteBytesLittleEndian(BytesUsed, buffer.Slice(0x08));
+            EndianUtilities.WriteBytesLittleEndian(ChangeTime.ToFileTimeUtc(), buffer.Slice(0x10));
+            EndianUtilities.WriteBytesLittleEndian(WarningLimit, buffer.Slice(0x18));
+            EndianUtilities.WriteBytesLittleEndian(HardLimit, buffer.Slice(0x20));
+            EndianUtilities.WriteBytesLittleEndian(ExceededTime, buffer.Slice(0x28));
             if (Sid != null)
             {
-                Sid.GetBinaryForm(buffer, offset + 0x30);
+                Sid.GetBinaryForm(buffer.Slice(0x30));
             }
         }
 
         public override string ToString()
         {
-            return "[V:" + Version + ",F:" + Flags + ",BU:" + BytesUsed + ",CT:" + ChangeTime + ",WL:" +
-                   WarningLimit + ",HL:" + HardLimit + ",ET:" + ExceededTime + ",SID:" + Sid + "]";
+            return $"[V:{Version},F:{Flags},BU:{BytesUsed},CT:{ChangeTime},WL:{WarningLimit},HL:{HardLimit},ET:{ExceededTime},SID:{Sid}]";
         }
     }
 }

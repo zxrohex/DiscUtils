@@ -46,7 +46,7 @@ internal class LogoutRequest
         };
 
         var buffer = new byte[MathUtilities.RoundUp(48, 4)];
-        _basicHeader.WriteTo(buffer, 0);
+        _basicHeader.WriteTo(buffer);
         buffer[1] |= (byte)((byte)reason & 0x7F);
         EndianUtilities.WriteBytesBigEndian(_connection.Id, buffer, 20);
         EndianUtilities.WriteBytesBigEndian(_connection.Session.CommandSequenceNumber, buffer, 24);

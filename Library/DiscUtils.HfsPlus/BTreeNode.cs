@@ -45,14 +45,14 @@ internal abstract class BTreeNode : IByteArraySerializable
         get { return Tree.NodeSize; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Records = ReadRecords(buffer, offset);
+        Records = ReadRecords(buffer);
 
         return 0;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }
@@ -85,7 +85,7 @@ internal abstract class BTreeNode : IByteArraySerializable
         };
     }
 
-    protected virtual IList<BTreeNodeRecord> ReadRecords(byte[] buffer, int offset)
+    protected virtual IList<BTreeNodeRecord> ReadRecords(ReadOnlySpan<byte> buffer)
     {
         throw new NotImplementedException();
     }

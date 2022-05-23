@@ -22,6 +22,7 @@
 
 using System;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Iscsi;
 
@@ -37,7 +38,7 @@ internal class CommandRequest
         _lun = lun;
     }
 
-    public byte[] GetBytes(ScsiCommand cmd, byte[] immediateData, int offset, int count, bool isFinalData,
+    public byte[] GetBytes(ScsiCommand cmd, ReadOnlySpan<byte> immediateData, bool isFinalData,
                            bool willRead, bool willWrite, uint expected)
     {
         var _basicHeader = new BasicHeaderSegment
@@ -46,12 +47,12 @@ internal class CommandRequest
             OpCode = OpCode.ScsiCommand,
             FinalPdu = isFinalData,
             TotalAhsLength = 0,
-            DataSegmentLength = count,
+            DataSegmentLength = immediateData.Length,
             InitiatorTaskTag = _connection.Session.CurrentTaskTag
         };
 
-        var buffer = new byte[48 + MathUtilities.RoundUp(count, 4)];
-        _basicHeader.WriteTo(buffer, 0);
+        var buffer = new byte[48 + MathUtilities.RoundUp(immediateData.Length, 4)];
+        _basicHeader.WriteTo(buffer);
         buffer[1] = PackAttrByte(isFinalData, willRead, willWrite, cmd.TaskAttributes);
         EndianUtilities.WriteBytesBigEndian(_lun, buffer, 8);
         EndianUtilities.WriteBytesBigEndian(expected, buffer, 20);
@@ -59,9 +60,9 @@ internal class CommandRequest
         EndianUtilities.WriteBytesBigEndian(_connection.ExpectedStatusSequenceNumber, buffer, 28);
         cmd.WriteTo(buffer, 32);
 
-        if (immediateData != null && count != 0)
+        if (immediateData != null && immediateData.Length != 0)
         {
-            Array.Copy(immediateData, offset, buffer, 48, count);
+            immediateData.CopyTo(buffer.AsSpan(48));
         }
 
         return buffer;

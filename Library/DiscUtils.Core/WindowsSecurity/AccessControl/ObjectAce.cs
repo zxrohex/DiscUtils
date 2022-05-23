@@ -38,68 +38,14 @@ public sealed class ObjectAce : QualifiedAce
     }
 
     internal ObjectAce(byte[] binaryForm, int offset)
-        : base(binaryForm, offset)
+        : this(binaryForm.AsSpan(offset))
     {
-        int len = ReadUShort(binaryForm, offset + 2);
-        var lenMinimum = 12 + SecurityIdentifier.MinBinaryLength;
-
-        if (offset > binaryForm.Length - len)
-        {
-            throw new ArgumentException("Invalid ACE - truncated", nameof(binaryForm));
-        }
-
-        if (len < lenMinimum)
-        {
-            throw new ArgumentException("Invalid ACE", nameof(binaryForm));
-        }
-
-        AccessMask = ReadInt(binaryForm, offset + 4);
-        ObjectAceFlags = (ObjectAceFlags)ReadInt(binaryForm, offset + 8);
-
-        if (ObjectAceTypePresent)
-        {
-            lenMinimum += 16;
-        }
-
-        if (InheritedObjectAceTypePresent)
-        {
-            lenMinimum += 16;
-        }
-
-        if (len < lenMinimum)
-        {
-            throw new ArgumentException("Invalid ACE", nameof(binaryForm));
-        }
-
-        var pos = 12;
-        if (ObjectAceTypePresent)
-        {
-            ObjectAceType = ReadGuid(binaryForm, offset + pos);
-            pos += 16;
-        }
-        if (InheritedObjectAceTypePresent)
-        {
-            InheritedObjectAceType = ReadGuid(binaryForm, offset + pos);
-            pos += 16;
-        }
-
-        SecurityIdentifier = new SecurityIdentifier(binaryForm, offset + pos);
-        pos += SecurityIdentifier.BinaryLength;
-
-        var opaqueLen = len - pos;
-        if (opaqueLen > 0)
-        {
-            var opaque = new byte[opaqueLen];
-            Array.Copy(binaryForm, offset + pos, opaque, 0, opaqueLen);
-            SetOpaque(opaque);
-        }
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     internal ObjectAce(ReadOnlySpan<byte> binaryForm)
         : base(binaryForm)
     {
-        int len = ReadUShort(binaryForm[2..]);
+        int len = ReadUShort(binaryForm.Slice(2));
         var lenMinimum = 12 + SecurityIdentifier.MinBinaryLength;
 
         if (len > binaryForm.Length)
@@ -112,8 +58,8 @@ public sealed class ObjectAce : QualifiedAce
             throw new ArgumentException("Invalid ACE", nameof(binaryForm));
         }
 
-        AccessMask = ReadInt(binaryForm[4..]);
-        ObjectAceFlags = (ObjectAceFlags)ReadInt(binaryForm[8..]);
+        AccessMask = ReadInt(binaryForm.Slice(4));
+        ObjectAceFlags = (ObjectAceFlags)ReadInt(binaryForm.Slice(8));
 
         if (ObjectAceTypePresent)
         {
@@ -133,16 +79,16 @@ public sealed class ObjectAce : QualifiedAce
         var pos = 12;
         if (ObjectAceTypePresent)
         {
-            ObjectAceType = ReadGuid(binaryForm[pos..]);
+            ObjectAceType = ReadGuid(binaryForm.Slice(pos));
             pos += 16;
         }
         if (InheritedObjectAceTypePresent)
         {
-            InheritedObjectAceType = ReadGuid(binaryForm[pos..]);
+            InheritedObjectAceType = ReadGuid(binaryForm.Slice(pos));
             pos += 16;
         }
 
-        SecurityIdentifier = new SecurityIdentifier(binaryForm[pos..]);
+        SecurityIdentifier = new SecurityIdentifier(binaryForm.Slice(pos));
         pos += SecurityIdentifier.BinaryLength;
 
         var opaqueLen = len - pos;
@@ -152,7 +98,6 @@ public sealed class ObjectAce : QualifiedAce
             SetOpaque(opaque);
         }
     }
-#endif
 
     public override int BinaryLength
     {
@@ -190,36 +135,37 @@ public sealed class ObjectAce : QualifiedAce
 
     bool ObjectAceTypePresent => 0 != (ObjectAceFlags & ObjectAceFlags.ObjectAceTypePresent);
 
-    public override void GetBinaryForm(byte[] binaryForm, int offset)
+    public override void GetBinaryForm(Span<byte> binaryForm)
     {
+        var offset = 0;
         var len = BinaryLength;
         binaryForm[offset++] = (byte)AceType;
         binaryForm[offset++] = (byte)AceFlags;
-        WriteUShort((ushort)len, binaryForm, offset);
+        WriteUShort((ushort)len, binaryForm.Slice(offset));
         offset += 2;
-        WriteInt(AccessMask, binaryForm, offset);
+        WriteInt(AccessMask, binaryForm.Slice(offset));
         offset += 4;
-        WriteInt((int)ObjectAceFlags, binaryForm, offset);
+        WriteInt((int)ObjectAceFlags, binaryForm.Slice(offset));
         offset += 4;
 
         if (0 != (ObjectAceFlags & ObjectAceFlags.ObjectAceTypePresent))
         {
-            WriteGuid(ObjectAceType, binaryForm, offset);
+            WriteGuid(ObjectAceType, binaryForm.Slice(offset));
             offset += 16;
         }
         if (0 != (ObjectAceFlags & ObjectAceFlags.InheritedObjectAceTypePresent))
         {
-            WriteGuid(InheritedObjectAceType, binaryForm, offset);
+            WriteGuid(InheritedObjectAceType, binaryForm.Slice(offset));
             offset += 16;
         }
 
-        SecurityIdentifier.GetBinaryForm(binaryForm, offset);
+        SecurityIdentifier.GetBinaryForm(binaryForm.Slice(offset));
         offset += SecurityIdentifier.BinaryLength;
 
         var opaque = GetOpaque();
         if (opaque != null)
         {
-            Array.Copy(opaque, 0, binaryForm, offset, opaque.Length);
+            opaque.CopyTo(binaryForm.Slice(offset));
             offset += opaque.Length;
         }
     }
@@ -310,8 +256,12 @@ public sealed class ObjectAce : QualifiedAce
     private void WriteGuid(Guid val, byte[] buffer,
                            int offset)
     {
-        var guidData = val.ToByteArray();
-        Array.Copy(guidData, 0, buffer, offset, 16);
+        MemoryMarshal.Write(buffer.AsSpan(offset), ref val);
+    }
+
+    private void WriteGuid(Guid val, Span<byte> buffer)
+    {
+        MemoryMarshal.Write(buffer, ref val);
     }
 
     private Guid ReadGuid(byte[] buffer, int offset)

@@ -81,7 +81,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, NativeDecompress(nativeCompressed, 0, nativeCompressed.Length));
 
             compressor.BlockSize = 4096;
-            var r = compressor.Compress(_uncompressedData, 0, _uncompressedData.Length, compressedData, 0, ref compressedLength);
+            var r = compressor.Compress(_uncompressedData, compressedData, out compressedLength);
             Assert.Equal(CompressionResult.Compressed, r);
             Assert.Equal(_uncompressedData, NativeDecompress(compressedData, 0, compressedLength));
 
@@ -105,7 +105,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, NativeDecompress(nativeCompressed, 0, nativeCompressed.Length));
 
             compressor.BlockSize = 4096;
-            var r = compressor.Compress(inData, 32 * 1024, _uncompressedData.Length, compressedData, 0, ref compressedLength);
+            var r = compressor.Compress(inData.AsSpan(32 * 1024, _uncompressedData.Length), compressedData, out compressedLength);
             Assert.Equal(CompressionResult.Compressed, r);
             Assert.Equal(_uncompressedData, NativeDecompress(compressedData, 0, compressedLength));
         }
@@ -124,7 +124,7 @@ namespace LibraryTests.Ntfs
             var compressedData = new byte[compressedLength];
 
             compressor.BlockSize = 4096;
-            var r = compressor.Compress(_uncompressedData, 0, _uncompressedData.Length, compressedData, 32 * 1024, ref compressedLength);
+            var r = compressor.Compress(_uncompressedData, compressedData.AsSpan(32 * 1024), out compressedLength);
             Assert.Equal(CompressionResult.Compressed, r);
             Assert.True(compressedLength < _uncompressedData.Length);
 
@@ -145,11 +145,11 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, NativeDecompress(nativeCompressed, 0, nativeCompressed.Length));
 
             compressor.BlockSize = 1024;
-            var r = compressor.Compress(_uncompressedData, 0, _uncompressedData.Length, compressedData, 0, ref compressedLength);
+            var r = compressor.Compress(_uncompressedData, compressedData, out compressedLength);
             Assert.Equal(CompressionResult.Compressed, r);
 
             var duDecompressed = new byte[_uncompressedData.Length];
-            var numDuDecompressed = compressor.Decompress(compressedData, 0, compressedLength, duDecompressed, 0);
+            var numDuDecompressed = compressor.Decompress(compressedData.AsSpan(0, compressedLength), duDecompressed);
 
             var rightSizedDuDecompressed = new byte[numDuDecompressed];
             Array.Copy(duDecompressed, rightSizedDuDecompressed, numDuDecompressed);
@@ -176,7 +176,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(uncompressed1K, NativeDecompress(nativeCompressed, 0, nativeCompressed.Length));
 
             compressor.BlockSize = 1024;
-            var r = compressor.Compress(uncompressed1K, 0, 1024, compressedData, 0, ref compressedLength);
+            var r = compressor.Compress(uncompressed1K, compressedData, out compressedLength);
             Assert.Equal(CompressionResult.Compressed, r);
             Assert.Equal(uncompressed1K, NativeDecompress(compressedData, 0, compressedLength));
         }
@@ -189,7 +189,7 @@ namespace LibraryTests.Ntfs
 
             var compressed = new byte[64 * 1024];
             var numCompressed = 64 * 1024;
-            Assert.Equal(CompressionResult.AllZeros, compressor.Compress(new byte[64 * 1024], 0, 64 * 1024, compressed, 0, ref numCompressed));
+            Assert.Equal(CompressionResult.AllZeros, compressor.Compress(new byte[64 * 1024], compressed, out numCompressed));
         }
 
         [Fact]
@@ -204,7 +204,7 @@ namespace LibraryTests.Ntfs
 
             var compressed = new byte[64 * 1024];
             var numCompressed = 64 * 1024;
-            Assert.Equal(CompressionResult.Incompressible, compressor.Compress(uncompressed, 0, uncompressed.Length, compressed, 0, ref numCompressed));
+            Assert.Equal(CompressionResult.Incompressible, compressor.Compress(uncompressed, compressed, out numCompressed));
         }
 
         [WindowsOnlyFact]
@@ -219,7 +219,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, NativeDecompress(compressed, 0, compressed.Length));
 
             var decompressed = new byte[_uncompressedData.Length];
-            var numDecompressed = compressor.Decompress(compressed, 0, compressed.Length, decompressed, 0);
+            var numDecompressed = compressor.Decompress(compressed, decompressed);
             Assert.Equal(numDecompressed, _uncompressedData.Length);
 
             Assert.Equal(_uncompressedData, decompressed);
@@ -241,7 +241,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, NativeDecompress(inData, 32 * 1024, compressed.Length));
 
             var decompressed = new byte[_uncompressedData.Length];
-            var numDecompressed = compressor.Decompress(inData, 32 * 1024, compressed.Length, decompressed, 0);
+            var numDecompressed = compressor.Decompress(inData.AsSpan(32 * 1024, compressed.Length), decompressed);
             Assert.Equal(numDecompressed, _uncompressedData.Length);
 
             Assert.Equal(_uncompressedData, decompressed);
@@ -259,7 +259,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, NativeDecompress(compressed, 0, compressed.Length));
 
             var outData = new byte[128 * 1024];
-            var numDecompressed = compressor.Decompress(compressed, 0, compressed.Length, outData, 32 * 1024);
+            var numDecompressed = compressor.Decompress(compressed, outData.AsSpan(32 * 1024));
             Assert.Equal(numDecompressed, _uncompressedData.Length);
 
             var decompressed = new byte[_uncompressedData.Length];
@@ -278,7 +278,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(_uncompressedData, NativeDecompress(compressed, 0, compressed.Length));
 
             var decompressed = new byte[_uncompressedData.Length];
-            var numDecompressed = compressor.Decompress(compressed, 0, compressed.Length, decompressed, 0);
+            var numDecompressed = compressor.Decompress(compressed, decompressed);
             Assert.Equal(numDecompressed, _uncompressedData.Length);
 
             Assert.Equal(_uncompressedData, decompressed);

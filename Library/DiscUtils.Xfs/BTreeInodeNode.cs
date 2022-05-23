@@ -44,21 +44,21 @@ internal class BTreeInodeNode : BtreeHeader
 
     public BTreeInodeNode(uint superBlockVersion) : base(superBlockVersion) { }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        base.ReadFrom(buffer, offset);
-        offset += base.Size;
+        base.ReadFrom(buffer);
+        var offset = base.Size;
         if (Level == 0)
             throw new IOException("invalid B+tree level - expected 0");
         Keys = new uint[NumberOfRecords];
         Pointer = new uint[NumberOfRecords];
         for (var i = 0; i < NumberOfRecords; i++)
         {
-            Keys[i] = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+            Keys[i] = EndianUtilities.ToUInt32BigEndian(buffer.Slice(offset));
         }
         for (var i = 0; i < NumberOfRecords; i++)
         {
-            Pointer[i] = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+            Pointer[i] = EndianUtilities.ToUInt32BigEndian(buffer.Slice(offset));
         }
         return Size;
     }
@@ -82,7 +82,7 @@ internal class BTreeInodeNode : BtreeHeader
             data.Position = ((long)Pointer[i] * ag.Context.SuperBlock.Blocksize) + ag.Offset;
             var buffer = StreamUtilities.ReadExact(data, (int)ag.Context.SuperBlock.Blocksize);
 
-            child.ReadFrom(buffer, 0);
+            child.ReadFrom(buffer);
             child.LoadBtree(ag);
             Children.Add(Keys[i], child);
         }

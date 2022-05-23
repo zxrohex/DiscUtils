@@ -18,14 +18,14 @@ public class TarFileSystem : VirtualFileSystem
 
         try
         {
-            var buffer = new byte[512];
+            Span<byte> buffer = stackalloc byte[512];
 
-            if (StreamUtilities.ReadMaximum(archive, buffer, 0, 512) < 512)
+            if (StreamUtilities.ReadMaximum(archive, buffer) < 512)
             {
                 return false;
             }
 
-            return TarHeader.IsValid(buffer, 0);
+            return TarHeader.IsValid(buffer);
         }
         catch
         {

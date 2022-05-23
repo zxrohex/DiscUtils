@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Btrfs.Base.Items;
 
@@ -100,20 +101,20 @@ internal class RootItem : BaseItem
         get { return Length; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Inode = EndianUtilities.ToStruct<InodeItem>(buffer, offset);
-        Generation = EndianUtilities.ToUInt64LittleEndian(buffer, offset+ 160);
-        RootDirId = EndianUtilities.ToUInt64LittleEndian(buffer, offset+ 168);
-        ByteNr = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 176);
-        ByteLimit = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 184);
-        BytesUsed = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 192);
-        LastSnapshot = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 200);
-        Flags = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 208);
-        Refs = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 216);
-        DropProgress = EndianUtilities.ToStruct<Key>(buffer, offset+220);
-        DropLevel = buffer[offset+237];
-        Level = buffer[offset+238];
+        Inode = EndianUtilities.ToStruct<InodeItem>(buffer);
+        Generation = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(160));
+        RootDirId = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(168));
+        ByteNr = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(176));
+        ByteLimit = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(184));
+        BytesUsed = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(192));
+        LastSnapshot = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(200));
+        Flags = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(208));
+        Refs = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(216));
+        DropProgress = EndianUtilities.ToStruct<Key>(buffer.Slice(220));
+        DropLevel = buffer[237];
+        Level = buffer[238];
 
         //The following fields depend on the subvol_uuids+subvol_times features
         //239 	__le64 	generation_v2 	If equal to generation, indicates validity of the following fields.

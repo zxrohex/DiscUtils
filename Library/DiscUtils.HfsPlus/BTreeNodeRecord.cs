@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.HfsPlus;
 
@@ -28,7 +29,7 @@ internal abstract class BTreeNodeRecord : IByteArraySerializable
 {
     public abstract int Size { get; }
 
-    public abstract int ReadFrom(byte[] buffer, int offset);
+    public abstract int ReadFrom(ReadOnlySpan<byte> buffer);
 
-    public abstract void WriteTo(byte[] buffer, int offset);
+    public abstract void WriteTo(Span<byte> buffer);
 }

@@ -88,16 +88,16 @@ public class PositionWrappingStream : WrappingStream
         return read;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var read = await base.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         _position += read;
         return read;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var read = await base.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
@@ -111,7 +111,7 @@ public class PositionWrappingStream : WrappingStream
         _position += read;
         return read;
     }
-#endif
+
 
     public override void Write(byte[] buffer, int offset, int count)
     {
@@ -119,15 +119,15 @@ public class PositionWrappingStream : WrappingStream
         _position += count;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         await base.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         _position += count;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         await base.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
@@ -139,5 +139,5 @@ public class PositionWrappingStream : WrappingStream
         base.Write(buffer);
         _position += buffer.Length;
     }
-#endif
+
 }

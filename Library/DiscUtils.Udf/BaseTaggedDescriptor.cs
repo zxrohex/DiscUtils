@@ -41,28 +41,28 @@ internal abstract class BaseTaggedDescriptor : IByteArraySerializable
         get { return 512; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        if (!DescriptorTag.IsValid(buffer, offset))
+        if (!DescriptorTag.IsValid(buffer))
         {
             throw new InvalidDataException("Invalid Anchor Volume Descriptor Pointer (invalid tag)");
         }
 
         Tag = new DescriptorTag();
-        Tag.ReadFrom(buffer, offset);
+        Tag.ReadFrom(buffer);
 
-        if (UdfUtilities.ComputeCrc(buffer, offset + Tag.Size, Tag.DescriptorCrcLength) != Tag.DescriptorCrc)
+        if (UdfUtilities.ComputeCrc(buffer.Slice(Tag.Size, Tag.DescriptorCrcLength)) != Tag.DescriptorCrc)
         {
             throw new InvalidDataException("Invalid Anchor Volume Descriptor Pointer (invalid CRC)");
         }
 
-        return Parse(buffer, offset);
+        return Parse(buffer);
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public abstract int Parse(byte[] buffer, int offset);
+    public abstract int Parse(ReadOnlySpan<byte> buffer);
 }

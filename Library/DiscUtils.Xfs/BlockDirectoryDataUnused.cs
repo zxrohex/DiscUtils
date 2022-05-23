@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Xfs;
 
@@ -34,11 +35,11 @@ internal class BlockDirectoryDataUnused : BlockDirectoryData
 
     public override int Size { get { return Length; } }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Freetag = EndianUtilities.ToUInt16BigEndian(buffer, offset);
-        Length = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
-        Tag = EndianUtilities.ToUInt16BigEndian(buffer, offset + Length - 0x2);
+        Freetag = EndianUtilities.ToUInt16BigEndian(buffer);
+        Length = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x2));
+        Tag = EndianUtilities.ToUInt16BigEndian(buffer.Slice(Length - 0x2));
         return Size;
     }
 }

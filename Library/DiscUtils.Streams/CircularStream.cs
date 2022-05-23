@@ -45,7 +45,7 @@ public sealed class CircularStream : WrappingStream
         return read;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         WrapPosition();
@@ -56,14 +56,13 @@ public sealed class CircularStream : WrappingStream
 
         return read;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         WrapPosition();
 
-        var read = await base.ReadAsync(buffer[..(int)Math.Min(Length - Position, buffer.Length)], cancellationToken).ConfigureAwait(false);
+        var read = await base.ReadAsync(buffer.Slice(0, (int)Math.Min(Length - Position, buffer.Length)), cancellationToken).ConfigureAwait(false);
 
         WrapPosition();
 
@@ -74,13 +73,12 @@ public sealed class CircularStream : WrappingStream
     {
         WrapPosition();
 
-        var read = base.Read(buffer[..(int)Math.Min(Length - Position, buffer.Length)]);
+        var read = base.Read(buffer.Slice(0, (int)Math.Min(Length - Position, buffer.Length)));
 
         WrapPosition();
 
         return read;
     }
-#endif
 
     public override void Write(byte[] buffer, int offset, int count)
     {
@@ -99,7 +97,6 @@ public sealed class CircularStream : WrappingStream
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         WrapPosition();
@@ -116,9 +113,7 @@ public sealed class CircularStream : WrappingStream
             totalWritten += toWrite;
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         WrapPosition();
@@ -152,7 +147,6 @@ public sealed class CircularStream : WrappingStream
             totalWritten += toWrite;
         }
     }
-#endif
 
     private void WrapPosition()
     {

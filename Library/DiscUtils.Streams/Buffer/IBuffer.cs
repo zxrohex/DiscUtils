@@ -68,7 +68,6 @@ public interface IBuffer
     /// <returns>The actual number of bytes read.</returns>
     int Read(long pos, byte[] buffer, int offset, int count);
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <summary>
     /// Reads from the buffer into a byte array.
     /// </summary>
@@ -77,10 +76,8 @@ public interface IBuffer
     /// <param name="offset">The start offset within the destination buffer.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The actual number of bytes read.</returns>
-    Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken);
-#endif
+    ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken);
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Reads from the buffer into a byte array.
     /// </summary>
@@ -100,7 +97,6 @@ public interface IBuffer
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The actual number of bytes read.</returns>
     int Read(long pos, Span<byte> buffer);
-#endif
 
     /// <summary>
     /// Writes a byte array into the buffer.
@@ -111,7 +107,6 @@ public interface IBuffer
     /// <param name="count">The number of bytes to write.</param>
     void Write(long pos, byte[] buffer, int offset, int count);
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <summary>
     /// Writes a byte array into the buffer.
     /// </summary>
@@ -119,10 +114,8 @@ public interface IBuffer
     /// <param name="buffer">The source byte array.</param>
     /// <param name="offset">The start offset within the source byte array.</param>
     /// <param name="count">The number of bytes to write.</param>
-    Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken);
-#endif
+    ValueTask WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken);
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Writes a byte array into the buffer.
     /// </summary>
@@ -140,7 +133,6 @@ public interface IBuffer
     /// <param name="offset">The start offset within the source byte array.</param>
     /// <param name="count">The number of bytes to write.</param>
     void Write(long pos, ReadOnlySpan<byte> buffer);
-#endif
 
     /// <summary>
     /// Clears bytes from the buffer.

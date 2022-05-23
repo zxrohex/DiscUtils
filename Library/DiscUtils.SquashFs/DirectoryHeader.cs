@@ -36,16 +36,16 @@ internal class DirectoryHeader : IByteArraySerializable
         get { return 12; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(Count, buffer, offset + 0);
-        EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer, offset + 4);
-        EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer, offset + 8);
+        EndianUtilities.WriteBytesLittleEndian(Count, buffer);
+        EndianUtilities.WriteBytesLittleEndian(StartBlock, buffer.Slice(4));
+        EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer.Slice(8));
     }
 
     public static DirectoryHeader ReadFrom(MetablockReader reader)

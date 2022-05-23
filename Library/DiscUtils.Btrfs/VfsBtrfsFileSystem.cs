@@ -52,7 +52,7 @@ internal sealed class VfsBtrfsFileSystem :VfsReadOnlyFileSystem<DirEntry, File, 
             stream.Position = offset;
             var superblockData = StreamUtilities.ReadExact(stream, SuperBlock.Length);
             var superblock = new SuperBlock();
-            superblock.ReadFrom(superblockData, 0);
+            superblock.ReadFrom(superblockData);
 
             if (superblock.Magic != SuperBlock.BtrfsMagic)
                 throw new IOException("Invalid Superblock Magic");

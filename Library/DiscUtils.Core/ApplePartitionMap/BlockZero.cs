@@ -40,20 +40,20 @@ internal sealed class BlockZero : IByteArraySerializable
         get { return 512; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Signature = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
-        BlockSize = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
-        BlockCount = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-        DeviceType = EndianUtilities.ToUInt16BigEndian(buffer, offset + 8);
-        DeviceId = EndianUtilities.ToUInt16BigEndian(buffer, offset + 10);
-        DriverData = EndianUtilities.ToUInt32BigEndian(buffer, offset + 12);
-        DriverCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 16);
+        Signature = EndianUtilities.ToUInt16BigEndian(buffer);
+        BlockSize = EndianUtilities.ToUInt16BigEndian(buffer.Slice(2));
+        BlockCount = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        DeviceType = EndianUtilities.ToUInt16BigEndian(buffer.Slice(8));
+        DeviceId = EndianUtilities.ToUInt16BigEndian(buffer.Slice(10));
+        DriverData = EndianUtilities.ToUInt32BigEndian(buffer.Slice(12));
+        DriverCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(16));
 
         return 512;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

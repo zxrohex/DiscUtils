@@ -34,15 +34,15 @@ internal class DiskArea : IByteArraySerializable
     public int Size { get { return 16; } }
 
     /// <inheritdoc />
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Offset = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-        Length = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
+        Offset = EndianUtilities.ToUInt64LittleEndian(buffer);
+        Length = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(8));
         return Size;
     }
 
     /// <inheritdoc />
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

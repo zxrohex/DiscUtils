@@ -9,7 +9,7 @@ using Archives;
 using Streams;
 using Internal;
 
-#if NET45_OR_GREATER || NETSTANDARD2_0
+#if NET45_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP
 public class ZipFileSystem : VirtualFileSystem
 {
     private readonly WeakReference _zip;
@@ -22,14 +22,14 @@ public class ZipFileSystem : VirtualFileSystem
 
         try
         {
-            var buffer = new byte[512];
+            Span<byte> buffer = stackalloc byte[512];
 
-            if (StreamUtilities.ReadMaximum(archive, buffer, 0, 512) < 512)
+            if (StreamUtilities.ReadMaximum(archive, buffer) < 512)
             {
                 return false;
             }
 
-            return BitConverter.ToUInt32(buffer, 0) == 0x04034B50U;
+            return EndianUtilities.ToUInt32LittleEndian(buffer) == 0x04034B50U;
         }
         catch
         {

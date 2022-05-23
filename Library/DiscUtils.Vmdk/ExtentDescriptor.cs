@@ -51,7 +51,7 @@ internal class ExtentDescriptor
 
     public ExtentType Type { get; private set; }
 
-    public static ExtentDescriptor Parse(string descriptor)
+    public static ExtentDescriptor Parse(ReadOnlyMemory<char> descriptor)
     {
         var elems = SplitQuotedString(descriptor).ToArray();
         if (elems.Length < 4)
@@ -61,30 +61,39 @@ internal class ExtentDescriptor
 
         var result = new ExtentDescriptor
         {
-            Access = ParseAccess(elems[0]),
-            SizeInSectors = long.Parse(elems[1], CultureInfo.InvariantCulture),
-            Type = ParseType(elems[2]),
-            FileName = elems[3].Trim('\"')
+            Access = ParseAccess(elems[0].Span),
+            SizeInSectors = ParseLong(elems[1].Span),
+            Type = ParseType(elems[2].Span),
+            FileName = elems[3].Span.Trim('\"').ToString()
         };
         if (elems.Length > 4)
         {
-            result.Offset = long.Parse(elems[4], CultureInfo.InvariantCulture);
+            result.Offset = ParseLong(elems[4].Span);
         }
 
         return result;
     }
 
-    public static ExtentAccess ParseAccess(string access)
+    public static long ParseLong(ReadOnlySpan<char> chars)
     {
-        if (access == "NOACCESS")
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        return long.Parse(chars, NumberStyles.None, CultureInfo.InvariantCulture);
+#else
+        return long.Parse(chars.ToString(), NumberStyles.None, CultureInfo.InvariantCulture);
+#endif
+    }
+
+    public static ExtentAccess ParseAccess(ReadOnlySpan<char> access)
+    {
+        if (access.Equals("NOACCESS".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentAccess.None;
         }
-        if (access == "RDONLY")
+        if (access.Equals("RDONLY".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentAccess.ReadOnly;
         }
-        if (access == "RW")
+        if (access.Equals("RW".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentAccess.ReadWrite;
         }
@@ -102,41 +111,41 @@ internal class ExtentDescriptor
         };
     }
 
-    public static ExtentType ParseType(string type)
+    public static ExtentType ParseType(ReadOnlySpan<char> type)
     {
-        if (type == "FLAT")
+        if (type.Equals("FLAT".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentType.Flat;
         }
-        if (type == "SPARSE")
+        if (type.Equals("SPARSE".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentType.Sparse;
         }
-        if (type == "ZERO")
+        if (type.Equals("ZERO".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentType.Zero;
         }
-        if (type == "VMFS")
+        if (type.Equals("VMFS".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentType.Vmfs;
         }
-        if (type == "VMFSSPARSE")
+        if (type.Equals("VMFSSPARSE".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentType.VmfsSparse;
         }
-        if (type == "VMFSRDM")
+        if (type.Equals("VMFSRDM".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentType.VmfsRdm;
         }
-        if (type == "VMFSRAW")
+        if (type.Equals("VMFSRAW".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentType.VmfsRaw;
         }
-        if (type == "SESPARSE")
+        if (type.Equals("SESPARSE".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentType.SeSparse;
         }
-        if (type == "VSANSPARSE")
+        if (type.Equals("VSANSPARSE".AsSpan(), StringComparison.Ordinal))
         {
             return ExtentType.VsanSparse;
         }
@@ -172,40 +181,40 @@ internal class ExtentDescriptor
         return basic;
     }
 
-    private static IEnumerable<string> SplitQuotedString(string source)
+    private static IEnumerable<ReadOnlyMemory<char>> SplitQuotedString(ReadOnlyMemory<char> source)
     {
         var idx = 0;
         while (idx < source.Length)
         {
             // Skip spaces
-            while (source[idx] == ' ' && idx < source.Length)
+            while (source.Span[idx] == ' ' && idx < source.Length)
             {
                 idx++;
             }
 
-            if (source[idx] == '"')
+            if (source.Span[idx] == '"')
             {
                 // A quoted value, find end of quotes...
                 var start = idx;
                 idx++;
-                while (idx < source.Length && source[idx] != '"')
+                while (idx < source.Length && source.Span[idx] != '"')
                 {
                     idx++;
                 }
 
-                yield return source.Substring(start, idx - start + 1);
+                yield return source.Slice(start, idx - start + 1);
             }
             else
             {
                 // An unquoted value, find end of value
                 var start = idx;
                 idx++;
-                while (idx < source.Length && source[idx] != ' ')
+                while (idx < source.Length && source.Span[idx] != ' ')
                 {
                     idx++;
                 }
 
-                yield return source.Substring(start, idx - start);
+                yield return source.Slice(start, idx - start);
             }
 
             idx++;

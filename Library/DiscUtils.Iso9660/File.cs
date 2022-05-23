@@ -52,7 +52,7 @@ internal class File : IVfsFile
                 throw new InvalidOperationException("No RockRidge file information available");
             }
 
-            var suspRecords = new SuspRecords(_context, SystemUseData, 0);
+            var suspRecords = new SuspRecords(_context, SystemUseData);
 
             var pfi =
                 suspRecords.GetEntry<PosixFileInfoSystemUseEntry>(_context.RockRidgeIdentifier, "PX");

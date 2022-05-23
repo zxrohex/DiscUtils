@@ -24,6 +24,7 @@ using System;
 using System.Text;
 using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Net.Dns;
 
@@ -47,7 +48,7 @@ internal sealed class PacketWriter
             var labelBytes = Encoding.UTF8.GetBytes(label);
             if (labelBytes.Length > 63)
             {
-                throw new ArgumentException("Invalid DNS label - more than 63 octets '" + label + "' in '" + name + "'", "name");
+                throw new ArgumentException($"Invalid DNS label - more than 63 octets '{label}' in '{name}'", "name");
             }
 
             _data[_pos++] = (byte)labelBytes.Length;

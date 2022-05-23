@@ -24,6 +24,7 @@ using System;
 using System.IO;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vhd;
 
@@ -83,52 +84,52 @@ internal class DynamicHeader
         }
     }
 
-    public static DynamicHeader FromBytes(byte[] data, int offset)
+    public static DynamicHeader FromBytes(ReadOnlySpan<byte> data)
     {
         var result = new DynamicHeader
         {
-            Cookie = EndianUtilities.BytesToString(data, offset, 8),
-            DataOffset = EndianUtilities.ToInt64BigEndian(data, offset + 8),
-            TableOffset = EndianUtilities.ToInt64BigEndian(data, offset + 16),
-            HeaderVersion = EndianUtilities.ToUInt32BigEndian(data, offset + 24),
-            MaxTableEntries = EndianUtilities.ToInt32BigEndian(data, offset + 28),
-            BlockSize = EndianUtilities.ToUInt32BigEndian(data, offset + 32),
-            Checksum = EndianUtilities.ToUInt32BigEndian(data, offset + 36),
-            ParentUniqueId = EndianUtilities.ToGuidBigEndian(data, offset + 40),
-            ParentTimestamp = Footer.EpochUtc.AddSeconds(EndianUtilities.ToUInt32BigEndian(data, offset + 56)),
-            ParentUnicodeName = Encoding.BigEndianUnicode.GetString(data, offset + 64, 512).TrimEnd('\0'),
+            Cookie = EndianUtilities.BytesToString(data.Slice(0, 8)),
+            DataOffset = EndianUtilities.ToInt64BigEndian(data.Slice(8)),
+            TableOffset = EndianUtilities.ToInt64BigEndian(data.Slice(16)),
+            HeaderVersion = EndianUtilities.ToUInt32BigEndian(data.Slice(24)),
+            MaxTableEntries = EndianUtilities.ToInt32BigEndian(data.Slice(28)),
+            BlockSize = EndianUtilities.ToUInt32BigEndian(data.Slice(32)),
+            Checksum = EndianUtilities.ToUInt32BigEndian(data.Slice(36)),
+            ParentUniqueId = EndianUtilities.ToGuidBigEndian(data.Slice(40)),
+            ParentTimestamp = Footer.EpochUtc.AddSeconds(EndianUtilities.ToUInt32BigEndian(data.Slice(56))),
+            ParentUnicodeName = Encoding.BigEndianUnicode.GetString(data.Slice(64, 512)).TrimEnd('\0'),
 
             ParentLocators = new ParentLocator[8]
         };
         for (var i = 0; i < 8; ++i)
         {
-            result.ParentLocators[i] = ParentLocator.FromBytes(data, offset + 576 + i * 24);
+            result.ParentLocators[i] = ParentLocator.FromBytes(data.Slice(576 + i * 24));
         }
 
         return result;
     }
 
-    public void ToBytes(byte[] data, int offset)
+    public void ToBytes(Span<byte> data)
     {
-        EndianUtilities.StringToBytes(Cookie, data, offset, 8);
-        EndianUtilities.WriteBytesBigEndian(DataOffset, data, offset + 8);
-        EndianUtilities.WriteBytesBigEndian(TableOffset, data, offset + 16);
-        EndianUtilities.WriteBytesBigEndian(HeaderVersion, data, offset + 24);
-        EndianUtilities.WriteBytesBigEndian(MaxTableEntries, data, offset + 28);
-        EndianUtilities.WriteBytesBigEndian(BlockSize, data, offset + 32);
-        EndianUtilities.WriteBytesBigEndian(Checksum, data, offset + 36);
-        EndianUtilities.WriteBytesBigEndian(ParentUniqueId, data, offset + 40);
-        EndianUtilities.WriteBytesBigEndian((uint)(ParentTimestamp - Footer.EpochUtc).TotalSeconds, data, offset + 56);
-        EndianUtilities.WriteBytesBigEndian((uint)0, data, offset + 60);
-        Array.Clear(data, offset + 64, 512);
-        Encoding.BigEndianUnicode.GetBytes(ParentUnicodeName, 0, ParentUnicodeName.Length, data, offset + 64);
+        EndianUtilities.StringToBytes(Cookie, data.Slice(0, 8));
+        EndianUtilities.WriteBytesBigEndian(DataOffset, data.Slice(8));
+        EndianUtilities.WriteBytesBigEndian(TableOffset, data.Slice(16));
+        EndianUtilities.WriteBytesBigEndian(HeaderVersion, data.Slice(24));
+        EndianUtilities.WriteBytesBigEndian(MaxTableEntries, data.Slice(28));
+        EndianUtilities.WriteBytesBigEndian(BlockSize, data.Slice(32));
+        EndianUtilities.WriteBytesBigEndian(Checksum, data.Slice(36));
+        EndianUtilities.WriteBytesBigEndian(ParentUniqueId, data.Slice(40));
+        EndianUtilities.WriteBytesBigEndian((uint)(ParentTimestamp - Footer.EpochUtc).TotalSeconds, data.Slice(56));
+        EndianUtilities.WriteBytesBigEndian((uint)0, data.Slice(60));
+        data.Slice(64, 512).Clear();
+        Encoding.BigEndianUnicode.GetBytes(ParentUnicodeName.AsSpan(), data.Slice(64));
 
         for (var i = 0; i < 8; ++i)
         {
-            ParentLocators[i].ToBytes(data, offset + 576 + i * 24);
+            ParentLocators[i].ToBytes(data.Slice(576 + i * 24));
         }
 
-        Array.Clear(data, offset + 1024 - 256, 256);
+        data.Slice(1024 - 256, 256).Clear();
     }
 
     public bool IsValid()
@@ -151,7 +152,7 @@ internal class DynamicHeader
 
     internal static DynamicHeader FromStream(Stream stream)
     {
-        return FromBytes(StreamUtilities.ReadExact(stream, 1024), 0);
+        return FromBytes(StreamUtilities.ReadExact(stream, 1024));
     }
 
     private uint CalculateChecksum()
@@ -161,8 +162,8 @@ internal class DynamicHeader
             Checksum = 0
         };
 
-        var asBytes = new byte[1024];
-        copy.ToBytes(asBytes, 0);
+        Span<byte> asBytes = stackalloc byte[1024];
+        copy.ToBytes(asBytes);
         uint checksum = 0;
         foreach (uint value in asBytes)
         {

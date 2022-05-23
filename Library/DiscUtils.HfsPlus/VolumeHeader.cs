@@ -73,52 +73,52 @@ internal sealed class VolumeHeader : IByteArraySerializable
         get { return 512; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Signature = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
+        Signature = EndianUtilities.ToUInt16BigEndian(buffer);
         if (!IsValid) return Size;
 
-        Version = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
-        Attributes = (VolumeAttributes)EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-        LastMountedVersion = EndianUtilities.ToUInt32BigEndian(buffer, offset + 8);
-        JournalInfoBlock = EndianUtilities.ToUInt32BigEndian(buffer, offset + 12);
+        Version = EndianUtilities.ToUInt16BigEndian(buffer.Slice(2));
+        Attributes = (VolumeAttributes)EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        LastMountedVersion = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
+        JournalInfoBlock = EndianUtilities.ToUInt32BigEndian(buffer.Slice(12));
 
-        CreateDate = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Local, buffer, offset + 16);
-        ModifyDate = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 20);
-        BackupDate = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 24);
-        CheckedDate = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer, offset + 28);
+        CreateDate = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Local, buffer.Slice(16));
+        ModifyDate = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer.Slice(20));
+        BackupDate = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer.Slice(24));
+        CheckedDate = HfsPlusUtilities.ReadHFSPlusDate(DateTimeKind.Utc, buffer.Slice(28));
 
-        FileCount = EndianUtilities.ToUInt32BigEndian(buffer, offset + 32);
-        FolderCount = EndianUtilities.ToUInt32BigEndian(buffer, offset + 36);
+        FileCount = EndianUtilities.ToUInt32BigEndian(buffer.Slice(32));
+        FolderCount = EndianUtilities.ToUInt32BigEndian(buffer.Slice(36));
 
-        BlockSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 40);
-        TotalBlocks = EndianUtilities.ToUInt32BigEndian(buffer, offset + 44);
-        FreeBlocks = EndianUtilities.ToUInt32BigEndian(buffer, offset + 48);
+        BlockSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(40));
+        TotalBlocks = EndianUtilities.ToUInt32BigEndian(buffer.Slice(44));
+        FreeBlocks = EndianUtilities.ToUInt32BigEndian(buffer.Slice(48));
 
-        NextAllocation = EndianUtilities.ToUInt32BigEndian(buffer, offset + 52);
-        ResourceClumpSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 56);
-        DataClumpSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 60);
-        NextCatalogId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 64));
+        NextAllocation = EndianUtilities.ToUInt32BigEndian(buffer.Slice(52));
+        ResourceClumpSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(56));
+        DataClumpSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(60));
+        NextCatalogId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer.Slice(64)));
 
-        WriteCount = EndianUtilities.ToUInt32BigEndian(buffer, offset + 68);
-        EncodingsBitmap = EndianUtilities.ToUInt64BigEndian(buffer, offset + 72);
+        WriteCount = EndianUtilities.ToUInt32BigEndian(buffer.Slice(68));
+        EncodingsBitmap = EndianUtilities.ToUInt64BigEndian(buffer.Slice(72));
 
         FinderInfo = new uint[8];
         for (var i = 0; i < 8; ++i)
         {
-            FinderInfo[i] = EndianUtilities.ToUInt32BigEndian(buffer, offset + 80 + i * 4);
+            FinderInfo[i] = EndianUtilities.ToUInt32BigEndian(buffer.Slice(80 + i * 4));
         }
 
-        AllocationFile = EndianUtilities.ToStruct<ForkData>(buffer, offset + 112);
-        ExtentsFile = EndianUtilities.ToStruct<ForkData>(buffer, offset + 192);
-        CatalogFile = EndianUtilities.ToStruct<ForkData>(buffer, offset + 272);
-        AttributesFile = EndianUtilities.ToStruct<ForkData>(buffer, offset + 352);
-        StartupFile = EndianUtilities.ToStruct<ForkData>(buffer, offset + 432);
+        AllocationFile = EndianUtilities.ToStruct<ForkData>(buffer.Slice(112));
+        ExtentsFile = EndianUtilities.ToStruct<ForkData>(buffer.Slice(192));
+        CatalogFile = EndianUtilities.ToStruct<ForkData>(buffer.Slice(272));
+        AttributesFile = EndianUtilities.ToStruct<ForkData>(buffer.Slice(352));
+        StartupFile = EndianUtilities.ToStruct<ForkData>(buffer.Slice(432));
 
         return 512;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

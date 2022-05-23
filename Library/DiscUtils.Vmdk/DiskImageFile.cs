@@ -891,7 +891,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
             throw new ArgumentException("name must end in .vmdk to be adorned");
         }
 
-        return name.Substring(0, name.Length - 5) + "-" + adornment + ".vmdk";
+        return $"{name.Substring(0, name.Length - 5)}-{adornment}.vmdk";
     }
 
     private static ExtentType CreateTypeToExtentType(DiskCreateType type)

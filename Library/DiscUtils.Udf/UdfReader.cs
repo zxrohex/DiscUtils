@@ -78,7 +78,7 @@ public sealed class UdfReader : VfsFileSystemFacade
                 break;
             }
 
-            bvd = new BaseVolumeDescriptor(buffer, 0);
+            bvd = new BaseVolumeDescriptor(buffer);
             switch (bvd.StandardIdentifier)
             {
                 case "NSR02":
@@ -299,7 +299,7 @@ public sealed class UdfReader : VfsFileSystemFacade
             }
 
             var fsdBuffer = UdfUtilities.ReadExtent(Context, _lvd.FileSetDescriptorLocation);
-            if (DescriptorTag.IsValid(fsdBuffer, 0))
+            if (DescriptorTag.IsValid(fsdBuffer))
             {
                 var fsd = EndianUtilities.ToStruct<FileSetDescriptor>(fsdBuffer, 0);
                 RootDirectory = (Directory)File.FromDescriptor(Context, fsd.RootDirectoryIcb);

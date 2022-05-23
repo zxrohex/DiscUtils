@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+
 namespace DiscUtils.Iso9660;
 
 internal sealed class ContinuationSystemUseEntry : SystemUseEntry
@@ -28,12 +30,12 @@ internal sealed class ContinuationSystemUseEntry : SystemUseEntry
     public uint BlockOffset;
     public uint Length;
 
-    public ContinuationSystemUseEntry(string name, byte length, byte version, byte[] data, int offset)
+    public ContinuationSystemUseEntry(string name, byte length, byte version, ReadOnlySpan<byte> data)
     {
         CheckAndSetCommonProperties(name, length, version, 28, 1);
 
-        Block = IsoUtilities.ToUInt32FromBoth(data, offset + 4);
-        BlockOffset = IsoUtilities.ToUInt32FromBoth(data, offset + 12);
-        Length = IsoUtilities.ToUInt32FromBoth(data, offset + 20);
+        Block = IsoUtilities.ToUInt32FromBoth(data.Slice(4));
+        BlockOffset = IsoUtilities.ToUInt32FromBoth(data.Slice(12));
+        Length = IsoUtilities.ToUInt32FromBoth(data.Slice(20));
     }
 }

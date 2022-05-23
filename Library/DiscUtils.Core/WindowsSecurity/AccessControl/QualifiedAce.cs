@@ -12,7 +12,6 @@ public abstract class QualifiedAce : KnownAce
         SetOpaque(opaque);
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     internal QualifiedAce(AceType type, AceFlags flags, ReadOnlySpan<byte> opaque)
         : base(type, flags)
     {
@@ -21,10 +20,9 @@ public abstract class QualifiedAce : KnownAce
 
     internal QualifiedAce(ReadOnlySpan<byte> binaryForm)
         : base(binaryForm) { }
-#endif
 
     internal QualifiedAce(byte[] binaryForm, int offset)
-        : base(binaryForm, offset) { }
+        : this(binaryForm.AsSpan(offset)) { }
 
     public AceQualifier AceQualifier => AceType switch
     {

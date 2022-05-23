@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Nfs;
@@ -96,7 +97,6 @@ internal sealed class Nfs3FileStream : SparseStream
         return toCopy;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(Span<byte> buffer)
     {
         var numToRead = (int)Math.Min(_client.FileSystemInfo.ReadMaxBytes, buffer.Length);
@@ -114,7 +114,6 @@ internal sealed class Nfs3FileStream : SparseStream
         _position += toCopy;
         return toCopy;
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -160,5 +159,41 @@ internal sealed class Nfs3FileStream : SparseStream
         }
 
         _length = Math.Max(_length, _position);
+    }
+
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        var totalWritten = 0;
+
+        while (totalWritten < buffer.Length)
+        {
+            var numToWrite = (int)Math.Min(_client.FileSystemInfo.WriteMaxBytes, (uint)(buffer.Length - totalWritten));
+
+            var numWritten = _client.Write(_handle, _position, buffer.Slice(totalWritten, numToWrite));
+
+            _position += numWritten;
+            totalWritten += numWritten;
+        }
+
+        _length = Math.Max(_length, _position);
+    }
+
+    public override System.Threading.Tasks.Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        var totalWritten = 0;
+
+        while (totalWritten < count)
+        {
+            var numToWrite = (int)Math.Min(_client.FileSystemInfo.WriteMaxBytes, (uint)(count - totalWritten));
+
+            var numWritten = _client.Write(_handle, _position, buffer, offset + totalWritten, numToWrite);
+
+            _position += numWritten;
+            totalWritten += numWritten;
+        }
+
+        _length = Math.Max(_length, _position);
+
+        return System.Threading.Tasks.Task.CompletedTask;
     }
 }

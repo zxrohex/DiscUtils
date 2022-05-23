@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -87,17 +88,17 @@ internal class ReparsePoints
             get { return 12; }
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
+        public int ReadFrom(ReadOnlySpan<byte> buffer)
         {
-            Tag = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-            File = new FileRecordReference(EndianUtilities.ToUInt64LittleEndian(buffer, offset + 4));
+            Tag = EndianUtilities.ToUInt32LittleEndian(buffer);
+            File = new FileRecordReference(EndianUtilities.ToUInt64LittleEndian(buffer.Slice(4)));
             return 12;
         }
 
-        public void WriteTo(byte[] buffer, int offset)
+        void IByteArraySerializable.WriteTo(Span<byte> buffer)
         {
-            EndianUtilities.WriteBytesLittleEndian(Tag, buffer, offset);
-            EndianUtilities.WriteBytesLittleEndian(File.Value, buffer, offset + 4);
+            EndianUtilities.WriteBytesLittleEndian(Tag, buffer);
+            EndianUtilities.WriteBytesLittleEndian(File.Value, buffer.Slice(4));
             ////Utilities.WriteBytesLittleEndian((uint)0, buffer, offset + 12);
         }
 
@@ -111,12 +112,12 @@ internal class ReparsePoints
             get { return 0; }
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
+        public int ReadFrom(ReadOnlySpan<byte> buffer)
         {
             return 0;
         }
 
-        public void WriteTo(byte[] buffer, int offset) {}
+        void IByteArraySerializable.WriteTo(Span<byte> buffer) {}
 
         public override string ToString()
         {

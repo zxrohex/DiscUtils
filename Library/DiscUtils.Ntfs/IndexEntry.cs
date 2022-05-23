@@ -138,7 +138,7 @@ internal class IndexEntry
         }
     }
 
-    public virtual void WriteTo(byte[] buffer, int offset)
+    public virtual void WriteTo(Span<byte> buffer)
     {
         var length = (ushort)Size;
 
@@ -148,33 +148,33 @@ internal class IndexEntry
 
             if (IsFileIndexEntry)
             {
-                Array.Copy(_dataBuffer, 0, buffer, offset + 0x00, 8);
+                _dataBuffer.AsSpan(0, 8).CopyTo(buffer);
             }
             else
             {
                 var dataOffset = (ushort)(IsFileIndexEntry ? 0 : 0x10 + keyLength);
                 var dataLength = (ushort)_dataBuffer.Length;
 
-                EndianUtilities.WriteBytesLittleEndian(dataOffset, buffer, offset + 0x00);
-                EndianUtilities.WriteBytesLittleEndian(dataLength, buffer, offset + 0x02);
-                Array.Copy(_dataBuffer, 0, buffer, offset + dataOffset, _dataBuffer.Length);
+                EndianUtilities.WriteBytesLittleEndian(dataOffset, buffer);
+                EndianUtilities.WriteBytesLittleEndian(dataLength, buffer.Slice(0x02));
+                _dataBuffer.AsSpan().CopyTo(buffer.Slice(dataOffset));
             }
 
-            EndianUtilities.WriteBytesLittleEndian(keyLength, buffer, offset + 0x0A);
-            Array.Copy(_keyBuffer, 0, buffer, offset + 0x10, _keyBuffer.Length);
+            EndianUtilities.WriteBytesLittleEndian(keyLength, buffer.Slice(0x0A));
+            _keyBuffer.AsSpan().CopyTo(buffer.Slice(0x10));
         }
         else
         {
-            EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer, offset + 0x00); // dataOffset
-            EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer, offset + 0x02); // dataLength
-            EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer, offset + 0x0A); // keyLength
+            EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer); // dataOffset
+            EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer.Slice(0x02)); // dataLength
+            EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer.Slice(0x0A)); // keyLength
         }
 
-        EndianUtilities.WriteBytesLittleEndian(length, buffer, offset + 0x08);
-        EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer, offset + 0x0C);
+        EndianUtilities.WriteBytesLittleEndian(length, buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer.Slice(0x0C));
         if ((_flags & IndexEntryFlags.Node) != 0)
         {
-            EndianUtilities.WriteBytesLittleEndian(_vcn, buffer, offset + length - 8);
+            EndianUtilities.WriteBytesLittleEndian(_vcn, buffer.Slice(length - 8));
         }
     }
 }

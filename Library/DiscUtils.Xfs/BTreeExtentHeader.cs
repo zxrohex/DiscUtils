@@ -45,17 +45,17 @@ internal abstract class BTreeExtentHeader : IByteArraySerializable
         get { return 24; }
     }
 
-    public virtual int ReadFrom(byte[] buffer, int offset)
+    public virtual int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-        Level = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x4);
-        NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x6);
-        LeftSibling = EndianUtilities.ToInt64BigEndian(buffer, offset + 0x8);
-        RightSibling = EndianUtilities.ToInt64BigEndian(buffer, offset + 0xC);
+        Magic = EndianUtilities.ToUInt32BigEndian(buffer);
+        Level = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x4));
+        NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x6));
+        LeftSibling = EndianUtilities.ToInt64BigEndian(buffer.Slice(0x8));
+        RightSibling = EndianUtilities.ToInt64BigEndian(buffer.Slice(0xC));
         return 24;
     }
 
-    public virtual void WriteTo(byte[] buffer, int offset)
+    public virtual void WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

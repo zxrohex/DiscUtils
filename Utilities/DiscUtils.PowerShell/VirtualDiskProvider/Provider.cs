@@ -721,7 +721,7 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
 
     private void EnumerateDisk(VirtualDisk vd, string path, bool recurse, bool namesOnly)
     {
-        if (!path.TrimEnd(Internal.Utilities.PathSeparators).EndsWith("!"))
+        if (!path.AsSpan().TrimEnd(Internal.Utilities.PathSeparators).EndsWith("!".AsSpan(), StringComparison.Ordinal))
         {
             path += "!";
         }
@@ -730,7 +730,7 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
         var volumes = volMgr.GetLogicalVolumes();
         for (var i = 0; i < volumes.Length; ++i)
         {
-            var name = "Volume" + i;
+            var name = $"Volume{i}";
             var volPath = MakePath(path, name);// new PathInfo(PathInfo.Parse(path, true).MountParts, "" + i).ToString();
             WriteItemObject(namesOnly ? name : (object)volumes[i], volPath, true);
             if (recurse)

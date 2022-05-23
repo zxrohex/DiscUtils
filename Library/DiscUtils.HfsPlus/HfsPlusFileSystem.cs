@@ -60,7 +60,7 @@ public class HfsPlusFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocati
 
         var headerBuf = StreamUtilities.ReadExact(stream, 512);
         var hdr = new VolumeHeader();
-        hdr.ReadFrom(headerBuf, 0);
+        hdr.ReadFrom(headerBuf);
 
         return hdr.IsValid;
     }

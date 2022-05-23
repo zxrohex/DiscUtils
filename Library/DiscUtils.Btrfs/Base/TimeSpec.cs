@@ -39,7 +39,7 @@ internal class TimeSpec : IByteArraySerializable
     /// </summary>
     public uint Nanoseconds { get; internal set; }
     
-    public DateTimeOffset Value { get { return Seconds.FromUnixTimeSeconds().AddTicks(Nanoseconds / 100); } }
+    public DateTimeOffset Value { get { return DateTimeOffset.FromUnixTimeSeconds(Seconds).AddTicks(Nanoseconds / 100); } }
 
     public int Size
     {
@@ -48,17 +48,17 @@ internal class TimeSpec : IByteArraySerializable
 
     public DateTimeOffset DateTime
     {
-        get { return Seconds.FromUnixTimeSeconds().AddTicks(Nanoseconds / 100); }
+        get { return DateTimeOffset.FromUnixTimeSeconds(Seconds).AddTicks(Nanoseconds / 100); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Seconds = EndianUtilities.ToInt64LittleEndian(buffer, offset);
-        Nanoseconds = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x8);
+        Seconds = EndianUtilities.ToInt64LittleEndian(buffer);
+        Nanoseconds = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x8));
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

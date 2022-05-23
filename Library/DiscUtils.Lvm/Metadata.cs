@@ -22,7 +22,8 @@
 
 namespace DiscUtils.Lvm;
 
-using DiscUtils.CoreCompat;
+using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,7 +36,7 @@ internal class Metadata
     public string Contents;
     public int Version;
     public List<MetadataVolumeGroupSection> VolumeGroupSections;
-    private static readonly double _maxSeconds = DateTime.MaxValue.Subtract(DateTimeOffsetExtensions.UnixEpoch).TotalSeconds;
+    private static readonly double _maxSeconds = DateTime.MaxValue.Subtract(DateTimeOffset.FromUnixTimeMilliseconds(0).DateTime).TotalSeconds;
 
     public static Metadata Parse(string metadata)
     {
@@ -47,36 +48,48 @@ internal class Metadata
 
     private void Parse(TextReader data)
     {
-        string line;
         var vgSection = new List<MetadataVolumeGroupSection>();
-        while ((line = ReadLine(data))!= null)
+        for(; ;)
         {
-            if (line == String.Empty) continue;
-            if (line.Contains("="))
+            var lineStr = ReadLine(data);
+
+            if (lineStr == null)
+            {
+                break;
+            }
+
+            var line = lineStr.AsMemory();
+
+            if (line.Span.IsWhiteSpace())
+            {
+                continue;
+            }
+
+            if (line.Span.Contains("=".AsSpan(), StringComparison.Ordinal))
             {
                 var parameter = ParseParameter(line);
-                switch (parameter.Key.Trim().ToLowerInvariant())
+                switch (parameter.Key.ToString().ToLowerInvariant())
                 {
                     case "contents":
-                        Contents = ParseStringValue(parameter.Value);
+                        Contents = ParseStringValue(parameter.Value.Span);
                         break;
                     case "version":
-                        Version = (int) ParseNumericValue(parameter.Value);
+                        Version = (int) ParseNumericValue(parameter.Value.Span);
                         break;
                     case "description":
-                        Description = ParseStringValue(parameter.Value);
+                        Description = ParseStringValue(parameter.Value.Span);
                         break;
                     case "creation_host":
-                        CreationHost = ParseStringValue(parameter.Value);
+                        CreationHost = ParseStringValue(parameter.Value.Span);
                         break;
                     case "creation_time":
-                        CreationTime = ParseDateTimeValue(parameter.Value);
+                        CreationTime = ParseDateTimeValue(parameter.Value.Span);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in global metadata");
+                        throw new ArgumentOutOfRangeException(parameter.Key.ToString(), "Unexpected parameter in global metadata");
                 }
             }
-            else if (line.EndsWith("{"))
+            else if (line.Span.EndsWith("{".AsSpan(), StringComparison.Ordinal))
             {
                 var vg = new MetadataVolumeGroupSection();
                 vg.Parse(line, data);
@@ -94,40 +107,44 @@ internal class Metadata
         return RemoveComment(line).Trim();
     }
 
-    internal static string[] ParseArrayValue(string value)
+    internal static string[] ParseArrayValue(ReadOnlySpan<char> value)
     {
-        var values = value.Trim('[', ']').Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var values = value.Trim('[').Trim(']').ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
         for (var i = 0; i < values.Length; i++)
         {
-            values[i] = Metadata.ParseStringValue(values[i]);
+            values[i] = Metadata.ParseStringValue(values[i].AsSpan());
         }
         return values;
     }
 
-    internal static string ParseStringValue(string value)
+    internal static string ParseStringValue(ReadOnlySpan<char> value)
     {
-        return value.Trim().Trim('"');
+        return value.Trim().Trim('"').ToString();
     }
 
-    internal static DateTime ParseDateTimeValue(string value)
+    internal static DateTime ParseDateTimeValue(ReadOnlySpan<char> value)
     {
         var numeric = ParseNumericValue(value);
         if (numeric > _maxSeconds)
             return DateTime.MaxValue;
-        return DateTimeOffsetExtensions.UnixEpoch.AddSeconds(numeric);
+        return DateTimeOffset.FromUnixTimeSeconds((long)numeric).DateTime;
     }
 
-    internal static ulong ParseNumericValue(string value)
+    internal static ulong ParseNumericValue(ReadOnlySpan<char> value)
     {
-        return UInt64.Parse(value.Trim());
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        return ulong.Parse(value.Trim());
+#else
+        return ulong.Parse(value.Trim().ToString());
+#endif
     }
 
-    internal static KeyValuePair<string, string> ParseParameter(string line)
+    internal static KeyValuePair<ReadOnlyMemory<char>, ReadOnlyMemory<char>> ParseParameter(ReadOnlyMemory<char> line)
     {
-        var index = line.IndexOf("=", StringComparison.Ordinal);
+        var index = line.Span.IndexOf('=');
         if (index < 0)
-            throw new ArgumentException("invalid parameter line", line);
-        return new KeyValuePair<string, string>(line.Substring(0,index).Trim(), line.Substring(index+1,line.Length-(index+1)).Trim());
+            throw new ArgumentException("invalid parameter line", nameof(line));
+        return new(key: line.Slice(0, index).Trim(), value: line.Slice(index + 1, line.Length - (index + 1)).Trim());
     }
 
     internal static string RemoveComment(string line)

@@ -89,7 +89,6 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var startOffset = (int)(_position % _blockSize);
@@ -127,9 +126,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
             ArrayPool<byte>.Shared.Return(tempBuffer);
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(Span<byte> buffer)
     {
         var startOffset = (int)(_position % _blockSize);
@@ -205,7 +202,6 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
             ArrayPool<byte>.Shared.Return(tempBuffer);
         }
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -243,7 +239,6 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
             count);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var startOffset = (int)(_position % _blockSize);
@@ -300,9 +295,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
 
         _position = unalignedEnd;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         var count = buffer.Length;
@@ -323,7 +316,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
             WrappedStream.Position = alignedPos;
             await WrappedStream.ReadAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
 
-            buffer[..Math.Min(count, _blockSize - startOffset)].CopyTo(_alignmentBuffer.AsMemory(startOffset));
+            buffer.Slice(0, Math.Min(count, _blockSize - startOffset)).CopyTo(_alignmentBuffer.AsMemory(startOffset));
 
             WrappedStream.Position = alignedPos;
             await WrappedStream.WriteAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
@@ -381,7 +374,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
             WrappedStream.Position = alignedPos;
             WrappedStream.Read(_alignmentBuffer.AsSpan(0, _blockSize));
 
-            buffer[..Math.Min(count, _blockSize - startOffset)].CopyTo(_alignmentBuffer.AsSpan(startOffset));
+            buffer.Slice(0, Math.Min(count, _blockSize - startOffset)).CopyTo(_alignmentBuffer.AsSpan(startOffset));
 
             WrappedStream.Position = alignedPos;
             WrappedStream.Write(_alignmentBuffer.AsSpan(0, _blockSize));
@@ -418,7 +411,6 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
 
         _position = unalignedEnd;
     }
-#endif
 
     private void DoOperation(ModifyStream modifyStream, ModifyBuffer modifyBuffer, int count)
     {

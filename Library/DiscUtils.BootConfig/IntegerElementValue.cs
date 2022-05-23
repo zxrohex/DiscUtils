@@ -34,6 +34,7 @@ internal class IntegerElementValue : ElementValue
     {
         // Actual bytes stored may be less than 8
         Span<byte> buffer = stackalloc byte[8];
+        buffer.Clear();
         value.AsSpan().CopyTo(buffer);
 
         _value = EndianUtilities.ToUInt64LittleEndian(buffer);

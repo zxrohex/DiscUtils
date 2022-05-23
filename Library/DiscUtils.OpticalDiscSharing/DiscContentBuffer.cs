@@ -30,6 +30,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using Buffer=DiscUtils.Streams.Buffer;
 
 #pragma warning disable IDE0079 // Remove unnecessary suppression
@@ -94,8 +95,7 @@ internal sealed class DiscContentBuffer : Buffer
         return read;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-    public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var response = await SendRequestAsync(() =>
         {
@@ -115,9 +115,7 @@ internal sealed class DiscContentBuffer : Buffer
 
         return read;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var response = await SendRequestAsync(() =>
@@ -133,11 +131,12 @@ internal sealed class DiscContentBuffer : Buffer
         var read = 0;
         while (read < Math.Min(total, buffer.Length))
         {
-            read += await s.ReadAsync(buffer[read..], cancellationToken).ConfigureAwait(false);
+            read += await s.ReadAsync(buffer.Slice(read), cancellationToken).ConfigureAwait(false);
         }
 
         return read;
     }
+
 
     public override int Read(long pos, Span<byte> buffer)
     {
@@ -156,22 +155,19 @@ internal sealed class DiscContentBuffer : Buffer
         var read = 0;
         while (read < Math.Min(total, buffer.Length))
         {
-            read += s.Read(buffer[read..]);
+            read += s.Read(buffer.Slice(read));
         }
 
         return read;
     }
-#endif
 
     public override void Write(long pos, byte[] buffer, int offset, int count)
     {
         throw new InvalidOperationException("Attempt to write to shared optical disc");
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
         throw new InvalidOperationException("Attempt to write to shared optical disc");
-#endif
 
     public override void SetCapacity(long value)
     {
@@ -258,7 +254,7 @@ internal sealed class DiscContentBuffer : Buffer
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     private async Task<HttpWebResponse> SendRequestAsync(WebRequestCreator wrc)
     {
         var wr = wrc();
@@ -299,7 +295,7 @@ internal sealed class DiscContentBuffer : Buffer
             throw;
         }
     }
-#endif
+
 
     private string CalcDigestResponse(string nonce, string uriPath, string method, string realm)
     {

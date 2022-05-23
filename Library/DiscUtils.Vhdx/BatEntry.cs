@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Vhdx;
 
@@ -56,14 +57,14 @@ internal struct BatEntry : IByteArraySerializable
         get { return 8; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        _value = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+        _value = EndianUtilities.ToUInt64LittleEndian(buffer);
         return 8;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(_value, buffer, offset);
+        EndianUtilities.WriteBytesLittleEndian(_value, buffer);
     }
 }

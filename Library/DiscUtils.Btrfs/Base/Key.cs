@@ -73,8 +73,6 @@ internal class Key : IByteArraySerializable
         get { return Length; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset) => ReadFrom(buffer.AsSpan(offset));
-
     public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         ObjectId = EndianUtilities.ToUInt64LittleEndian(buffer);
@@ -83,7 +81,7 @@ internal class Key : IByteArraySerializable
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

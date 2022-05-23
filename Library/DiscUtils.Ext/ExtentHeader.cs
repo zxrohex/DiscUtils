@@ -40,17 +40,17 @@ internal class ExtentHeader : IByteArraySerializable
         get { return 12; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Magic = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0);
-        Entries = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
-        MaxEntries = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-        Depth = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
-        Generation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
+        Magic = EndianUtilities.ToUInt16LittleEndian(buffer);
+        Entries = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(2));
+        MaxEntries = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(4));
+        Depth = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(6));
+        Generation = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(8));
         return 12;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

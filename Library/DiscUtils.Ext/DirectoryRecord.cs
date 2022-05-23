@@ -22,7 +22,9 @@
 
 using System;
 using System.Text;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ext;
 
@@ -53,20 +55,20 @@ internal struct DirectoryRecord : IByteArraySerializable
         get { return MathUtilities.RoundUp(8 + Name.Length, 4); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Inode = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-        var recordLen = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-        int nameLen = buffer[offset + 6];
-        FileType = buffer[offset + 7];
-        Name = _nameEncoding.GetString(buffer, offset + 8, nameLen);
+        Inode = EndianUtilities.ToUInt32LittleEndian(buffer);
+        var recordLen = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(4));
+        int nameLen = buffer[6];
+        FileType = buffer[7];
+        Name = _nameEncoding.GetString(buffer.Slice(8, nameLen));
 
         Name = Name.Replace('\\', '/');
 
         return recordLen;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

@@ -20,8 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams;
 
@@ -53,14 +56,29 @@ public abstract class DataWriter
         _stream.Write(value, offset, count);
     }
 
-    public virtual void WriteBytes(byte[] value)
+    public virtual void WriteBytes(ReadOnlySpan<byte> value)
     {
-        _stream.Write(value, 0, value.Length);
+        _stream.Write(value);
+    }
+
+    public virtual ValueTask WriteBytesAsync(byte[] value, int offset, int count, CancellationToken cancellationToken)
+    {
+        return new(_stream.WriteAsync(value, offset, count, cancellationToken));
+    }
+
+    public virtual ValueTask WriteBytesAsync(ReadOnlyMemory<byte> value, CancellationToken cancellationToken)
+    {
+        return _stream.WriteAsync(value, cancellationToken);
     }
 
     public virtual void Flush()
     {
         _stream.Flush();
+    }
+
+    public virtual ValueTask FlushAsync()
+    {
+        return new(_stream.FlushAsync());
     }
 
     protected void EnsureBuffer()

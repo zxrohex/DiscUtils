@@ -26,6 +26,7 @@ using System.IO.Compression;
 using DiscUtils.Compression;
 using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.SquashFs;
 

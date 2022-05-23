@@ -38,18 +38,18 @@ internal class CompressedRun : IByteArraySerializable
         get { return 40; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Type = (RunType)EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-        SectorStart = EndianUtilities.ToInt64BigEndian(buffer, offset + 8);
-        SectorCount = EndianUtilities.ToInt64BigEndian(buffer, offset + 16);
-        CompOffset = EndianUtilities.ToInt64BigEndian(buffer, offset + 24);
-        CompLength = EndianUtilities.ToInt64BigEndian(buffer, offset + 32);
+        Type = (RunType)EndianUtilities.ToUInt32BigEndian(buffer);
+        SectorStart = EndianUtilities.ToInt64BigEndian(buffer.Slice(8));
+        SectorCount = EndianUtilities.ToInt64BigEndian(buffer.Slice(16));
+        CompOffset = EndianUtilities.ToInt64BigEndian(buffer.Slice(24));
+        CompLength = EndianUtilities.ToInt64BigEndian(buffer.Slice(32));
 
         return 40;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

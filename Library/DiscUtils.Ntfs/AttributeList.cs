@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -50,7 +51,7 @@ internal class AttributeList : IByteArraySerializable, IDiagnosticTraceable, ICo
         }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         _records.Clear();
 
@@ -58,19 +59,19 @@ internal class AttributeList : IByteArraySerializable, IDiagnosticTraceable, ICo
         while (pos < buffer.Length)
         {
             var r = new AttributeListRecord();
-            pos += r.ReadFrom(buffer, offset + pos);
+            pos += r.ReadFrom(buffer.Slice(pos));
             _records.Add(r);
         }
 
         return pos;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        var pos = offset;
+        var pos = 0;
         foreach (var record in _records)
         {
-            record.WriteTo(buffer, offset + pos);
+            record.WriteTo(buffer.Slice(pos));
             pos += record.Size;
         }
     }

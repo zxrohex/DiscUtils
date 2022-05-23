@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using DiscUtils.Partitions;
 using DiscUtils.Streams;
@@ -41,14 +42,14 @@ internal sealed class PartitionMapFactory : PartitionTableFactory
         var initialBytes = StreamUtilities.ReadExact(s, 1024);
 
         var b0 = new BlockZero();
-        b0.ReadFrom(initialBytes, 0);
+        b0.ReadFrom(initialBytes);
         if (b0.Signature != 0x4552)
         {
             return false;
         }
 
         var initialPart = new PartitionMapEntry(s);
-        initialPart.ReadFrom(initialBytes, 512);
+        initialPart.ReadFrom(initialBytes.AsSpan(512));
 
         return initialPart.Signature == 0x504d;
     }

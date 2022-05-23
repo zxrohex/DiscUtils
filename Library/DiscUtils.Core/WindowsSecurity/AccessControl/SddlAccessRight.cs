@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace DiscUtils.Core.WindowsSecurity.AccessControl;
@@ -8,11 +9,11 @@ internal class SddlAccessRight
     public int Value { get; set; }
     public int ObjectType { get; set; }
 
-    public static SddlAccessRight LookupByName(string s)
+    public static SddlAccessRight LookupByName(ReadOnlySpan<char> s)
     {
         foreach (var right in rights)
         {
-            if (right.Name == s)
+            if (right.Name.AsSpan().Equals(s, StringComparison.CurrentCultureIgnoreCase))
                 return right;
         }
 

@@ -106,15 +106,15 @@ public sealed class BuildDirectoryInfo : BuildDirectoryMember
         return (uint)(8 + nameBytes + ((nameBytes & 0x1) == 1 ? 1 : 0));
     }
 
-    internal int Write(byte[] buffer, int offset, Dictionary<BuildDirectoryMember, uint> locationTable, Encoding enc)
+    internal int Write(Span<byte> buffer, Dictionary<BuildDirectoryMember, uint> locationTable, Encoding enc)
     {
         var pos = 0;
 
         var sorted = GetSortedMembers();
 
         // Two pseudo entries, effectively '.' and '..'
-        pos += WriteMember(this, "\0", Encoding.ASCII, buffer, offset + pos, locationTable, enc);
-        pos += WriteMember(_parent, "\x01", Encoding.ASCII, buffer, offset + pos, locationTable, enc);
+        pos += WriteMember(this, "\0", Encoding.ASCII, buffer.Slice(pos), locationTable, enc);
+        pos += WriteMember(_parent, "\x01", Encoding.ASCII, buffer.Slice(pos), locationTable, enc);
 
         foreach (var m in sorted)
         {
@@ -123,21 +123,21 @@ public sealed class BuildDirectoryInfo : BuildDirectoryMember
             if (pos % IsoUtilities.SectorSize + recordSize > IsoUtilities.SectorSize)
             {
                 var padLength = IsoUtilities.SectorSize - pos % IsoUtilities.SectorSize;
-                Array.Clear(buffer, offset + pos, padLength);
+                buffer.Slice(pos, padLength).Clear();
                 pos += padLength;
             }
 
-            pos += WriteMember(m, null, enc, buffer, offset + pos, locationTable, enc);
+            pos += WriteMember(m, null, enc, buffer.Slice(pos), locationTable, enc);
         }
 
         // Ensure final padding data is zero'd
         var finalPadLength = MathUtilities.RoundUp(pos, IsoUtilities.SectorSize) - pos;
-        Array.Clear(buffer, offset + pos, finalPadLength);
+        buffer.Slice(pos, finalPadLength).Clear();
 
         return pos + finalPadLength;
     }
 
-    private static int WriteMember(BuildDirectoryMember m, string nameOverride, Encoding nameEnc, byte[] buffer, int offset, Dictionary<BuildDirectoryMember, uint> locationTable, Encoding dataEnc)
+    private static int WriteMember(BuildDirectoryMember m, string nameOverride, Encoding nameEnc, Span<byte> buffer, Dictionary<BuildDirectoryMember, uint> locationTable, Encoding dataEnc)
     {
         var dr = new DirectoryRecord
         {
@@ -147,7 +147,7 @@ public sealed class BuildDirectoryInfo : BuildDirectoryMember
             RecordingDateAndTime = m.CreationTime,
             Flags = m is BuildDirectoryInfo ? FileFlags.Directory : FileFlags.None
         };
-        return dr.WriteTo(buffer, offset, nameEnc);
+        return dr.WriteTo(buffer, nameEnc);
     }
 
     private static string MakeShortDirName(string longName, BuildDirectoryInfo dir)

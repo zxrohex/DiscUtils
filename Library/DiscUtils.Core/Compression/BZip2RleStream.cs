@@ -25,6 +25,7 @@
 //
 
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.IO;
 using System.Threading;
@@ -32,7 +33,7 @@ using System.Threading.Tasks;
 
 namespace DiscUtils.Compression;
 
-internal class BZip2RleStream : Stream
+internal class BZip2RleStream : ReadOnlyCompatibilityStream
 {
     private byte[] _blockBuffer;
     private int _blockOffset;
@@ -54,11 +55,6 @@ internal class BZip2RleStream : Stream
     }
 
     public override bool CanSeek
-    {
-        get { return false; }
-    }
-
-    public override bool CanWrite
     {
         get { return false; }
     }
@@ -85,28 +81,32 @@ internal class BZip2RleStream : Stream
         _runBytesOutstanding = 0;
     }
 
-    public override void Flush()
-    {
-        throw new NotSupportedException();
-    }
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        => Task.FromResult(Read(buffer.AsSpan(offset, count)));
+
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        => new(Read(buffer.Span));
 
     public override int Read(byte[] buffer, int offset, int count)
+        => Read(buffer.AsSpan(offset, count));
+
+    public override int Read(Span<byte> buffer)
     {
         var numRead = 0;
 
-        while (numRead < count && _runBytesOutstanding > 0)
+        while (numRead < buffer.Length && _runBytesOutstanding > 0)
         {
-            var runCount = Math.Min(_runBytesOutstanding, count);
+            var runCount = Math.Min(_runBytesOutstanding, buffer.Length);
             for (var i = 0; i < runCount; ++i)
             {
-                buffer[offset + numRead] = _lastByte;
+                buffer[numRead] = _lastByte;
             }
 
             _runBytesOutstanding -= runCount;
             numRead += runCount;
         }
 
-        while (numRead < count && _blockRemaining > 0)
+        while (numRead < buffer.Length && _blockRemaining > 0)
         {
             var b = _blockBuffer[_blockOffset];
             ++_blockOffset;
@@ -114,10 +114,10 @@ internal class BZip2RleStream : Stream
 
             if (_numSame == 4)
             {
-                var runCount = Math.Min(b, count - numRead);
+                var runCount = Math.Min(b, buffer.Length - numRead);
                 for (var i = 0; i < runCount; ++i)
                 {
-                    buffer[offset + numRead] = _lastByte;
+                    buffer[numRead] = _lastByte;
                     numRead++;
                 }
 
@@ -132,7 +132,7 @@ internal class BZip2RleStream : Stream
                     _numSame = 0;
                 }
 
-                buffer[offset + numRead] = b;
+                buffer[numRead] = b;
                 numRead++;
                 _numSame++;
             }
@@ -143,16 +143,6 @@ internal class BZip2RleStream : Stream
     }
 
     public override long Seek(long offset, SeekOrigin origin)
-    {
-        throw new NotSupportedException();
-    }
-
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    public override void Write(byte[] buffer, int offset, int count)
     {
         throw new NotSupportedException();
     }

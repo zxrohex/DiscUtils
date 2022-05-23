@@ -39,19 +39,19 @@ internal sealed class BTreeNodeDescriptor : IByteArraySerializable
         get { return 14; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        ForwardLink = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0);
-        BackwardLink = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
-        Kind = (BTreeNodeKind)buffer[offset + 8];
-        Height = buffer[offset + 9];
-        NumRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 10);
-        Reserved = EndianUtilities.ToUInt16BigEndian(buffer, offset + 12);
+        ForwardLink = EndianUtilities.ToUInt32BigEndian(buffer);
+        BackwardLink = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        Kind = (BTreeNodeKind)buffer[8];
+        Height = buffer[9];
+        NumRecords = EndianUtilities.ToUInt16BigEndian(buffer.Slice(10));
+        Reserved = EndianUtilities.ToUInt16BigEndian(buffer.Slice(12));
 
         return 14;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

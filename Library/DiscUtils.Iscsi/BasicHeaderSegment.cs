@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Iscsi;
 
@@ -40,26 +41,26 @@ internal class BasicHeaderSegment : IByteArraySerializable
         get { return 48; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Immediate = (buffer[offset] & 0x40) != 0;
-        OpCode = (OpCode)(buffer[offset] & 0x3F);
-        FinalPdu = (buffer[offset + 1] & 0x80) != 0;
-        TotalAhsLength = buffer[offset + 4];
-        DataSegmentLength = EndianUtilities.ToInt32BigEndian(buffer, offset + 4) & 0x00FFFFFF;
-        InitiatorTaskTag = EndianUtilities.ToUInt32BigEndian(buffer, offset + 16);
+        Immediate = (buffer[0] & 0x40) != 0;
+        OpCode = (OpCode)(buffer[0] & 0x3F);
+        FinalPdu = (buffer[1] & 0x80) != 0;
+        TotalAhsLength = buffer[4];
+        DataSegmentLength = EndianUtilities.ToInt32BigEndian(buffer.Slice(4)) & 0x00FFFFFF;
+        InitiatorTaskTag = EndianUtilities.ToUInt32BigEndian(buffer.Slice(16));
         return 48;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        buffer[offset] = (byte)((Immediate ? 0x40 : 0x00) | ((int)OpCode & 0x3F));
-        buffer[offset + 1] |= (byte)(FinalPdu ? 0x80 : 0x00);
-        buffer[offset + 4] = TotalAhsLength;
-        buffer[offset + 5] = (byte)((DataSegmentLength >> 16) & 0xFF);
-        buffer[offset + 6] = (byte)((DataSegmentLength >> 8) & 0xFF);
-        buffer[offset + 7] = (byte)(DataSegmentLength & 0xFF);
-        EndianUtilities.WriteBytesBigEndian(InitiatorTaskTag, buffer, offset + 16);
+        buffer[0] = (byte)((Immediate ? 0x40 : 0x00) | ((int)OpCode & 0x3F));
+        buffer[1] |= (byte)(FinalPdu ? 0x80 : 0x00);
+        buffer[4] = TotalAhsLength;
+        buffer[5] = (byte)((DataSegmentLength >> 16) & 0xFF);
+        buffer[6] = (byte)((DataSegmentLength >> 8) & 0xFF);
+        buffer[7] = (byte)(DataSegmentLength & 0xFF);
+        EndianUtilities.WriteBytesBigEndian(InitiatorTaskTag, buffer.Slice(16));
     }
 
     #endregion

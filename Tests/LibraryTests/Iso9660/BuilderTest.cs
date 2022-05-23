@@ -42,7 +42,7 @@ namespace LibraryTests.Iso9660
         public void AddFileBytes()
         {
             var builder = new CDBuilder();
-            builder.AddFile(@"ADIR\AFILE.TXT", new byte[] {});
+            builder.AddFile(@"ADIR\AFILE.TXT", System.Array.Empty<byte>());
             var fs = new CDReader(builder.Build(), false);
 
             Assert.True(fs.Exists(@"ADIR\AFILE.TXT"));

@@ -22,7 +22,9 @@
 
 using System;
 using System.Text;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.HfsPlus;
 
@@ -388,34 +390,34 @@ internal static class HfsPlusUtilities
 
     #endregion
 
-    public static string ReadUniStr255(byte[] buffer, int offset)
+    public static string ReadUniStr255(ReadOnlySpan<byte> buffer)
     {
-        int len = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
-        return Encoding.BigEndianUnicode.GetString(buffer, offset + 2, len * 2);
+        int len = EndianUtilities.ToUInt16BigEndian(buffer);
+        return Encoding.BigEndianUnicode.GetString(buffer.Slice(2, len * 2));
     }
 
-    public static DateTime ReadHFSPlusDate(DateTimeKind kind, byte[] buffer, int offset)
+    public static DateTime ReadHFSPlusDate(DateTimeKind kind, ReadOnlySpan<byte> buffer)
     {
-        var val = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        var val = EndianUtilities.ToUInt32BigEndian(buffer);
         var epoch = new DateTime(1904, 1, 1, 0, 0, 0, 0, kind);
         var result = epoch.AddSeconds(val);
 
         return result;
     }
 
-    public static UnixFileSystemInfo ReadBsdInfo(byte[] buffer, int offset, out uint special)
+    public static UnixFileSystemInfo ReadBsdInfo(ReadOnlySpan<byte> buffer, out uint special)
     {
         var result = new UnixFileSystemInfo
         {
-            UserId = EndianUtilities.ToInt32BigEndian(buffer, offset + 0),
-            GroupId = EndianUtilities.ToInt32BigEndian(buffer, offset + 4)
+            UserId = EndianUtilities.ToInt32BigEndian(buffer),
+            GroupId = EndianUtilities.ToInt32BigEndian(buffer.Slice(4))
         };
 
-        var fileMode = EndianUtilities.ToUInt16BigEndian(buffer, offset + 8);
+        var fileMode = EndianUtilities.ToUInt16BigEndian(buffer.Slice(8));
         result.FileType = (UnixFileType)((fileMode >> 12) & 0xF);
         result.Permissions = (UnixFilePermissions)(fileMode & 0xFFF);
 
-        special = EndianUtilities.ToUInt32BigEndian(buffer, offset + 10);
+        special = EndianUtilities.ToUInt32BigEndian(buffer.Slice(10));
         if (result.FileType == UnixFileType.Block || result.FileType == UnixFileType.Character)
         {
             result.DeviceId = special;

@@ -29,6 +29,7 @@ using System.Net.Sockets;
 using System.Threading;
 using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Nfs;
 

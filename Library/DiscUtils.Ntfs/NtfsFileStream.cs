@@ -151,7 +151,7 @@ internal sealed class NtfsFileStream : SparseStream
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         AssertOpen();
@@ -162,9 +162,9 @@ internal sealed class NtfsFileStream : SparseStream
             return await _baseStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override int Read(Span<byte> buffer)
     {
         AssertOpen();
@@ -184,7 +184,7 @@ internal sealed class NtfsFileStream : SparseStream
             return await _baseStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
     }
-#endif
+
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -220,7 +220,7 @@ internal sealed class NtfsFileStream : SparseStream
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         AssertOpen();
@@ -232,9 +232,9 @@ internal sealed class NtfsFileStream : SparseStream
             await _baseStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         AssertOpen();
@@ -256,12 +256,12 @@ internal sealed class NtfsFileStream : SparseStream
             await _baseStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
     }
-#endif
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
+
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         _baseStream.FlushAsync(cancellationToken);
-#endif
+
 
     public override void Clear(int count)
     {

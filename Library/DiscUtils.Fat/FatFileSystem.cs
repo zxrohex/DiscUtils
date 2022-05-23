@@ -30,6 +30,7 @@ using System.Text.RegularExpressions;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Fat;
 
@@ -1394,7 +1395,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
     /// <param name="volId">The disk's volume Id.</param>
     /// <param name="label">The disk's label (or null).</param>
     private static void WriteBPB(
-        byte[] bootSector,
+        Span<byte> bootSector,
         uint sectors,
         FatType fatType,
         ushort maxRootEntries,
@@ -1413,7 +1414,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         bootSector[2] = 0x90;
 
         // OEM Name
-        EndianUtilities.StringToBytes("DISCUTIL", bootSector, 3, 8);
+        EndianUtilities.StringToBytes("DISCUTIL", bootSector.Slice(3, 8));
 
         // Bytes Per Sector (512)
         bootSector[11] = 0;
@@ -1423,43 +1424,43 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         bootSector[13] = sectorsPerCluster;
 
         // Reserved Sector Count
-        EndianUtilities.WriteBytesLittleEndian(reservedSectors, bootSector, 14);
+        EndianUtilities.WriteBytesLittleEndian(reservedSectors, bootSector.Slice(14));
 
         // Number of FATs
         bootSector[16] = 2;
 
         // Number of Entries in the root directory
-        EndianUtilities.WriteBytesLittleEndian(maxRootEntries, bootSector, 17);
+        EndianUtilities.WriteBytesLittleEndian(maxRootEntries, bootSector.Slice(17));
 
         // Total number of sectors (small)
-        EndianUtilities.WriteBytesLittleEndian((ushort)(sectors < 0x10000 ? sectors : 0), bootSector, 19);
+        EndianUtilities.WriteBytesLittleEndian((ushort)(sectors < 0x10000 ? sectors : 0), bootSector.Slice(19));
 
         // Media
         bootSector[21] = (byte)(isFloppy ? 0xF0 : 0xF8);
 
         // FAT size (FAT12/FAT16)
-        EndianUtilities.WriteBytesLittleEndian((ushort)(fatType < FatType.Fat32 ? fatSectors : 0), bootSector, 22);
+        EndianUtilities.WriteBytesLittleEndian((ushort)(fatType < FatType.Fat32 ? fatSectors : 0), bootSector.Slice(22));
 
         // Sectors Per Track
-        EndianUtilities.WriteBytesLittleEndian((ushort)diskGeometry.SectorsPerTrack, bootSector, 24);
+        EndianUtilities.WriteBytesLittleEndian((ushort)diskGeometry.SectorsPerTrack, bootSector.Slice(24));
 
         // Heads Per Cylinder
-        EndianUtilities.WriteBytesLittleEndian((ushort)diskGeometry.HeadsPerCylinder, bootSector, 26);
+        EndianUtilities.WriteBytesLittleEndian((ushort)diskGeometry.HeadsPerCylinder, bootSector.Slice(26));
 
         // Hidden Sectors
-        EndianUtilities.WriteBytesLittleEndian(hiddenSectors, bootSector, 28);
+        EndianUtilities.WriteBytesLittleEndian(hiddenSectors, bootSector.Slice(28));
 
         // Total number of sectors (large)
-        EndianUtilities.WriteBytesLittleEndian(sectors >= 0x10000 ? sectors : 0, bootSector, 32);
+        EndianUtilities.WriteBytesLittleEndian(sectors >= 0x10000 ? sectors : 0, bootSector.Slice(32));
 
         if (fatType < FatType.Fat32)
         {
-            WriteBS(bootSector, 36, isFloppy, volId, label, fatType);
+            WriteBS(bootSector.Slice(36), isFloppy, volId, label, fatType);
         }
         else
         {
             // FAT size (FAT32)
-            EndianUtilities.WriteBytesLittleEndian(fatSectors, bootSector, 36);
+            EndianUtilities.WriteBytesLittleEndian(fatSectors, bootSector.Slice(36));
 
             // Ext flags: 0x80 = FAT 1 (i.e. Zero) active, mirroring
             bootSector[40] = 0x00;
@@ -1470,18 +1471,18 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
             bootSector[43] = 0;
 
             // First cluster of the root directory, always 2 since we don't do bad sectors...
-            EndianUtilities.WriteBytesLittleEndian((uint)2, bootSector, 44);
+            EndianUtilities.WriteBytesLittleEndian((uint)2, bootSector.Slice(44));
 
             // Sector number of FSINFO
-            EndianUtilities.WriteBytesLittleEndian((uint)1, bootSector, 48);
+            EndianUtilities.WriteBytesLittleEndian((uint)1, bootSector.Slice(48));
 
             // Sector number of the Backup Boot Sector
-            EndianUtilities.WriteBytesLittleEndian((uint)6, bootSector, 50);
+            EndianUtilities.WriteBytesLittleEndian((uint)6, bootSector.Slice(50));
 
             // Reserved area - must be set to 0
-            Array.Clear(bootSector, 52, 12);
+            bootSector.Slice(52, 12).Clear();
 
-            WriteBS(bootSector, 64, isFloppy, volId, label, fatType);
+            WriteBS(bootSector.Slice(64), isFloppy, volId, label, fatType);
         }
 
         bootSector[510] = 0x55;
@@ -1495,7 +1496,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         return (fatBytes + Sizes.Sector - 1) / Sizes.Sector;
     }
 
-    private static void WriteBS(byte[] bootSector, int offset, bool isFloppy, uint volId, string label,
+    private static void WriteBS(Span<byte> bootSector, bool isFloppy, uint volId, string label,
                                 FatType fatType)
     {
         if (string.IsNullOrEmpty(label))
@@ -1514,22 +1515,22 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         }
 
         // Drive Number (for BIOS)
-        bootSector[offset + 0] = (byte)(isFloppy ? 0x00 : 0x80);
+        bootSector[0] = (byte)(isFloppy ? 0x00 : 0x80);
 
         // Reserved
-        bootSector[offset + 1] = 0;
+        bootSector[1] = 0;
 
         // Boot Signature (indicates next 3 fields present)
-        bootSector[offset + 2] = 0x29;
+        bootSector[2] = 0x29;
 
         // Volume Id
-        EndianUtilities.WriteBytesLittleEndian(volId, bootSector, offset + 3);
+        EndianUtilities.WriteBytesLittleEndian(volId, bootSector.Slice(3));
 
         // Volume Label
-        EndianUtilities.StringToBytes(label + "           ", bootSector, offset + 7, 11);
+        EndianUtilities.StringToBytes(label.PadRight(11, ' ').AsSpan(0, 11), bootSector.Slice(7, 11));
 
         // File System Type
-        EndianUtilities.StringToBytes(fsType, bootSector, offset + 18, 8);
+        EndianUtilities.StringToBytes(fsType, bootSector.Slice(18, 8));
     }
 
     private static FatType DetectFATType(byte[] bpb)
@@ -1821,7 +1822,9 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         var volId = (uint)((ticks & 0xFFFF) | (ticks >> 32));
 
         // Write the BIOS Parameter Block (BPB) - a single sector
-        var bpb = new byte[512];
+        Span<byte> bpb = stackalloc byte[512];
+        bpb.Clear();
+
         uint sectors;
         if (type == FloppyDiskType.DoubleDensity)
         {
@@ -1843,7 +1846,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
             throw new ArgumentException("Unrecognised Floppy Disk type", nameof(type));
         }
 
-        stream.Write(bpb, 0, bpb.Length);
+        stream.Write(bpb);
 
         // Write both FAT copies
         var fatSize = CalcFatSize(sectors, FatType.Fat12, 1);
@@ -1919,11 +1922,11 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
          * Write the BIOS Parameter Block (BPB) - a single sector
          */
 
-        var bpb = new byte[512];
         if (sectorCount <= 8400)
         {
             throw new ArgumentException("Requested size is too small for a partition");
         }
+
         if (sectorCount < 1024 * 1024)
         {
             fatType = FatType.Fat16;
@@ -1981,9 +1984,10 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
             }
         }
 
+        Span<byte> bpb = stackalloc byte[512];
         WriteBPB(bpb, (uint)sectorCount, fatType, maxRootEntries, (uint)firstSector, (ushort)reservedSectors,
             sectorsPerCluster, diskGeometry, false, volId, label);
-        stream.Write(bpb, 0, bpb.Length);
+        stream.Write(bpb);
 
         /*
          * Skip the reserved sectors

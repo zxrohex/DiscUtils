@@ -30,17 +30,16 @@ internal sealed class ImplementationUseExtendedAttributeRecord : ExtendedAttribu
     public ImplementationEntityIdentifier ImplementationIdentifier;
     public byte[] ImplementationUseData;
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        var read = base.ReadFrom(buffer, offset);
+        var read = base.ReadFrom(buffer);
 
-        var iuSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 12);
+        var iuSize = EndianUtilities.ToInt32LittleEndian(buffer.Slice(12));
 
         ImplementationIdentifier = new ImplementationEntityIdentifier();
-        ImplementationIdentifier.ReadFrom(buffer, offset + 16);
+        ImplementationIdentifier.ReadFrom(buffer.Slice(16));
 
-        ImplementationUseData = new byte[iuSize];
-        Array.Copy(buffer, offset + 48, ImplementationUseData, 0, iuSize);
+        ImplementationUseData = buffer.Slice(48, iuSize).ToArray();
 
         return read;
     }

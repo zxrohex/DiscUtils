@@ -47,23 +47,23 @@ internal sealed class StandardInformation : IByteArraySerializable, IDiagnosticT
         get { return _haveExtraFields ? 0x48 : 0x30; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        CreationTime = ReadDateTime(buffer, 0x00);
-        ModificationTime = ReadDateTime(buffer, 0x08);
-        MftChangedTime = ReadDateTime(buffer, 0x10);
-        LastAccessTime = ReadDateTime(buffer, 0x18);
-        FileAttributes = (FileAttributeFlags)EndianUtilities.ToUInt32LittleEndian(buffer, 0x20);
-        MaxVersions = EndianUtilities.ToUInt32LittleEndian(buffer, 0x24);
-        Version = EndianUtilities.ToUInt32LittleEndian(buffer, 0x28);
-        ClassId = EndianUtilities.ToUInt32LittleEndian(buffer, 0x2C);
+        CreationTime = ReadDateTime(buffer);
+        ModificationTime = ReadDateTime(buffer.Slice(0x08));
+        MftChangedTime = ReadDateTime(buffer.Slice(0x10));
+        LastAccessTime = ReadDateTime(buffer.Slice(0x18));
+        FileAttributes = (FileAttributeFlags)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x20));
+        MaxVersions = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x24));
+        Version = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x28));
+        ClassId = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x2C));
 
         if (buffer.Length > 0x30)
         {
-            OwnerId = EndianUtilities.ToUInt32LittleEndian(buffer, 0x30);
-            SecurityId = EndianUtilities.ToUInt32LittleEndian(buffer, 0x34);
-            QuotaCharged = EndianUtilities.ToUInt64LittleEndian(buffer, 0x38);
-            UpdateSequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer, 0x40);
+            OwnerId = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x30));
+            SecurityId = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x34));
+            QuotaCharged = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x38));
+            UpdateSequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x40));
             _haveExtraFields = true;
             return 0x48;
         }
@@ -71,39 +71,39 @@ internal sealed class StandardInformation : IByteArraySerializable, IDiagnosticT
         return 0x30;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(CreationTime.ToFileTimeUtc(), buffer, 0x00);
-        EndianUtilities.WriteBytesLittleEndian(ModificationTime.ToFileTimeUtc(), buffer, 0x08);
-        EndianUtilities.WriteBytesLittleEndian(MftChangedTime.ToFileTimeUtc(), buffer, 0x10);
-        EndianUtilities.WriteBytesLittleEndian(LastAccessTime.ToFileTimeUtc(), buffer, 0x18);
-        EndianUtilities.WriteBytesLittleEndian((uint)FileAttributes, buffer, 0x20);
-        EndianUtilities.WriteBytesLittleEndian(MaxVersions, buffer, 0x24);
-        EndianUtilities.WriteBytesLittleEndian(Version, buffer, 0x28);
-        EndianUtilities.WriteBytesLittleEndian(ClassId, buffer, 0x2C);
+        EndianUtilities.WriteBytesLittleEndian(CreationTime.ToFileTimeUtc(), buffer);
+        EndianUtilities.WriteBytesLittleEndian(ModificationTime.ToFileTimeUtc(), buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian(MftChangedTime.ToFileTimeUtc(), buffer.Slice(0x10));
+        EndianUtilities.WriteBytesLittleEndian(LastAccessTime.ToFileTimeUtc(), buffer.Slice(0x18));
+        EndianUtilities.WriteBytesLittleEndian((uint)FileAttributes, buffer.Slice(0x20));
+        EndianUtilities.WriteBytesLittleEndian(MaxVersions, buffer.Slice(0x24));
+        EndianUtilities.WriteBytesLittleEndian(Version, buffer.Slice(0x28));
+        EndianUtilities.WriteBytesLittleEndian(ClassId, buffer.Slice(0x2C));
 
         if (_haveExtraFields)
         {
-            EndianUtilities.WriteBytesLittleEndian(OwnerId, buffer, 0x30);
-            EndianUtilities.WriteBytesLittleEndian(SecurityId, buffer, 0x34);
-            EndianUtilities.WriteBytesLittleEndian(QuotaCharged, buffer, 0x38);
-            EndianUtilities.WriteBytesLittleEndian(UpdateSequenceNumber, buffer, 0x38);
+            EndianUtilities.WriteBytesLittleEndian(OwnerId, buffer.Slice(0x30));
+            EndianUtilities.WriteBytesLittleEndian(SecurityId, buffer.Slice(0x34));
+            EndianUtilities.WriteBytesLittleEndian(QuotaCharged, buffer.Slice(0x38));
+            EndianUtilities.WriteBytesLittleEndian(UpdateSequenceNumber, buffer.Slice(0x40));
         }
     }
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "      Creation Time: " + CreationTime);
-        writer.WriteLine(indent + "  Modification Time: " + ModificationTime);
-        writer.WriteLine(indent + "   MFT Changed Time: " + MftChangedTime);
-        writer.WriteLine(indent + "   Last Access Time: " + LastAccessTime);
-        writer.WriteLine(indent + "   File Permissions: " + FileAttributes);
-        writer.WriteLine(indent + "       Max Versions: " + MaxVersions);
-        writer.WriteLine(indent + "            Version: " + Version);
-        writer.WriteLine(indent + "           Class Id: " + ClassId);
-        writer.WriteLine(indent + "        Security Id: " + SecurityId);
-        writer.WriteLine(indent + "      Quota Charged: " + QuotaCharged);
-        writer.WriteLine(indent + "     Update Seq Num: " + UpdateSequenceNumber);
+        writer.WriteLine($"{indent}      Creation Time: {CreationTime}");
+        writer.WriteLine($"{indent}  Modification Time: {ModificationTime}");
+        writer.WriteLine($"{indent}   MFT Changed Time: {MftChangedTime}");
+        writer.WriteLine($"{indent}   Last Access Time: {LastAccessTime}");
+        writer.WriteLine($"{indent}   File Permissions: {FileAttributes}");
+        writer.WriteLine($"{indent}       Max Versions: {MaxVersions}");
+        writer.WriteLine($"{indent}            Version: {Version}");
+        writer.WriteLine($"{indent}           Class Id: {ClassId}");
+        writer.WriteLine($"{indent}        Security Id: {SecurityId}");
+        writer.WriteLine($"{indent}      Quota Charged: {QuotaCharged}");
+        writer.WriteLine($"{indent}     Update Seq Num: {UpdateSequenceNumber}");
     }
 
     public static StandardInformation InitializeNewFile(File file, FileAttributeFlags flags)
@@ -141,11 +141,11 @@ internal sealed class StandardInformation : IByteArraySerializable, IDiagnosticT
         return (FileAttributeFlags)(((uint)existing & 0xFFFF0000) | ((uint)newAttributes & 0xFFFF));
     }
 
-    private static DateTime ReadDateTime(byte[] buffer, int offset)
+    private static DateTime ReadDateTime(ReadOnlySpan<byte> buffer)
     {
         try
         {
-            return DateTime.FromFileTimeUtc(EndianUtilities.ToInt64LittleEndian(buffer, offset));
+            return DateTime.FromFileTimeUtc(EndianUtilities.ToInt64LittleEndian(buffer));
         }
         catch (ArgumentException)
         {

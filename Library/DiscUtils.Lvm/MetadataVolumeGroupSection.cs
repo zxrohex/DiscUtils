@@ -44,29 +44,42 @@ internal class MetadataVolumeGroupSection
     public MetadataLogicalVolumeSection[] LogicalVolumes;
 
 
-    internal void Parse(string head, TextReader data)
+    internal void Parse(ReadOnlyMemory<char> head, TextReader data)
     {
-        Name = head.Trim().TrimEnd('{').TrimEnd();
-        string line;
-        while ((line = Metadata.ReadLine(data)) != null)
+        Name = head.Span.Trim().TrimEnd('{').TrimEnd().ToString();
+
+        for(; ;)
         {
-            if (line == String.Empty) continue;
-            if (line.Contains("="))
+            var lineStr = Metadata.ReadLine(data);
+
+            if (lineStr == null)
+            {
+                break;
+            }
+
+            var line = lineStr.AsMemory();
+
+            if (line.Span.IsWhiteSpace())
+            {
+                continue;
+            }
+
+            if (line.Span.Contains("=".AsSpan(), StringComparison.Ordinal))
             {
                 var parameter = Metadata.ParseParameter(line);
-                switch (parameter.Key.Trim().ToLowerInvariant())
+                switch (parameter.Key.ToString().ToLowerInvariant())
                 {
                     case "id":
-                        Id = Metadata.ParseStringValue(parameter.Value);
+                        Id = Metadata.ParseStringValue(parameter.Value.Span);
                         break;
                     case "seqno":
-                        SequenceNumber = Metadata.ParseNumericValue(parameter.Value);
+                        SequenceNumber = Metadata.ParseNumericValue(parameter.Value.Span);
                         break;
                     case "format":
-                        Format = Metadata.ParseStringValue(parameter.Value);
+                        Format = Metadata.ParseStringValue(parameter.Value.Span);
                         break;
                     case "status":
-                        var values = Metadata.ParseArrayValue(parameter.Value);
+                        var values = Metadata.ParseArrayValue(parameter.Value.Span);
                         foreach (var value in values)
                         {
                             Status |= value.ToLowerInvariant().Trim() switch
@@ -79,27 +92,27 @@ internal class MetadataVolumeGroupSection
                         }
                         break;
                     case "flags":
-                        Flags = Metadata.ParseArrayValue(parameter.Value);
+                        Flags = Metadata.ParseArrayValue(parameter.Value.Span);
                         break;
                     case "extent_size":
-                        ExtentSize = Metadata.ParseNumericValue(parameter.Value);
+                        ExtentSize = Metadata.ParseNumericValue(parameter.Value.Span);
                         break;
                     case "max_lv":
-                        MaxLv = Metadata.ParseNumericValue(parameter.Value);
+                        MaxLv = Metadata.ParseNumericValue(parameter.Value.Span);
                         break;
                     case "max_pv":
-                        MaxPv = Metadata.ParseNumericValue(parameter.Value);
+                        MaxPv = Metadata.ParseNumericValue(parameter.Value.Span);
                         break;
                     case "metadata_copies":
-                        MetadataCopies = Metadata.ParseNumericValue(parameter.Value);
+                        MetadataCopies = Metadata.ParseNumericValue(parameter.Value.Span);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in volume group metadata");
+                        throw new ArgumentOutOfRangeException(parameter.Key.ToString(), "Unexpected parameter in volume group metadata");
                 }
             }
-            else if (line.EndsWith("{"))
+            else if (line.Span.EndsWith("{".AsSpan(), StringComparison.Ordinal))
             {
-                var sectionName = line.TrimEnd('{').TrimEnd().ToLowerInvariant();
+                var sectionName = line.Span.TrimEnd('{').TrimEnd().ToString().ToLowerInvariant();
                 switch (sectionName)
                 {
                     case "physical_volumes":
@@ -113,7 +126,7 @@ internal class MetadataVolumeGroupSection
                         throw new ArgumentOutOfRangeException(sectionName, "Unexpected section in volume group metadata");
                 }
             }
-            else if (line.EndsWith("}"))
+            else if (line.Span.EndsWith("}".AsSpan(), StringComparison.Ordinal))
             {
                 break;
             }

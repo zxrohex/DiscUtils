@@ -54,53 +54,53 @@ internal class SuperBlock : IByteArraySerializable
         get { return 96; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Magic = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
+        Magic = EndianUtilities.ToUInt32LittleEndian(buffer);
         if (Magic != SquashFsMagic) return Size;
 
-        InodesCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-        CreationTime = ((long) EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8)).FromUnixTimeSeconds().DateTime;
-        BlockSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
-        FragmentsCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-        Compression = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 20);
-        BlockSizeLog2 = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 22);
-        Flags = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 24);
-        UidGidCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 26);
-        MajorVersion = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 28);
-        MinorVersion = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 30);
-        RootInode = new MetadataRef(EndianUtilities.ToInt64LittleEndian(buffer, offset + 32));
-        BytesUsed = EndianUtilities.ToInt64LittleEndian(buffer, offset + 40);
-        UidGidTableStart = EndianUtilities.ToInt64LittleEndian(buffer, offset + 48);
-        ExtendedAttrsTableStart = EndianUtilities.ToInt64LittleEndian(buffer, offset + 56);
-        InodeTableStart = EndianUtilities.ToInt64LittleEndian(buffer, offset + 64);
-        DirectoryTableStart = EndianUtilities.ToInt64LittleEndian(buffer, offset + 72);
-        FragmentTableStart = EndianUtilities.ToInt64LittleEndian(buffer, offset + 80);
-        LookupTableStart = EndianUtilities.ToInt64LittleEndian(buffer, offset + 88);
+        InodesCount = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(4));
+        CreationTime = DateTimeOffset.FromUnixTimeSeconds(EndianUtilities.ToUInt32LittleEndian(buffer.Slice(8))).DateTime;
+        BlockSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(12));
+        FragmentsCount = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(16));
+        Compression = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(20));
+        BlockSizeLog2 = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(22));
+        Flags = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(24));
+        UidGidCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(26));
+        MajorVersion = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(28));
+        MinorVersion = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(30));
+        RootInode = new MetadataRef(EndianUtilities.ToInt64LittleEndian(buffer.Slice(32)));
+        BytesUsed = EndianUtilities.ToInt64LittleEndian(buffer.Slice(40));
+        UidGidTableStart = EndianUtilities.ToInt64LittleEndian(buffer.Slice(48));
+        ExtendedAttrsTableStart = EndianUtilities.ToInt64LittleEndian(buffer.Slice(56));
+        InodeTableStart = EndianUtilities.ToInt64LittleEndian(buffer.Slice(64));
+        DirectoryTableStart = EndianUtilities.ToInt64LittleEndian(buffer.Slice(72));
+        FragmentTableStart = EndianUtilities.ToInt64LittleEndian(buffer.Slice(80));
+        LookupTableStart = EndianUtilities.ToInt64LittleEndian(buffer.Slice(88));
 
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(Magic, buffer, offset + 0);
-        EndianUtilities.WriteBytesLittleEndian(InodesCount, buffer, offset + 4);
-        EndianUtilities.WriteBytesLittleEndian(Convert.ToUInt32((new DateTimeOffset(CreationTime)).ToUnixTimeSeconds()), buffer, offset + 8);
-        EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer, offset + 12);
-        EndianUtilities.WriteBytesLittleEndian(FragmentsCount, buffer, offset + 16);
-        EndianUtilities.WriteBytesLittleEndian(Compression, buffer, offset + 20);
-        EndianUtilities.WriteBytesLittleEndian(BlockSizeLog2, buffer, offset + 22);
-        EndianUtilities.WriteBytesLittleEndian(Flags, buffer, offset + 24);
-        EndianUtilities.WriteBytesLittleEndian(UidGidCount, buffer, offset + 26);
-        EndianUtilities.WriteBytesLittleEndian(MajorVersion, buffer, offset + 28);
-        EndianUtilities.WriteBytesLittleEndian(MinorVersion, buffer, offset + 30);
-        EndianUtilities.WriteBytesLittleEndian(RootInode.Value, buffer, offset + 32);
-        EndianUtilities.WriteBytesLittleEndian(BytesUsed, buffer, offset + 40);
-        EndianUtilities.WriteBytesLittleEndian(UidGidTableStart, buffer, offset + 48);
-        EndianUtilities.WriteBytesLittleEndian(ExtendedAttrsTableStart, buffer, offset + 56);
-        EndianUtilities.WriteBytesLittleEndian(InodeTableStart, buffer, offset + 64);
-        EndianUtilities.WriteBytesLittleEndian(DirectoryTableStart, buffer, offset + 72);
-        EndianUtilities.WriteBytesLittleEndian(FragmentTableStart, buffer, offset + 80);
-        EndianUtilities.WriteBytesLittleEndian(LookupTableStart, buffer, offset + 88);
+        EndianUtilities.WriteBytesLittleEndian(Magic, buffer);
+        EndianUtilities.WriteBytesLittleEndian(InodesCount, buffer.Slice(4));
+        EndianUtilities.WriteBytesLittleEndian(Convert.ToUInt32(new DateTimeOffset(CreationTime).ToUnixTimeSeconds()), buffer.Slice(8));
+        EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer.Slice(12));
+        EndianUtilities.WriteBytesLittleEndian(FragmentsCount, buffer.Slice(16));
+        EndianUtilities.WriteBytesLittleEndian(Compression, buffer.Slice(20));
+        EndianUtilities.WriteBytesLittleEndian(BlockSizeLog2, buffer.Slice(22));
+        EndianUtilities.WriteBytesLittleEndian(Flags, buffer.Slice(24));
+        EndianUtilities.WriteBytesLittleEndian(UidGidCount, buffer.Slice(26));
+        EndianUtilities.WriteBytesLittleEndian(MajorVersion, buffer.Slice(28));
+        EndianUtilities.WriteBytesLittleEndian(MinorVersion, buffer.Slice(30));
+        EndianUtilities.WriteBytesLittleEndian(RootInode.Value, buffer.Slice(32));
+        EndianUtilities.WriteBytesLittleEndian(BytesUsed, buffer.Slice(40));
+        EndianUtilities.WriteBytesLittleEndian(UidGidTableStart, buffer.Slice(48));
+        EndianUtilities.WriteBytesLittleEndian(ExtendedAttrsTableStart, buffer.Slice(56));
+        EndianUtilities.WriteBytesLittleEndian(InodeTableStart, buffer.Slice(64));
+        EndianUtilities.WriteBytesLittleEndian(DirectoryTableStart, buffer.Slice(72));
+        EndianUtilities.WriteBytesLittleEndian(FragmentTableStart, buffer.Slice(80));
+        EndianUtilities.WriteBytesLittleEndian(LookupTableStart, buffer.Slice(88));
     }
 }

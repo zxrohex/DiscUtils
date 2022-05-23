@@ -269,9 +269,9 @@ internal class Index : IDisposable
         {
             if (keyValue != null && dataValue != null)
             {
-                keyValue.ReadFrom(entry.KeyBuffer, 0);
-                dataValue.ReadFrom(entry.DataBuffer, 0);
-                return "{" + keyValue + "-->" + dataValue + "}";
+                keyValue.ReadFrom(entry.KeyBuffer);
+                dataValue.ReadFrom(entry.DataBuffer);
+                return $"{{{keyValue}-->{dataValue}}}";
             }
         }
         catch
@@ -443,7 +443,7 @@ internal class Index : IDisposable
     {
         _rootNode.Header.AllocatedSizeOfEntries = (uint)_rootNode.CalcSize();
         var buffer = new byte[_rootNode.Header.AllocatedSizeOfEntries + _root.Size];
-        _root.WriteTo(buffer, 0);
+        _root.WriteTo(buffer);
         _rootNode.WriteTo(buffer, _root.Size);
         using Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Write);
         s.Position = 0;
@@ -453,7 +453,7 @@ internal class Index : IDisposable
 
     private void NodeAsString(TextWriter writer, string prefix, IndexNode node, string id)
     {
-        writer.WriteLine(prefix + id + ":");
+        writer.WriteLine($"{prefix}{id}:");
         foreach (var entry in node.Entries)
         {
             if ((entry.Flags & IndexEntryFlags.End) != 0)

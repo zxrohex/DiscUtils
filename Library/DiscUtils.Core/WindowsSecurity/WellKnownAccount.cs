@@ -1,3 +1,5 @@
+using System;
+
 namespace DiscUtils.Core.WindowsSecurity;
 
 internal class WellKnownAccount
@@ -47,6 +49,17 @@ internal class WellKnownAccount
         foreach (var acct in accounts)
         {
             if (acct.SddlForm == s)
+                return acct;
+        }
+
+        return null;
+    }
+
+    public static WellKnownAccount LookupBySddlForm(ReadOnlySpan<char> s)
+    {
+        foreach (var acct in accounts)
+        {
+            if (acct.SddlForm.AsSpan().Equals(s, StringComparison.Ordinal))
                 return acct;
         }
 

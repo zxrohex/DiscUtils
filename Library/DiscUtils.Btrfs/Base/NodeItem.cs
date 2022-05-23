@@ -40,8 +40,6 @@ internal class NodeItem : IByteArraySerializable
         get { return Length; }
     }
 
-    public virtual int ReadFrom(byte[] buffer, int offset) => ReadFrom(buffer.AsSpan(offset));
-
     public virtual int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         Key = new Key();
@@ -51,7 +49,7 @@ internal class NodeItem : IByteArraySerializable
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

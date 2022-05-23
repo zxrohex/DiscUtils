@@ -59,30 +59,30 @@ internal sealed class SubKeyHashedListCell : ListCell
         get { return 0x4 + _numElements * 0x8; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        _hashType = EndianUtilities.BytesToString(buffer, offset, 2);
-        _numElements = EndianUtilities.ToInt16LittleEndian(buffer, offset + 2);
+        _hashType = EndianUtilities.BytesToString(buffer.Slice(0, 2));
+        _numElements = EndianUtilities.ToInt16LittleEndian(buffer.Slice(2));
 
         _subKeyIndexes = new List<int>(_numElements);
         _nameHashes = new List<uint>(_numElements);
         for (var i = 0; i < _numElements; ++i)
         {
-            _subKeyIndexes.Add(EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x4 + i * 0x8));
-            _nameHashes.Add(EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x4 + i * 0x8 + 0x4));
+            _subKeyIndexes.Add(EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x4 + i * 0x8)));
+            _nameHashes.Add(EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x4 + i * 0x8 + 0x4)));
         }
 
         return 0x4 + _numElements * 0x8;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.StringToBytes(_hashType, buffer, offset, 2);
-        EndianUtilities.WriteBytesLittleEndian(_numElements, buffer, offset + 0x2);
+        EndianUtilities.StringToBytes(_hashType, buffer.Slice(0, 2));
+        EndianUtilities.WriteBytesLittleEndian(_numElements, buffer.Slice(0x2));
         for (var i = 0; i < _numElements; ++i)
         {
-            EndianUtilities.WriteBytesLittleEndian(_subKeyIndexes[i], buffer, offset + 0x4 + i * 0x8);
-            EndianUtilities.WriteBytesLittleEndian(_nameHashes[i], buffer, offset + 0x4 + i * 0x8 + 0x4);
+            EndianUtilities.WriteBytesLittleEndian(_subKeyIndexes[i], buffer.Slice(0x4 + i * 0x8));
+            EndianUtilities.WriteBytesLittleEndian(_nameHashes[i], buffer.Slice(0x4 + i * 0x8 + 0x4));
         }
     }
 

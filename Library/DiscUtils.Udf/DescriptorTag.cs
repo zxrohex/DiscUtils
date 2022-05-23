@@ -41,57 +41,57 @@ internal class DescriptorTag : IByteArraySerializable
         get { return 16; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        TagIdentifier = (TagIdentifier)EndianUtilities.ToUInt16LittleEndian(buffer, offset);
-        DescriptorVersion = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
-        TagChecksum = buffer[offset + 4];
-        TagSerialNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
-        DescriptorCrc = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 8);
-        DescriptorCrcLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 10);
-        TagLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
+        TagIdentifier = (TagIdentifier)EndianUtilities.ToUInt16LittleEndian(buffer);
+        DescriptorVersion = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(2));
+        TagChecksum = buffer[4];
+        TagSerialNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(6));
+        DescriptorCrc = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(8));
+        DescriptorCrcLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(10));
+        TagLocation = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(12));
 
         return 16;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public static bool IsValid(byte[] buffer, int offset)
+    public static bool IsValid(ReadOnlySpan<byte> buffer)
     {
         byte checkSum = 0;
 
-        if (EndianUtilities.ToUInt16LittleEndian(buffer, offset) == 0)
+        if (EndianUtilities.ToUInt16LittleEndian(buffer) == 0)
         {
             return false;
         }
 
         for (var i = 0; i < 4; ++i)
         {
-            checkSum += buffer[offset + i];
+            checkSum += buffer[i];
         }
 
         for (var i = 5; i < 16; ++i)
         {
-            checkSum += buffer[offset + i];
+            checkSum += buffer[i];
         }
 
-        return checkSum == buffer[offset + 4];
+        return checkSum == buffer[4];
     }
 
     public static bool TryFromStream(Stream stream, out DescriptorTag result)
     {
         var next = StreamUtilities.ReadExact(stream, 512);
-        if (!IsValid(next, 0))
+        if (!IsValid(next))
         {
             result = null;
             return false;
         }
 
         var dt = new DescriptorTag();
-        dt.ReadFrom(next, 0);
+        dt.ReadFrom(next);
 
         result = dt;
         return true;

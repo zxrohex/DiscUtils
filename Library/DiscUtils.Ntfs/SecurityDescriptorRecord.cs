@@ -38,35 +38,34 @@ internal sealed class SecurityDescriptorRecord : IByteArraySerializable
         get { return SecurityDescriptor.Length + 0x14; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Read(buffer, offset);
+        Read(buffer);
         return SecurityDescriptor.Length + 0x14;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
         EntrySize = (uint)Size;
 
-        EndianUtilities.WriteBytesLittleEndian(Hash, buffer, offset + 0x00);
-        EndianUtilities.WriteBytesLittleEndian(Id, buffer, offset + 0x04);
-        EndianUtilities.WriteBytesLittleEndian(OffsetInFile, buffer, offset + 0x08);
-        EndianUtilities.WriteBytesLittleEndian(EntrySize, buffer, offset + 0x10);
+        EndianUtilities.WriteBytesLittleEndian(Hash, buffer);
+        EndianUtilities.WriteBytesLittleEndian(Id, buffer.Slice(0x04));
+        EndianUtilities.WriteBytesLittleEndian(OffsetInFile, buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian(EntrySize, buffer.Slice(0x10));
 
-        Array.Copy(SecurityDescriptor, 0, buffer, offset + 0x14, SecurityDescriptor.Length);
+        SecurityDescriptor.CopyTo(buffer.Slice(0x14));
     }
 
-    public bool Read(byte[] buffer, int offset)
+    public bool Read(ReadOnlySpan<byte> buffer)
     {
-        Hash = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x00);
-        Id = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x04);
-        OffsetInFile = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x08);
-        EntrySize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x10);
+        Hash = EndianUtilities.ToUInt32LittleEndian(buffer);
+        Id = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x04));
+        OffsetInFile = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x08));
+        EntrySize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x10));
 
         if (EntrySize > 0)
         {
-            SecurityDescriptor = new byte[EntrySize - 0x14];
-            Array.Copy(buffer, offset + 0x14, SecurityDescriptor, 0, SecurityDescriptor.Length);
+            SecurityDescriptor = buffer.Slice(0x14, (int)(EntrySize - 0x14)).ToArray();
             return true;
         }
         return false;

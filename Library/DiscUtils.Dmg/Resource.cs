@@ -45,20 +45,27 @@ internal abstract class Resource
             Id = id;
         }
 
-        var attrString = parts["Attributes"] as string;
-        if (!string.IsNullOrEmpty(attrString))
+        var attrString = (parts["Attributes"] as string).AsSpan();
+        if (!attrString.IsEmpty)
         {
             var style = NumberStyles.Integer;
-            if (attrString.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            if (attrString.StartsWith("0x".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
                 style = NumberStyles.HexNumber;
-                attrString = attrString.Substring(2);
+                attrString = attrString.Slice(2);
             }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
             if (!uint.TryParse(attrString, style, CultureInfo.InvariantCulture, out var attributes))
             {
                 throw new InvalidDataException("Invalid Attributes field");
             }
+#else
+            if (!uint.TryParse(attrString.ToString(), style, CultureInfo.InvariantCulture, out var attributes))
+            {
+                throw new InvalidDataException("Invalid Attributes field");
+            }
+#endif
 
             Attributes = attributes;
         }

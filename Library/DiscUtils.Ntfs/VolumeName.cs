@@ -20,9 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -42,19 +45,19 @@ internal sealed class VolumeName : IByteArraySerializable, IDiagnosticTraceable
         get { return Encoding.Unicode.GetByteCount(Name); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Name = Encoding.Unicode.GetString(buffer, offset, buffer.Length - offset);
-        return buffer.Length - offset;
+        Name = EndianUtilities.LittleEndianUnicodeBytesToString(buffer);
+        return buffer.Length;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        Encoding.Unicode.GetBytes(Name, 0, Name.Length, buffer, offset);
+        Encoding.Unicode.GetBytes(Name.AsSpan(), buffer);
     }
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "  Volume Name: " + Name);
+        writer.WriteLine($"{indent}  Volume Name: {Name}");
     }
 }

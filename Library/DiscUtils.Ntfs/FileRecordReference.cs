@@ -70,25 +70,25 @@ internal struct FileRecordReference : IByteArraySerializable, IComparable<FileRe
         return a.Value != b.Value;
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Value = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
+        Value = EndianUtilities.ToUInt64LittleEndian(buffer);
         return 8;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(Value, buffer, offset);
+        EndianUtilities.WriteBytesLittleEndian(Value, buffer);
     }
 
     public override bool Equals(object obj)
     {
-        if (obj == null || !(obj is FileRecordReference))
+        if (obj is FileRecordReference record)
         {
-            return false;
+            return Value == record.Value;
         }
 
-        return Value == ((FileRecordReference)obj).Value;
+        return false;
     }
 
     public override int GetHashCode()
@@ -111,6 +111,6 @@ internal struct FileRecordReference : IByteArraySerializable, IComparable<FileRe
 
     public override string ToString()
     {
-        return "MFT:" + MftIndex + " (ver: " + SequenceNumber + ")";
+        return $"MFT:{MftIndex} (ver: {SequenceNumber})";
     }
 }

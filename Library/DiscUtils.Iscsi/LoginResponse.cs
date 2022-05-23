@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Iscsi;
 
@@ -41,30 +42,29 @@ internal class LoginResponse : BaseResponse
 
     public override void Parse(ProtocolDataUnit pdu)
     {
-        Parse(pdu.HeaderData, 0, pdu.ContentData);
+        Parse(pdu.HeaderData, pdu.ContentData);
     }
 
-    public void Parse(byte[] headerData, int headerOffset, byte[] bodyData)
+    public void Parse(ReadOnlySpan<byte> headerData, byte[] bodyData)
     {
         var _headerSegment = new BasicHeaderSegment();
-        _headerSegment.ReadFrom(headerData, headerOffset);
+        _headerSegment.ReadFrom(headerData);
 
         if (_headerSegment.OpCode != OpCode.LoginResponse)
         {
-            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.LoginResponse +
-                                               " was " + _headerSegment.OpCode);
+            throw new InvalidProtocolException($"Invalid opcode in response, expected {OpCode.LoginResponse} was {_headerSegment.OpCode}");
         }
 
-        UnpackState(headerData[headerOffset + 1]);
-        MaxVersion = headerData[headerOffset + 2];
-        ActiveVersion = headerData[headerOffset + 3];
-        TargetSessionId = EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 14);
+        UnpackState(headerData[1]);
+        MaxVersion = headerData[2];
+        ActiveVersion = headerData[3];
+        TargetSessionId = EndianUtilities.ToUInt16BigEndian(headerData.Slice(14));
         StatusPresent = true;
-        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-        StatusClass = headerData[headerOffset + 36];
-        StatusCode = (LoginStatusCode)EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 36);
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(24));
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(28));
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(32));
+        StatusClass = headerData[36];
+        StatusCode = (LoginStatusCode)EndianUtilities.ToUInt16BigEndian(headerData.Slice(36));
 
         TextData = bodyData;
     }

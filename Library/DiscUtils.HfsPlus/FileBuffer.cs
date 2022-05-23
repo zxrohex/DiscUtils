@@ -26,6 +26,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using Buffer=DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.HfsPlus;
@@ -120,8 +121,7 @@ internal sealed class FileBuffer : Buffer
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-    public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var totalRead = 0;
 
@@ -152,9 +152,7 @@ internal sealed class FileBuffer : Buffer
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var totalRead = 0;
@@ -218,17 +216,14 @@ internal sealed class FileBuffer : Buffer
 
         return totalRead;
     }
-#endif
 
     public override void Write(long pos, byte[] buffer, int offset, int count)
     {
         throw new NotSupportedException();
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
         throw new NotSupportedException();
-#endif
 
     public override void SetCapacity(long value)
     {

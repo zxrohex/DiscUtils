@@ -41,19 +41,19 @@ internal class PhysicalVolumeLabel : IByteArraySerializable
     public int Size { get { return PhysicalVolume.SECTOR_SIZE; } }
 
     /// <inheritdoc />
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Label = EndianUtilities.BytesToString(buffer, offset, 0x8);
-        Sector = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-        Crc = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x10);
-        CalculatedCrc = PhysicalVolume.CalcCrc(buffer, offset + 0x14, PhysicalVolume.SECTOR_SIZE - 0x14);
-        Offset = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x14);
-        Label2 = EndianUtilities.BytesToString(buffer, offset + 0x18, 0x8);
+        Label = EndianUtilities.BytesToString(buffer.Slice(0, 0x8));
+        Sector = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x8));
+        Crc = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x10));
+        CalculatedCrc = PhysicalVolume.CalcCrc(buffer.Slice(0x14, PhysicalVolume.SECTOR_SIZE - 0x14));
+        Offset = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x14));
+        Label2 = EndianUtilities.BytesToString(buffer.Slice(0x18, 0x8));
         return Size;
     }
 
     /// <inheritdoc />
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

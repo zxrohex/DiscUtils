@@ -27,6 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vmdk;
 
@@ -227,7 +228,6 @@ internal abstract class CommonSparseExtentStream : MappedStream
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -290,9 +290,7 @@ internal abstract class CommonSparseExtentStream : MappedStream
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -418,7 +416,6 @@ internal abstract class CommonSparseExtentStream : MappedStream
 
         return totalRead;
     }
-#endif
 
     public override void SetLength(long value)
     {
@@ -554,15 +551,12 @@ internal abstract class CommonSparseExtentStream : MappedStream
         return _fileStream.Read(buffer, bufferOffset, numToRead);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     protected virtual Task<int> ReadGrainAsync(byte[] buffer, int bufferOffset, long grainStart, int grainOffset, int numToRead, CancellationToken cancellationToken)
     {
         _fileStream.Position = grainStart + grainOffset;
         return _fileStream.ReadAsync(buffer, bufferOffset, numToRead, cancellationToken);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     protected virtual ValueTask<int> ReadGrainAsync(Memory<byte> buffer, long grainStart, int grainOffset, CancellationToken cancellationToken)
     {
         _fileStream.Position = grainStart + grainOffset;
@@ -574,7 +568,6 @@ internal abstract class CommonSparseExtentStream : MappedStream
         _fileStream.Position = grainStart + grainOffset;
         return _fileStream.Read(buffer);
     }
-#endif
 
     protected virtual StreamExtent MapGrain(long grainStart, int grainOffset, int numToRead)
     {

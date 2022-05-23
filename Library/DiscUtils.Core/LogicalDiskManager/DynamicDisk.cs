@@ -116,7 +116,7 @@ internal class DynamicDisk : IDiagnosticTraceable
                 disk.Content.Read(buffer, 0, buffer.Length);
 
                 var hdr = new PrivateHeader();
-                hdr.ReadFrom(buffer, 0);
+                hdr.ReadFrom(buffer);
                 return hdr;
             }
         }
@@ -131,7 +131,7 @@ internal class DynamicDisk : IDiagnosticTraceable
 
         _disk.Content.Read(buffer, 0, buffer.Length);
         var tocBlock = new TocBlock();
-        tocBlock.ReadFrom(buffer, 0);
+        tocBlock.ReadFrom(buffer);
 
         if (tocBlock.Signature == "TOCBLOCK")
         {

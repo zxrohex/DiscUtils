@@ -49,8 +49,6 @@ internal class KeyPointer : IByteArraySerializable
         get { return Length; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset) => ReadFrom(buffer.AsSpan(offset));
-
     public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         Key = new Key();
@@ -60,7 +58,7 @@ internal class KeyPointer : IByteArraySerializable
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

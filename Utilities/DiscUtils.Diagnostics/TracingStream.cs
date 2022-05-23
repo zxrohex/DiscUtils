@@ -28,13 +28,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Diagnostics;
 
 /// <summary>
 /// Stream wrapper that traces all read and write activity.
 /// </summary>
-public sealed class TracingStream : Stream
+public sealed class TracingStream : CompatibilityStream
 {
     private Stream _wrapped;
     private Ownership _ownsWrapped;
@@ -257,7 +258,60 @@ public sealed class TracingStream : Stream
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+    /// <summary>
+    /// Reads data from the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to fill</param>
+    /// <returns>The number of bytes read</returns>
+    public override int Read(Span<byte> buffer)
+    {
+        var position = _wrapped.Position;
+        try
+        {
+            var result = _wrapped.Read(buffer);
+            if (_active && _traceReads)
+            {
+                CreateAndAddRecord("READ", position, buffer.Length, result);
+            }
+            return result;
+        }
+        catch (Exception e)
+        {
+            if (_active && _traceReads)
+            {
+                CreateAndAddRecord("READ", position, buffer.Length, e);
+            }
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Reads data from the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to fill</param>
+    /// <returns>The number of bytes read</returns>
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var position = _wrapped.Position;
+        try
+        {
+            var result = await _wrapped.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            if (_active && _traceReads)
+            {
+                CreateAndAddRecord("READ", position, buffer.Length, result);
+            }
+            return result;
+        }
+        catch (Exception e)
+        {
+            if (_active && _traceReads)
+            {
+                CreateAndAddRecord("READ", position, buffer.Length, e);
+            }
+            throw;
+        }
+    }
+
     public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
         ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
 
@@ -284,7 +338,7 @@ public sealed class TracingStream : Stream
             throw;
         }
     }
-#endif
+
 
     /// <summary>
     /// Moves the stream position.
@@ -318,6 +372,83 @@ public sealed class TracingStream : Stream
         try
         {
             _wrapped.Write(buffer, offset, count);
+            if (_active && _traceWrites)
+            {
+                CreateAndAddRecord("WRITE", position, count);
+            }
+        }
+        catch (Exception e)
+        {
+            if (_active && _traceWrites)
+            {
+                CreateAndAddRecord("WRITE", position, count, e);
+            }
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Writes data to the stream at the current location.
+    /// </summary>
+    /// <param name="buffer">The data to write</param>
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        var position = _wrapped.Position;
+        try
+        {
+            _wrapped.Write(buffer);
+            if (_active && _traceWrites)
+            {
+                CreateAndAddRecord("WRITE", position, buffer.Length);
+            }
+        }
+        catch (Exception e)
+        {
+            if (_active && _traceWrites)
+            {
+                CreateAndAddRecord("WRITE", position, buffer.Length, e);
+            }
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Writes data to the stream at the current location.
+    /// </summary>
+    /// <param name="buffer">The data to write</param>
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var position = _wrapped.Position;
+        try
+        {
+            await _wrapped.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+            if (_active && _traceWrites)
+            {
+                CreateAndAddRecord("WRITE", position, buffer.Length);
+            }
+        }
+        catch (Exception e)
+        {
+            if (_active && _traceWrites)
+            {
+                CreateAndAddRecord("WRITE", position, buffer.Length, e);
+            }
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Writes data to the stream at the current location.
+    /// </summary>
+    /// <param name="buffer">The data to write</param>
+    /// <param name="offset">The first byte to write from buffer</param>
+    /// <param name="count">The number of bytes to write</param>
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        var position = _wrapped.Position;
+        try
+        {
+            await _wrapped.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
             if (_active && _traceWrites)
             {
                 CreateAndAddRecord("WRITE", position, count);

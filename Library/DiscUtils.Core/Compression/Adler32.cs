@@ -58,27 +58,12 @@ public class Adler32
     /// Call this method repeatedly until all checksummed
     /// data has been processed.
     /// </remarks>
-    public void Process(byte[] buffer, int offset, int count)
+    public void Process(ReadOnlySpan<byte> buffer)
     {
-        if (buffer == null)
-        {
-            throw new ArgumentNullException(nameof(buffer));
-        }
-
-        if (offset < 0 || offset > buffer.Length)
-        {
-            throw new ArgumentException("Offset outside of array bounds", nameof(offset));
-        }
-
-        if (count < 0 || offset + count > buffer.Length)
-        {
-            throw new ArgumentException("Array index out of bounds", nameof(count));
-        }
-
         var processed = 0;
-        while (processed < count)
+        while (processed < buffer.Length)
         {
-            var innerEnd = Math.Min(count, processed + 2000);
+            var innerEnd = Math.Min(buffer.Length, processed + 2000);
             while (processed < innerEnd)
             {
                 _a += buffer[processed++];

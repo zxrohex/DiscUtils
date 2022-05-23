@@ -29,9 +29,9 @@ internal abstract class BTreeKey : IByteArraySerializable, IComparable<BTreeKey>
 {
     public abstract int Size { get; }
 
-    public abstract int ReadFrom(byte[] buffer, int offset);
+    public abstract int ReadFrom(ReadOnlySpan<byte> buffer);
 
-    public abstract void WriteTo(byte[] buffer, int offset);
+    public abstract void WriteTo(Span<byte> buffer);
 
     public abstract int CompareTo(BTreeKey other);
 }

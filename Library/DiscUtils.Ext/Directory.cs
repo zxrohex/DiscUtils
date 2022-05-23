@@ -61,7 +61,7 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
                         while (blockPos < blockSize)
                         {
                             var r = new DirectoryRecord(Context.Options.FileNameEncoding);
-                            var numRead = r.ReadFrom(blockData, blockPos);
+                            var numRead = r.ReadFrom(blockData.AsSpan(blockPos));
 
                             if (r.Inode != 0 && r.Name != "." && r.Name != "..")
                             {

@@ -52,12 +52,12 @@ internal class ShortformDirectoryEntry : IByteArraySerializable, IDirectoryEntry
         get { return 0x3 + NameLength + (_useShortInode ? 4 : 8) + (_ftype?1:0); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        NameLength = buffer[offset];
-        Offset = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x1);
-        Name = EndianUtilities.ToByteArray(buffer, offset + 0x3, NameLength);
-        offset += 0x3 + NameLength;
+        NameLength = buffer[0];
+        Offset = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x1));
+        Name = EndianUtilities.ToByteArray(buffer.Slice(0x3, NameLength));
+        var offset = 0x3 + NameLength;
         if (_ftype)
         {
             FType = (DirectoryFType)buffer[offset];
@@ -65,16 +65,16 @@ internal class ShortformDirectoryEntry : IByteArraySerializable, IDirectoryEntry
         }
         if (_useShortInode)
         {
-            Inode = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+            Inode = EndianUtilities.ToUInt32BigEndian(buffer.Slice(offset));
         }
         else
         {
-            Inode = EndianUtilities.ToUInt64BigEndian(buffer, offset);
+            Inode = EndianUtilities.ToUInt64BigEndian(buffer.Slice(offset));
         }
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

@@ -121,7 +121,7 @@ internal class IndexView<K, D>
         where T : IByteArraySerializable, new()
     {
         var result = new T();
-        result.ReadFrom(data, 0);
+        result.ReadFrom(data);
         return result;
     }
 
@@ -129,7 +129,7 @@ internal class IndexView<K, D>
         where T : IByteArraySerializable, new()
     {
         var buffer = new byte[value.Size];
-        value.WriteTo(buffer, 0);
+        value.WriteTo(buffer);
         return buffer;
     }
 

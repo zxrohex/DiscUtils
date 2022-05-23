@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Sdi;
 
@@ -34,12 +35,12 @@ internal class SectionRecord
     public string SectionType;
     public long Size;
 
-    public void ReadFrom(byte[] buffer, int offset)
+    public void ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        SectionType = EndianUtilities.BytesToString(buffer, offset, 8).TrimEnd('\0');
-        Attr = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 8);
-        Offset = EndianUtilities.ToInt64LittleEndian(buffer, offset + 16);
-        Size = EndianUtilities.ToInt64LittleEndian(buffer, offset + 24);
-        PartitionType = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 32);
+        SectionType = EndianUtilities.BytesToString(buffer.Slice(0, 8)).TrimEnd('\0');
+        Attr = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(8));
+        Offset = EndianUtilities.ToInt64LittleEndian(buffer.Slice(16));
+        Size = EndianUtilities.ToInt64LittleEndian(buffer.Slice(24));
+        PartitionType = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(32));
     }
 }

@@ -26,6 +26,7 @@ using System.IO;
 using System.Text;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vhd;
 
@@ -494,7 +495,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
         footer.UpdateChecksum();
 
         var sector = new byte[Sizes.Sector];
-        footer.ToBytes(sector, 0);
+        footer.ToBytes(sector);
         stream.Position = MathUtilities.RoundUp(capacity, Sizes.Sector);
         stream.Write(sector, 0, sector.Length);
         stream.SetLength(stream.Position);
@@ -519,27 +520,26 @@ public sealed class DiskImageFile : VirtualDiskLayer
             DataOffset = 512 // Offset of Dynamic Header
         };
         footer.UpdateChecksum();
-        var footerBlock = new byte[512];
-        footer.ToBytes(footerBlock, 0);
+        Span<byte> footerBlock = stackalloc byte[512];
+        footer.ToBytes(footerBlock);
 
         var dynamicHeader = new DynamicHeader(-1, 1024 + 512, (uint)blockSize, capacity);
         dynamicHeader.UpdateChecksum();
-        var dynamicHeaderBlock = new byte[1024];
-        dynamicHeader.ToBytes(dynamicHeaderBlock, 0);
+        Span<byte> dynamicHeaderBlock = stackalloc byte[1024];
+        dynamicHeader.ToBytes(dynamicHeaderBlock);
 
         var batSize = (dynamicHeader.MaxTableEntries * 4 + Sizes.Sector - 1) / Sizes.Sector *
                       Sizes.Sector;
-        var bat = new byte[batSize];
-        for (var i = 0; i < bat.Length; ++i)
-        {
-            bat[i] = 0xFF;
-        }
+
+        var bat = batSize <= 1024 ? stackalloc byte[batSize] : new byte[batSize];
+
+        bat.Fill(0xff);
 
         stream.Position = 0;
-        stream.Write(footerBlock, 0, 512);
-        stream.Write(dynamicHeaderBlock, 0, 1024);
-        stream.Write(bat, 0, batSize);
-        stream.Write(footerBlock, 0, 512);
+        stream.Write(footerBlock);
+        stream.Write(dynamicHeaderBlock);
+        stream.Write(bat);
+        stream.Write(footerBlock);
     }
 
     private static void InitializeDifferencingInternal(Stream stream, DiskImageFile parent,
@@ -551,8 +551,8 @@ public sealed class DiskImageFile : VirtualDiskLayer
             OriginalSize = parent._footer.OriginalSize
         };
         footer.UpdateChecksum();
-        var footerBlock = new byte[512];
-        footer.ToBytes(footerBlock, 0);
+        Span<byte> footerBlock = stackalloc byte[512];
+        footer.ToBytes(footerBlock);
 
         long tableOffset = 512 + 1024; // Footer + Header
 
@@ -575,27 +575,25 @@ public sealed class DiskImageFile : VirtualDiskLayer
         dynamicHeader.ParentLocators[6].PlatformDataLength = parentRelativePath.Length * 2;
         dynamicHeader.ParentLocators[6].PlatformDataOffset = tableOffset + batSize + 512;
         dynamicHeader.UpdateChecksum();
-        var dynamicHeaderBlock = new byte[1024];
-        dynamicHeader.ToBytes(dynamicHeaderBlock, 0);
+        Span<byte> dynamicHeaderBlock = stackalloc byte[1024];
+        dynamicHeader.ToBytes(dynamicHeaderBlock);
 
-        var platformLocator1 = new byte[512];
-        Encoding.Unicode.GetBytes(parentAbsolutePath, 0, parentAbsolutePath.Length, platformLocator1, 0);
-        var platformLocator2 = new byte[512];
-        Encoding.Unicode.GetBytes(parentRelativePath, 0, parentRelativePath.Length, platformLocator2, 0);
+        Span<byte> platformLocator1 = stackalloc byte[512];
+        Encoding.Unicode.GetBytes(parentAbsolutePath.AsSpan(), platformLocator1);
+        Span<byte> platformLocator2 = stackalloc byte[512];
+        Encoding.Unicode.GetBytes(parentRelativePath.AsSpan(), platformLocator2);
 
-        var bat = new byte[batSize];
-        for (var i = 0; i < bat.Length; ++i)
-        {
-            bat[i] = 0xFF;
-        }
+        Span<byte> bat = batSize <= 1024 ? stackalloc byte[batSize] : new byte[batSize];
+
+        bat.Fill(0xff);
 
         stream.Position = 0;
-        stream.Write(footerBlock, 0, 512);
-        stream.Write(dynamicHeaderBlock, 0, 1024);
-        stream.Write(bat, 0, batSize);
-        stream.Write(platformLocator1, 0, 512);
-        stream.Write(platformLocator2, 0, 512);
-        stream.Write(footerBlock, 0, 512);
+        stream.Write(footerBlock);
+        stream.Write(dynamicHeaderBlock);
+        stream.Write(bat);
+        stream.Write(platformLocator1);
+        stream.Write(platformLocator2);
+        stream.Write(footerBlock);
     }
 
     /// <summary>
@@ -657,7 +655,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
         var sector = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
 
-        _footer = Footer.FromBytes(sector, 0);
+        _footer = Footer.FromBytes(sector);
 
         if (!_footer.IsValid())
         {
@@ -669,7 +667,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
             _fileStream.Position = 0;
             StreamUtilities.ReadExact(_fileStream, sector, 0, Sizes.Sector);
 
-            _footer = Footer.FromBytes(sector, 0);
+            _footer = Footer.FromBytes(sector);
             if (!_footer.IsValid())
             {
                 throw new IOException(

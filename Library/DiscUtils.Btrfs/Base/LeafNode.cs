@@ -83,7 +83,7 @@ internal class LeafNode:NodeHeader
             ItemType.OrphanItem => new OrphanItem(item.Key),
             _ => throw new IOException($"Unsupported item type {item.Key.ItemType}"),
         };
-        result.ReadFrom(data, 0);
+        result.ReadFrom(data);
         return result;
     }
 

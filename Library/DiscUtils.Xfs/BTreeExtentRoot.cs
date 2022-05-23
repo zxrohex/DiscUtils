@@ -46,28 +46,28 @@ internal class BTreeExtentRoot : IByteArraySerializable
         get { return 4 + (0x9 * 0x16); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Level = EndianUtilities.ToUInt16BigEndian(buffer, offset);
-        NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
-        offset += 0x4;
+        Level = EndianUtilities.ToUInt16BigEndian(buffer);
+        NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer.Slice(2));
+        var offset = 0x4;
         Keys = new ulong[NumberOfRecords];
         Pointer = new ulong[NumberOfRecords];
         for (var i = 0; i < NumberOfRecords; i++)
         {
-            Keys[i] = EndianUtilities.ToUInt64BigEndian(buffer, offset + i * 0x8);
+            Keys[i] = EndianUtilities.ToUInt64BigEndian(buffer.Slice(offset + i * 0x8));
         }
         offset += ((buffer.Length - offset)/16)*8;
         for (var i = 0; i < NumberOfRecords; i++)
         {
-            Pointer[i] = EndianUtilities.ToUInt64BigEndian(buffer, offset + i * 0x8);
+            Pointer[i] = EndianUtilities.ToUInt64BigEndian(buffer.Slice(offset + i * 0x8));
         }
         return Size;
     }
 
 
     /// <inheritdoc />
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }
@@ -95,7 +95,7 @@ internal class BTreeExtentRoot : IByteArraySerializable
             var data = context.RawStream;
             data.Position = Extent.GetOffset(context, Pointer[i]);
             var buffer = StreamUtilities.ReadExact(data, (int)context.SuperBlock.Blocksize);
-            child.ReadFrom(buffer, 0);
+            child.ReadFrom(buffer);
             if (context.SuperBlock.SbVersion < 5 && child.Magic != BTreeExtentHeader.BtreeMagic ||
                 context.SuperBlock.SbVersion == 5 && child.Magic != BTreeExtentHeaderV5.BtreeMagicV5)
             {

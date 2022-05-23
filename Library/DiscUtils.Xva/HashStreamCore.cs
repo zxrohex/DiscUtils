@@ -26,9 +26,10 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 #if NETSTANDARD || NETCOREAPP || NET461_OR_GREATER
-internal class HashStreamCore : Stream
+internal class HashStreamCore : CompatibilityStream
 {
     private readonly IncrementalHash _hashAlg;
     private readonly Ownership _ownWrapped;
@@ -105,7 +106,6 @@ internal class HashStreamCore : Stream
         return numRead;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (Position != _hashPos)
@@ -115,7 +115,7 @@ internal class HashStreamCore : Stream
 
         int numRead = await _wrapped.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
 
-        _hashAlg.AppendData(buffer.Span[..numRead]);
+        _hashAlg.AppendData(buffer.Span.Slice(0, numRead));
         _hashPos += numRead;
 
         return numRead;
@@ -130,12 +130,11 @@ internal class HashStreamCore : Stream
 
         int numRead = _wrapped.Read(buffer);
 
-        _hashAlg.AppendData(buffer[..numRead]);
+        _hashAlg.AppendData(buffer.Slice(0, numRead));
         _hashPos += numRead;
 
         return numRead;
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -150,6 +149,21 @@ internal class HashStreamCore : Stream
     public override void Write(byte[] buffer, int offset, int count)
     {
         _wrapped.Write(buffer, offset, count);
+    }
+
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        _wrapped.Write(buffer);
+    }
+
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
+    }
+
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        return _wrapped.WriteAsync(buffer, cancellationToken);
     }
 
     protected override void Dispose(bool disposing)
@@ -169,7 +183,7 @@ internal class HashStreamCore : Stream
     }
 }
 #else
-internal class HashStreamDotnet : Stream
+internal class HashStreamDotnet : CompatibilityStream
 {
     private Stream _wrapped;
     private Ownership _ownWrapped;
@@ -238,6 +252,8 @@ internal class HashStreamDotnet : Stream
         return numRead;
     }
 
+    public override int Read(Span<byte> buffer) => CompatExtensions.Read(this, buffer);
+
     public override long Seek(long offset, SeekOrigin origin)
     {
         return _wrapped.Seek(offset, origin);
@@ -253,7 +269,8 @@ internal class HashStreamDotnet : Stream
         _wrapped.Write(buffer, offset, count);
     }
 
-#if NET45_OR_GREATER
+    public override void Write(ReadOnlySpan<byte> buffer) => _wrapped.Write(buffer);
+
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         _wrapped.FlushAsync(cancellationToken);
 
@@ -272,9 +289,15 @@ internal class HashStreamDotnet : Stream
         return numRead;
     }
 
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        => CompatExtensions.ReadAsync(this, buffer, cancellationToken);
+
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
         _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
-#endif
+
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => _wrapped.WriteAsync(buffer, cancellationToken);
+
+    public override void WriteByte(byte value) => _wrapped.WriteByte(value);
 
     protected override void Dispose(bool disposing)
     {

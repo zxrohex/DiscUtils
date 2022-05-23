@@ -120,7 +120,6 @@ public class SubBuffer : Buffer
             (int)Math.Min(count, Math.Min(_length - pos, int.MaxValue)));
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <summary>
     /// Reads from the buffer into a byte array.
     /// </summary>
@@ -129,7 +128,7 @@ public class SubBuffer : Buffer
     /// <param name="offset">The start offset within the destination buffer.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The actual number of bytes read.</returns>
-    public override Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (count < 0)
         {
@@ -138,15 +137,13 @@ public class SubBuffer : Buffer
 
         if (pos >= _length)
         {
-            return Task.FromResult(0);
+            return new(0);
         }
 
         return _parent.ReadAsync(pos + _first, buffer, offset,
             (int)Math.Min(count, Math.Min(_length - pos, int.MaxValue)), cancellationToken);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Reads from the buffer into a byte array.
     /// </summary>
@@ -162,7 +159,7 @@ public class SubBuffer : Buffer
             return new(0);
         }
 
-        return _parent.ReadAsync(pos + _first, buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))], cancellationToken);
+        return _parent.ReadAsync(pos + _first, buffer.Slice(0, (int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))), cancellationToken);
     }
 
     /// <summary>
@@ -180,9 +177,8 @@ public class SubBuffer : Buffer
             return 0;
         }
 
-        return _parent.Read(pos + _first, buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))]);
+        return _parent.Read(pos + _first, buffer.Slice(0, (int)Math.Min(buffer.Length, Math.Min(_length - pos, int.MaxValue))));
     }
-#endif
 
     /// <summary>
     /// Writes a byte array into the buffer.
@@ -206,7 +202,6 @@ public class SubBuffer : Buffer
         _parent.Write(pos + _first, buffer, offset, count);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <summary>
     /// Writes a byte array into the buffer.
     /// </summary>
@@ -214,7 +209,7 @@ public class SubBuffer : Buffer
     /// <param name="buffer">The source byte array.</param>
     /// <param name="offset">The start offset within the source byte array.</param>
     /// <param name="count">The number of bytes to write.</param>
-    public override Task WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override ValueTask WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (count < 0)
         {
@@ -228,9 +223,7 @@ public class SubBuffer : Buffer
 
         return _parent.WriteAsync(pos + _first, buffer, offset, count, cancellationToken);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Writes a byte array into the buffer.
     /// </summary>
@@ -264,7 +257,6 @@ public class SubBuffer : Buffer
 
         _parent.Write(pos + _first, buffer);
     }
-#endif
 
     /// <summary>
     /// Sets the capacity of the buffer, truncating if appropriate.

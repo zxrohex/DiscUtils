@@ -58,7 +58,7 @@ internal class TextRequest
         _expectedStatusSequenceNumber = _connection.ExpectedStatusSequenceNumber;
 
         var buffer = new byte[MathUtilities.RoundUp(48 + count, 4)];
-        _basicHeader.WriteTo(buffer, 0);
+        _basicHeader.WriteTo(buffer);
         buffer[1] |= (byte)(_continue ? 0x40 : 0x00);
         EndianUtilities.WriteBytesBigEndian(lun, buffer, 8);
         EndianUtilities.WriteBytesBigEndian(_targetTransferTag, buffer, 20);

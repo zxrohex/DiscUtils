@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vhdx;
 
@@ -202,7 +203,7 @@ public sealed class DiskBuilder : DiskImageBuilder
         private static BuilderExtent ExtentForStruct(IByteArraySerializable structure, long position)
         {
             byte[] buffer = new byte[structure.Size];
-            structure.WriteTo(buffer, 0);
+            structure.WriteTo(buffer);
             return new BuilderBufferExtent(position, buffer);
         }
     }
@@ -264,7 +265,6 @@ public sealed class DiskBuilder : DiskImageBuilder
             return numRead;
         }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         public override int Read(long diskOffset, Span<byte> block)
         {
             int start = (int)Math.Min(diskOffset - Start, _batData.Length);
@@ -274,7 +274,6 @@ public sealed class DiskBuilder : DiskImageBuilder
 
             return numRead;
         }
-#endif
 
         public override void DisposeReadState()
         {

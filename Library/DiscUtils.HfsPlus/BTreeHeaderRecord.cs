@@ -47,27 +47,27 @@ internal class BTreeHeaderRecord : BTreeNodeRecord
         get { return 104; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        TreeDepth = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
-        RootNode = EndianUtilities.ToUInt32BigEndian(buffer, offset + 2);
-        NumLeafRecords = EndianUtilities.ToUInt32BigEndian(buffer, offset + 6);
-        FirstLeafNode = EndianUtilities.ToUInt32BigEndian(buffer, offset + 10);
-        LastLeafNode = EndianUtilities.ToUInt32BigEndian(buffer, offset + 14);
-        NodeSize = EndianUtilities.ToUInt16BigEndian(buffer, offset + 18);
-        MaxKeyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 20);
-        TotalNodes = EndianUtilities.ToUInt16BigEndian(buffer, offset + 22);
-        FreeNodes = EndianUtilities.ToUInt32BigEndian(buffer, offset + 24);
-        Res1 = EndianUtilities.ToUInt16BigEndian(buffer, offset + 28);
-        ClumpSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 30);
-        TreeType = buffer[offset + 34];
-        KeyCompareType = buffer[offset + 35];
-        Attributes = EndianUtilities.ToUInt32BigEndian(buffer, offset + 36);
+        TreeDepth = EndianUtilities.ToUInt16BigEndian(buffer);
+        RootNode = EndianUtilities.ToUInt32BigEndian(buffer.Slice(2));
+        NumLeafRecords = EndianUtilities.ToUInt32BigEndian(buffer.Slice(6));
+        FirstLeafNode = EndianUtilities.ToUInt32BigEndian(buffer.Slice(10));
+        LastLeafNode = EndianUtilities.ToUInt32BigEndian(buffer.Slice(14));
+        NodeSize = EndianUtilities.ToUInt16BigEndian(buffer.Slice(18));
+        MaxKeyLength = EndianUtilities.ToUInt16BigEndian(buffer.Slice(20));
+        TotalNodes = EndianUtilities.ToUInt16BigEndian(buffer.Slice(22));
+        FreeNodes = EndianUtilities.ToUInt32BigEndian(buffer.Slice(24));
+        Res1 = EndianUtilities.ToUInt16BigEndian(buffer.Slice(28));
+        ClumpSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(30));
+        TreeType = buffer[34];
+        KeyCompareType = buffer[35];
+        Attributes = EndianUtilities.ToUInt32BigEndian(buffer.Slice(36));
 
         return 104;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

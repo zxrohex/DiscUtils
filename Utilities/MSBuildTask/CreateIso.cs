@@ -145,6 +145,6 @@ public class CreateIso : Task
         }
 
         // Not under a known root - so full path (minus drive)...
-        return sourceFile.GetMetadata("Directory") + sourceFile.GetMetadata("FileName") + sourceFile.GetMetadata("Extension");
+        return $"{sourceFile.GetMetadata("Directory")}{sourceFile.GetMetadata("FileName")}{sourceFile.GetMetadata("Extension")}";
     }
 }

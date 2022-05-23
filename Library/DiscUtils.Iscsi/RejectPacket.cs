@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Iscsi;
 
@@ -32,24 +33,23 @@ internal class RejectPacket : BaseResponse
 
     public override void Parse(ProtocolDataUnit pdu)
     {
-        Parse(pdu.HeaderData, 0);
+        Parse(pdu.HeaderData);
     }
 
-    public void Parse(byte[] headerData, int headerOffset)
+    public void Parse(ReadOnlySpan<byte> headerData)
     {
         Header = new BasicHeaderSegment();
-        Header.ReadFrom(headerData, headerOffset);
+        Header.ReadFrom(headerData);
 
         if (Header.OpCode != OpCode.Reject)
         {
-            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.Reject + " was " +
-                                               Header.OpCode);
+            throw new InvalidProtocolException($"Invalid opcode in response, expected {OpCode.Reject} was {Header.OpCode}");
         }
 
-        Reason = (RejectReason)headerData[headerOffset + 2];
-        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-        DataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
+        Reason = (RejectReason)headerData[2];
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(24));
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(28));
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(32));
+        DataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(36));
     }
 }

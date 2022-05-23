@@ -58,17 +58,17 @@ internal class ExtendedDirectoryInode : Inode, IDirectoryInode
 
     public ushort Offset { get; private set; }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        base.ReadFrom(buffer, offset);
+        base.ReadFrom(buffer);
 
-        NumLinks = EndianUtilities.ToInt32LittleEndian(buffer, offset + 16);
-        _fileSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
-        StartBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 24);
-        ParentInode = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 28);
-        _indexCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 32);
-        Offset = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 34);
-        _extendedAttributes = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 36);
+        NumLinks = EndianUtilities.ToInt32LittleEndian(buffer.Slice(16));
+        _fileSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(20));
+        StartBlock = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(24));
+        ParentInode = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(28));
+        _indexCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(32));
+        Offset = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(34));
+        _extendedAttributes = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(36));
 
         return 40;
     }

@@ -39,9 +39,9 @@ internal abstract class BaseItem : IByteArraySerializable
 
     public abstract int Size { get; }
 
-    public abstract int ReadFrom(byte[] buffer, int offset);
+    public abstract int ReadFrom(ReadOnlySpan<byte> buffer);
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

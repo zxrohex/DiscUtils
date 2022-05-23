@@ -114,15 +114,15 @@ internal sealed class ObjectIds
             get { return 16; }
         }
 
-        public int ReadFrom(byte[] buffer, int offset)
+        public int ReadFrom(ReadOnlySpan<byte> buffer)
         {
-            Id = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0);
+            Id = EndianUtilities.ToGuidLittleEndian(buffer);
             return 16;
         }
 
-        public void WriteTo(byte[] buffer, int offset)
+        public void WriteTo(Span<byte> buffer)
         {
-            EndianUtilities.WriteBytesLittleEndian(Id, buffer, offset + 0);
+            EndianUtilities.WriteBytesLittleEndian(Id, buffer);
         }
 
         public override string ToString() => $"[Key-Id:{Id}]";

@@ -46,9 +46,9 @@ internal class BlockDirectory : IByteArraySerializable
         get { return 16 + 3*32; }
     }
 
-    protected virtual int ReadHeader(byte[] buffer, int offset)
+    protected virtual int ReadHeader(ReadOnlySpan<byte> buffer)
     {
-        Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        Magic = EndianUtilities.ToUInt32BigEndian(buffer);
         return 0x4;
     }
 
@@ -67,20 +67,20 @@ internal class BlockDirectory : IByteArraySerializable
         get { return Magic == HeaderMagic; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        offset += ReadHeader(buffer, offset);
+        var offset = ReadHeader(buffer);
         BestFree = new BlockDirectoryDataFree[3];
         for (var i = 0; i < BestFree.Length; i++)
         {
             var free = new BlockDirectoryDataFree();
-            offset += free.ReadFrom(buffer, offset);
+            offset += free.ReadFrom(buffer.Slice(offset));
             BestFree[i] = free;
         }
         offset += HeaderPadding;
 
-        LeafStale = EndianUtilities.ToUInt32BigEndian(buffer, buffer.Length - 0x4);
-        LeafCount = EndianUtilities.ToUInt32BigEndian(buffer, buffer.Length - 0x8);
+        LeafStale = EndianUtilities.ToUInt32BigEndian(buffer.Slice(buffer.Length - 0x4));
+        LeafCount = EndianUtilities.ToUInt32BigEndian(buffer.Slice(buffer.Length - 0x8));
         var entries = new List<BlockDirectoryData>();
         var eof = buffer.Length - 0x8 - LeafCount*0x8;
         while (offset < eof)
@@ -95,14 +95,14 @@ internal class BlockDirectory : IByteArraySerializable
             {
                 entry = new BlockDirectoryDataEntry(_context);
             }
-            offset += entry.ReadFrom(buffer, offset);
+            offset += entry.ReadFrom(buffer.Slice(offset));
             entries.Add(entry);
         }
         Entries = entries;
         return buffer.Length - offset;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

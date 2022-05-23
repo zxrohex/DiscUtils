@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.Udf;

@@ -58,35 +58,33 @@ internal sealed class SecurityCell : Cell
 
     public int UsageCount { get; set; }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        PreviousIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
-        NextIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x08);
-        UsageCount = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x0C);
-        var secDescSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x10);
+        PreviousIndex = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x04));
+        NextIndex = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x08));
+        UsageCount = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x0C));
+        var secDescSize = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x10));
 
-        var secDesc = new byte[secDescSize];
-        Array.Copy(buffer, offset + 0x14, secDesc, 0, secDescSize);
-        SecurityDescriptor = new RegistrySecurity(secDesc, 0);
+        var secDesc = buffer.Slice(0x14, secDescSize);
+        SecurityDescriptor = new RegistrySecurity(secDesc);
 
         return 0x14 + secDescSize;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
         var sd = SecurityDescriptor.GetSecurityDescriptorBinaryForm();
 
-        EndianUtilities.StringToBytes("sk", buffer, offset, 2);
-        EndianUtilities.WriteBytesLittleEndian(PreviousIndex, buffer, offset + 0x04);
-        EndianUtilities.WriteBytesLittleEndian(NextIndex, buffer, offset + 0x08);
-        EndianUtilities.WriteBytesLittleEndian(UsageCount, buffer, offset + 0x0C);
-        EndianUtilities.WriteBytesLittleEndian(sd.Length, buffer, offset + 0x10);
-        Array.Copy(sd, 0, buffer, offset + 0x14, sd.Length);
+        EndianUtilities.StringToBytes("sk", buffer.Slice(0, 2));
+        EndianUtilities.WriteBytesLittleEndian(PreviousIndex, buffer.Slice(0x04));
+        EndianUtilities.WriteBytesLittleEndian(NextIndex, buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian(UsageCount, buffer.Slice(0x0C));
+        EndianUtilities.WriteBytesLittleEndian(sd.Length, buffer.Slice(0x10));
+        sd.CopyTo(buffer.Slice(0x14));
     }
 
     public override string ToString()
     {
-        return "SecDesc:" + SecurityDescriptor.GetSddlForm(AccessControlSections.All) + " (refCount:" +
-               UsageCount + ")";
+        return $"SecDesc:{SecurityDescriptor.GetSddlForm(AccessControlSections.All)} (refCount:{UsageCount})";
     }
 }

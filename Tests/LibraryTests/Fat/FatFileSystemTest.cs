@@ -46,11 +46,7 @@ namespace LibraryTests.Fat
         [Fact(Skip = "Saving LFN not yet implemented")]
         public void Cyrillic()
         {
-#if NET40
             SetupHelper.RegisterAssembly(typeof(FatFileSystem).Assembly);
-#else
-            SetupHelper.RegisterAssembly(typeof(FatFileSystem).GetTypeInfo().Assembly);
-#endif
 
             var lowerDE = "\x0434";
             var upperDE = "\x0414";

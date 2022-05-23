@@ -24,6 +24,7 @@ using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -37,48 +38,56 @@ internal class ReaderDirectory : File, IVfsDirectory<ReaderDirEntry, File>
     public ReaderDirectory(IsoContext context, ReaderDirEntry dirEntry)
         : base(context, dirEntry)
     {
-        var buffer = new byte[IsoUtilities.SectorSize];
-        Stream extent = new ExtentStream(_context.DataStream, dirEntry.Record.LocationOfExtent, uint.MaxValue, 0, 0);
-
-        _records = new List<ReaderDirEntry>();
-
-        var totalLength = dirEntry.Record.DataLength;
-        uint totalRead = 0;
-        while (totalRead < totalLength)
+        var buffer = ArrayPool<byte>.Shared.Rent(IsoUtilities.SectorSize);
+        try
         {
-            var bytesRead = (int)Math.Min(buffer.Length, totalLength - totalRead);
+            Array.Clear(buffer, 0, buffer.Length);
+            Stream extent = new ExtentStream(_context.DataStream, dirEntry.Record.LocationOfExtent, uint.MaxValue, 0, 0);
 
-            StreamUtilities.ReadExact(extent, buffer, 0, bytesRead);
-            totalRead += (uint)bytesRead;
+            _records = new List<ReaderDirEntry>();
 
-            uint pos = 0;
-            while (pos < bytesRead && buffer[pos] != 0)
+            var totalLength = dirEntry.Record.DataLength;
+            uint totalRead = 0;
+            while (totalRead < totalLength)
             {
-                var length = (uint)DirectoryRecord.ReadFrom(buffer, (int)pos, context.VolumeDescriptor.CharacterEncoding, out var dr);
+                var bytesRead = (int)Math.Min(IsoUtilities.SectorSize, totalLength - totalRead);
 
-                if (!IsoUtilities.IsSpecialDirectory(dr))
+                StreamUtilities.ReadExact(extent, buffer, 0, bytesRead);
+                totalRead += (uint)bytesRead;
+
+                uint pos = 0;
+                while (pos < bytesRead && buffer[pos] != 0)
                 {
-                    var childDirEntry = new ReaderDirEntry(_context, dr);
+                    var length = (uint)DirectoryRecord.ReadFrom(buffer.AsSpan((int)pos), context.VolumeDescriptor.CharacterEncoding, out var dr);
 
-                    if (context.SuspDetected && !string.IsNullOrEmpty(context.RockRidgeIdentifier))
+                    if (!IsoUtilities.IsSpecialDirectory(dr))
                     {
-                        if (childDirEntry.SuspRecords == null || !childDirEntry.SuspRecords.HasEntry(context.RockRidgeIdentifier, "RE"))
+                        var childDirEntry = new ReaderDirEntry(_context, dr);
+
+                        if (context.SuspDetected && !string.IsNullOrEmpty(context.RockRidgeIdentifier))
+                        {
+                            if (childDirEntry.SuspRecords == null || !childDirEntry.SuspRecords.HasEntry(context.RockRidgeIdentifier, "RE"))
+                            {
+                                _records.Add(childDirEntry);
+                            }
+                        }
+                        else
                         {
                             _records.Add(childDirEntry);
                         }
                     }
-                    else
+                    else if (dr.FileIdentifier == "\0")
                     {
-                        _records.Add(childDirEntry);
+                        Self = new ReaderDirEntry(_context, dr);
                     }
-                }
-                else if (dr.FileIdentifier == "\0")
-                {
-                    Self = new ReaderDirEntry(_context, dr);
-                }
 
-                pos += length;
+                    pos += length;
+                }
             }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 
@@ -97,20 +106,20 @@ internal class ReaderDirectory : File, IVfsDirectory<ReaderDirEntry, File>
     public ReaderDirEntry GetEntryByName(string name)
     {
         var anyVerMatch = name.IndexOf(';') < 0;
-        var normName = IsoUtilities.NormalizeFileName(name).ToUpper(CultureInfo.InvariantCulture);
+        var normName = IsoUtilities.NormalizeFileName(name).ToUpper(CultureInfo.InvariantCulture).AsSpan();
         if (anyVerMatch)
         {
-            normName = normName.Substring(0, normName.LastIndexOf(';') + 1);
+            normName = normName.Slice(0, normName.LastIndexOf(';') + 1);
         }
 
         foreach (var r in _records)
         {
             var toComp = IsoUtilities.NormalizeFileName(r.FileName).ToUpper(CultureInfo.InvariantCulture);
-            if (!anyVerMatch && toComp == normName)
+            if (!anyVerMatch && toComp.AsSpan().Equals(normName, StringComparison.CurrentCultureIgnoreCase))
             {
                 return r;
             }
-            if (anyVerMatch && toComp.StartsWith(normName, StringComparison.Ordinal))
+            if (anyVerMatch && toComp.AsSpan().StartsWith(normName, StringComparison.CurrentCultureIgnoreCase))
             {
                 return r;
             }

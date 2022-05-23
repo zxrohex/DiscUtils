@@ -65,7 +65,7 @@ internal class StructuredNtfsAttribute<T> : NtfsAttribute
     public void Save()
     {
         var buffer = new byte[_structure.Size];
-        _structure.WriteTo(buffer, 0);
+        _structure.WriteTo(buffer);
         using Stream s = Open(FileAccess.Write);
         s.Write(buffer, 0, buffer.Length);
         s.SetLength(buffer.Length);
@@ -80,7 +80,7 @@ internal class StructuredNtfsAttribute<T> : NtfsAttribute
     public override void Dump(TextWriter writer, string indent)
     {
         Initialize();
-        writer.WriteLine(indent + AttributeTypeName + " ATTRIBUTE (" + (Name == null ? "No Name" : Name) + ")");
+        writer.WriteLine($"{indent}{AttributeTypeName} ATTRIBUTE ({(Name == null ? "No Name" : Name)})");
         _structure.Dump(writer, indent + "  ");
 
         _primaryRecord.Dump(writer, indent + "  ");
@@ -93,7 +93,7 @@ internal class StructuredNtfsAttribute<T> : NtfsAttribute
             using (Stream s = Open(FileAccess.Read))
             {
                 var buffer = StreamUtilities.ReadExact(s, (int)Length);
-                _structure.ReadFrom(buffer, 0);
+                _structure.ReadFrom(buffer);
                 _hasContent = s.Length != 0;
             }
 

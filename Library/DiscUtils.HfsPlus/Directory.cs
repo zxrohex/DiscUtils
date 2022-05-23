@@ -63,7 +63,7 @@ internal sealed class Directory : File, IVfsDirectory<DirEntry, File>
             var dirThreadData = Context.Catalog.Find(new CatalogKey(NodeId, string.Empty));
 
             var dirThread = new CatalogThread();
-            dirThread.ReadFrom(dirThreadData, 0);
+            dirThread.ReadFrom(dirThreadData);
 
             var dirEntryData = Context.Catalog.Find(new CatalogKey(dirThread.ParentId, dirThread.Name));
 

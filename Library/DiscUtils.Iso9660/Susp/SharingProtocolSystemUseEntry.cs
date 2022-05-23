@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 
 namespace DiscUtils.Iso9660;
@@ -28,15 +29,15 @@ internal sealed class SharingProtocolSystemUseEntry : SystemUseEntry
 {
     public byte SystemAreaSkip;
 
-    public SharingProtocolSystemUseEntry(string name, byte length, byte version, byte[] data, int offset)
+    public SharingProtocolSystemUseEntry(string name, byte length, byte version, ReadOnlySpan<byte> data)
     {
         CheckAndSetCommonProperties(name, length, version, 7, 1);
 
-        if (data[offset + 4] != 0xBE || data[offset + 5] != 0xEF)
+        if (data[4] != 0xBE || data[5] != 0xEF)
         {
             throw new InvalidDataException("Invalid SUSP SP entry - invalid checksum bytes");
         }
 
-        SystemAreaSkip = data[offset + 6];
+        SystemAreaSkip = data[6];
     }
 }

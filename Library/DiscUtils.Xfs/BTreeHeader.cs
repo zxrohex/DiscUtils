@@ -64,26 +64,26 @@ internal abstract class BtreeHeader : IByteArraySerializable
         Size = SbVersion >= 5 ? 56 : 16;
     }
 
-    public virtual int ReadFrom(byte[] buffer, int offset)
+    public virtual int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-        Level = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x4);
-        NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x6);
-        LeftSibling = EndianUtilities.ToInt32BigEndian(buffer, offset + 0x8);
-        RightSibling = EndianUtilities.ToInt32BigEndian(buffer, offset + 0xC);
+        Magic = EndianUtilities.ToUInt32BigEndian(buffer);
+        Level = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x4));
+        NumberOfRecords = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x6));
+        LeftSibling = EndianUtilities.ToInt32BigEndian(buffer.Slice(0x8));
+        RightSibling = EndianUtilities.ToInt32BigEndian(buffer.Slice(0xC));
         if (SbVersion >= 5)
         {
-            Bno = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x10);
-            Lsn = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x18);
-            UniqueId = EndianUtilities.ToGuidBigEndian(buffer, offset + 0x20);
-            Owner = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x30);
-            Crc = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x34);
+            Bno = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x10));
+            Lsn = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x18));
+            UniqueId = EndianUtilities.ToGuidBigEndian(buffer.Slice(0x20));
+            Owner = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x30));
+            Crc = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x34));
         }
         
         return Size;
     }
 
-    public virtual void WriteTo(byte[] buffer, int offset)
+    public virtual void WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

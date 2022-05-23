@@ -182,6 +182,82 @@ internal class NonResidentAttributeBuffer : NonResidentDataBuffer
         _cookedRuns.CollapseRuns();
     }
 
+    public override void Write(long pos, ReadOnlySpan<byte> buffer)
+    {
+        if (!CanWrite)
+        {
+            throw new IOException("Attempt to write to file not opened for write");
+        }
+
+        if (buffer.IsEmpty)
+        {
+            return;
+        }
+
+        if (pos + buffer.Length > Capacity)
+        {
+            SetCapacity(pos + buffer.Length);
+        }
+
+        // Write zeros from end of current initialized data to the start of the new write
+        if (pos > PrimaryAttributeRecord.InitializedDataLength)
+        {
+            InitializeData(pos);
+        }
+
+        var allocatedClusters = 0;
+
+        var focusPos = pos;
+        while (focusPos < pos + buffer.Length)
+        {
+            var vcn = focusPos / _bytesPerCluster;
+            var remaining = pos + buffer.Length - focusPos;
+            var clusterOffset = focusPos - vcn * _bytesPerCluster;
+
+            if (vcn * _bytesPerCluster != focusPos || remaining < _bytesPerCluster)
+            {
+                // Unaligned or short write
+                var toWrite = (int)Math.Min(remaining, _bytesPerCluster - clusterOffset);
+
+                _activeStream.ReadClusters(vcn, 1, _ioBuffer, 0);
+                buffer.Slice((int)(focusPos - pos), toWrite).CopyTo(_ioBuffer);
+                allocatedClusters += _activeStream.WriteClusters(vcn, 1, _ioBuffer, 0);
+
+                focusPos += toWrite;
+            }
+            else
+            {
+                // Aligned, full cluster writes...
+                var fullClusters = (int)(remaining / _bytesPerCluster);
+                allocatedClusters += _activeStream.WriteClusters(vcn, fullClusters,
+                    buffer.Slice((int)(focusPos - pos)));
+
+                focusPos += fullClusters * _bytesPerCluster;
+            }
+        }
+
+        if (pos + buffer.Length > PrimaryAttributeRecord.InitializedDataLength)
+        {
+            _file.MarkMftRecordDirty();
+
+            PrimaryAttributeRecord.InitializedDataLength = pos + buffer.Length;
+        }
+
+        if (pos + buffer.Length > PrimaryAttributeRecord.DataLength)
+        {
+            _file.MarkMftRecordDirty();
+
+            PrimaryAttributeRecord.DataLength = pos + buffer.Length;
+        }
+
+        if ((_attribute.Flags & (AttributeFlags.Compressed | AttributeFlags.Sparse)) != 0)
+        {
+            PrimaryAttributeRecord.CompressedDataSize += allocatedClusters * _bytesPerCluster;
+        }
+
+        _cookedRuns.CollapseRuns();
+    }
+
     public override void Clear(long pos, int count)
     {
         if (!CanWrite)

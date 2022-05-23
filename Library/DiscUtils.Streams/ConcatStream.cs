@@ -165,7 +165,6 @@ public class ConcatStream : SparseStream
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -186,9 +185,7 @@ public class ConcatStream : SparseStream
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -203,7 +200,7 @@ public class ConcatStream : SparseStream
 
             _streams[activeStream].Position = _position - activeStreamStartPos;
 
-            numRead = await _streams[activeStream].ReadAsync(buffer[totalRead..], cancellationToken).ConfigureAwait(false);
+            numRead = await _streams[activeStream].ReadAsync(buffer.Slice(totalRead), cancellationToken).ConfigureAwait(false);
 
             totalRead += numRead;
             _position += numRead;
@@ -226,7 +223,7 @@ public class ConcatStream : SparseStream
 
             _streams[activeStream].Position = _position - activeStreamStartPos;
 
-            numRead = _streams[activeStream].Read(buffer[totalRead..]);
+            numRead = _streams[activeStream].Read(buffer.Slice(totalRead));
 
             totalRead += numRead;
             _position += numRead;
@@ -234,7 +231,6 @@ public class ConcatStream : SparseStream
 
         return totalRead;
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -305,7 +301,6 @@ public class ConcatStream : SparseStream
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -338,9 +333,7 @@ public class ConcatStream : SparseStream
             _position += numToWrite;
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -408,7 +401,7 @@ public class ConcatStream : SparseStream
             _position += numToWrite;
         }
     }
-#endif
+
 
     protected override void Dispose(bool disposing)
     {

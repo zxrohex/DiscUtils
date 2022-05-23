@@ -226,7 +226,7 @@ internal class Directory : File
         {
             var suffix = $"~{i}";
             candidate = baseName.Substring(0, Math.Min(8 - suffix.Length, baseName.Length)) + suffix +
-                        (ext.Length > 0 ? "." + ext : string.Empty);
+                        (ext.Length > 0 ? $".{ext}" : string.Empty);
             i++;
         } while (GetEntryByName(candidate) != null);
 

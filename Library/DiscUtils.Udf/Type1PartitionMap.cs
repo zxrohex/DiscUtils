@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Udf;
 
@@ -34,10 +35,10 @@ internal sealed class Type1PartitionMap : PartitionMap
         get { return 6; }
     }
 
-    protected override int Parse(byte[] buffer, int offset)
+    protected override int Parse(ReadOnlySpan<byte> buffer)
     {
-        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
-        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
+        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(2));
+        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(4));
         return 6;
     }
 }

@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.SquashFs;
 
@@ -33,12 +34,12 @@ internal sealed class DeviceInode : Inode
         get { return 24; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        base.ReadFrom(buffer, offset);
+        base.ReadFrom(buffer);
 
-        NumLinks = EndianUtilities.ToInt32LittleEndian(buffer, offset + 16);
-        DeviceId = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
+        NumLinks = EndianUtilities.ToInt32LittleEndian(buffer.Slice(16));
+        DeviceId = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(20));
 
         return 24;
     }

@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -104,42 +105,51 @@ internal class GptHeader
         return Crc == CalcCrc(buffer, offset, HeaderSize);
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
         // First, copy the cached header to allow for unknown fields
-        Array.Copy(Buffer, 0, buffer, offset, Buffer.Length);
+        Buffer.CopyTo(buffer);
 
         // Next, write the fields
-        EndianUtilities.StringToBytes(Signature, buffer, offset + 0, 8);
-        EndianUtilities.WriteBytesLittleEndian(Version, buffer, offset + 8);
-        EndianUtilities.WriteBytesLittleEndian(HeaderSize, buffer, offset + 12);
-        EndianUtilities.WriteBytesLittleEndian((uint)0, buffer, offset + 16);
-        EndianUtilities.WriteBytesLittleEndian(HeaderLba, buffer, offset + 24);
-        EndianUtilities.WriteBytesLittleEndian(AlternateHeaderLba, buffer, offset + 32);
-        EndianUtilities.WriteBytesLittleEndian(FirstUsable, buffer, offset + 40);
-        EndianUtilities.WriteBytesLittleEndian(LastUsable, buffer, offset + 48);
-        EndianUtilities.WriteBytesLittleEndian(DiskGuid, buffer, offset + 56);
-        EndianUtilities.WriteBytesLittleEndian(PartitionEntriesLba, buffer, offset + 72);
-        EndianUtilities.WriteBytesLittleEndian(PartitionEntryCount, buffer, offset + 80);
-        EndianUtilities.WriteBytesLittleEndian(PartitionEntrySize, buffer, offset + 84);
-        EndianUtilities.WriteBytesLittleEndian(EntriesCrc, buffer, offset + 88);
+        EndianUtilities.StringToBytes(Signature, buffer.Slice(0, 8));
+        EndianUtilities.WriteBytesLittleEndian(Version, buffer.Slice(8));
+        EndianUtilities.WriteBytesLittleEndian(HeaderSize, buffer.Slice(12));
+        EndianUtilities.WriteBytesLittleEndian((uint)0, buffer.Slice(16));
+        EndianUtilities.WriteBytesLittleEndian(HeaderLba, buffer.Slice(24));
+        EndianUtilities.WriteBytesLittleEndian(AlternateHeaderLba, buffer.Slice(32));
+        EndianUtilities.WriteBytesLittleEndian(FirstUsable, buffer.Slice(40));
+        EndianUtilities.WriteBytesLittleEndian(LastUsable, buffer.Slice(48));
+        EndianUtilities.WriteBytesLittleEndian(DiskGuid, buffer.Slice(56));
+        EndianUtilities.WriteBytesLittleEndian(PartitionEntriesLba, buffer.Slice(72));
+        EndianUtilities.WriteBytesLittleEndian(PartitionEntryCount, buffer.Slice(80));
+        EndianUtilities.WriteBytesLittleEndian(PartitionEntrySize, buffer.Slice(84));
+        EndianUtilities.WriteBytesLittleEndian(EntriesCrc, buffer.Slice(88));
 
         // Calculate & write the CRC
-        EndianUtilities.WriteBytesLittleEndian(CalcCrc(buffer, offset, HeaderSize), buffer, offset + 16);
+        EndianUtilities.WriteBytesLittleEndian(CalcCrc(buffer.Slice(0, HeaderSize)), buffer.Slice(16));
 
         // Update the cached copy - re-allocate the buffer to allow for HeaderSize potentially having changed
         Buffer = new byte[HeaderSize];
-        Array.Copy(buffer, offset, Buffer, 0, HeaderSize);
+        buffer.Slice(0, HeaderSize).CopyTo(Buffer);
     }
 
-    internal static uint CalcCrc(byte[] buffer, int offset, int count)
+    internal static uint CalcCrc(byte[] buffer, int offset, int count) => CalcCrc(buffer.AsSpan(offset, count));
+
+    internal static uint CalcCrc(ReadOnlySpan<byte> buffer)
     {
-        var temp = new byte[count];
-        Array.Copy(buffer, offset, temp, 0, count);
+        var temp = ArrayPool<byte>.Shared.Rent(buffer.Length);
+        try
+        {
+            buffer.CopyTo(temp);
 
-        // Reset CRC field
-        EndianUtilities.WriteBytesLittleEndian((uint)0, temp, 16);
+            // Reset CRC field
+            EndianUtilities.WriteBytesLittleEndian((uint)0, temp, 16);
 
-        return Crc32LittleEndian.Compute(Crc32Algorithm.Common, temp, 0, count);
+            return Crc32LittleEndian.Compute(Crc32Algorithm.Common, temp.AsSpan(0, buffer.Length));
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(temp);
+        }
     }
 }

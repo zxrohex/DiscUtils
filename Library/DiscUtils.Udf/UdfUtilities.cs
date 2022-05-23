@@ -65,19 +65,19 @@ internal static class UdfUtilities
         0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0
     };
 
-    public static ushort ComputeCrc(byte[] buffer, int offset, int length)
+    public static ushort ComputeCrc(ReadOnlySpan<byte> buffer)
     {
         ushort result = 0;
 
-        for (var i = 0; i < length; ++i)
+        for (var i = 0; i < buffer.Length; ++i)
         {
-            result = (ushort)(CrcTable[(result >> 8 ^ buffer[offset + i]) & 0xFF] ^ (result << 8));
+            result = (ushort)(CrcTable[(result >> 8 ^ buffer[i]) & 0xFF] ^ (result << 8));
         }
 
         return result;
     }
 
-    public static DateTime ParseTimestamp(byte[] buffer, int offset)
+    public static DateTime ParseTimestamp(ReadOnlySpan<byte> buffer)
     {
         var allZero = true;
         for (var i = 0; i < 12; ++i)
@@ -94,7 +94,7 @@ internal static class UdfUtilities
             return DateTime.MinValue;
         }
 
-        var typeAndZone = EndianUtilities.ToUInt16LittleEndian(buffer, offset);
+        var typeAndZone = EndianUtilities.ToUInt16LittleEndian(buffer);
 
         var type = (typeAndZone >> 12) & 0x0F;
         var minutesWest = typeAndZone & 0xFFF;
@@ -104,15 +104,15 @@ internal static class UdfUtilities
             minutesWest = (-1 & ~0xFFF) | minutesWest;
         }
 
-        int year = ForceRange(1, 9999, EndianUtilities.ToInt16LittleEndian(buffer, offset + 2));
-        int month = ForceRange(1, 12, buffer[offset + 4]);
-        int day = ForceRange(1, 31, buffer[offset + 5]);
-        int hour = ForceRange(0, 23, buffer[offset + 6]);
-        int min = ForceRange(0, 59, buffer[offset + 7]);
-        int sec = ForceRange(0, 59, buffer[offset + 8]);
-        int csec = ForceRange(0, 99, buffer[offset + 9]);
-        int hmsec = ForceRange(0, 99, buffer[offset + 10]);
-        int msec = ForceRange(0, 99, buffer[offset + 11]);
+        int year = ForceRange(1, 9999, EndianUtilities.ToInt16LittleEndian(buffer.Slice(2)));
+        int month = ForceRange(1, 12, buffer[4]);
+        int day = ForceRange(1, 31, buffer[5]);
+        int hour = ForceRange(0, 23, buffer[6]);
+        int min = ForceRange(0, 59, buffer[7]);
+        int sec = ForceRange(0, 59, buffer[8]);
+        int csec = ForceRange(0, 99, buffer[9]);
+        int hmsec = ForceRange(0, 99, buffer[10]);
+        int msec = ForceRange(0, 99, buffer[11]);
 
         try
         {
@@ -126,42 +126,42 @@ internal static class UdfUtilities
         }
     }
 
-    public static string ReadDString(byte[] buffer, int offset, int count)
+    public static string ReadDString(ReadOnlySpan<byte> buffer)
     {
-        int byteLen = buffer[offset + count - 1];
-        return ReadDCharacters(buffer, offset, byteLen);
+        int byteLen = buffer[buffer.Length - 1];
+        return ReadDCharacters(buffer.Slice(0, byteLen));
     }
 
-    public static string ReadDCharacters(byte[] buffer, int offset, int count)
+    public static string ReadDCharacters(ReadOnlySpan<byte> buffer)
     {
-        if (count == 0)
+        if (buffer.IsEmpty)
         {
             return string.Empty;
         }
 
-        var alg = buffer[offset];
+        var alg = buffer[0];
 
         if (alg != 8 && alg != 16)
         {
             throw new InvalidDataException("Corrupt compressed unicode string");
         }
 
-        var result = new StringBuilder(count);
+        var result = new StringBuilder(buffer.Length);
 
         var pos = 1;
-        while (pos < count)
+        while (pos < buffer.Length)
         {
             var ch = '\0';
 
             if (alg == 16)
             {
-                ch = (char)(buffer[offset + pos] << 8);
+                ch = (char)(buffer[pos] << 8);
                 pos++;
             }
 
-            if (pos < count)
+            if (pos < buffer.Length)
             {
-                ch |= (char)buffer[offset + pos];
+                ch |= (char)buffer[pos];
                 pos++;
             }
 

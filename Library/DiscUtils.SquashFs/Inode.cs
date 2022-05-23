@@ -45,25 +45,25 @@ internal abstract class Inode : IByteArraySerializable
 
     public abstract int Size { get; }
 
-    public virtual int ReadFrom(byte[] buffer, int offset)
+    public virtual int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Type = (InodeType)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0);
-        Mode = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
-        UidKey = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-        GidKey = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
-        ModificationTime = ((long) EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8)).FromUnixTimeSeconds().DateTime;
-        InodeNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
+        Type = (InodeType)EndianUtilities.ToUInt16LittleEndian(buffer);
+        Mode = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(2));
+        UidKey = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(4));
+        GidKey = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(6));
+        ModificationTime = DateTimeOffset.FromUnixTimeSeconds(EndianUtilities.ToUInt32LittleEndian(buffer.Slice(8))).DateTime;
+        InodeNumber = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(12));
         return 16;
     }
 
-    public virtual void WriteTo(byte[] buffer, int offset)
+    public virtual void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian((ushort)Type, buffer, offset + 0);
-        EndianUtilities.WriteBytesLittleEndian(Mode, buffer, offset + 2);
-        EndianUtilities.WriteBytesLittleEndian(UidKey, buffer, offset + 4);
-        EndianUtilities.WriteBytesLittleEndian(GidKey, buffer, offset + 6);
-        EndianUtilities.WriteBytesLittleEndian(Convert.ToUInt32((new DateTimeOffset(ModificationTime)).ToUnixTimeSeconds()), buffer, offset + 8);
-        EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer, offset + 12);
+        EndianUtilities.WriteBytesLittleEndian((ushort)Type, buffer);
+        EndianUtilities.WriteBytesLittleEndian(Mode, buffer.Slice(2));
+        EndianUtilities.WriteBytesLittleEndian(UidKey, buffer.Slice(4));
+        EndianUtilities.WriteBytesLittleEndian(GidKey, buffer.Slice(6));
+        EndianUtilities.WriteBytesLittleEndian(Convert.ToUInt32(new DateTimeOffset(ModificationTime).ToUnixTimeSeconds()), buffer.Slice(8));
+        EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer.Slice(12));
     }
 
     public static Inode Read(MetablockReader inodeReader)
@@ -88,7 +88,7 @@ internal abstract class Inode : IByteArraySerializable
                 throw new IOException("Unable to read whole Inode");
             }
 
-            inode.ReadFrom(inodeData, 0);
+            inode.ReadFrom(inodeData);
         }
         finally
         {

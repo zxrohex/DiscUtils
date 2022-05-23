@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.Streams;
@@ -42,26 +43,26 @@ internal sealed class SecurityDescriptor : IByteArraySerializable, IDiagnosticTr
         get { return Descriptor.BinaryLength; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Descriptor = new RawSecurityDescriptor(buffer, offset);
+        Descriptor = new RawSecurityDescriptor(buffer);
         return Descriptor.BinaryLength;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
         // Write out the security descriptor manually because on NTFS the DACL is written
         // before the Owner & Group.  Writing the components in the same order means the
         // hashes will match for identical Security Descriptors.
         var controlFlags = Descriptor.ControlFlags;
-        buffer[offset + 0x00] = 1;
-        buffer[offset + 0x01] = Descriptor.ResourceManagerControl;
-        EndianUtilities.WriteBytesLittleEndian((ushort)controlFlags, buffer, offset + 0x02);
+        buffer[0x00] = 1;
+        buffer[0x01] = Descriptor.ResourceManagerControl;
+        EndianUtilities.WriteBytesLittleEndian((ushort)controlFlags, buffer.Slice(0x02));
 
         // Blank out offsets, will fill later
         for (var i = 0x04; i < 0x14; ++i)
         {
-            buffer[offset + i] = 0;
+            buffer[i] = 0;
         }
 
         var pos = 0x14;
@@ -69,33 +70,33 @@ internal sealed class SecurityDescriptor : IByteArraySerializable, IDiagnosticTr
         var discAcl = Descriptor.DiscretionaryAcl;
         if ((controlFlags & ControlFlags.DiscretionaryAclPresent) != 0 && discAcl != null)
         {
-            EndianUtilities.WriteBytesLittleEndian(pos, buffer, offset + 0x10);
-            discAcl.GetBinaryForm(buffer, offset + pos);
+            EndianUtilities.WriteBytesLittleEndian(pos, buffer.Slice(0x10));
+            discAcl.GetBinaryForm(buffer.Slice(pos));
             pos += Descriptor.DiscretionaryAcl.BinaryLength;
         }
         else
         {
-            EndianUtilities.WriteBytesLittleEndian(0, buffer, offset + 0x10);
+            EndianUtilities.WriteBytesLittleEndian(0, buffer.Slice(0x10));
         }
 
         var sysAcl = Descriptor.SystemAcl;
         if ((controlFlags & ControlFlags.SystemAclPresent) != 0 && sysAcl != null)
         {
-            EndianUtilities.WriteBytesLittleEndian(pos, buffer, offset + 0x0C);
-            sysAcl.GetBinaryForm(buffer, offset + pos);
+            EndianUtilities.WriteBytesLittleEndian(pos, buffer.Slice(0x0C));
+            sysAcl.GetBinaryForm(buffer.Slice(pos));
             pos += Descriptor.SystemAcl.BinaryLength;
         }
         else
         {
-            EndianUtilities.WriteBytesLittleEndian(0, buffer, offset + 0x0C);
+            EndianUtilities.WriteBytesLittleEndian(0, buffer.Slice(0x0C));
         }
 
-        EndianUtilities.WriteBytesLittleEndian(pos, buffer, offset + 0x04);
-        Descriptor.Owner.GetBinaryForm(buffer, offset + pos);
+        EndianUtilities.WriteBytesLittleEndian(pos, buffer.Slice(0x04));
+        Descriptor.Owner.GetBinaryForm(buffer.Slice(pos));
         pos += Descriptor.Owner.BinaryLength;
 
-        EndianUtilities.WriteBytesLittleEndian(pos, buffer, offset + 0x08);
-        Descriptor.Group.GetBinaryForm(buffer, offset + pos);
+        EndianUtilities.WriteBytesLittleEndian(pos, buffer.Slice(0x08));
+        Descriptor.Group.GetBinaryForm(buffer.Slice(pos));
         pos += Descriptor.Group.BinaryLength;
 
         if (pos != Descriptor.BinaryLength)
@@ -106,17 +107,17 @@ internal sealed class SecurityDescriptor : IByteArraySerializable, IDiagnosticTr
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "Descriptor: " + Descriptor.GetSddlForm(AccessControlSections.All));
+        writer.WriteLine($"{indent}Descriptor: {Descriptor.GetSddlForm(AccessControlSections.All)}");
     }
 
     public uint CalcHash()
     {
-        var buffer = new byte[Size];
-        WriteTo(buffer, 0);
+        Span<byte> buffer = stackalloc byte[Size];
+        WriteTo(buffer);
         uint hash = 0;
         for (var i = 0; i < buffer.Length / 4; ++i)
         {
-            hash = EndianUtilities.ToUInt32LittleEndian(buffer, i * 4) + ((hash << 3) | (hash >> 29));
+            hash = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(i * 4)) + ((hash << 3) | (hash >> 29));
         }
 
         return hash;

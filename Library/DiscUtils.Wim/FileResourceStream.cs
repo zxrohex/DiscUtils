@@ -26,6 +26,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Wim;
 
@@ -33,7 +34,7 @@ namespace DiscUtils.Wim;
 /// Provides access to a (compressed) resource within the WIM file.
 /// </summary>
 /// <remarks>Stream access must be strictly sequential.</remarks>
-internal class FileResourceStream : SparseStream
+internal class FileResourceStream : SparseStream.ReadOnlySparseStream
 {
     private const int E8DecodeFileSize = 12000000;
 
@@ -89,11 +90,6 @@ internal class FileResourceStream : SparseStream
         get { return false; }
     }
 
-    public override bool CanWrite
-    {
-        get { return false; }
-    }
-
     public override IEnumerable<StreamExtent> Extents
     {
         get { yield return new StreamExtent(0, Length); }
@@ -110,8 +106,6 @@ internal class FileResourceStream : SparseStream
 
         set { _position = value; }
     }
-
-    public override void Flush() {}
 
     public override int Read(byte[] buffer, int offset, int count)
     {
@@ -149,7 +143,6 @@ internal class FileResourceStream : SparseStream
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (_position >= Length)
@@ -185,9 +178,7 @@ internal class FileResourceStream : SparseStream
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (_position >= Length)
@@ -259,19 +250,8 @@ internal class FileResourceStream : SparseStream
 
         return totalRead;
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
-    {
-        throw new NotSupportedException();
-    }
-
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    public override void Write(byte[] buffer, int offset, int count)
     {
         throw new NotSupportedException();
     }

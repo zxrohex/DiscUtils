@@ -37,18 +37,18 @@ internal class DirectoryRecord : IByteArraySerializable
         get { return 8 + Name.Length; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(Offset, buffer, offset + 0);
-        EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer, offset + 2);
-        EndianUtilities.WriteBytesLittleEndian((ushort)Type, buffer, offset + 4);
-        EndianUtilities.WriteBytesLittleEndian((ushort)(Name.Length - 1), buffer, offset + 6);
-        EndianUtilities.StringToBytes(Name, buffer, offset + 8, Name.Length);
+        EndianUtilities.WriteBytesLittleEndian(Offset, buffer);
+        EndianUtilities.WriteBytesLittleEndian(InodeNumber, buffer.Slice(2));
+        EndianUtilities.WriteBytesLittleEndian((ushort)Type, buffer.Slice(4));
+        EndianUtilities.WriteBytesLittleEndian((ushort)(Name.Length - 1), buffer.Slice(6));
+        EndianUtilities.StringToBytes(Name, buffer.Slice(8, Name.Length));
     }
 
     public static DirectoryRecord ReadFrom(MetablockReader reader)

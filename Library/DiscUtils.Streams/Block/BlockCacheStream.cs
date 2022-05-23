@@ -323,7 +323,6 @@ public sealed class BlockCacheStream : SparseStream
         return totalBytesRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <summary>
     /// Reads data from the stream.
     /// </summary>
@@ -462,9 +461,7 @@ public sealed class BlockCacheStream : SparseStream
 
         return totalBytesRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Reads data from the stream.
     /// </summary>
@@ -529,7 +526,7 @@ public sealed class BlockCacheStream : SparseStream
             {
                 var bytesToRead = Math.Min(buffer.Length - totalBytesRead, block.Available - offsetInNextBlock);
 
-                block.Data.AsSpan(offsetInNextBlock, bytesToRead).CopyTo(buffer[totalBytesRead..]);
+                block.Data.AsSpan(offsetInNextBlock, bytesToRead).CopyTo(buffer.Slice(totalBytesRead));
                 offsetInNextBlock = 0;
                 totalBytesRead += bytesToRead;
                 _position += bytesToRead;
@@ -579,7 +576,7 @@ public sealed class BlockCacheStream : SparseStream
 
                 // Propogate the data onto the caller
                 var bytesToCopy = Math.Min(buffer.Length - totalBytesRead, bytesRead - offsetInNextBlock);
-                _readBuffer.AsSpan(offsetInNextBlock, bytesToCopy).CopyTo(buffer[totalBytesRead..]);
+                _readBuffer.AsSpan(offsetInNextBlock, bytesToCopy).CopyTo(buffer.Slice(totalBytesRead));
                 totalBytesRead += bytesToCopy;
                 _position += bytesToCopy;
                 offsetInNextBlock = 0;
@@ -668,7 +665,7 @@ public sealed class BlockCacheStream : SparseStream
             {
                 var bytesToRead = Math.Min(buffer.Length - totalBytesRead, block.Available - offsetInNextBlock);
 
-                block.Data.AsMemory(offsetInNextBlock, bytesToRead).CopyTo(buffer[totalBytesRead..]);
+                block.Data.AsMemory(offsetInNextBlock, bytesToRead).CopyTo(buffer.Slice(totalBytesRead));
                 offsetInNextBlock = 0;
                 totalBytesRead += bytesToRead;
                 _position += bytesToRead;
@@ -718,7 +715,7 @@ public sealed class BlockCacheStream : SparseStream
 
                 // Propogate the data onto the caller
                 var bytesToCopy = Math.Min(buffer.Length - totalBytesRead, bytesRead - offsetInNextBlock);
-                _readBuffer.AsMemory(offsetInNextBlock, bytesToCopy).CopyTo(buffer[totalBytesRead..]);
+                _readBuffer.AsMemory(offsetInNextBlock, bytesToCopy).CopyTo(buffer.Slice(totalBytesRead));
                 totalBytesRead += bytesToCopy;
                 _position += bytesToCopy;
                 offsetInNextBlock = 0;
@@ -742,7 +739,7 @@ public sealed class BlockCacheStream : SparseStream
 
         return totalBytesRead;
     }
-#endif
+
 
     /// <summary>
     /// Flushes the stream.
@@ -847,7 +844,7 @@ public sealed class BlockCacheStream : SparseStream
         _position += count;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Writes data to the stream at the current location.
     /// </summary>
@@ -901,9 +898,7 @@ public sealed class BlockCacheStream : SparseStream
 
         _position += count;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Writes data to the stream at the current location.
     /// </summary>
@@ -1011,7 +1006,7 @@ public sealed class BlockCacheStream : SparseStream
 
         _position += buffer.Length;
     }
-#endif
+
 
     /// <summary>
     /// Disposes of this instance, freeing up associated resources.

@@ -143,7 +143,7 @@ internal sealed class BuilderFile : BuilderNode
         InodeRef = context.InodeWriter.Position;
 
         var totalSize = _inode.Size;
-        _inode.WriteTo(context.IoBuffer, 0);
+        _inode.WriteTo(context.IoBuffer);
         if (_lengths != null && _lengths.Count > 0)
         {
             for (var i = 0; i < _lengths.Count; ++i)

@@ -39,14 +39,14 @@ internal class BTreeGenericRecord : BTreeNodeRecord
         get { return _size; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         _data = new byte[_size];
-        Array.Copy(buffer, offset, _data, 0, _size);
+        buffer.Slice(0, _size).CopyTo(_data);
         return _size;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

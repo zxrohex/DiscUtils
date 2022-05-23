@@ -28,11 +28,11 @@ internal sealed class GenericSystemUseEntry : SystemUseEntry
 {
     public byte[] Data;
 
-    public GenericSystemUseEntry(string name, byte length, byte version, byte[] data, int offset)
+    public GenericSystemUseEntry(string name, byte length, byte version, ReadOnlySpan<byte> data)
     {
         CheckAndSetCommonProperties(name, length, version, 4, 0xFF);
 
         Data = new byte[length - 4];
-        Array.Copy(data, offset + 4, Data, 0, length - 4);
+        data.Slice(4, length - 4).CopyTo(Data);
     }
 }

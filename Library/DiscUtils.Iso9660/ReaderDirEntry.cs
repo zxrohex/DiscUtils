@@ -46,7 +46,7 @@ internal sealed class ReaderDirEntry : VfsDirEntry
 
         if (context.SuspDetected && _record.SystemUseData != null)
         {
-            SuspRecords = new SuspRecords(_context, _record.SystemUseData, 0);
+            SuspRecords = new SuspRecords(_context, _record.SystemUseData);
         }
 
         if (rockRidge && SuspRecords != null)
@@ -74,10 +74,10 @@ internal sealed class ReaderDirEntry : VfsDirEntry
                 var firstSector = StreamUtilities.ReadExact(_context.DataStream,
                     _context.VolumeDescriptor.LogicalBlockSize);
 
-                DirectoryRecord.ReadFrom(firstSector, 0, _context.VolumeDescriptor.CharacterEncoding, out _record);
+                DirectoryRecord.ReadFrom(firstSector, _context.VolumeDescriptor.CharacterEncoding, out _record);
                 if (_record.SystemUseData != null)
                 {
-                    SuspRecords = new SuspRecords(_context, _record.SystemUseData, 0);
+                    SuspRecords = new SuspRecords(_context, _record.SystemUseData);
                 }
             }
         }

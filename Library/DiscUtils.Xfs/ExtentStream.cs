@@ -47,7 +47,6 @@ internal class ExtentStream : BuiltStream
         return base.Read(buffer, offset, count);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <inheritdoc />
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
@@ -57,15 +56,13 @@ internal class ExtentStream : BuiltStream
         }
         return base.ReadAsync(buffer, offset, count, cancellationToken);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <inheritdoc />
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (Position + buffer.Length > Length)
         {
-            buffer = buffer[..(int)(Length - Position)];
+            buffer = buffer.Slice(0, (int)(Length - Position));
         }
         return base.ReadAsync(buffer, cancellationToken);
     }
@@ -75,9 +72,8 @@ internal class ExtentStream : BuiltStream
     {
         if (Position + buffer.Length > Length)
         {
-            buffer = buffer[..(int)(Length - Position)];
+            buffer = buffer.Slice(0, (int)(Length - Position));
         }
         return base.Read(buffer);
     }
-#endif
 }

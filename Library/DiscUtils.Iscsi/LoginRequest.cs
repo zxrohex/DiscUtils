@@ -71,7 +71,7 @@ internal class LoginRequest
         _expectedStatusSequenceNumber = _connection.ExpectedStatusSequenceNumber;
 
         var buffer = new byte[MathUtilities.RoundUp(48 + count, 4)];
-        _basicHeader.WriteTo(buffer, 0);
+        _basicHeader.WriteTo(buffer);
         buffer[1] = PackState();
         buffer[2] = 0; // Max Version
         buffer[3] = 0; // Min Version

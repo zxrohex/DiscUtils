@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Text;
 
 namespace DiscUtils.Iso9660;
@@ -33,15 +34,15 @@ internal sealed class RockRidgeExtension : SuspExtension
 
     public override string Identifier { get; }
 
-    public override SystemUseEntry Parse(string name, byte length, byte version, byte[] data, int offset, Encoding encoding)
+    public override SystemUseEntry Parse(string name, byte length, byte version, ReadOnlySpan<byte> data, Encoding encoding)
     {
         return name switch
         {
-            "PX" => new PosixFileInfoSystemUseEntry(name, length, version, data, offset),
-            "NM" => new PosixNameSystemUseEntry(name, length, version, data, offset),
-            "CL" => new ChildLinkSystemUseEntry(name, length, version, data, offset),
-            "TF" => new FileTimeSystemUseEntry(name, length, version, data, offset),
-            _ => new GenericSystemUseEntry(name, length, version, data, offset),
+            "PX" => new PosixFileInfoSystemUseEntry(name, length, version, data),
+            "NM" => new PosixNameSystemUseEntry(name, length, version, data),
+            "CL" => new ChildLinkSystemUseEntry(name, length, version, data),
+            "TF" => new FileTimeSystemUseEntry(name, length, version, data),
+            _ => new GenericSystemUseEntry(name, length, version, data),
         };
     }
 }

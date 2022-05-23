@@ -25,6 +25,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Iso9660;
 
@@ -32,39 +33,39 @@ internal static class IsoUtilities
 {
     public const int SectorSize = 2048;
 
-    public static uint ToUInt32FromBoth(byte[] data, int offset)
+    public static uint ToUInt32FromBoth(ReadOnlySpan<byte> data)
     {
-        return EndianUtilities.ToUInt32LittleEndian(data, offset);
+        return EndianUtilities.ToUInt32LittleEndian(data);
     }
 
-    public static ushort ToUInt16FromBoth(byte[] data, int offset)
+    public static ushort ToUInt16FromBoth(ReadOnlySpan<byte> data)
     {
-        return EndianUtilities.ToUInt16LittleEndian(data, offset);
+        return EndianUtilities.ToUInt16LittleEndian(data);
     }
 
-    internal static void ToBothFromUInt32(byte[] buffer, int offset, uint value)
+    internal static void ToBothFromUInt32(Span<byte> buffer, uint value)
     {
-        EndianUtilities.WriteBytesLittleEndian(value, buffer, offset);
-        EndianUtilities.WriteBytesBigEndian(value, buffer, offset + 4);
+        EndianUtilities.WriteBytesLittleEndian(value, buffer);
+        EndianUtilities.WriteBytesBigEndian(value, buffer.Slice(4));
     }
 
-    internal static void ToBothFromUInt16(byte[] buffer, int offset, ushort value)
+    internal static void ToBothFromUInt16(Span<byte> buffer, ushort value)
     {
-        EndianUtilities.WriteBytesLittleEndian(value, buffer, offset);
-        EndianUtilities.WriteBytesBigEndian(value, buffer, offset + 2);
+        EndianUtilities.WriteBytesLittleEndian(value, buffer);
+        EndianUtilities.WriteBytesBigEndian(value, buffer.Slice(2));
     }
 
-    internal static void ToBytesFromUInt32(byte[] buffer, int offset, uint value)
+    internal static void ToBytesFromUInt32(Span<byte> buffer, uint value)
     {
-        EndianUtilities.WriteBytesLittleEndian(value, buffer, offset);
+        EndianUtilities.WriteBytesLittleEndian(value, buffer);
     }
 
-    internal static void ToBytesFromUInt16(byte[] buffer, int offset, ushort value)
+    internal static void ToBytesFromUInt16(Span<byte> buffer, ushort value)
     {
-        EndianUtilities.WriteBytesLittleEndian(value, buffer, offset);
+        EndianUtilities.WriteBytesLittleEndian(value, buffer);
     }
 
-    internal static void WriteAChars(byte[] buffer, int offset, int numBytes, string str)
+    internal static void WriteAChars(Span<byte> buffer, string str)
     {
         // Validate string
         if (!IsValidAString(str))
@@ -73,10 +74,10 @@ internal static class IsoUtilities
         }
 
         ////WriteASCII(buffer, offset, numBytes, true, str);
-        WriteString(buffer, offset, numBytes, true, str, Encoding.ASCII);
+        WriteString(buffer, true, str, Encoding.ASCII);
     }
 
-    internal static void WriteDChars(byte[] buffer, int offset, int numBytes, string str)
+    internal static void WriteDChars(Span<byte> buffer, string str)
     {
         // Validate string
         if (!IsValidDString(str))
@@ -85,10 +86,10 @@ internal static class IsoUtilities
         }
 
         ////WriteASCII(buffer, offset, numBytes, true, str);
-        WriteString(buffer, offset, numBytes, true, str, Encoding.ASCII);
+        WriteString(buffer, true, str, Encoding.ASCII);
     }
 
-    internal static void WriteA1Chars(byte[] buffer, int offset, int numBytes, string str, Encoding enc)
+    internal static void WriteA1Chars(Span<byte> buffer, string str, Encoding enc)
     {
         // Validate string
         if (!IsValidAString(str))
@@ -96,10 +97,10 @@ internal static class IsoUtilities
             throw new IOException("Attempt to write string with invalid a-characters");
         }
 
-        WriteString(buffer, offset, numBytes, true, str, enc);
+        WriteString(buffer, true, str, enc);
     }
 
-    internal static void WriteD1Chars(byte[] buffer, int offset, int numBytes, string str, Encoding enc)
+    internal static void WriteD1Chars(Span<byte> buffer, string str, Encoding enc)
     {
         // Validate string
         if (!IsValidDString(str))
@@ -107,25 +108,22 @@ internal static class IsoUtilities
             throw new IOException("Attempt to write string with invalid d-characters");
         }
 
-        WriteString(buffer, offset, numBytes, true, str, enc);
+        WriteString(buffer, true, str, enc);
     }
 
-    internal static string ReadChars(byte[] buffer, int offset, int numBytes, Encoding enc)
+    internal static string ReadChars(ReadOnlySpan<byte> buffer, Encoding enc)
     {
         char[] chars;
 
         // Special handling for 'magic' names '\x00' and '\x01', which indicate root and parent, respectively
-        if (numBytes == 1)
+        if (buffer.Length == 1)
         {
-            chars = new char[1];
-            chars[0] = (char)buffer[offset];
+            return new((char)buffer[0], 1);
         }
-        else
-        {
-            var decoder = enc.GetDecoder();
-            chars = new char[decoder.GetCharCount(buffer, offset, numBytes, false)];
-            decoder.GetChars(buffer, offset, numBytes, chars, 0, false);
-        }
+
+        var decoder = enc.GetDecoder();
+        chars = new char[decoder.GetCharCount(buffer, false)];
+        decoder.GetChars(buffer, chars, false);
 
         return new ReadOnlySpan<char>(chars).TrimEnd(' ').ToString();
     }
@@ -164,21 +162,21 @@ internal static class IsoUtilities
     }
 #endif
 
-    internal static int WriteString(byte[] buffer, int offset, int numBytes, bool pad, string str, Encoding enc)
+    internal static int WriteString(Span<byte> buffer, bool pad, string str, Encoding enc)
     {
-        return WriteString(buffer, offset, numBytes, pad, str, enc, false);
+        return WriteString(buffer, pad, str, enc, false);
     }
 
-    internal static int WriteString(byte[] buffer, int offset, int numBytes, bool pad, string str, Encoding enc,
+    internal static int WriteString(Span<byte> buffer, bool pad, string str, Encoding enc,
                                     bool canTruncate)
     {
         var encoder = enc.GetEncoder();
 
-        var paddedString = pad ? str + new string(' ', numBytes) : str;
+        var paddedString = pad ? str + new string(' ', buffer.Length) : str;
 
         // Assumption: never less than one byte per character
 
-        encoder.Convert(paddedString.ToCharArray(), 0, paddedString.Length, buffer, offset, numBytes, false,
+        encoder.Convert(paddedString.AsSpan(), buffer, false,
             out var charsUsed, out var bytesUsed, out _);
 
         if (!canTruncate && charsUsed < str.Length)
@@ -299,21 +297,20 @@ internal static class IsoUtilities
     /// Converts a DirectoryRecord time to UTC.
     /// </summary>
     /// <param name="data">Buffer containing the time data.</param>
-    /// <param name="offset">Offset in buffer of the time data.</param>
     /// <returns>The time in UTC.</returns>
-    internal static DateTime ToUTCDateTimeFromDirectoryTime(byte[] data, int offset)
+    internal static DateTime ToUTCDateTimeFromDirectoryTime(ReadOnlySpan<byte> data)
     {
         try
         {
             var relTime = new DateTime(
-                1900 + data[offset],
-                data[offset + 1],
-                data[offset + 2],
-                data[offset + 3],
-                data[offset + 4],
-                data[offset + 5],
+                1900 + data[0],
+                data[1],
+                data[2],
+                data[3],
+                data[4],
+                data[5],
                 DateTimeKind.Utc);
-            return relTime - TimeSpan.FromMinutes(15 * (sbyte)data[offset + 6]);
+            return relTime - TimeSpan.FromMinutes(15 * (sbyte)data[6]);
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -322,11 +319,11 @@ internal static class IsoUtilities
         }
     }
 
-    internal static void ToDirectoryTimeFromUTC(byte[] data, int offset, DateTime dateTime)
+    internal static void ToDirectoryTimeFromUTC(Span<byte> data, DateTime dateTime)
     {
         if (dateTime == DateTime.MinValue || dateTime.Year < 1900)
         {
-            Array.Clear(data, offset, 7);
+            data.Slice(0, 7).Clear();
         }
         else
         {
@@ -335,22 +332,22 @@ internal static class IsoUtilities
                 throw new IOException("Year is out of range");
             }
 
-            data[offset] = (byte)(dateTime.Year - 1900);
-            data[offset + 1] = (byte)dateTime.Month;
-            data[offset + 2] = (byte)dateTime.Day;
-            data[offset + 3] = (byte)dateTime.Hour;
-            data[offset + 4] = (byte)dateTime.Minute;
-            data[offset + 5] = (byte)dateTime.Second;
-            data[offset + 6] = 0;
+            data[0] = (byte)(dateTime.Year - 1900);
+            data[1] = (byte)dateTime.Month;
+            data[2] = (byte)dateTime.Day;
+            data[3] = (byte)dateTime.Hour;
+            data[4] = (byte)dateTime.Minute;
+            data[5] = (byte)dateTime.Second;
+            data[6] = 0;
         }
     }
 
-    internal static DateTime ToDateTimeFromVolumeDescriptorTime(byte[] data, int offset)
+    internal static DateTime ToDateTimeFromVolumeDescriptorTime(ReadOnlySpan<byte> data)
     {
         var allNull = true;
         for (var i = 0; i < 16; ++i)
         {
-            if (data[offset + i] != (byte)'0' && data[offset + i] != 0)
+            if (data[i] != (byte)'0' && data[i] != 0)
             {
                 allNull = false;
                 break;
@@ -362,23 +359,23 @@ internal static class IsoUtilities
             return DateTime.MinValue;
         }
 
-        var strForm = Encoding.ASCII.GetString(data, offset, 16);
+        var strForm = EndianUtilities.BytesToString(data.Slice(0, 16));
 
         // Work around bugs in burning software that may use zero bytes (rather than '0' characters)
         strForm = strForm.Replace('\0', '0');
 
-        var year = SafeParseInt(1, 9999, strForm.Substring(0, 4));
-        var month = SafeParseInt(1, 12, strForm.Substring(4, 2));
-        var day = SafeParseInt(1, 31, strForm.Substring(6, 2));
-        var hour = SafeParseInt(0, 23, strForm.Substring(8, 2));
-        var min = SafeParseInt(0, 59, strForm.Substring(10, 2));
-        var sec = SafeParseInt(0, 59, strForm.Substring(12, 2));
-        var hundredths = SafeParseInt(0, 99, strForm.Substring(14, 2));
+        var year = SafeParseInt(1, 9999, strForm.AsSpan(0, 4));
+        var month = SafeParseInt(1, 12, strForm.AsSpan(4, 2));
+        var day = SafeParseInt(1, 31, strForm.AsSpan(6, 2));
+        var hour = SafeParseInt(0, 23, strForm.AsSpan(8, 2));
+        var min = SafeParseInt(0, 59, strForm.AsSpan(10, 2));
+        var sec = SafeParseInt(0, 59, strForm.AsSpan(12, 2));
+        var hundredths = SafeParseInt(0, 99, strForm.AsSpan(14, 2));
 
         try
         {
             var time = new DateTime(year, month, day, hour, min, sec, hundredths * 10, DateTimeKind.Utc);
-            return time - TimeSpan.FromMinutes(15 * (sbyte)data[offset + 16]);
+            return time - TimeSpan.FromMinutes(15 * (sbyte)data[16]);
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -386,36 +383,37 @@ internal static class IsoUtilities
         }
     }
 
-    internal static void ToVolumeDescriptorTimeFromUTC(byte[] buffer, int offset, DateTime dateTime)
+    internal static void ToVolumeDescriptorTimeFromUTC(Span<byte> buffer, DateTime dateTime)
     {
         if (dateTime == DateTime.MinValue)
         {
-            for (var i = offset; i < offset + 16; ++i)
+            for (var i = 0; i < 16; ++i)
             {
                 buffer[i] = (byte)'0';
             }
 
-            buffer[offset + 16] = 0;
+            buffer[16] = 0;
             return;
         }
 
         var strForm = dateTime.ToString("yyyyMMddHHmmssff", CultureInfo.InvariantCulture);
-        EndianUtilities.StringToBytes(strForm, buffer, offset, 16);
-        buffer[offset + 16] = 0;
+        EndianUtilities.StringToBytes(strForm, buffer.Slice(0, 16));
+        buffer[16] = 0;
     }
 
-    internal static void EncodingToBytes(Encoding enc, byte[] data, int offset)
+    internal static void EncodingToBytes(Encoding enc, Span<byte> data)
     {
-        Array.Clear(data, offset, 32);
+        data.Slice(0, 32).Clear();
+
         if (enc == Encoding.ASCII)
         {
             // Nothing to do
         }
         else if (enc == Encoding.BigEndianUnicode)
         {
-            data[offset + 0] = 0x25;
-            data[offset + 1] = 0x2F;
-            data[offset + 2] = 0x45;
+            data[0] = 0x25;
+            data[1] = 0x2F;
+            data[2] = 0x45;
         }
         else
         {
@@ -423,11 +421,11 @@ internal static class IsoUtilities
         }
     }
 
-    internal static Encoding EncodingFromBytes(byte[] data, int offset)
+    internal static Encoding EncodingFromBytes(ReadOnlySpan<byte> data)
     {
         var enc = Encoding.ASCII;
-        if (data[offset + 0] == 0x25 && data[offset + 1] == 0x2F
-            && (data[offset + 2] == 0x40 || data[offset + 2] == 0x43 || data[offset + 2] == 0x45))
+        if (data[0] == 0x25 && data[1] == 0x2F
+            && (data[2] == 0x40 || data[2] == 0x43 || data[2] == 0x45))
         {
             // I.e. this is a joliet disc!
             enc = Encoding.BigEndianUnicode;
@@ -441,12 +439,19 @@ internal static class IsoUtilities
         return r.FileIdentifier == "\0" || r.FileIdentifier == "\x01";
     }
 
-    private static int SafeParseInt(int minVal, int maxVal, string str)
+    private static int SafeParseInt(int minVal, int maxVal, ReadOnlySpan<char> str)
     {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         if (!int.TryParse(str, out var val))
         {
             return minVal;
         }
+#else
+        if (!int.TryParse(str.ToString(), out var val))
+        {
+            return minVal;
+        }
+#endif
 
         if (val < minVal)
         {

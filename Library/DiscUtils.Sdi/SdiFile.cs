@@ -58,7 +58,7 @@ public sealed class SdiFile : IDisposable
         var page = StreamUtilities.ReadExact(_stream, 512);
 
         _header = new FileHeader();
-        _header.ReadFrom(page, 0);
+        _header.ReadFrom(page);
 
         _stream.Position = _header.PageAlignment * 512;
         var toc = StreamUtilities.ReadExact(_stream, (int)(_header.PageAlignment * 512));
@@ -68,7 +68,7 @@ public sealed class SdiFile : IDisposable
         while (EndianUtilities.ToUInt64LittleEndian(toc, pos) != 0)
         {
             var record = new SectionRecord();
-            record.ReadFrom(toc, pos);
+            record.ReadFrom(toc.AsSpan(pos));
 
             _sections.Add(record);
 

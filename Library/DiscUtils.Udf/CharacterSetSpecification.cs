@@ -35,14 +35,14 @@ internal class CharacterSetSpecification : IByteArraySerializable
         get { return 64; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Type = (CharacterSetType)buffer[offset];
-        Information = EndianUtilities.ToByteArray(buffer, offset + 1, 63);
+        Type = (CharacterSetType)buffer[0];
+        Information = EndianUtilities.ToByteArray(buffer.Slice(1, 63));
         return 64;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Registry;
 
@@ -53,23 +54,23 @@ internal sealed class ValueCell : Cell
         get { return 0x14 + (string.IsNullOrEmpty(Name) ? 0 : Name.Length); }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        int nameLen = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x02);
-        DataLength = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
-        DataIndex = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x08);
-        DataType = (RegistryValueType)EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x0C);
-        _flags = (ValueFlags)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x10);
+        int nameLen = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x02));
+        DataLength = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x04));
+        DataIndex = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x08));
+        DataType = (RegistryValueType)EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x0C));
+        _flags = (ValueFlags)EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x10));
 
         if ((_flags & ValueFlags.Named) != 0)
         {
-            Name = EndianUtilities.BytesToString(buffer, offset + 0x14, nameLen).Trim('\0');
+            Name = EndianUtilities.BytesToString(buffer.Slice(0x14, nameLen)).Trim('\0');
         }
 
         return 0x14 + nameLen;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
         int nameLen;
 
@@ -84,15 +85,15 @@ internal sealed class ValueCell : Cell
             nameLen = Name.Length;
         }
 
-        EndianUtilities.StringToBytes("vk", buffer, offset, 2);
-        EndianUtilities.WriteBytesLittleEndian(nameLen, buffer, offset + 0x02);
-        EndianUtilities.WriteBytesLittleEndian(DataLength, buffer, offset + 0x04);
-        EndianUtilities.WriteBytesLittleEndian(DataIndex, buffer, offset + 0x08);
-        EndianUtilities.WriteBytesLittleEndian((int)DataType, buffer, offset + 0x0C);
-        EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer, offset + 0x10);
+        EndianUtilities.StringToBytes("vk", buffer.Slice(0, 2));
+        EndianUtilities.WriteBytesLittleEndian(nameLen, buffer.Slice(0x02));
+        EndianUtilities.WriteBytesLittleEndian(DataLength, buffer.Slice(0x04));
+        EndianUtilities.WriteBytesLittleEndian(DataIndex, buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian((int)DataType, buffer.Slice(0x0C));
+        EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer.Slice(0x10));
         if (nameLen != 0)
         {
-            EndianUtilities.StringToBytes(Name, buffer, offset + 0x14, nameLen);
+            EndianUtilities.StringToBytes(Name, buffer.Slice(0x14, nameLen));
         }
     }
 }

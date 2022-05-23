@@ -50,7 +50,7 @@ internal abstract class VolumeDescriptorDiskRegion : BuilderExtent
         return numRead;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     public override int Read(long diskOffset, Span<byte> buffer)
     {
         var relPos = diskOffset - Start;
@@ -61,7 +61,7 @@ internal abstract class VolumeDescriptorDiskRegion : BuilderExtent
 
         return numRead;
     }
-#endif
+
 
     public override void DisposeReadState()
     {

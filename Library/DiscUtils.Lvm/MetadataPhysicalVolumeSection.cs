@@ -44,19 +44,19 @@ internal class MetadataPhysicalVolumeSection
         while ((line = Metadata.ReadLine(data)) != null)
         {
             if (line == String.Empty) continue;
-            if (line.Contains("="))
+            if (line.AsSpan().Contains("=".AsSpan(), StringComparison.Ordinal))
             {
-                var parameter = Metadata.ParseParameter(line);
-                switch (parameter.Key.Trim().ToLowerInvariant())
+                var parameter = Metadata.ParseParameter(line.AsMemory());
+                switch (parameter.Key.ToString().ToLowerInvariant())
                 {
                     case "id":
-                        Id = Metadata.ParseStringValue(parameter.Value);
+                        Id = Metadata.ParseStringValue(parameter.Value.Span);
                         break;
                     case "device":
-                        Device = Metadata.ParseStringValue(parameter.Value);
+                        Device = Metadata.ParseStringValue(parameter.Value.Span);
                         break;
                     case "status":
-                        var values = Metadata.ParseArrayValue(parameter.Value);
+                        var values = Metadata.ParseArrayValue(parameter.Value.Span);
                         foreach (var value in values)
                         {
                             Status |= value.ToLowerInvariant().Trim() switch
@@ -69,19 +69,19 @@ internal class MetadataPhysicalVolumeSection
                         }
                         break;
                     case "flags":
-                        Flags = Metadata.ParseArrayValue(parameter.Value);
+                        Flags = Metadata.ParseArrayValue(parameter.Value.Span);
                         break;
                     case "dev_size":
-                        DeviceSize = Metadata.ParseNumericValue(parameter.Value);
+                        DeviceSize = Metadata.ParseNumericValue(parameter.Value.Span);
                         break;
                     case "pe_start":
-                        PeStart = Metadata.ParseNumericValue(parameter.Value);
+                        PeStart = Metadata.ParseNumericValue(parameter.Value.Span);
                         break;
                     case "pe_count":
-                        PeCount = Metadata.ParseNumericValue(parameter.Value);
+                        PeCount = Metadata.ParseNumericValue(parameter.Value.Span);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(parameter.Key, "Unexpected parameter in global metadata");
+                        throw new ArgumentOutOfRangeException(parameter.Key.ToString(), "Unexpected parameter in global metadata");
                 }
             }
             else if (line.EndsWith("}"))

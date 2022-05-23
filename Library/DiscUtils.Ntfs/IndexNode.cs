@@ -189,7 +189,7 @@ internal class IndexNode
         var pos = (int)Header.OffsetToFirstEntry;
         foreach (var entry in _entries)
         {
-            entry.WriteTo(buffer, offset + pos);
+            entry.WriteTo(buffer.AsSpan(offset + pos));
             pos += entry.Size;
         }
 

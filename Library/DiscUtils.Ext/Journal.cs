@@ -23,6 +23,7 @@
 namespace DiscUtils.Ext;
 
 using DiscUtils.Streams;
+using System;
 using System.IO;
 
 internal class JournalSuperBlock : IByteArraySerializable
@@ -34,26 +35,26 @@ internal class JournalSuperBlock : IByteArraySerializable
     public int Size { get { return 1024; } }
     
     /// <inheritdoc />
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        var magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        var magic = EndianUtilities.ToUInt32BigEndian(buffer);
         if (magic != Magic)
         {
             throw new IOException("Invalid journal magic - probably not an Ext file system");
         }
-        var blocktype = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x4);
+        var blocktype = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x4));
         if (blocktype != 3 && blocktype != 4)
         {
             throw new IOException("Invalid journal block type - no superblock found");
         }
-        BlockSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xc);
-        MaxLength = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x10);
+        BlockSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xc));
+        MaxLength = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x10));
 
         return 1024;
     }
 
     /// <inheritdoc />
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new System.NotImplementedException();
     }

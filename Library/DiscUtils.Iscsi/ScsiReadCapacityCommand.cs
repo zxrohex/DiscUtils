@@ -41,14 +41,14 @@ internal class ScsiReadCapacityCommand : ScsiCommand
         get { return TaskAttributes.Simple; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
-        Array.Clear(buffer, offset, 10);
-        buffer[offset] = 0x25; // OpCode
+        buffer.Slice(0, 10).Clear();
+        buffer[0] = 0x25; // OpCode
     }
 }

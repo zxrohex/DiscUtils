@@ -30,13 +30,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Compression;
 
 /// <summary>
 /// Implementation of a BZip2 decoder.
 /// </summary>
-public sealed class BZip2DecoderStream : Stream
+public sealed class BZip2DecoderStream : ReadOnlyCompatibilityStream
 {
     private readonly BitStream _bitstream;
 
@@ -111,14 +112,6 @@ public sealed class BZip2DecoderStream : Stream
     }
 
     /// <summary>
-    /// Gets an indication of whether write access is permitted.
-    /// </summary>
-    public override bool CanWrite
-    {
-        get { return false; }
-    }
-
-    /// <summary>
     /// Gets the length of the stream (the capacity of the underlying buffer).
     /// </summary>
     public override long Length
@@ -136,14 +129,6 @@ public sealed class BZip2DecoderStream : Stream
     }
 
     /// <summary>
-    /// Flushes all data to the underlying storage.
-    /// </summary>
-    public override void Flush()
-    {
-        throw new NotSupportedException();
-    }
-
-    /// <summary>
     /// Reads a number of bytes from the stream.
     /// </summary>
     /// <param name="buffer">The destination buffer.</param>
@@ -157,32 +142,17 @@ public sealed class BZip2DecoderStream : Stream
             throw new ArgumentNullException(nameof(buffer));
         }
 
-        if (buffer.Length < offset + count)
-        {
-            throw new ArgumentException("Buffer smaller than declared");
-        }
+        return Read(buffer.AsSpan(offset, count));
+    }
 
-        if (offset < 0)
-        {
-            throw new ArgumentException("Offset less than zero", nameof(offset));
-        }
-
-        if (count < 0)
-        {
-            throw new ArgumentException("Count less than zero", nameof(count));
-        }
-
-        if (_eof)
+    public override int Read(Span<byte> buffer)
+    {
+        if (_eof || buffer.IsEmpty)
         {
             return 0;
         }
 
-        if (count == 0)
-        {
-            return 0;
-        }
-
-        var numRead = _rleStream.Read(buffer, offset, count);
+        var numRead = _rleStream.Read(buffer);
         if (numRead == 0)
         {
             // If there was an existing block, check it's crc.
@@ -208,10 +178,10 @@ public sealed class BZip2DecoderStream : Stream
                 return 0;
             }
 
-            numRead = _rleStream.Read(buffer, offset, count);
+            numRead = _rleStream.Read(buffer);
         }
 
-        _calcBlockCrc.Process(buffer, offset, numRead);
+        _calcBlockCrc.Process(buffer.Slice(0, numRead));
 
         // Pre-read next block, so a client that knows the decompressed length will still
         // have the overall CRC calculated.
@@ -243,45 +213,29 @@ public sealed class BZip2DecoderStream : Stream
         return numRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
         ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
 
     public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
 
-    public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (buffer == null)
         {
             throw new ArgumentNullException(nameof(buffer));
         }
 
-        if (buffer.Length < offset + count)
-        {
-            throw new ArgumentException("Buffer smaller than declared");
-        }
+        return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+    }
 
-        if (offset < 0)
-        {
-            throw new ArgumentException("Offset less than zero", nameof(offset));
-        }
-
-        if (count < 0)
-        {
-            throw new ArgumentException("Count less than zero", nameof(count));
-        }
-
-        if (_eof)
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        if (_eof || buffer.IsEmpty)
         {
             return 0;
         }
 
-        if (count == 0)
-        {
-            return 0;
-        }
-
-        var numRead = await _rleStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        var numRead = await _rleStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
         if (numRead == 0)
         {
             // If there was an existing block, check it's crc.
@@ -307,10 +261,10 @@ public sealed class BZip2DecoderStream : Stream
                 return 0;
             }
 
-            numRead = await _rleStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            numRead = await _rleStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
 
-        _calcBlockCrc.Process(buffer, offset, numRead);
+        _calcBlockCrc.Process(buffer.Span.Slice(0, numRead));
 
         // Pre-read next block, so a client that knows the decompressed length will still
         // have the overall CRC calculated.
@@ -342,7 +296,7 @@ public sealed class BZip2DecoderStream : Stream
         return numRead;
     }
 
-#endif
+
 
     /// <summary>
     /// Changes the current stream position.
@@ -351,26 +305,6 @@ public sealed class BZip2DecoderStream : Stream
     /// <param name="origin">The origin for the stream position.</param>
     /// <returns>The new stream position.</returns>
     public override long Seek(long offset, SeekOrigin origin)
-    {
-        throw new NotSupportedException();
-    }
-
-    /// <summary>
-    /// Sets the length of the stream (the underlying buffer's capacity).
-    /// </summary>
-    /// <param name="value">The new length of the stream.</param>
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    /// <summary>
-    /// Writes a buffer to the stream.
-    /// </summary>
-    /// <param name="buffer">The buffer to write.</param>
-    /// <param name="offset">The starting offset within buffer.</param>
-    /// <param name="count">The number of bytes to write.</param>
-    public override void Write(byte[] buffer, int offset, int count)
     {
         throw new NotSupportedException();
     }

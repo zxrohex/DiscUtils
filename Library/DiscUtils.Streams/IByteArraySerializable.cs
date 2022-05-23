@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+
 namespace DiscUtils.Streams;
 
 /// <summary>
@@ -36,14 +38,12 @@ public interface IByteArraySerializable
     /// Reads the structure from a byte array.
     /// </summary>
     /// <param name="buffer">The buffer to read from.</param>
-    /// <param name="offset">The buffer offset to start reading from.</param>
     /// <returns>The number of bytes read.</returns>
-    int ReadFrom(byte[] buffer, int offset);
+    int ReadFrom(ReadOnlySpan<byte> buffer);
 
     /// <summary>
     /// Writes a structure to a byte array.
     /// </summary>
     /// <param name="buffer">The buffer to write to.</param>
-    /// <param name="offset">The buffer offset to start writing at.</param>
-    void WriteTo(byte[] buffer, int offset);
+    void WriteTo(Span<byte> buffer);
 }

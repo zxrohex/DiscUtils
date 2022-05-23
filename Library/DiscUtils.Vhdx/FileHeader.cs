@@ -21,8 +21,10 @@
 //
 
 using System;
+using System.Runtime.InteropServices;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vhdx;
 
@@ -43,18 +45,18 @@ internal sealed class FileHeader : IByteArraySerializable
         get { return (int)(64 * Sizes.OneKiB); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Signature = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0);
-        Creator = Encoding.Unicode.GetString(buffer, offset + 8, 256 * 2).TrimEnd('\0');
+        Signature = EndianUtilities.ToUInt64LittleEndian(buffer);
+        Creator = EndianUtilities.LittleEndianUnicodeBytesToString(buffer.Slice(8, 256 * 2)).TrimEnd('\0');
 
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
-        Array.Clear(buffer, offset, Size);
-        EndianUtilities.WriteBytesLittleEndian(Signature, buffer, offset + 0);
-        Encoding.Unicode.GetBytes(Creator, 0, Creator.Length, buffer, offset + 8);
+        buffer.Slice(0, Size).Clear();
+        EndianUtilities.WriteBytesLittleEndian(Signature, buffer);
+        Encoding.Unicode.GetBytes(Creator.AsSpan(), buffer.Slice(8));
     }
 }

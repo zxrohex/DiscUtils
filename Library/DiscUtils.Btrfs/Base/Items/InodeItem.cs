@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Btrfs.Base.Items;
 
@@ -113,24 +114,24 @@ internal class InodeItem : BaseItem
         get { return Length; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Generation = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-        TransId = EndianUtilities.ToUInt64LittleEndian(buffer, offset+8);
-        FileSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset+16);
-        NBytes = EndianUtilities.ToUInt64LittleEndian(buffer, offset+24);
-        BlockGroup = EndianUtilities.ToUInt64LittleEndian(buffer, offset+32);
-        LinkCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset+40);
-        Uid = EndianUtilities.ToUInt32LittleEndian(buffer, offset+44);
-        Gid = EndianUtilities.ToUInt32LittleEndian(buffer, offset+48);
-        Mode = EndianUtilities.ToUInt32LittleEndian(buffer, offset+52);
-        RDev = EndianUtilities.ToUInt64LittleEndian(buffer, offset+56);
-        Flags = (InodeFlag)EndianUtilities.ToUInt64LittleEndian(buffer, offset+64);
-        Sequence = EndianUtilities.ToUInt64LittleEndian(buffer, offset+72);
-        ATime = EndianUtilities.ToStruct<TimeSpec>(buffer, offset+112);
-        CTime = EndianUtilities.ToStruct<TimeSpec>(buffer, offset+124);
-        MTime = EndianUtilities.ToStruct<TimeSpec>(buffer, offset+136);
-        OTime = EndianUtilities.ToStruct<TimeSpec>(buffer, offset+148);
+        Generation = EndianUtilities.ToUInt64LittleEndian(buffer);
+        TransId = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(8));
+        FileSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(16));
+        NBytes = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(24));
+        BlockGroup = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(32));
+        LinkCount = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(40));
+        Uid = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(44));
+        Gid = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(48));
+        Mode = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(52));
+        RDev = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(56));
+        Flags = (InodeFlag)EndianUtilities.ToUInt64LittleEndian(buffer.Slice(64));
+        Sequence = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(72));
+        ATime = EndianUtilities.ToStruct<TimeSpec>(buffer.Slice(112));
+        CTime = EndianUtilities.ToStruct<TimeSpec>(buffer.Slice(124));
+        MTime = EndianUtilities.ToStruct<TimeSpec>(buffer.Slice(136));
+        OTime = EndianUtilities.ToStruct<TimeSpec>(buffer.Slice(148));
         return Size;
     }
 }

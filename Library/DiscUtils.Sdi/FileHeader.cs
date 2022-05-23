@@ -43,25 +43,25 @@ internal class FileHeader
     public ulong Type;
     public ulong VendorId;
 
-    public void ReadFrom(byte[] buffer, int offset)
+    public void ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Tag = EndianUtilities.BytesToString(buffer, offset, 8);
+        Tag = EndianUtilities.BytesToString(buffer.Slice(0, 8));
 
         if (Tag != "$SDI0001")
         {
             throw new InvalidDataException("SDI format marker not found");
         }
 
-        Type = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x08);
-        BootCodeOffset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x10);
-        BootCodeSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x18);
-        VendorId = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x20);
-        DeviceId = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x28);
-        DeviceModel = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0x30);
-        DeviceRole = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x40);
-        RuntimeGuid = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0x50);
-        RuntimeOEMRev = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x60);
-        PageAlignment = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x70);
-        Checksum = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x1F8);
+        Type = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x08));
+        BootCodeOffset = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x10));
+        BootCodeSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x18));
+        VendorId = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x20));
+        DeviceId = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x28));
+        DeviceModel = EndianUtilities.ToGuidLittleEndian(buffer.Slice(0x30));
+        DeviceRole = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x40));
+        RuntimeGuid = EndianUtilities.ToGuidLittleEndian(buffer.Slice(0x50));
+        RuntimeOEMRev = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x60));
+        PageAlignment = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x70));
+        Checksum = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x1F8));
     }
 }

@@ -23,6 +23,7 @@
 using System;
 using System.IO;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vmdk;
 
@@ -93,6 +94,58 @@ internal sealed class ServerSparseExtentStream : CommonSparseExtentStream
             var numToWrite = Math.Min(count - totalWritten, grainSize * numGrains - startGrainOffset);
             _fileStream.Position = (long)GetGrainTableEntry(startGrain) * Sizes.Sector + startGrainOffset;
             _fileStream.Write(buffer, offset + totalWritten, numToWrite);
+
+            _position += numToWrite;
+            totalWritten += numToWrite;
+        }
+
+        _atEof = _position == Length;
+    }
+
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        CheckDisposed();
+
+        if (_position + buffer.Length > Length)
+        {
+            throw new IOException("Attempt to write beyond end of stream");
+        }
+
+        var totalWritten = 0;
+        while (totalWritten < buffer.Length)
+        {
+            var grainTable = (int)(_position / _gtCoverage);
+            var grainTableOffset = (int)(_position - grainTable * _gtCoverage);
+
+            if (!LoadGrainTable(grainTable))
+            {
+                AllocateGrainTable(grainTable);
+            }
+
+            var grainSize = (int)(_header.GrainSize * Sizes.Sector);
+            var startGrain = grainTableOffset / grainSize;
+            var startGrainOffset = grainTableOffset - startGrain * grainSize;
+
+            var numGrains = 0;
+            while (startGrain + numGrains < _header.NumGTEsPerGT
+                   && numGrains * grainSize - startGrainOffset < buffer.Length - totalWritten
+                   && GetGrainTableEntry(startGrain + numGrains) == 0)
+            {
+                ++numGrains;
+            }
+
+            if (numGrains != 0)
+            {
+                AllocateGrains(grainTable, startGrain, numGrains);
+            }
+            else
+            {
+                numGrains = 1;
+            }
+
+            var numToWrite = Math.Min(buffer.Length - totalWritten, grainSize * numGrains - startGrainOffset);
+            _fileStream.Position = (long)GetGrainTableEntry(startGrain) * Sizes.Sector + startGrainOffset;
+            _fileStream.Write(buffer.Slice(totalWritten, numToWrite));
 
             _position += numToWrite;
             totalWritten += numToWrite;

@@ -37,7 +37,7 @@ internal class DataOutPacket
         _lun = lun;
     }
 
-    public byte[] GetBytes(byte[] data, int offset, int count, bool isFinalData, int dataSeqNumber,
+    public byte[] GetBytes(ReadOnlySpan<byte> data, bool isFinalData, int dataSeqNumber,
                            uint bufferOffset, uint targetTransferTag)
     {
         var _basicHeader = new BasicHeaderSegment
@@ -46,12 +46,12 @@ internal class DataOutPacket
             OpCode = OpCode.ScsiDataOut,
             FinalPdu = isFinalData,
             TotalAhsLength = 0,
-            DataSegmentLength = count,
+            DataSegmentLength = data.Length,
             InitiatorTaskTag = _connection.Session.CurrentTaskTag
         };
 
-        var buffer = new byte[48 + MathUtilities.RoundUp(count, 4)];
-        _basicHeader.WriteTo(buffer, 0);
+        var buffer = new byte[48 + MathUtilities.RoundUp(data.Length, 4)];
+        _basicHeader.WriteTo(buffer);
         buffer[1] = (byte)(isFinalData ? 0x80 : 0x00);
         EndianUtilities.WriteBytesBigEndian(_lun, buffer, 8);
         EndianUtilities.WriteBytesBigEndian(targetTransferTag, buffer, 20);
@@ -59,7 +59,7 @@ internal class DataOutPacket
         EndianUtilities.WriteBytesBigEndian(dataSeqNumber, buffer, 36);
         EndianUtilities.WriteBytesBigEndian(bufferOffset, buffer, 40);
 
-        Array.Copy(data, offset, buffer, 48, count);
+        data.CopyTo(buffer.AsSpan(48));
 
         return buffer;
     }

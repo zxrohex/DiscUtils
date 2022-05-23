@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Udf;
 
@@ -40,18 +41,18 @@ internal class PartitionDescriptor : TaggedDescriptor<PartitionDescriptor>
     public PartitionDescriptor()
         : base(TagIdentifier.PartitionDescriptor) {}
 
-    public override int Parse(byte[] buffer, int offset)
+    public override int Parse(ReadOnlySpan<byte> buffer)
     {
-        VolumeDescriptorSequenceNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-        PartitionFlags = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 20);
-        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 22);
-        PartitionContents = EndianUtilities.ToStruct<ApplicationEntityIdentifier>(buffer, offset + 24);
-        PartitionContentsUse = EndianUtilities.ToByteArray(buffer, offset + 56, 128);
-        AccessType = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 184);
-        PartitionStartingLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 188);
-        PartitionLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 192);
-        ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer, offset + 196);
-        ImplementationUse = EndianUtilities.ToByteArray(buffer, offset + 228, 128);
+        VolumeDescriptorSequenceNumber = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(16));
+        PartitionFlags = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(20));
+        PartitionNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(22));
+        PartitionContents = EndianUtilities.ToStruct<ApplicationEntityIdentifier>(buffer.Slice(24));
+        PartitionContentsUse = EndianUtilities.ToByteArray(buffer.Slice(56, 128));
+        AccessType = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(184));
+        PartitionStartingLocation = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(188));
+        PartitionLength = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(192));
+        ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer.Slice(196));
+        ImplementationUse = EndianUtilities.ToByteArray(buffer.Slice(228, 128));
 
         return 512;
     }

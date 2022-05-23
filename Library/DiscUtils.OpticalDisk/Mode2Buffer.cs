@@ -88,8 +88,8 @@ internal class Mode2Buffer : Streams.Buffer
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-    public override async Task<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+
+    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var totalToRead = (int)Math.Min(Capacity - pos, count);
         var totalRead = 0;
@@ -109,9 +109,7 @@ internal class Mode2Buffer : Streams.Buffer
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
@@ -126,12 +124,13 @@ internal class Mode2Buffer : Streams.Buffer
             await StreamUtilities.ReadExactAsync(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize, cancellationToken).ConfigureAwait(false);
 
             var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
-            _iobuffer.AsMemory(24 + sectorOffset, bytesToCopy).CopyTo(buffer[totalRead..]);
+            _iobuffer.AsMemory(24 + sectorOffset, bytesToCopy).CopyTo(buffer.Slice(totalRead));
             totalRead += bytesToCopy;
         }
 
         return totalRead;
     }
+
 
     public override int Read(long pos, Span<byte> buffer)
     {
@@ -147,23 +146,20 @@ internal class Mode2Buffer : Streams.Buffer
             StreamUtilities.ReadExact(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
 
             var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
-            _iobuffer.AsSpan(24 + sectorOffset, bytesToCopy).CopyTo(buffer[totalRead..]);
+            _iobuffer.AsSpan(24 + sectorOffset, bytesToCopy).CopyTo(buffer.Slice(totalRead));
             totalRead += bytesToCopy;
         }
 
         return totalRead;
     }
-#endif
 
     public override void Write(long pos, byte[] buffer, int offset, int count)
     {
         throw new NotSupportedException();
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
         throw new NotSupportedException();
-#endif
 
     public override void Clear(long pos, int count)
     {

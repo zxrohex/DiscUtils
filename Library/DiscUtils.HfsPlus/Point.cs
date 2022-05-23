@@ -35,15 +35,15 @@ internal sealed class Point : IByteArraySerializable
         get { return 4; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Vertical = EndianUtilities.ToInt16BigEndian(buffer, offset + 0);
-        Horizontal = EndianUtilities.ToInt16BigEndian(buffer, offset + 2);
+        Vertical = EndianUtilities.ToInt16BigEndian(buffer);
+        Horizontal = EndianUtilities.ToInt16BigEndian(buffer.Slice(2));
 
         return 4;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

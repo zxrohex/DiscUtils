@@ -73,20 +73,20 @@ internal class GeometryRecord
         return result;
     }
 
-    public void Read(byte[] buffer, int offset)
+    public void Read(ReadOnlySpan<byte> buffer)
     {
-        Cylinders = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0);
-        Heads = EndianUtilities.ToInt32LittleEndian(buffer, offset + 4);
-        Sectors = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8);
-        SectorSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 12);
+        Cylinders = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0));
+        Heads = EndianUtilities.ToInt32LittleEndian(buffer.Slice(4));
+        Sectors = EndianUtilities.ToInt32LittleEndian(buffer.Slice(8));
+        SectorSize = EndianUtilities.ToInt32LittleEndian(buffer.Slice(12));
     }
 
-    public void Write(byte[] buffer, int offset)
+    public void Write(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(Cylinders, buffer, offset + 0);
-        EndianUtilities.WriteBytesLittleEndian(Heads, buffer, offset + 4);
-        EndianUtilities.WriteBytesLittleEndian(Sectors, buffer, offset + 8);
-        EndianUtilities.WriteBytesLittleEndian(SectorSize, buffer, offset + 12);
+        EndianUtilities.WriteBytesLittleEndian(Cylinders, buffer.Slice(0));
+        EndianUtilities.WriteBytesLittleEndian(Heads, buffer.Slice(4));
+        EndianUtilities.WriteBytesLittleEndian(Sectors, buffer.Slice(8));
+        EndianUtilities.WriteBytesLittleEndian(SectorSize, buffer.Slice(12));
     }
 
     public Geometry ToGeometry(long actualCapacity)

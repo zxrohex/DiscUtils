@@ -101,7 +101,7 @@ internal abstract class NodeHeader : IByteArraySerializable
         return Length;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }
@@ -146,6 +146,4 @@ internal abstract class NodeHeader : IByteArraySerializable
                 yield return typed;
         }
     }
-
-    public int ReadFrom(byte[] buffer, int offset) => ReadFrom(buffer.AsSpan(offset));
 }

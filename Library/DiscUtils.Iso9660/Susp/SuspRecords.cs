@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
@@ -29,34 +30,35 @@ internal sealed class SuspRecords
 {
     private readonly Dictionary<string, Dictionary<string, List<SystemUseEntry>>> _records;
 
-    public SuspRecords(IsoContext context, byte[] data, int offset)
+    public SuspRecords(IsoContext context, ReadOnlySpan<byte> data)
     {
         _records = new Dictionary<string, Dictionary<string, List<SystemUseEntry>>>();
 
-        var contEntry = Parse(context, data, offset + context.SuspSkipBytes);
+        var contEntry = Parse(context, data.Slice(context.SuspSkipBytes));
         while (contEntry != null)
         {
             context.DataStream.Position = contEntry.Block * (long)context.VolumeDescriptor.LogicalBlockSize +
                                           contEntry.BlockOffset;
+            
             var contData = StreamUtilities.ReadExact(context.DataStream, (int)contEntry.Length);
 
-            contEntry = Parse(context, contData, 0);
+            contEntry = Parse(context, contData);
         }
     }
 
-    public static bool DetectSharingProtocol(byte[] data, int offset)
+    public static bool DetectSharingProtocol(ReadOnlySpan<byte> data)
     {
-        if (data == null || data.Length - offset < 7)
+        if (data == null || data.Length < 7)
         {
             return false;
         }
 
-        return data[offset] == 83
-               && data[offset + 1] == 80
-               && data[offset + 2] == 7
-               && data[offset + 3] == 1
-               && data[offset + 4] == 0xBE
-               && data[offset + 5] == 0xEF;
+        return data[0] == 83
+               && data[1] == 80
+               && data[2] == 7
+               && data[3] == 1
+               && data[4] == 0xBE
+               && data[5] == 0xEF;
     }
 
     public List<SystemUseEntry> GetEntries(string extension, string name)
@@ -102,7 +104,7 @@ internal sealed class SuspRecords
         return entries != null && entries.Count != 0;
     }
 
-    private ContinuationSystemUseEntry Parse(IsoContext context, byte[] data, int offset)
+    private ContinuationSystemUseEntry Parse(IsoContext context, ReadOnlySpan<byte> data)
     {
         ContinuationSystemUseEntry contEntry = null;
         SuspExtension extension = null;
@@ -112,11 +114,12 @@ internal sealed class SuspRecords
             extension = context.SuspExtensions[0];
         }
 
-        var pos = offset;
+        var pos = 0;
         while (data.Length - pos > 4)
         {
-            var entry = SystemUseEntry.Parse(data, pos, context.VolumeDescriptor.CharacterEncoding,
+            var entry = SystemUseEntry.Parse(data.Slice(pos), context.VolumeDescriptor.CharacterEncoding,
                 extension, out var len);
+
             pos += len;
 
             if (entry == null)

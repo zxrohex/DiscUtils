@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Iscsi;
 
@@ -32,25 +33,24 @@ internal class LogoutResponse : BaseResponse
 
     public override void Parse(ProtocolDataUnit pdu)
     {
-        Parse(pdu.HeaderData, 0);
+        Parse(pdu.HeaderData);
     }
 
-    public void Parse(byte[] headerData, int headerOffset)
+    public void Parse(ReadOnlySpan<byte> headerData)
     {
         var _headerSegment = new BasicHeaderSegment();
-        _headerSegment.ReadFrom(headerData, headerOffset);
+        _headerSegment.ReadFrom(headerData);
 
         if (_headerSegment.OpCode != OpCode.LogoutResponse)
         {
-            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.LogoutResponse +
-                                               " was " + _headerSegment.OpCode);
+            throw new InvalidProtocolException($"Invalid opcode in response, expected {OpCode.LogoutResponse} was {_headerSegment.OpCode}");
         }
 
-        Response = (LogoutResponseCode)headerData[headerOffset + 2];
-        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-        Time2Wait = EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 40);
-        Time2Retain = EndianUtilities.ToUInt16BigEndian(headerData, headerOffset + 42);
+        Response = (LogoutResponseCode)headerData[2];
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(24));
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(28));
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(32));
+        Time2Wait = EndianUtilities.ToUInt16BigEndian(headerData.Slice(40));
+        Time2Retain = EndianUtilities.ToUInt16BigEndian(headerData.Slice(42));
     }
 }

@@ -238,7 +238,6 @@ public sealed class ContentStream : MappedStream
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -319,9 +318,7 @@ public sealed class ContentStream : MappedStream
         _position += totalRead;
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -483,7 +480,6 @@ public sealed class ContentStream : MappedStream
         _position += totalRead;
         return totalRead;
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -569,7 +565,6 @@ public sealed class ContentStream : MappedStream
         _position += totalWritten;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -619,9 +614,7 @@ public sealed class ContentStream : MappedStream
 
         _position += totalWritten;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -721,7 +714,6 @@ public sealed class ContentStream : MappedStream
 
         _position += totalWritten;
     }
-#endif
 
     protected override void Dispose(bool disposing)
     {

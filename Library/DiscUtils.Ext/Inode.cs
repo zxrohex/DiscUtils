@@ -65,19 +65,19 @@ internal class Inode : IByteArraySerializable
         get { throw new NotImplementedException(); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Mode = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0);
-        UserIdLow = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 2);
-        FileSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
-        AccessTime = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
-        CreationTime = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 12);
-        ModificationTime = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-        DeletionTime = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
-        GroupIdLow = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 24);
-        LinksCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 26);
-        BlocksCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 28);
-        Flags = (InodeFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 32);
+        Mode = EndianUtilities.ToUInt16LittleEndian(buffer);
+        UserIdLow = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(2));
+        FileSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(4));
+        AccessTime = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(8));
+        CreationTime = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(12));
+        ModificationTime = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(16));
+        DeletionTime = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(20));
+        GroupIdLow = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(24));
+        LinksCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(26));
+        BlocksCount = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(28));
+        Flags = (InodeFlags)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(32));
 
         FastSymlink = null;
         Extents = null;
@@ -85,38 +85,38 @@ internal class Inode : IByteArraySerializable
         if (FileType == UnixFileType.Link && BlocksCount == 0)
         {
             FastSymlink = new byte[60];
-            Array.Copy(buffer, offset + 40, FastSymlink, 0, 60);
+            buffer.Slice(40, 60).CopyTo(FastSymlink);
         }
         else if ((Flags & InodeFlags.ExtentsUsed) != 0)
         {
-            Extents = EndianUtilities.ToStruct<ExtentBlock>(buffer, offset + 40);
+            Extents = EndianUtilities.ToStruct<ExtentBlock>(buffer.Slice(40));
         }
         else
         {
             DirectBlocks = new uint[12];
             for (var i = 0; i < 12; ++i)
             {
-                DirectBlocks[i] = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 40 + i * 4);
+                DirectBlocks[i] = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(40 + i * 4));
             }
 
-            IndirectBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 88);
-            DoubleIndirectBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 92);
-            TripleIndirectBlock = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 96);
+            IndirectBlock = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(88));
+            DoubleIndirectBlock = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(92));
+            TripleIndirectBlock = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(96));
         }
 
-        FileVersion = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 100);
-        FileAcl = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 104);
-        DirAcl = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 108);
-        FragAddress = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 112);
-        Fragment = buffer[offset + 116];
-        FragmentSize = buffer[offset + 117];
-        UserIdHigh = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 120);
-        GroupIdHigh = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 122);
+        FileVersion = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(100));
+        FileAcl = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(104));
+        DirAcl = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(108));
+        FragAddress = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(112));
+        Fragment = buffer[116];
+        FragmentSize = buffer[117];
+        UserIdHigh = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(120));
+        GroupIdHigh = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(122));
 
         return 128;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

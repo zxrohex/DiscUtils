@@ -111,7 +111,7 @@ public class ZeroStream : MappedStream
         return numToClear;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (_position > _length)
@@ -136,9 +136,9 @@ public class ZeroStream : MappedStream
 
         return Task.FromResult(numToClear);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (_position > _length)
@@ -158,7 +158,7 @@ public class ZeroStream : MappedStream
         }
 
         var numToClear = (int)Math.Min(buffer.Length, _length - _position);
-        buffer.Span[..numToClear].Clear();
+        buffer.Span.Slice(0, numToClear).Clear();
         _position += numToClear;
 
         return new(numToClear);
@@ -183,12 +183,12 @@ public class ZeroStream : MappedStream
         }
 
         var numToClear = (int)Math.Min(buffer.Length, _length - _position);
-        buffer[..numToClear].Clear();
+        buffer.Slice(0, numToClear).Clear();
         _position += numToClear;
 
         return numToClear;
     }
-#endif
+
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -212,13 +212,10 @@ public class ZeroStream : MappedStream
         return _position;
     }
 
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
-    }
+    public override sealed void Write(byte[] buffer, int offset, int count) => throw new InvalidOperationException("Attempt to write to read-only stream");
+    public override sealed void Write(ReadOnlySpan<byte> buffer) => throw new InvalidOperationException("Attempt to write to read-only stream");
+    public override sealed Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new InvalidOperationException("Attempt to write to read-only stream");
+    public override sealed ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new InvalidOperationException("Attempt to write to read-only stream");
+    public override sealed void WriteByte(byte value) => throw new InvalidOperationException("Attempt to write to read-only stream");
+    public override void SetLength(long value) => throw new InvalidOperationException("Attempt to change length of read-only stream");
 }

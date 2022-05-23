@@ -61,16 +61,16 @@ internal sealed class CatalogKey : BTreeKey, IComparable<CatalogKey>
         return HfsPlusUtilities.FastUnicodeCompare(Name, other.Name);
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        _keyLength = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0);
-        NodeId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer, offset + 2));
-        Name = HfsPlusUtilities.ReadUniStr255(buffer, offset + 6);
+        _keyLength = EndianUtilities.ToUInt16BigEndian(buffer);
+        NodeId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer.Slice(2)));
+        Name = HfsPlusUtilities.ReadUniStr255(buffer.Slice(6));
 
         return _keyLength + 2;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

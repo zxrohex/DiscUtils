@@ -68,9 +68,9 @@ internal sealed class RegionTable : IByteArraySerializable
         get { return FixedSize; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Array.Copy(buffer, offset, _data, 0, FixedSize);
+        buffer.Slice(0, FixedSize).CopyTo(_data);
 
         Signature = EndianUtilities.ToUInt32LittleEndian(_data, 0);
         Checksum = EndianUtilities.ToUInt32LittleEndian(_data, 4);
@@ -90,7 +90,7 @@ internal sealed class RegionTable : IByteArraySerializable
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
         EntryCount = (uint)Regions.Count;
         Checksum = 0;
@@ -102,13 +102,13 @@ internal sealed class RegionTable : IByteArraySerializable
         var dataOffset = 16;
         foreach (var region in Regions)
         {
-            region.Value.WriteTo(_data, dataOffset);
+            region.Value.WriteTo(_data.AsSpan(dataOffset));
             dataOffset += 32;
         }
 
         Checksum = Crc32LittleEndian.Compute(Crc32Algorithm.Castagnoli, _data, 0, FixedSize);
         EndianUtilities.WriteBytesLittleEndian(Checksum, _data, 4);
 
-        Array.Copy(_data, 0, buffer, offset, FixedSize);
+        _data.AsSpan(0, FixedSize).CopyTo(buffer);
     }
 }

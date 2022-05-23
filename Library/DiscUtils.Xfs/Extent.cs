@@ -44,19 +44,19 @@ internal struct Extent : IByteArraySerializable
         get { return 16; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        var lower = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x8);
-        var middle = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x6);
-        var upper = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0);
+        var lower = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x8));
+        var middle = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x6));
+        var upper = EndianUtilities.ToUInt64BigEndian(buffer);
         BlockCount = (uint)(lower & 0x001FFFFF);
         StartBlock = (middle >> 5) & 0x000FFFFFFFFFFFFF;
         StartOffset = (upper >> 9) & 0x003FFFFFFFFFFFFF;
-        Flag = (ExtentFlag) ((buffer[offset + 0x0] >> 6) & 0x3);
+        Flag = (ExtentFlag) ((buffer[0x0] >> 6) & 0x3);
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

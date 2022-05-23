@@ -48,18 +48,18 @@ public class TarFile : IDisposable
         _fileStream = fileStream;
         _files = new Dictionary<string, TarFileRecord>(StringComparer.Ordinal);
 
-        var hdrBuf = new byte[512];
+        Span<byte> hdrBuf = stackalloc byte[512];
 
         string long_path = null;
 
         for (;;)
         {                
-            if (StreamUtilities.ReadMaximum(_fileStream, hdrBuf, 0, 512) < 512)
+            if (StreamUtilities.ReadMaximum(_fileStream, hdrBuf) < 512)
             {
                 break;
             }
 
-            var hdr = new TarHeader(hdrBuf, 0);
+            var hdr = new TarHeader(hdrBuf);
 
             if (hdr.FileLength == 0 && string.IsNullOrEmpty(hdr.FileName))
             {
@@ -72,7 +72,7 @@ public class TarFile : IDisposable
             {
                 var buffer = new byte[hdr.FileLength];
                 _fileStream.Read(buffer, 0, buffer.Length);
-                long_path = TarHeader.ReadNullTerminatedString(buffer, 0, buffer.Length).TrimEnd(' ');
+                long_path = TarHeader.ReadNullTerminatedString(buffer).TrimEnd(' ');
                 _fileStream.Position += -(buffer.Length & 511) & 511;
             }
             else
@@ -192,7 +192,7 @@ public class TarFile : IDisposable
                 break;
             }
 
-            var hdr = new TarHeader(hdrBuf, 0);
+            var hdr = new TarHeader(hdrBuf);
 
             if (long_path is not null)
             {
@@ -219,7 +219,7 @@ public class TarFile : IDisposable
                     throw new EndOfStreamException("Unexpected end of tar stream");
                 }
 
-                long_path = TarHeader.ReadNullTerminatedString(data, 0, data.Length).TrimEnd(' ');
+                long_path = TarHeader.ReadNullTerminatedString(data).TrimEnd(' ');
 
                 var moveForward = (int)(-(hdr.FileLength & 511) & 511);
 

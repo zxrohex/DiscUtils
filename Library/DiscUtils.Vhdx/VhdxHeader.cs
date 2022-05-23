@@ -81,9 +81,9 @@ internal sealed class VhdxHeader : IByteArraySerializable
         get { return (int)(4 * Sizes.OneKiB); }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Array.Copy(buffer, offset, _data, 0, 4096);
+        buffer.Slice(0, 4096).CopyTo(_data);
 
         Signature = EndianUtilities.ToUInt32LittleEndian(_data, 0);
         Checksum = EndianUtilities.ToUInt32LittleEndian(_data, 4);
@@ -100,10 +100,10 @@ internal sealed class VhdxHeader : IByteArraySerializable
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         RefreshData();
-        Array.Copy(_data, 0, buffer, offset, (int)(4 * Sizes.OneKiB));
+        _data.AsSpan(0, (int)(4 * Sizes.OneKiB)).CopyTo(buffer);
     }
 
     public void CalcChecksum()

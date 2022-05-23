@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+
 namespace DiscUtils.Btrfs.Base.Items;
 
 /// <summary>
@@ -34,7 +36,7 @@ internal class OrphanItem : BaseItem
         get { return 0; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         return Size;
     }

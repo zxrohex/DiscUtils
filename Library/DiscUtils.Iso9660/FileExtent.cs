@@ -26,6 +26,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Iso9660;
 
@@ -79,7 +80,6 @@ internal class FileExtent : BuilderExtent
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
     {
         var relPos = diskOffset - Start;
@@ -103,9 +103,7 @@ internal class FileExtent : BuilderExtent
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
     {
         var relPos = diskOffset - Start;
@@ -123,7 +121,7 @@ internal class FileExtent : BuilderExtent
         totalRead += numRead;
         while (numRead > 0 && totalRead < block.Length)
         {
-            numRead = await _readStream.ReadAsync(block[totalRead..], cancellationToken).ConfigureAwait(false);
+            numRead = await _readStream.ReadAsync(block.Slice(totalRead), cancellationToken).ConfigureAwait(false);
             totalRead += numRead;
         }
 
@@ -147,13 +145,12 @@ internal class FileExtent : BuilderExtent
         totalRead += numRead;
         while (numRead > 0 && totalRead < block.Length)
         {
-            numRead = _readStream.Read(block[totalRead..]);
+            numRead = _readStream.Read(block.Slice(totalRead));
             totalRead += numRead;
         }
 
         return totalRead;
     }
-#endif
 
     public override void DisposeReadState()
     {

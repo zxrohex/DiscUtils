@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using DiscUtils.Streams;
 using DiscUtils.Xfs;
 using Xunit;
 
@@ -17,7 +18,7 @@ namespace LibraryTests.Xfs
             };
 
             var inode = new Inode(1, context);
-            inode.ReadFrom(GetInodeBuffer(), 0);
+            inode.ReadFrom(GetInodeBuffer());
 
             var symlink = new Symlink(context, inode);
             Assert.Equal("init.d", symlink.TargetPath);
@@ -26,7 +27,7 @@ namespace LibraryTests.Xfs
             inode = new Inode(1, context);
             var inodeBuffer = GetInodeBuffer();
             inodeBuffer[0x6C] = 60; //garbage after first null byte
-            inode.ReadFrom(inodeBuffer, 0);
+            inode.ReadFrom(inodeBuffer);
 
             symlink = new Symlink(context, inode);
             Assert.Equal("init.d", symlink.TargetPath);

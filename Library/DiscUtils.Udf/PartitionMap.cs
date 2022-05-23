@@ -32,45 +32,45 @@ internal abstract class PartitionMap : IByteArraySerializable
 
     public abstract int Size { get; }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Type = buffer[offset];
-        return Parse(buffer, offset);
+        Type = buffer[0];
+        return Parse(buffer);
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public static PartitionMap CreateFrom(byte[] buffer, int offset)
+    public static PartitionMap CreateFrom(ReadOnlySpan<byte> buffer)
     {
         PartitionMap result = null;
 
-        var type = buffer[offset];
+        var type = buffer[0];
         if (type == 1)
         {
             result = new Type1PartitionMap();
         }
         else if (type == 2)
         {
-            EntityIdentifier id = EndianUtilities.ToStruct<UdfEntityIdentifier>(buffer, offset + 4);
+            EntityIdentifier id = EndianUtilities.ToStruct<UdfEntityIdentifier>(buffer.Slice(4));
             result = id.Identifier switch
             {
                 "*UDF Virtual Partition" => new VirtualPartitionMap(),
                 "*UDF Sparable Partition" => new SparablePartitionMap(),
                 "*UDF Metadata Partition" => new MetadataPartitionMap(),
-                _ => throw new InvalidDataException("Unrecognized partition map entity id: " + id),
+                _ => throw new InvalidDataException($"Unrecognized partition map entity id: {id}"),
             };
         }
 
         if (result != null)
         {
-            result.ReadFrom(buffer, offset);
+            result.ReadFrom(buffer);
         }
 
         return result;
     }
 
-    protected abstract int Parse(byte[] buffer, int offset);
+    protected abstract int Parse(ReadOnlySpan<byte> buffer);
 }

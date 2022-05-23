@@ -58,7 +58,7 @@ internal class ProtocolDataUnit
         }
 
         var bhs = new BasicHeaderSegment();
-        bhs.ReadFrom(headerData, 0);
+        bhs.ReadFrom(headerData);
 
         if (bhs.DataSegmentLength > 0)
         {

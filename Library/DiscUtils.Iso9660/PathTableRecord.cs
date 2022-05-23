@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Text;
 using DiscUtils.Internal;
 
@@ -49,20 +50,20 @@ internal struct PathTableRecord
     ////    return directoryIdentifierLength + 8 + (((directoryIdentifierLength & 1) == 1) ? 1 : 0);
     ////}
 
-    internal int Write(bool byteSwap, Encoding enc, byte[] buffer, int offset)
+    internal int Write(bool byteSwap, Encoding enc, Span<byte> buffer)
     {
         var nameBytes = enc.GetByteCount(DirectoryIdentifier);
 
-        buffer[offset + 0] = (byte)nameBytes;
-        buffer[offset + 1] = 0; // ExtendedAttributeRecordLength;
-        IsoUtilities.ToBytesFromUInt32(buffer, offset + 2,
+        buffer[0] = (byte)nameBytes;
+        buffer[1] = 0; // ExtendedAttributeRecordLength;
+        IsoUtilities.ToBytesFromUInt32(buffer.Slice(2),
             byteSwap ? Utilities.BitSwap(LocationOfExtent) : LocationOfExtent);
-        IsoUtilities.ToBytesFromUInt16(buffer, offset + 6,
+        IsoUtilities.ToBytesFromUInt16(buffer.Slice(6),
             byteSwap ? Utilities.BitSwap(ParentDirectoryNumber) : ParentDirectoryNumber);
-        IsoUtilities.WriteString(buffer, offset + 8, nameBytes, false, DirectoryIdentifier, enc);
+        IsoUtilities.WriteString(buffer.Slice(8, nameBytes), false, DirectoryIdentifier, enc);
         if ((nameBytes & 1) == 1)
         {
-            buffer[offset + 8 + nameBytes] = 0;
+            buffer[8 + nameBytes] = 0;
         }
 
         return 8 + nameBytes + ((nameBytes & 0x1) == 1 ? 1 : 0);

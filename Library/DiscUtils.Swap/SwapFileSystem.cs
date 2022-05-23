@@ -86,7 +86,7 @@ public sealed class SwapFileSystem : VfsReadOnlyFileSystem<VfsDirEntry, IVfsFile
         stream.Position = 0;
         var headerData = StreamUtilities.ReadExact(stream, SwapHeader.PageSize);
         var header = new SwapHeader();
-        header.ReadFrom(headerData, 0);
+        header.ReadFrom(headerData);
         return header;
     }
 

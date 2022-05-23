@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -124,6 +125,23 @@ public class BufferStream : SparseStream
     }
 
     /// <summary>
+    /// Reads a number of bytes from the stream.
+    /// </summary>
+    /// <param name="buffer">The destination buffer.</param>
+    /// <returns>The number of bytes read.</returns>
+    public override int Read(Span<byte> buffer)
+    {
+        if (!CanRead)
+        {
+            throw new IOException("Attempt to read from write-only stream");
+        }
+
+        var numRead = _buffer.Read(_position, buffer);
+        _position += numRead;
+        return numRead;
+    }
+
+    /// <summary>
     /// Changes the current stream position.
     /// </summary>
     /// <param name="offset">The origin-relative stream position.</param>
@@ -175,6 +193,21 @@ public class BufferStream : SparseStream
 
         _buffer.Write(_position, buffer, offset, count);
         _position += count;
+    }
+
+    /// <summary>
+    /// Writes a buffer to the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to write.</param>
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        if (!CanWrite)
+        {
+            throw new IOException("Attempt to write to read-only stream");
+        }
+
+        _buffer.Write(_position, buffer);
+        _position += buffer.Length;
     }
 
     /// <summary>

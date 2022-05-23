@@ -80,66 +80,11 @@ internal class DiskStream : SparseStream
     public override void Flush() {}
 
     public override int Read(byte[] buffer, int offset, int count)
-    {
-        if (!CanRead)
-        {
-            throw new InvalidOperationException("Attempt to read from write-only stream");
-        }
+        => Read(buffer.AsSpan(offset, count));
 
-        var maxToRead = (int)Math.Min(_length - _position, count);
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
-        var firstBlock = _position / _blockSize;
-        var lastBlock = MathUtilities.Ceil(_position + maxToRead, _blockSize);
-
-        var tempBuffer = ArrayPool<byte>.Shared.Rent(checked((int)((lastBlock - firstBlock) * _blockSize)));
-        try
-        {
-            var numRead = _session.Read(_lun, firstBlock, (short)(lastBlock - firstBlock), tempBuffer, 0);
-
-            var numCopied = Math.Min(maxToRead, numRead);
-            Array.Copy(tempBuffer, (int)(_position - firstBlock * _blockSize), buffer, offset, numCopied);
-
-            _position += numCopied;
-
-            return numCopied;
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(tempBuffer);
-        }
-    }
-
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (!CanRead)
-        {
-            throw new InvalidOperationException("Attempt to read from write-only stream");
-        }
-
-        var maxToRead = (int)Math.Min(_length - _position, count);
-
-        var firstBlock = _position / _blockSize;
-        var lastBlock = MathUtilities.Ceil(_position + maxToRead, _blockSize);
-
-        var tempBuffer = ArrayPool<byte>.Shared.Rent(checked((int)((lastBlock - firstBlock) * _blockSize)));
-        try
-        {
-            var numRead = await _session.ReadAsync(_lun, firstBlock, (short)(lastBlock - firstBlock), tempBuffer, 0, cancellationToken).ConfigureAwait(false);
-
-            var numCopied = Math.Min(maxToRead, numRead);
-            Array.Copy(tempBuffer, (int)(_position - firstBlock * _blockSize), buffer, offset, numCopied);
-
-            _position += numCopied;
-
-            return numCopied;
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(tempBuffer);
-        }
-    }
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(Span<byte> buffer)
     {
         if (!CanRead)
@@ -155,7 +100,7 @@ internal class DiskStream : SparseStream
         var tempBuffer = ArrayPool<byte>.Shared.Rent(checked((int)((lastBlock - firstBlock) * _blockSize)));
         try
         {
-            var numRead = _session.Read(_lun, firstBlock, (short)(lastBlock - firstBlock), tempBuffer, 0);
+            var numRead = _session.Read(_lun, firstBlock, (short)(lastBlock - firstBlock), tempBuffer);
 
             var numCopied = Math.Min(maxToRead, numRead);
             tempBuffer.AsSpan((int)(_position - firstBlock * _blockSize), numCopied).CopyTo(buffer);
@@ -185,7 +130,7 @@ internal class DiskStream : SparseStream
         var tempBuffer = ArrayPool<byte>.Shared.Rent(checked((int)((lastBlock - firstBlock) * _blockSize)));
         try
         {
-            var numRead = await _session.ReadAsync(_lun, firstBlock, (short)(lastBlock - firstBlock), tempBuffer, 0, cancellationToken).ConfigureAwait(false);
+            var numRead = await _session.ReadAsync(_lun, firstBlock, (short)(lastBlock - firstBlock), tempBuffer, cancellationToken).ConfigureAwait(false);
 
             var numCopied = Math.Min(maxToRead, numRead);
             tempBuffer.AsSpan((int)(_position - firstBlock * _blockSize), numCopied).CopyTo(buffer.Span);
@@ -199,7 +144,6 @@ internal class DiskStream : SparseStream
             ArrayPool<byte>.Shared.Return(tempBuffer);
         }
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -227,44 +171,54 @@ internal class DiskStream : SparseStream
     }
 
     public override void Write(byte[] buffer, int offset, int count)
+        => Write(buffer.AsSpan(offset, count));
+
+    public override void Write(ReadOnlySpan<byte> buffer)
     {
         if (!CanWrite)
         {
             throw new IOException("Attempt to write to read-only stream");
         }
 
-        if (_position + count > _length)
+        if (_position + buffer.Length > _length)
         {
             throw new IOException("Attempt to write beyond end of stream");
         }
 
         var numWritten = 0;
 
-        while (numWritten < count)
+        while (numWritten < buffer.Length)
         {
             var block = _position / _blockSize;
             var offsetInBlock = (uint)(_position % _blockSize);
 
-            var toWrite = count - numWritten;
+            var toWrite = buffer.Length - numWritten;
 
             // Need to read - we're not handling a full block
             if (offsetInBlock != 0 || toWrite < _blockSize)
             {
                 toWrite = (int)Math.Min(toWrite, _blockSize - offsetInBlock);
 
-                var blockBuffer = new byte[_blockSize];
-                var numRead = _session.Read(_lun, block, 1, blockBuffer, 0);
-
-                if (numRead != _blockSize)
+                var blockBuffer = ArrayPool<byte>.Shared.Rent(_blockSize);
+                try
                 {
-                    throw new IOException("Incomplete read, received " + numRead + " bytes from 1 block");
+                    var numRead = _session.Read(_lun, block, 1, blockBuffer);
+
+                    if (numRead != _blockSize)
+                    {
+                        throw new IOException($"Incomplete read, received {numRead} bytes from 1 block");
+                    }
+
+                    // Overlay as much data as we have for this block
+                    buffer.Slice(numWritten, toWrite).CopyTo(blockBuffer.AsSpan((int)offsetInBlock));
+
+                    // Write the block back
+                    _session.Write(_lun, block, 1, _blockSize, blockBuffer.AsSpan(0, _blockSize));
                 }
-
-                // Overlay as much data as we have for this block
-                Array.Copy(buffer, offset + numWritten, blockBuffer, (int)offsetInBlock, toWrite);
-
-                // Write the block back
-                _session.Write(_lun, block, 1, _blockSize, blockBuffer, 0);
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(blockBuffer);
+                }
             }
             else
             {
@@ -272,7 +226,71 @@ internal class DiskStream : SparseStream
                 var numBlocks = (short)(toWrite / _blockSize);
                 toWrite = numBlocks * _blockSize;
 
-                _session.Write(_lun, block, numBlocks, _blockSize, buffer, offset + numWritten);
+                _session.Write(_lun, block, numBlocks, _blockSize, buffer.Slice(numWritten));
+            }
+
+            numWritten += toWrite;
+            _position += toWrite;
+        }
+    }
+
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        => WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (!CanWrite)
+        {
+            throw new IOException("Attempt to write to read-only stream");
+        }
+
+        if (_position + buffer.Length > _length)
+        {
+            throw new IOException("Attempt to write beyond end of stream");
+        }
+
+        var numWritten = 0;
+
+        while (numWritten < buffer.Length)
+        {
+            var block = _position / _blockSize;
+            var offsetInBlock = (uint)(_position % _blockSize);
+
+            var toWrite = buffer.Length - numWritten;
+
+            // Need to read - we're not handling a full block
+            if (offsetInBlock != 0 || toWrite < _blockSize)
+            {
+                toWrite = (int)Math.Min(toWrite, _blockSize - offsetInBlock);
+
+                var blockBuffer = ArrayPool<byte>.Shared.Rent(_blockSize);
+                try
+                {
+                    var numRead = await _session.ReadAsync(_lun, block, 1, blockBuffer, cancellationToken).ConfigureAwait(false);
+
+                    if (numRead != _blockSize)
+                    {
+                        throw new IOException($"Incomplete read, received {numRead} bytes from 1 block");
+                    }
+
+                    // Overlay as much data as we have for this block
+                    buffer.Span.Slice(numWritten, toWrite).CopyTo(blockBuffer.AsSpan((int)offsetInBlock));
+
+                    // Write the block back
+                    await _session.WriteAsync(_lun, block, 1, _blockSize, blockBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(blockBuffer);
+                }
+            }
+            else
+            {
+                // Processing at least one whole block, just write (after making sure to trim any partial sectors from the end)...
+                var numBlocks = (short)(toWrite / _blockSize);
+                toWrite = numBlocks * _blockSize;
+
+                await _session.WriteAsync(_lun, block, numBlocks, _blockSize, buffer.Slice(numWritten), cancellationToken).ConfigureAwait(false);
             }
 
             numWritten += toWrite;

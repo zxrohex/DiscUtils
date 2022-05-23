@@ -35,14 +35,14 @@ internal sealed class ExtentAllocationDescriptor : IByteArraySerializable
         get { return 8; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        ExtentLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-        ExtentLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+        ExtentLength = EndianUtilities.ToUInt32LittleEndian(buffer);
+        ExtentLocation = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(4));
         return 8;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

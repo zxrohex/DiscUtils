@@ -48,18 +48,18 @@ internal sealed class FileTimeSystemUseEntry : SystemUseEntry
     public DateTime ModifyTime;
     public Timestamps TimestampsPresent = Timestamps.None;
 
-    public FileTimeSystemUseEntry(string name, byte length, byte version, byte[] data, int offset)
+    public FileTimeSystemUseEntry(string name, byte length, byte version, ReadOnlySpan<byte> data)
     {
         CheckAndSetCommonProperties(name, length, version, 5, 1);
 
-        var flags = data[offset + 4];
+        var flags = data[4];
 
         var longForm = (flags & 0x80) != 0;
         var fieldLen = longForm ? 17 : 7;
 
         TimestampsPresent = (Timestamps)(flags & 0x7F);
 
-        var pos = offset + 5;
+        var pos = 5;
 
         CreationTime = ReadTimestamp(Timestamps.Creation, data, longForm, ref pos);
         ModifyTime = ReadTimestamp(Timestamps.Modify, data, longForm, ref pos);
@@ -70,7 +70,7 @@ internal sealed class FileTimeSystemUseEntry : SystemUseEntry
         EffectiveTime = ReadTimestamp(Timestamps.Effective, data, longForm, ref pos);
     }
 
-    private DateTime ReadTimestamp(Timestamps timestamp, byte[] data, bool longForm, ref int pos)
+    private DateTime ReadTimestamp(Timestamps timestamp, ReadOnlySpan<byte> data, bool longForm, ref int pos)
     {
         var result = DateTime.MinValue;
 
@@ -78,12 +78,12 @@ internal sealed class FileTimeSystemUseEntry : SystemUseEntry
         {
             if (longForm)
             {
-                result = IsoUtilities.ToDateTimeFromVolumeDescriptorTime(data, pos);
+                result = IsoUtilities.ToDateTimeFromVolumeDescriptorTime(data.Slice(pos));
                 pos += 17;
             }
             else
             {
-                result = IsoUtilities.ToUTCDateTimeFromDirectoryTime(data, pos);
+                result = IsoUtilities.ToUTCDateTimeFromDirectoryTime(data.Slice(pos));
                 pos += 7;
             }
         }

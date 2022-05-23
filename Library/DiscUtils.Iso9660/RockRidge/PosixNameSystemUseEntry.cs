@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Iso9660;
 
@@ -29,11 +30,11 @@ internal sealed class PosixNameSystemUseEntry : SystemUseEntry
     public byte Flags;
     public string NameData;
 
-    public PosixNameSystemUseEntry(string name, byte length, byte version, byte[] data, int offset)
+    public PosixNameSystemUseEntry(string name, byte length, byte version, ReadOnlySpan<byte> data)
     {
         CheckAndSetCommonProperties(name, length, version, 5, 1);
 
-        Flags = data[offset + 4];
-        NameData = EndianUtilities.BytesToString(data, offset + 5, length - 5);
+        Flags = data[4];
+        NameData = EndianUtilities.BytesToString(data.Slice(5, length - 5));
     }
 }

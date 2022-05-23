@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+
 namespace DiscUtils.Udf;
 
 internal class AnchorVolumeDescriptorPointer : TaggedDescriptor<AnchorVolumeDescriptorPointer>
@@ -30,13 +32,13 @@ internal class AnchorVolumeDescriptorPointer : TaggedDescriptor<AnchorVolumeDesc
     public AnchorVolumeDescriptorPointer()
         : base(TagIdentifier.AnchorVolumeDescriptorPointer) {}
 
-    public override int Parse(byte[] buffer, int offset)
+    public override int Parse(ReadOnlySpan<byte> buffer)
     {
         MainDescriptorSequence = new ExtentDescriptor();
-        MainDescriptorSequence.ReadFrom(buffer, offset + Tag.Size);
+        MainDescriptorSequence.ReadFrom(buffer.Slice(Tag.Size));
 
         ReserveDescriptorSequence = new ExtentDescriptor();
-        ReserveDescriptorSequence.ReadFrom(buffer, offset + Tag.Size + MainDescriptorSequence.Size);
+        ReserveDescriptorSequence.ReadFrom(buffer.Slice(Tag.Size + MainDescriptorSequence.Size));
 
         return 512;
     }

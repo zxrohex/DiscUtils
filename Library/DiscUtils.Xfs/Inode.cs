@@ -222,55 +222,55 @@ internal class Inode : IByteArraySerializable
         get { return 96; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Magic = EndianUtilities.ToUInt16BigEndian(buffer, offset);
-        Mode = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x2);
-        Version = buffer[offset + 0x4];
-        Format = (InodeFormat)buffer[offset + 0x5];
-        Onlink = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x6);
-        UserId = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x8);
-        GroupId = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xC);
-        Nlink = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x10);
-        ProjectId = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x14);
-        Padding = EndianUtilities.ToByteArray(buffer, offset + 0x16, 8);
-        FlushIterator = EndianUtilities.ToUInt16BigEndian(buffer, 0x1E);
-        AccessTime = ReadTimestamp(buffer, offset + 0x20);
-        ModificationTime = ReadTimestamp(buffer, offset + 0x28);
-        CreationTime = ReadTimestamp(buffer, offset + 0x30);
-        Length = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x38);
-        BlockCount = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x40);
-        ExtentSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x48);
-        Extents = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x4C);
-        AttributeExtents = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x50);
-        Forkoff = buffer[offset + 0x52];
-        AttributeFormat = (sbyte) buffer[offset + 0x53];
-        DmApiEventMask = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x54);
-        DmState = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x58);
-        Flags = (InodeFlags) EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x5A);
-        Generation = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x5C);
+        Magic = EndianUtilities.ToUInt16BigEndian(buffer);
+        Mode = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x2));
+        Version = buffer[0x4];
+        Format = (InodeFormat)buffer[0x5];
+        Onlink = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x6));
+        UserId = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x8));
+        GroupId = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xC));
+        Nlink = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x10));
+        ProjectId = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x14));
+        Padding = EndianUtilities.ToByteArray(buffer.Slice(0x16, 8));
+        FlushIterator = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x1E));
+        AccessTime = ReadTimestamp(buffer.Slice(0x20));
+        ModificationTime = ReadTimestamp(buffer.Slice(0x28));
+        CreationTime = ReadTimestamp(buffer.Slice(0x30));
+        Length = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x38));
+        BlockCount = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x40));
+        ExtentSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x48));
+        Extents = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x4C));
+        AttributeExtents = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x50));
+        Forkoff = buffer[0x52];
+        AttributeFormat = (sbyte) buffer[0x53];
+        DmApiEventMask = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x54));
+        DmState = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x58));
+        Flags = (InodeFlags) EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x5A));
+        Generation = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x5C));
         var dfOffset = Version < 3 ? 0x64 : 0xb0;
         int dfLength;
         if (Forkoff == 0)
         {
-            dfLength = buffer.Length - offset - dfOffset;
+            dfLength = buffer.Length - dfOffset;
         }
         else
         {
-            dfLength = (Forkoff*8);
+            dfLength = Forkoff * 8;
         }
-        DataFork = EndianUtilities.ToByteArray(buffer, offset + dfOffset, dfLength);
+        DataFork = EndianUtilities.ToByteArray(buffer.Slice(dfOffset, dfLength));
         return Size;
     }
 
-    private DateTime ReadTimestamp(byte[] buffer, int offset)
+    private DateTime ReadTimestamp(ReadOnlySpan<byte> buffer)
     {
-        var seconds = EndianUtilities.ToUInt32BigEndian(buffer, offset);
-        var nanoSeconds = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x4);
-        return ((long)seconds).FromUnixTimeSeconds().AddTicks(nanoSeconds/100).LocalDateTime;
+        var seconds = EndianUtilities.ToUInt32BigEndian(buffer);
+        var nanoSeconds = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        return DateTimeOffset.FromUnixTimeSeconds(seconds).AddTicks(nanoSeconds / 100).LocalDateTime;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }
@@ -282,7 +282,7 @@ internal class Inode : IByteArraySerializable
         for (var i = 0; i < Extents; i++)
         {
             var extent = new Extent();
-            offset += extent.ReadFrom(DataFork, offset);
+            offset += extent.ReadFrom(DataFork.AsSpan(offset));
             result[i] = extent;
         }
         return result;
@@ -302,7 +302,7 @@ internal class Inode : IByteArraySerializable
         else if (Format == InodeFormat.Btree)
         {
             var tree = new BTreeExtentRoot();
-            tree.ReadFrom(DataFork, 0);
+            tree.ReadFrom(DataFork);
             tree.LoadBtree(context);
             var extents = tree.GetExtents();
             return BufferFromExtentList(context, extents);
@@ -321,7 +321,7 @@ internal class Inode : IByteArraySerializable
         else if (Format == InodeFormat.Btree)
         {
             var tree = new BTreeExtentRoot();
-            tree.ReadFrom(DataFork, 0);
+            tree.ReadFrom(DataFork);
             tree.LoadBtree(context);
             extents = tree.GetExtents();
         }

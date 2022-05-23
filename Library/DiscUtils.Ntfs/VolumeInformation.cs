@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using DiscUtils.Streams;
 
@@ -55,25 +56,25 @@ public sealed class VolumeInformation : IByteArraySerializable, IDiagnosticTrace
         get { return 0x0C; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        _majorVersion = buffer[offset + 0x08];
-        _minorVersion = buffer[offset + 0x09];
-        Flags = (VolumeInformationFlags)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x0A);
+        _majorVersion = buffer[0x08];
+        _minorVersion = buffer[0x09];
+        Flags = (VolumeInformationFlags)EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x0A));
         return 0x0C;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian((ulong)0, buffer, offset + 0x00);
-        buffer[offset + 0x08] = _majorVersion;
-        buffer[offset + 0x09] = _minorVersion;
-        EndianUtilities.WriteBytesLittleEndian((ushort)Flags, buffer, offset + 0x0A);
+        EndianUtilities.WriteBytesLittleEndian((ulong)0, buffer);
+        buffer[0x08] = _majorVersion;
+        buffer[0x09] = _minorVersion;
+        EndianUtilities.WriteBytesLittleEndian((ushort)Flags, buffer.Slice(0x0A));
     }
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "  Version: " + _majorVersion + "." + _minorVersion);
-        writer.WriteLine(indent + "    Flags: " + Flags);
+        writer.WriteLine($"{indent}  Version: {_majorVersion}.{_minorVersion}");
+        writer.WriteLine($"{indent}    Flags: {Flags}");
     }
 }

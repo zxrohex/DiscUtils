@@ -402,7 +402,7 @@ public sealed class SquashFileSystemBuilder : StreamBuilder, IFileSystemBuilder
         // Go back and write the superblock
         output.Position = 0;
         var buffer = new byte[superBlock.Size];
-        superBlock.WriteTo(buffer, 0);
+        superBlock.WriteTo(buffer);
         output.Write(buffer, 0, buffer.Length);
         output.Position = end;
     }

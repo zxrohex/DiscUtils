@@ -48,7 +48,7 @@ public sealed class FileNameAttribute : GenericAttribute
     {
         var content = StreamUtilities.ReadAll(Content);
         _fnr = new FileNameRecord();
-        _fnr.ReadFrom(content, 0);
+        _fnr.ReadFrom(content);
     }
 
     /// <summary>

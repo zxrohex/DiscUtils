@@ -70,7 +70,7 @@ public sealed class ExtFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAlloc
         var superblockData = StreamUtilities.ReadExact(stream, 1024);
 
         var superblock = new SuperBlock();
-        superblock.ReadFrom(superblockData, 0);
+        superblock.ReadFrom(superblockData);
 
         return superblock.Magic == SuperBlock.Ext2Magic;
     }

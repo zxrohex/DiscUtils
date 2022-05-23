@@ -94,6 +94,7 @@ public sealed class BiosPartitionTable : PartitionTable
             var rawsig = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
             Span<byte> guid = stackalloc byte[16];
             rawsig.AsSpan(0x1B8, 4).CopyTo(guid);
+            guid.Slice(4).Clear();
             return MemoryMarshal.Read<Guid>(guid);
         }
     }

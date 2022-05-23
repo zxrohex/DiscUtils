@@ -37,16 +37,16 @@ internal abstract class EntityIdentifier : IByteArraySerializable
         get { return 32; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Flags = buffer[offset];
-        Identifier = Encoding.ASCII.GetString(buffer, offset + 1, 23).TrimEnd('\0');
-        Suffix = EndianUtilities.ToByteArray(buffer, offset + 24, 8);
+        Flags = buffer[0];
+        Identifier = EndianUtilities.BytesToZString(buffer.Slice(1, 23));
+        Suffix = EndianUtilities.ToByteArray(buffer.Slice(24, 8));
 
         return 32;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

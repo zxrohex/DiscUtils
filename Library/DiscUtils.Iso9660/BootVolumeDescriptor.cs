@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Iso9660;
 
@@ -34,22 +35,22 @@ internal class BootVolumeDescriptor : BaseVolumeDescriptor
         CatalogSector = catalogSector;
     }
 
-    public BootVolumeDescriptor(byte[] src, int offset)
-        : base(src, offset)
+    public BootVolumeDescriptor(ReadOnlySpan<byte> src)
+        : base(src)
     {
-        SystemId = EndianUtilities.BytesToString(src, offset + 0x7, 0x20).TrimEnd('\0');
-        CatalogSector = EndianUtilities.ToUInt32LittleEndian(src, offset + 0x47);
+        SystemId = EndianUtilities.BytesToZString(src.Slice(0x7, 0x20));
+        CatalogSector = EndianUtilities.ToUInt32LittleEndian(src.Slice(0x47));
     }
 
     public uint CatalogSector { get; }
 
     public string SystemId { get; }
 
-    internal override void WriteTo(byte[] buffer, int offset)
+    internal override void WriteTo(Span<byte> buffer)
     {
-        base.WriteTo(buffer, offset);
+        base.WriteTo(buffer);
 
-        EndianUtilities.StringToBytes(ElToritoSystemIdentifier, buffer, offset + 7, 0x20);
-        EndianUtilities.WriteBytesLittleEndian(CatalogSector, buffer, offset + 0x47);
+        EndianUtilities.StringToBytes(ElToritoSystemIdentifier, buffer.Slice(7, 0x20));
+        EndianUtilities.WriteBytesLittleEndian(CatalogSector, buffer.Slice(0x47));
     }
 }

@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -158,7 +159,6 @@ public class BuiltStream : SparseStream
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (_position >= _length)
@@ -227,9 +227,7 @@ public class BuiltStream : SparseStream
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (_position >= _length)
@@ -238,7 +236,7 @@ public class BuiltStream : SparseStream
         }
         if (_position + buffer.Length > _length)
         {
-            buffer = buffer[..(int)(_length - _position)];
+            buffer = buffer.Slice(0, (int)(_length - _position));
         }
 
         var totalRead = 0;
@@ -279,12 +277,12 @@ public class BuiltStream : SparseStream
                 }
                 else
                 {
-                    numRead = await _baseStream.ReadAsync(buffer[totalRead..], cancellationToken).ConfigureAwait(false);
+                    numRead = await _baseStream.ReadAsync(buffer.Slice(totalRead), cancellationToken).ConfigureAwait(false);
                 }
             }
             else
             {
-                numRead = await _currentExtent.ReadAsync(_position, buffer[totalRead..], cancellationToken).ConfigureAwait(false);
+                numRead = await _currentExtent.ReadAsync(_position, buffer.Slice(totalRead), cancellationToken).ConfigureAwait(false);
             }
 
             if (numRead <= 0)
@@ -307,7 +305,7 @@ public class BuiltStream : SparseStream
         }
         if (_position + buffer.Length > _length)
         {
-            buffer = buffer[..(int)(_length - _position)];
+            buffer = buffer.Slice(0, (int)(_length - _position));
         }
 
         var totalRead = 0;
@@ -348,12 +346,12 @@ public class BuiltStream : SparseStream
                 }
                 else
                 {
-                    numRead = _baseStream.Read(buffer[totalRead..]);
+                    numRead = _baseStream.Read(buffer.Slice(totalRead));
                 }
             }
             else
             {
-                numRead = _currentExtent.Read(_position, buffer[totalRead..]);
+                numRead = _currentExtent.Read(_position, buffer.Slice(totalRead));
             }
 
             if (numRead <= 0)
@@ -367,7 +365,7 @@ public class BuiltStream : SparseStream
 
         return totalRead;
     }
-#endif
+
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -394,6 +392,12 @@ public class BuiltStream : SparseStream
     {
         throw new NotSupportedException();
     }
+
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+    public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
+
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     protected override void Dispose(bool disposing)
     {
@@ -472,18 +476,14 @@ public class BuiltStream : SparseStream
             throw new NotSupportedException();
         }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
         public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
         public override int Read(long diskOffset, Span<byte> block) =>
             throw new NotImplementedException();
-#endif
 
         public override void DisposeReadState()
         {

@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Iscsi;
 
@@ -35,28 +36,27 @@ internal class Response : BaseResponse
 
     public override void Parse(ProtocolDataUnit pdu)
     {
-        Parse(pdu.HeaderData, 0);
+        Parse(pdu.HeaderData);
     }
 
-    public void Parse(byte[] headerData, int headerOffset)
+    public void Parse(ReadOnlySpan<byte> headerData)
     {
         Header = new BasicHeaderSegment();
-        Header.ReadFrom(headerData, headerOffset);
+        Header.ReadFrom(headerData);
 
         if (Header.OpCode != OpCode.ScsiResponse)
         {
-            throw new InvalidProtocolException("Invalid opcode in response, expected " + OpCode.ScsiResponse +
-                                               " was " + Header.OpCode);
+            throw new InvalidProtocolException($"Invalid opcode in response, expected {OpCode.ScsiResponse} was {Header.OpCode}");
         }
 
-        ResponseCode = headerData[headerOffset + 2];
+        ResponseCode = headerData[2];
         StatusPresent = true;
-        Status = (ScsiStatus)headerData[headerOffset + 3];
-        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 24);
-        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 28);
-        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 32);
-        ExpectedDataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 36);
-        BidiReadResidualCount = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 40);
-        ResidualCount = EndianUtilities.ToUInt32BigEndian(headerData, headerOffset + 44);
+        Status = (ScsiStatus)headerData[3];
+        StatusSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(24));
+        ExpectedCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(28));
+        MaxCommandSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(32));
+        ExpectedDataSequenceNumber = EndianUtilities.ToUInt32BigEndian(headerData.Slice(36));
+        BidiReadResidualCount = EndianUtilities.ToUInt32BigEndian(headerData.Slice(40));
+        ResidualCount = EndianUtilities.ToUInt32BigEndian(headerData.Slice(44));
     }
 }

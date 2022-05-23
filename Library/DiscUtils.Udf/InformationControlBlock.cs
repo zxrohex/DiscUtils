@@ -41,23 +41,23 @@ internal class InformationControlBlock : IByteArraySerializable
         get { return 20; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        PriorDirectEntries = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
-        StrategyType = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 4);
-        StrategyParameter = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 6);
-        MaxEntries = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 8);
-        FileType = (FileType)buffer[offset + 11];
-        ParentICBLocation = EndianUtilities.ToStruct<LogicalBlockAddress>(buffer, offset + 12);
+        PriorDirectEntries = EndianUtilities.ToUInt32LittleEndian(buffer);
+        StrategyType = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(4));
+        StrategyParameter = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(6));
+        MaxEntries = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(8));
+        FileType = (FileType)buffer[11];
+        ParentICBLocation = EndianUtilities.ToStruct<LogicalBlockAddress>(buffer.Slice(12));
 
-        var flagsField = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 18);
+        var flagsField = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(18));
         AllocationType = (AllocationType)(flagsField & 0x3);
         Flags = (InformationControlBlockFlags)(flagsField & 0xFFFC);
 
         return 20;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

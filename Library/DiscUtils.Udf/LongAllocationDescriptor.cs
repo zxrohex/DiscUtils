@@ -36,16 +36,16 @@ internal class LongAllocationDescriptor : IByteArraySerializable
         get { return 16; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        ExtentLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset);
+        ExtentLength = EndianUtilities.ToUInt32LittleEndian(buffer);
         ExtentLocation = new LogicalBlockAddress();
-        ExtentLocation.ReadFrom(buffer, offset + 4);
-        ImplementationUse = EndianUtilities.ToByteArray(buffer, offset + 10, 6);
+        ExtentLocation.ReadFrom(buffer.Slice(4));
+        ImplementationUse = EndianUtilities.ToByteArray(buffer.Slice(10, 6));
         return 16;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

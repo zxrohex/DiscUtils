@@ -142,7 +142,7 @@ public sealed class GuidPartitionTable : PartitionTable
 
         // Write the primary header
         var headerBuffer = new byte[diskGeometry.BytesPerSector];
-        header.WriteTo(headerBuffer, 0);
+        header.WriteTo(headerBuffer);
         disk.Position = header.HeaderLba * diskGeometry.BytesPerSector;
         disk.Write(headerBuffer, 0, headerBuffer.Length);
 
@@ -152,7 +152,7 @@ public sealed class GuidPartitionTable : PartitionTable
         header.PartitionEntriesLba = header.HeaderLba - entrySectors;
 
         // Write the alternate header
-        header.WriteTo(headerBuffer, 0);
+        header.WriteTo(headerBuffer);
         disk.Position = header.HeaderLba * diskGeometry.BytesPerSector;
         disk.Write(headerBuffer, 0, headerBuffer.Length);
 
@@ -445,7 +445,7 @@ public sealed class GuidPartitionTable : PartitionTable
                     Attributes = 0,
                     Name = "Microsoft reserved partition"
                 };
-                newReservedEntry.WriteTo(_entryBuffer, reservedOffset);
+                newReservedEntry.WriteTo(_entryBuffer.AsSpan(reservedOffset));
                 allEntries.Add(newReservedEntry);
             }
         }
@@ -468,7 +468,7 @@ public sealed class GuidPartitionTable : PartitionTable
             Attributes = (ulong)attributes,
             Name = name
         };
-        newEntry.WriteTo(_entryBuffer, offset);
+        newEntry.WriteTo(_entryBuffer.AsSpan(offset));
 
         // Commit changes to disk
         Write();
@@ -541,7 +541,7 @@ public sealed class GuidPartitionTable : PartitionTable
     {
         var buffer = new byte[_diskGeometry.BytesPerSector];
         _primaryHeader.EntriesCrc = CalcEntriesCrc(_entryBuffer);
-        _primaryHeader.WriteTo(buffer, 0);
+        _primaryHeader.WriteTo(buffer);
         _diskData.Position = _diskGeometry.BytesPerSector;
         _diskData.Write(buffer, 0, buffer.Length);
 
@@ -553,7 +553,7 @@ public sealed class GuidPartitionTable : PartitionTable
     {
         var buffer = new byte[_diskGeometry.BytesPerSector];
         _secondaryHeader.EntriesCrc = CalcEntriesCrc(_entryBuffer);
-        _secondaryHeader.WriteTo(buffer, 0);
+        _secondaryHeader.WriteTo(buffer);
         _diskData.Position = _diskData.Length - _diskGeometry.BytesPerSector;
         _diskData.Write(buffer, 0, buffer.Length);
 
@@ -581,7 +581,7 @@ public sealed class GuidPartitionTable : PartitionTable
         for (var i = 0; i < _primaryHeader.PartitionEntryCount; ++i)
         {
             var entry = new GptEntry();
-            entry.ReadFrom(_entryBuffer, i * _primaryHeader.PartitionEntrySize);
+            entry.ReadFrom(_entryBuffer.AsSpan(i * _primaryHeader.PartitionEntrySize));
             if (entry.PartitionType != Guid.Empty)
             {
                 yield return entry;
@@ -598,7 +598,7 @@ public sealed class GuidPartitionTable : PartitionTable
         while (!found && position < _primaryHeader.PartitionEntryCount)
         {
             var entry = new GptEntry();
-            entry.ReadFrom(_entryBuffer, position * _primaryHeader.PartitionEntrySize);
+            entry.ReadFrom(_entryBuffer.AsSpan(position * _primaryHeader.PartitionEntrySize));
             if (entry.PartitionType != Guid.Empty)
             {
                 if (index == entriesSoFar)
@@ -627,7 +627,7 @@ public sealed class GuidPartitionTable : PartitionTable
         for (var i = 0; i < _primaryHeader.PartitionEntryCount; ++i)
         {
             var entry = new GptEntry();
-            entry.ReadFrom(_entryBuffer, i * _primaryHeader.PartitionEntrySize);
+            entry.ReadFrom(_entryBuffer.AsSpan(i * _primaryHeader.PartitionEntrySize));
 
             if (entry.Identity == identity)
             {
@@ -647,7 +647,7 @@ public sealed class GuidPartitionTable : PartitionTable
         for (var i = 0; i < _primaryHeader.PartitionEntryCount; ++i)
         {
             var entry = new GptEntry();
-            entry.ReadFrom(_entryBuffer, i * _primaryHeader.PartitionEntrySize);
+            entry.ReadFrom(_entryBuffer.AsSpan(i * _primaryHeader.PartitionEntrySize));
 
             if (entry.PartitionType == Guid.Empty)
             {

@@ -35,7 +35,7 @@ internal class VolumeDescriptorSetTerminatorRegion : VolumeDescriptorDiskRegion
     protected override byte[] GetBlockData()
     {
         var buffer = new byte[IsoUtilities.SectorSize];
-        _descriptor.WriteTo(buffer, 0);
+        _descriptor.WriteTo(buffer);
         return buffer;
     }
 }

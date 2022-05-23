@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.IO;
 using System.Threading;
@@ -59,15 +60,14 @@ public class BuilderStreamExtent : BuilderExtent
         return _source.Read(block, offset, count);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
     {
         _source.Position = diskOffset - Start;
         return _source.ReadAsync(block, offset, count, cancellationToken);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
     {
         _source.Position = diskOffset - Start;
@@ -79,7 +79,6 @@ public class BuilderStreamExtent : BuilderExtent
         _source.Position = diskOffset - Start;
         return _source.Read(block);
     }
-#endif
 
     public override void DisposeReadState() {}
 }

@@ -67,27 +67,27 @@ internal sealed class SubKeyIndirectListCell : ListCell
         get { return 4 + CellIndexes.Count * 4; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        ListType = EndianUtilities.BytesToString(buffer, offset, 2);
-        int numElements = EndianUtilities.ToInt16LittleEndian(buffer, offset + 2);
+        ListType = EndianUtilities.BytesToString(buffer.Slice(0, 2));
+        int numElements = EndianUtilities.ToInt16LittleEndian(buffer.Slice(2));
         CellIndexes = new List<int>(numElements);
 
         for (var i = 0; i < numElements; ++i)
         {
-            CellIndexes.Add(EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x4 + i * 0x4));
+            CellIndexes.Add(EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x4 + i * 0x4)));
         }
 
         return 4 + CellIndexes.Count * 4;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.StringToBytes(ListType, buffer, offset, 2);
-        EndianUtilities.WriteBytesLittleEndian((ushort)CellIndexes.Count, buffer, offset + 2);
+        EndianUtilities.StringToBytes(ListType, buffer.Slice(0, 2));
+        EndianUtilities.WriteBytesLittleEndian((ushort)CellIndexes.Count, buffer.Slice(2));
         for (var i = 0; i < CellIndexes.Count; ++i)
         {
-            EndianUtilities.WriteBytesLittleEndian(CellIndexes[i], buffer, offset + 4 + i * 4);
+            EndianUtilities.WriteBytesLittleEndian(CellIndexes[i], buffer.Slice(4 + i * 4));
         }
     }
 

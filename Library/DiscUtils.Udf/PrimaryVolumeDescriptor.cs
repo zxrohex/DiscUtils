@@ -51,30 +51,30 @@ internal sealed class PrimaryVolumeDescriptor : TaggedDescriptor<PrimaryVolumeDe
     public PrimaryVolumeDescriptor() :
         base(TagIdentifier.PrimaryVolumeDescriptor) {}
 
-    public override int Parse(byte[] buffer, int offset)
+    public override int Parse(ReadOnlySpan<byte> buffer)
     {
-        VolumeDescriptorSequenceNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-        PrimaryVolumeDescriptorNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 20);
-        VolumeIdentifier = UdfUtilities.ReadDString(buffer, offset + 24, 32);
-        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 56);
-        MaxVolumeSquenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 58);
-        InterchangeLevel = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 60);
-        MaxInterchangeLevel = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 62);
-        CharacterSetList = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 64);
-        MaxCharacterSetList = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 68);
-        VolumeSetIdentifier = UdfUtilities.ReadDString(buffer, offset + 72, 128);
-        DescriptorCharSet = EndianUtilities.ToStruct<CharacterSetSpecification>(buffer, offset + 200);
-        ExplanatoryCharSet = EndianUtilities.ToStruct<CharacterSetSpecification>(buffer, offset + 264);
+        VolumeDescriptorSequenceNumber = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(16));
+        PrimaryVolumeDescriptorNumber = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(20));
+        VolumeIdentifier = UdfUtilities.ReadDString(buffer.Slice(24, 32));
+        VolumeSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(56));
+        MaxVolumeSquenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(58));
+        InterchangeLevel = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(60));
+        MaxInterchangeLevel = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(62));
+        CharacterSetList = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(64));
+        MaxCharacterSetList = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(68));
+        VolumeSetIdentifier = UdfUtilities.ReadDString(buffer.Slice(72, 128));
+        DescriptorCharSet = EndianUtilities.ToStruct<CharacterSetSpecification>(buffer.Slice(200));
+        ExplanatoryCharSet = EndianUtilities.ToStruct<CharacterSetSpecification>(buffer.Slice(264));
         VolumeAbstractExtent = new ExtentDescriptor();
-        VolumeAbstractExtent.ReadFrom(buffer, offset + 328);
+        VolumeAbstractExtent.ReadFrom(buffer.Slice(328));
         VolumeCopyrightNoticeExtent = new ExtentDescriptor();
-        VolumeCopyrightNoticeExtent.ReadFrom(buffer, offset + 336);
-        ApplicationIdentifier = EndianUtilities.ToStruct<ApplicationEntityIdentifier>(buffer, offset + 344);
-        RecordingTime = UdfUtilities.ParseTimestamp(buffer, offset + 376);
-        ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer, offset + 388);
-        ImplementationUse = EndianUtilities.ToByteArray(buffer, offset + 420, 64);
-        PredecessorVolumeDescriptorSequenceLocation = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 484);
-        Flags = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 488);
+        VolumeCopyrightNoticeExtent.ReadFrom(buffer.Slice(336));
+        ApplicationIdentifier = EndianUtilities.ToStruct<ApplicationEntityIdentifier>(buffer.Slice(344));
+        RecordingTime = UdfUtilities.ParseTimestamp(buffer.Slice(376));
+        ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer.Slice(388));
+        ImplementationUse = EndianUtilities.ToByteArray(buffer.Slice(420, 64));
+        PredecessorVolumeDescriptorSequenceLocation = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(484));
+        Flags = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(488));
 
         return 512;
     }

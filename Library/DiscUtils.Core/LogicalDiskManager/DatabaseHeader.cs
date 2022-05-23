@@ -51,8 +51,6 @@ internal class DatabaseHeader
     public ushort VersionDenom; // 00 0a
     public ushort VersionNum; // 00 04
 
-    public void ReadFrom(byte[] buffer, int offset) => ReadFrom(buffer.AsSpan(offset));
-
     public void ReadFrom(ReadOnlySpan<byte> buffer)
     {
         Signature = EndianUtilities.BytesToString(buffer.Slice(0x00, 4));

@@ -12,21 +12,15 @@ public abstract class KnownAce : GenericAce
     internal KnownAce(AceType type, AceFlags flags)
         : base(type, flags) { }
 
-    internal KnownAce(byte[] binaryForm, int offset)
-        : base(binaryForm, offset) { }
-
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     internal KnownAce(ReadOnlySpan<byte> binaryForm)
         : base(binaryForm) { }
-#endif
 
     internal static string GetSddlAccessRights(int accessMask)
     {
         var ret = GetSddlAliasRights(accessMask);
         return !string.IsNullOrEmpty(ret)
             ? ret
-            : string.Format(CultureInfo.InvariantCulture,
-            "0x{0:x}", accessMask);
+            : $"0x{accessMask:x}";
     }
 
     private static string GetSddlAliasRights(int accessMask)

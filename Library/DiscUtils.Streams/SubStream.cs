@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -142,7 +143,7 @@ public class SubStream : MappedStream
         return numRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (count < 0)
@@ -161,9 +162,9 @@ public class SubStream : MappedStream
         _position += numRead;
         return numRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (_position > _length)
@@ -172,7 +173,7 @@ public class SubStream : MappedStream
         }
 
         _parent.Position = _first + _position;
-        var numRead = await _parent.ReadAsync(buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - _position, int.MaxValue))], cancellationToken).ConfigureAwait(false);
+        var numRead = await _parent.ReadAsync(buffer.Slice(0, (int)Math.Min(buffer.Length, Math.Min(_length - _position, int.MaxValue))), cancellationToken).ConfigureAwait(false);
         _position += numRead;
         return numRead;
     }
@@ -185,11 +186,11 @@ public class SubStream : MappedStream
         }
 
         _parent.Position = _first + _position;
-        var numRead = _parent.Read(buffer[..(int)Math.Min(buffer.Length, Math.Min(_length - _position, int.MaxValue))]);
+        var numRead = _parent.Read(buffer.Slice(0, (int)Math.Min(buffer.Length, Math.Min(_length - _position, int.MaxValue))));
         _position += numRead;
         return numRead;
     }
-#endif
+
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -234,7 +235,7 @@ public class SubStream : MappedStream
         _position += count;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (count < 0)
@@ -251,9 +252,9 @@ public class SubStream : MappedStream
         await _parent.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         _position += count;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
+
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         if (_position + buffer.Length > _length)
@@ -277,12 +278,12 @@ public class SubStream : MappedStream
         _parent.Write(buffer);
         _position += buffer.Length;
     }
-#endif
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
+
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         _parent.FlushAsync(cancellationToken);
-#endif
+
 
     protected override void Dispose(bool disposing)
     {

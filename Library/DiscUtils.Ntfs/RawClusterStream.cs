@@ -21,10 +21,12 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -314,7 +316,7 @@ internal sealed class RawClusterStream : ClusterStream
         }
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     public override void ReadClusters(long startVcn, int count, Span<byte> buffer)
     {
         var runIdx = 0;
@@ -342,7 +344,7 @@ internal sealed class RawClusterStream : ClusterStream
             totalRead += toRead;
         }
     }
-#endif
+
 
     public override int WriteClusters(long startVcn, int count, byte[] buffer, int offset)
     {
@@ -374,7 +376,7 @@ internal sealed class RawClusterStream : ClusterStream
         return 0;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     public override int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer)
     {
         var runIdx = 0;
@@ -402,24 +404,32 @@ internal sealed class RawClusterStream : ClusterStream
 
         return 0;
     }
-#endif
+
 
     public override int ClearClusters(long startVcn, int count)
     {
-        var zeroBuffer = new byte[16 * _bytesPerCluster];
-
-        var clustersAllocated = 0;
-
-        var numWritten = 0;
-        while (numWritten < count)
+        var zeroBuffer = ArrayPool<byte>.Shared.Rent(16 * _bytesPerCluster);
+        try
         {
-            var toWrite = Math.Min(count - numWritten, 16);
+            zeroBuffer.AsSpan(0, 16 * _bytesPerCluster).Clear();
 
-            clustersAllocated += WriteClusters(startVcn + numWritten, toWrite, zeroBuffer, 0);
+            var clustersAllocated = 0;
 
-            numWritten += toWrite;
+            var numWritten = 0;
+            while (numWritten < count)
+            {
+                var toWrite = Math.Min(count - numWritten, 16);
+
+                clustersAllocated += WriteClusters(startVcn + numWritten, toWrite, zeroBuffer, 0);
+
+                numWritten += toWrite;
+            }
+
+            return -clustersAllocated;
         }
-
-        return -clustersAllocated;
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(zeroBuffer);
+        }
     }
 }

@@ -27,6 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Compression;
 
@@ -34,7 +35,7 @@ namespace DiscUtils.Compression;
 /// Implementation of the Zlib compression algorithm.
 /// </summary>
 /// <remarks>Only decompression is currently implemented.</remarks>
-public class ZlibStream : Stream
+public class ZlibStream : CompatibilityStream
 {
     private readonly Adler32 _adler32;
     private readonly DeflateStream _deflateStream;
@@ -184,25 +185,50 @@ public class ZlibStream : Stream
         CheckParams(buffer, offset, count);
 
         var numRead = _deflateStream.Read(buffer, offset, count);
-        _adler32.Process(buffer, offset, numRead);
+        _adler32.Process(buffer.AsSpan(offset, numRead));
         return numRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
-    public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
-        ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
-
-    public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
-
-    public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    /// <summary>
+    /// Reads data from the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to populate.</param>
+    /// <param name="offset">The first byte to write.</param>
+    /// <param name="count">The number of bytes requested.</param>
+    /// <returns>The number of bytes read.</returns>
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckParams(buffer, offset, count);
 
         var numRead = await _deflateStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-        _adler32.Process(buffer, offset, numRead);
+        _adler32.Process(buffer.AsSpan(offset, numRead));
         return numRead;
     }
-#endif
+
+    public async override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        var numRead = await _deflateStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+        _adler32.Process(buffer.Span.Slice(0, numRead));
+        return numRead;
+    }
+
+    /// <summary>
+    /// Reads data from the stream.
+    /// </summary>
+    /// <param name="buffer">The buffer to populate.</param>
+    /// <returns>The number of bytes read.</returns>
+    public override int Read(Span<byte> buffer)
+    {
+        var numRead = _deflateStream.Read(buffer);
+        _adler32.Process(buffer.Slice(0, numRead));
+        return numRead;
+    }
+
+
+    public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+        ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+
+    public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
 
     /// <summary>
     /// Seeks to a new position.
@@ -234,8 +260,42 @@ public class ZlibStream : Stream
     {
         CheckParams(buffer, offset, count);
 
-        _adler32.Process(buffer, offset, count);
+        _adler32.Process(buffer.AsSpan(offset, count));
         _deflateStream.Write(buffer, offset, count);
+    }
+
+    /// <summary>
+    /// Writes data to the stream.
+    /// </summary>
+    /// <param name="buffer">Buffer containing the data to write.</param>
+    public override void Write(ReadOnlySpan<byte> buffer)
+    {
+        _adler32.Process(buffer);
+        _deflateStream.Write(buffer);
+    }
+
+    /// <summary>
+    /// Writes data to the stream.
+    /// </summary>
+    /// <param name="buffer">Buffer containing the data to write.</param>
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        _adler32.Process(buffer.Span);
+        return _deflateStream.WriteAsync(buffer, cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes data to the stream.
+    /// </summary>
+    /// <param name="buffer">Buffer containing the data to write.</param>
+    /// <param name="offset">Offset of the first byte to write.</param>
+    /// <param name="count">Number of bytes to write.</param>
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        CheckParams(buffer, offset, count);
+
+        _adler32.Process(buffer.AsSpan(offset, count));
+        return _deflateStream.WriteAsync(buffer, offset, count, cancellationToken);
     }
 
     private static void CheckParams(byte[] buffer, int offset, int count)

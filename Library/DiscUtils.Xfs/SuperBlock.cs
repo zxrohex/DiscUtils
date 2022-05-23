@@ -359,68 +359,68 @@ internal class SuperBlock : IByteArraySerializable
         }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Magic = EndianUtilities.ToUInt32BigEndian(buffer, offset);
+        Magic = EndianUtilities.ToUInt32BigEndian(buffer);
         if (Magic != XfsMagic) return Size;
 
-        Blocksize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x4);
-        DataBlocks = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x8);
-        RealtimeBlocks = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x10);
-        RealtimeExtents = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x18);
-        UniqueId = EndianUtilities.ToGuidBigEndian(buffer, offset + 0x20);
-        Logstart = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x30);
-        RootInode = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x38);
-        RealtimeBitmapInode = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x40);
-        RealtimeSummaryInode = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x48);
-        RealtimeExtentSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x50);
-        AgBlocks = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x54);
-        AgCount = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x58);
-        RealtimeBitmapBlocks = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x5C);
-        LogBlocks = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0x60);
-        Version = (VersionFlags)EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x64);
-        SectorSize = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x66);
-        InodeSize = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x68);
-        InodesPerBlock = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0x6A);
-        FilesystemName = EndianUtilities.BytesToZString(buffer, offset + 0x6C, 12);
-        BlocksizeLog2 = buffer[offset + 0x78];
-        SectorSizeLog2 = buffer[offset + 0x79];
-        InodeSizeLog2 = buffer[offset + 0x7A];
-        InodesPerBlockLog2 = buffer[offset + 0x7B];
-        AgBlocksLog2 = buffer[offset + 0x7C];
-        RealtimeExtentsLog2 = buffer[offset + 0x7D];
-        InProgress = buffer[offset + 0x7E];
-        InodesMaxPercent = buffer[offset + 0x7F];
-        AllocatedInodes = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x80);
-        FreeInodes = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x88);
-        FreeDataBlocks = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x90);
-        FreeRealtimeExtents = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0x98);
-        UserQuotaInode = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0xA0);
-        GroupQuotaInode = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0xA8);
-        QuotaFlags = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0xB0);
-        Flags = buffer[offset + 0xB2];
-        SharedVersionNumber = buffer[offset + 0xB3];
-        InodeChunkAlignment = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xB4);
-        Unit = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xB8);
-        Width = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xBC);
-        DirBlockLog2 = buffer[offset + 0xC0];
-        LogSectorSizeLog2 = buffer[offset + 0xC1];
-        LogSectorSize = EndianUtilities.ToUInt16BigEndian(buffer, offset + 0xC2);
-        LogUnitSize = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xC4);
-        Features2 = (Version2Features)EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xC8);
-        BadFeatures2 = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xCC);
+        Blocksize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x4));
+        DataBlocks = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x8));
+        RealtimeBlocks = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x10));
+        RealtimeExtents = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x18));
+        UniqueId = EndianUtilities.ToGuidBigEndian(buffer.Slice(0x20));
+        Logstart = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x30));
+        RootInode = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x38));
+        RealtimeBitmapInode = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x40));
+        RealtimeSummaryInode = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x48));
+        RealtimeExtentSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x50));
+        AgBlocks = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x54));
+        AgCount = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x58));
+        RealtimeBitmapBlocks = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x5C));
+        LogBlocks = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0x60));
+        Version = (VersionFlags)EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x64));
+        SectorSize = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x66));
+        InodeSize = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x68));
+        InodesPerBlock = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0x6A));
+        FilesystemName = EndianUtilities.BytesToZString(buffer.Slice(0x6C, 12));
+        BlocksizeLog2 = buffer[0x78];
+        SectorSizeLog2 = buffer[0x79];
+        InodeSizeLog2 = buffer[0x7A];
+        InodesPerBlockLog2 = buffer[0x7B];
+        AgBlocksLog2 = buffer[0x7C];
+        RealtimeExtentsLog2 = buffer[0x7D];
+        InProgress = buffer[0x7E];
+        InodesMaxPercent = buffer[0x7F];
+        AllocatedInodes = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x80));
+        FreeInodes = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x88));
+        FreeDataBlocks = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x90));
+        FreeRealtimeExtents = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0x98));
+        UserQuotaInode = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0xA0));
+        GroupQuotaInode = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0xA8));
+        QuotaFlags = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0xB0));
+        Flags = buffer[0xB2];
+        SharedVersionNumber = buffer[0xB3];
+        InodeChunkAlignment = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xB4));
+        Unit = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xB8));
+        Width = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xBC));
+        DirBlockLog2 = buffer[0xC0];
+        LogSectorSizeLog2 = buffer[0xC1];
+        LogSectorSize = EndianUtilities.ToUInt16BigEndian(buffer.Slice(0xC2));
+        LogUnitSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xC4));
+        Features2 = (Version2Features)EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xC8));
+        BadFeatures2 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xCC));
         
         if (SbVersion >= (ushort)VersionFlags.Version5)
         {
-            CompatibleFeatures = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xD0);
-            ReadOnlyCompatibleFeatures = (ReadOnlyCompatibleFeatures)EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xD4);
-            IncompatibleFeatures = (IncompatibleFeatures)EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xD8);
-            LogIncompatibleFeatures = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xDC);
-            Crc = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xE0);
-            SparseInodeAlignment = EndianUtilities.ToUInt32BigEndian(buffer, offset + 0xE4);
-            ProjectQuotaInode = EndianUtilities.ToUInt64BigEndian(buffer, offset + 0xE8);
-            Lsn = EndianUtilities.ToInt64BigEndian(buffer, offset + 0xF0);
-            MetaUuid = EndianUtilities.ToGuidBigEndian(buffer, offset + 0xF8);
+            CompatibleFeatures = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xD0));
+            ReadOnlyCompatibleFeatures = (ReadOnlyCompatibleFeatures)EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xD4));
+            IncompatibleFeatures = (IncompatibleFeatures)EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xD8));
+            LogIncompatibleFeatures = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xDC));
+            Crc = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xE0));
+            SparseInodeAlignment = EndianUtilities.ToUInt32BigEndian(buffer.Slice(0xE4));
+            ProjectQuotaInode = EndianUtilities.ToUInt64BigEndian(buffer.Slice(0xE8));
+            Lsn = EndianUtilities.ToInt64BigEndian(buffer.Slice(0xF0));
+            MetaUuid = EndianUtilities.ToGuidBigEndian(buffer.Slice(0xF8));
             if ((IncompatibleFeatures & IncompatibleFeatures.Supported)!= IncompatibleFeatures.Supported)
                 throw new NotSupportedException("XFS Features not supported");
         }
@@ -433,7 +433,7 @@ internal class SuperBlock : IByteArraySerializable
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

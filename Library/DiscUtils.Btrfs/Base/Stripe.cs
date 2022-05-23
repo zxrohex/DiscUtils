@@ -60,15 +60,15 @@ internal class Stripe : IByteArraySerializable
         }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        DeviceId = EndianUtilities.ToUInt64LittleEndian(buffer, offset);
-        Offset = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x8);
-        DeviceUuid = EndianUtilities.ToGuidLittleEndian(buffer, offset + 0x10);
+        DeviceId = EndianUtilities.ToUInt64LittleEndian(buffer);
+        Offset = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x8));
+        DeviceUuid = EndianUtilities.ToGuidLittleEndian(buffer.Slice(0x10));
         return Size;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    void IByteArraySerializable.WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

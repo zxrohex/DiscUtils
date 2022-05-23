@@ -42,21 +42,21 @@ internal class ScsiReportLunsCommand : ScsiCommand
         get { return 12; }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
-        buffer[offset] = 0xA0;
-        buffer[offset + 1] = 0; // Reserved
-        buffer[offset + 2] = 0; // Report Type = 0
-        buffer[offset + 3] = 0; // Reserved
-        buffer[offset + 4] = 0; // Reserved
-        buffer[offset + 5] = 0; // Reserved
-        EndianUtilities.WriteBytesBigEndian(_expected, buffer, offset + 6);
-        buffer[offset + 10] = 0; // Reserved
-        buffer[offset + 11] = 0; // Control
+        buffer[0] = 0xA0;
+        buffer[1] = 0; // Reserved
+        buffer[2] = 0; // Report Type = 0
+        buffer[3] = 0; // Reserved
+        buffer[4] = 0; // Reserved
+        buffer[5] = 0; // Reserved
+        EndianUtilities.WriteBytesBigEndian(_expected, buffer.Slice(6));
+        buffer[10] = 0; // Reserved
+        buffer[11] = 0; // Control
     }
 }

@@ -45,7 +45,7 @@ public sealed class AttributeListAttribute : GenericAttribute
     {
         var content = StreamUtilities.ReadAll(Content);
         _list = new AttributeList();
-        _list.ReadFrom(content, 0);
+        _list.ReadFrom(content);
     }
 
     /// <summary>

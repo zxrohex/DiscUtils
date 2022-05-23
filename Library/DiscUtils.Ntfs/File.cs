@@ -30,6 +30,7 @@ using System.Threading.Tasks;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using Buffer = DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.Ntfs;
@@ -1257,20 +1258,14 @@ internal class File
             return _wrapped.Read(buffer, offset, count);
         }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         public override int Read(Span<byte> buffer) =>
             _wrapped.Read(buffer);
-#endif
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
             _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
             _wrapped.ReadAsync(buffer, cancellationToken);
-#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {
@@ -1293,7 +1288,6 @@ internal class File
             _wrapped.Write(buffer, offset, count);
         }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             if (_wrapped.Position + count > Length)
@@ -1303,9 +1297,7 @@ internal class File
 
             return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
         }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         public override void Write(ReadOnlySpan<byte> buffer)
         {
             if (_wrapped.Position + buffer.Length > Length)
@@ -1325,12 +1317,9 @@ internal class File
 
             return _wrapped.WriteAsync(buffer, cancellationToken);
         }
-#endif
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
         public override Task FlushAsync(CancellationToken cancellationToken) =>
             _wrapped.FlushAsync(cancellationToken);
-#endif
 
         public override void Clear(int count)
         {

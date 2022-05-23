@@ -35,17 +35,17 @@ internal sealed class CatalogDirInfo : CommonCatalogFileInfo
         get { throw new NotImplementedException(); }
     }
 
-    public override int ReadFrom(byte[] buffer, int offset)
+    public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        base.ReadFrom(buffer, offset);
+        base.ReadFrom(buffer);
 
-        Flags = EndianUtilities.ToUInt16BigEndian(buffer, offset + 2);
-        Valence = EndianUtilities.ToUInt32BigEndian(buffer, offset + 4);
+        Flags = EndianUtilities.ToUInt16BigEndian(buffer.Slice(2));
+        Valence = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
 
         return 0;
     }
 
-    public override void WriteTo(byte[] buffer, int offset)
+    public override void WriteTo(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

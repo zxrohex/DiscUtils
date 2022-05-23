@@ -53,7 +53,6 @@ public class BuilderBytesExtent : BuilderExtent
         return numRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
     {
         var start = (int)Math.Min(diskOffset - Start, _data.Length);
@@ -63,9 +62,7 @@ public class BuilderBytesExtent : BuilderExtent
 
         return Task.FromResult(numRead);
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
     {
         var start = (int)Math.Min(diskOffset - Start, _data.Length);
@@ -85,7 +82,6 @@ public class BuilderBytesExtent : BuilderExtent
 
         return numRead;
     }
-#endif
 
     public override void DisposeReadState() {}
 }

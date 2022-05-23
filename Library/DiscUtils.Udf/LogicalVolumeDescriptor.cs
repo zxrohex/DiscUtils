@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Udf;
 
@@ -47,31 +48,31 @@ internal sealed class LogicalVolumeDescriptor : TaggedDescriptor<LogicalVolumeDe
         get
         {
             var lad = new LongAllocationDescriptor();
-            lad.ReadFrom(LogicalVolumeContentsUse, 0);
+            lad.ReadFrom(LogicalVolumeContentsUse);
             return lad;
         }
     }
 
-    public override int Parse(byte[] buffer, int offset)
+    public override int Parse(ReadOnlySpan<byte> buffer)
     {
-        VolumeDescriptorSequenceNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-        DescriptorCharset = EndianUtilities.ToByteArray(buffer, offset + 20, 64);
-        LogicalVolumeIdentifier = UdfUtilities.ReadDString(buffer, offset + 84, 128);
-        LogicalBlockSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 212);
-        DomainIdentifier = EndianUtilities.ToStruct<DomainEntityIdentifier>(buffer, offset + 216);
-        LogicalVolumeContentsUse = EndianUtilities.ToByteArray(buffer, offset + 248, 16);
-        MapTableLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 264);
-        NumPartitionMaps = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 268);
-        ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer, offset + 272);
-        ImplementationUse = EndianUtilities.ToByteArray(buffer, offset + 304, 128);
+        VolumeDescriptorSequenceNumber = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(16));
+        DescriptorCharset = EndianUtilities.ToByteArray(buffer.Slice(20, 64));
+        LogicalVolumeIdentifier = UdfUtilities.ReadDString(buffer.Slice(84, 128));
+        LogicalBlockSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(212));
+        DomainIdentifier = EndianUtilities.ToStruct<DomainEntityIdentifier>(buffer.Slice(216));
+        LogicalVolumeContentsUse = EndianUtilities.ToByteArray(buffer.Slice(248, 16));
+        MapTableLength = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(264));
+        NumPartitionMaps = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(268));
+        ImplementationIdentifier = EndianUtilities.ToStruct<ImplementationEntityIdentifier>(buffer.Slice(272));
+        ImplementationUse = EndianUtilities.ToByteArray(buffer.Slice(304, 128));
         IntegritySequenceExtent = new ExtentDescriptor();
-        IntegritySequenceExtent.ReadFrom(buffer, offset + 432);
+        IntegritySequenceExtent.ReadFrom(buffer.Slice(432));
 
         var pmOffset = 0;
         PartitionMaps = new PartitionMap[NumPartitionMaps];
         for (var i = 0; i < NumPartitionMaps; ++i)
         {
-            PartitionMaps[i] = PartitionMap.CreateFrom(buffer, offset + 440 + pmOffset);
+            PartitionMaps[i] = PartitionMap.CreateFrom(buffer.Slice(440 + pmOffset));
             pmOffset += PartitionMaps[i].Size;
         }
 

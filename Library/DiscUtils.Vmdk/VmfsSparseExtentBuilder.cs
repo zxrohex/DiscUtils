@@ -26,6 +26,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vmdk;
 
@@ -112,13 +113,13 @@ internal sealed class VmfsSparseExtentBuilder : StreamBuilder
             return _streamView.Read(block, offset, count);
         }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
         public override int Read(long diskOffset, Span<byte> block)
         {
             _streamView.Position = diskOffset - Start;
             return _streamView.Read(block);
         }
-#endif
+
 
         public override void DisposeReadState()
         {
@@ -210,7 +211,7 @@ internal sealed class VmfsSparseExtentBuilder : StreamBuilder
             return _content.Read(block, offset, maxToRead);
         }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
         public override int Read(long diskOffset, Span<byte> block)
         {
             var relOffset = diskOffset - Start;
@@ -228,9 +229,8 @@ internal sealed class VmfsSparseExtentBuilder : StreamBuilder
                 (int)Math.Min(block.Length, grainSize * _grainContiguousRangeMapping[grainIdx] - grainOffset);
 
             _content.Position = _grainMapping[grainIdx] * grainSize + grainOffset;
-            return _content.Read(block[..maxToRead]);
+            return _content.Read(block.Slice(0, maxToRead));
         }
-#endif
 
         public override void DisposeReadState()
         {

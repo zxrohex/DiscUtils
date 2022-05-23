@@ -126,12 +126,12 @@ public sealed class Session : IDisposable
     {
         var cmd = new ScsiReportLunsCommand(ScsiReportLunsCommand.InitialResponseSize);
 
-        var resp = Send<ScsiReportLunsResponse>(cmd, null, 0, 0, ScsiReportLunsCommand.InitialResponseSize);
+        var resp = Send<ScsiReportLunsResponse>(cmd, default, ScsiReportLunsCommand.InitialResponseSize);
 
         if (resp.Truncated)
         {
             cmd = new ScsiReportLunsCommand(resp.NeededDataLength);
-            resp = Send<ScsiReportLunsResponse>(cmd, null, 0, 0, (int)resp.NeededDataLength);
+            resp = Send<ScsiReportLunsResponse>(cmd, default, (int)resp.NeededDataLength);
         }
 
         if (resp.Truncated)
@@ -172,7 +172,7 @@ public sealed class Session : IDisposable
     {
         var cmd = new ScsiInquiryCommand((ulong)lun, ScsiInquiryCommand.InitialResponseDataLength);
 
-        var resp = Send<ScsiInquiryStandardResponse>(cmd, null, 0, 0, ScsiInquiryCommand.InitialResponseDataLength);
+        var resp = Send<ScsiInquiryStandardResponse>(cmd, default, ScsiInquiryCommand.InitialResponseDataLength);
 
         var targetInfo = new TargetInfo(TargetName, new List<TargetAddress>(_addresses).ToArray());
         return new LunInfo(targetInfo, lun, resp.DeviceType, resp.Removable, resp.VendorId, resp.ProductId, resp.ProductRevision);
@@ -187,7 +187,7 @@ public sealed class Session : IDisposable
     {
         var cmd = new ScsiReadCapacityCommand((ulong)lun);
 
-        var resp = Send<ScsiReadCapacityResponse>(cmd, null, 0, 0, ScsiReadCapacityCommand.ResponseDataLength);
+        var resp = Send<ScsiReadCapacityResponse>(cmd, default, ScsiReadCapacityCommand.ResponseDataLength);
 
         if (resp.Truncated)
         {
@@ -227,10 +227,10 @@ public sealed class Session : IDisposable
     /// <param name="buffer">The buffer to fill.</param>
     /// <param name="offset">The offset of the first byte to fill.</param>
     /// <returns>The number of bytes read.</returns>
-    public int Read(long lun, long startBlock, short blockCount, byte[] buffer, int offset)
+    public int Read(long lun, long startBlock, short blockCount, Span<byte> buffer)
     {
         var cmd = new ScsiReadCommand((ulong)lun, (uint)startBlock, (ushort)blockCount);
-        return Send(cmd, null, 0, 0, buffer, offset, buffer.Length - offset);
+        return Send(cmd, default, buffer);
     }
 
     /// <summary>
@@ -242,10 +242,10 @@ public sealed class Session : IDisposable
     /// <param name="buffer">The buffer to fill.</param>
     /// <param name="offset">The offset of the first byte to fill.</param>
     /// <returns>The number of bytes read.</returns>
-    public Task<int> ReadAsync(long lun, long startBlock, short blockCount, byte[] buffer, int offset, CancellationToken cancellationToken)
+    public ValueTask<int> ReadAsync(long lun, long startBlock, short blockCount, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var cmd = new ScsiReadCommand((ulong)lun, (uint)startBlock, (ushort)blockCount);
-        return SendAsync(cmd, null, 0, 0, buffer, offset, buffer.Length - offset, cancellationToken);
+        return SendAsync(cmd, default, buffer, cancellationToken);
     }
 
     /// <summary>
@@ -256,11 +256,24 @@ public sealed class Session : IDisposable
     /// <param name="blockCount">The number of blocks to write.</param>
     /// <param name="blockSize">The size of each block (must match the actual LUN geometry).</param>
     /// <param name="buffer">The data to write.</param>
-    /// <param name="offset">The offset of the first byte to write in buffer.</param>
-    public void Write(long lun, long startBlock, short blockCount, int blockSize, byte[] buffer, int offset)
+    public void Write(long lun, long startBlock, short blockCount, int blockSize, ReadOnlySpan<byte> buffer)
     {
         var cmd = new ScsiWriteCommand((ulong)lun, (uint)startBlock, (ushort)blockCount);
-        Send(cmd, buffer, offset, blockCount * blockSize, null, 0, 0);
+        Send(cmd, buffer.Slice(0, blockCount * blockSize), default);
+    }
+
+    /// <summary>
+    /// Writes some data to a LUN.
+    /// </summary>
+    /// <param name="lun">The LUN to write to.</param>
+    /// <param name="startBlock">The first block to write.</param>
+    /// <param name="blockCount">The number of blocks to write.</param>
+    /// <param name="blockSize">The size of each block (must match the actual LUN geometry).</param>
+    /// <param name="buffer">The data to write.</param>
+    public ValueTask WriteAsync(long lun, long startBlock, short blockCount, int blockSize, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var cmd = new ScsiWriteCommand((ulong)lun, (uint)startBlock, (ushort)blockCount);
+        return new(SendAsync(cmd, buffer.Slice(0, blockCount * blockSize), default, cancellationToken).AsTask());
     }
 
     /// <summary>
@@ -279,20 +292,10 @@ public sealed class Session : IDisposable
     /// <para>This method permits the caller to send raw SCSI commands to a LUN.</para>
     /// <para>The command .</para>
     /// </remarks>
-    public int RawCommand(long lun, byte[] command, byte[] outBuffer, int outBufferOffset, int outBufferLength, byte[] inBuffer, int inBufferOffset, int inBufferLength)
+    public int RawCommand(long lun, ReadOnlyMemory<byte> command, ReadOnlySpan<byte> outBuffer, Span<byte> inBuffer)
     {
-        if (outBuffer == null && outBufferLength != 0)
-        {
-            throw new ArgumentException("outBufferLength must be 0 if outBuffer null", nameof(outBufferLength));
-        }
-
-        if (inBuffer == null && inBufferLength != 0)
-        {
-            throw new ArgumentException("inBufferLength must be 0 if inBuffer null", nameof(inBufferLength));
-        }
-
-        var cmd = new ScsiRawCommand((ulong)lun, command, 0, command.Length);
-        return Send(cmd, outBuffer, outBufferOffset, outBufferLength, inBuffer, inBufferOffset, inBufferLength);
+        var cmd = new ScsiRawCommand((ulong)lun, command);
+        return Send(cmd, outBuffer, inBuffer);
     }
 
     internal uint NextCommandSequenceNumber()
@@ -430,15 +433,11 @@ public sealed class Session : IDisposable
     /// </summary>
     /// <param name="cmd">The command to send.</param>
     /// <param name="outBuffer">The data to send with the command.</param>
-    /// <param name="outBufferOffset">The offset of the first byte to send.</param>
-    /// <param name="outBufferCount">The number of bytes to send, if any.</param>
     /// <param name="inBuffer">The buffer to fill with returned data.</param>
-    /// <param name="inBufferOffset">The first byte to fill with returned data.</param>
-    /// <param name="inBufferMax">The maximum amount of data to receive.</param>
     /// <returns>The number of bytes received.</returns>
-    private int Send(ScsiCommand cmd, byte[] outBuffer, int outBufferOffset, int outBufferCount, byte[] inBuffer, int inBufferOffset, int inBufferMax)
+    private int Send(ScsiCommand cmd, ReadOnlySpan<byte> outBuffer, Span<byte> inBuffer)
     {
-        return ActiveConnection.Send(cmd, outBuffer, outBufferOffset, outBufferCount, inBuffer, inBufferOffset, inBufferMax);
+        return ActiveConnection.Send(cmd, outBuffer, inBuffer);
     }
 
     /// <summary>
@@ -446,21 +445,17 @@ public sealed class Session : IDisposable
     /// </summary>
     /// <param name="cmd">The command to send.</param>
     /// <param name="outBuffer">The data to send with the command.</param>
-    /// <param name="outBufferOffset">The offset of the first byte to send.</param>
-    /// <param name="outBufferCount">The number of bytes to send, if any.</param>
     /// <param name="inBuffer">The buffer to fill with returned data.</param>
-    /// <param name="inBufferOffset">The first byte to fill with returned data.</param>
-    /// <param name="inBufferMax">The maximum amount of data to receive.</param>
     /// <returns>The number of bytes received.</returns>
-    private Task<int> SendAsync(ScsiCommand cmd, byte[] outBuffer, int outBufferOffset, int outBufferCount, byte[] inBuffer, int inBufferOffset, int inBufferMax, CancellationToken cancellationToken)
+    private ValueTask<int> SendAsync(ScsiCommand cmd, ReadOnlyMemory<byte> outBuffer, Memory<byte> inBuffer, CancellationToken cancellationToken)
     {
-        return ActiveConnection.SendAsync(cmd, outBuffer, outBufferOffset, outBufferCount, inBuffer, inBufferOffset, inBufferMax, cancellationToken);
+        return ActiveConnection.SendAsync(cmd, outBuffer, inBuffer, cancellationToken);
     }
 
-    private T Send<T>(ScsiCommand cmd, byte[] buffer, int offset, int count, int expected)
+    private T Send<T>(ScsiCommand cmd, ReadOnlySpan<byte> buffer, int expected)
         where T : ScsiResponse, new()
     {
-        return ActiveConnection.Send<T>(cmd, buffer, offset, count, expected);
+        return ActiveConnection.Send<T>(cmd, buffer, expected);
     }
 
     #endregion

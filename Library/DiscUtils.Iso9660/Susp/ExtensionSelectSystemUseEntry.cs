@@ -20,16 +20,18 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+
 namespace DiscUtils.Iso9660;
 
 internal sealed class ExtensionSelectSystemUseEntry : SystemUseEntry
 {
     public byte SelectedExtension;
 
-    public ExtensionSelectSystemUseEntry(string name, byte length, byte version, byte[] data, int offset)
+    public ExtensionSelectSystemUseEntry(string name, byte length, byte version, ReadOnlySpan<byte> data)
     {
         CheckAndSetCommonProperties(name, length, version, 5, 1);
 
-        SelectedExtension = data[offset + 4];
+        SelectedExtension = data[4];
     }
 }

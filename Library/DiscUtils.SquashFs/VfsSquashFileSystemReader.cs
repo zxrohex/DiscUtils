@@ -52,7 +52,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
         // Read superblock
         stream.Position = 0;
         var buffer = StreamUtilities.ReadExact(stream, _context.SuperBlock.Size);
-        _context.SuperBlock.ReadFrom(buffer, 0);
+        _context.SuperBlock.ReadFrom(buffer);
 
         if (_context.SuperBlock.Magic != SuperBlock.SquashFsMagic)
         {

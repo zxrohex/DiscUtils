@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Vhdx;
 
@@ -38,17 +39,17 @@ internal sealed class FileParameters : IByteArraySerializable
         get { return 8; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        BlockSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0);
-        Flags = (FileParametersFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4);
+        BlockSize = EndianUtilities.ToUInt32LittleEndian(buffer);
+        Flags = (FileParametersFlags)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(4));
 
         return 8;
     }
 
-    public void WriteTo(byte[] buffer, int offset)
+    public void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer, offset + 0);
-        EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer, offset + 4);
+        EndianUtilities.WriteBytesLittleEndian(BlockSize, buffer);
+        EndianUtilities.WriteBytesLittleEndian((uint)Flags, buffer.Slice(4));
     }
 }

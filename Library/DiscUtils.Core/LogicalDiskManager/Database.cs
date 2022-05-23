@@ -43,7 +43,7 @@ internal class Database
         {
             stream.Read(buffer, 0, Sizes.Sector);
             _vmdb = new DatabaseHeader();
-            _vmdb.ReadFrom(buffer, 0);
+            _vmdb.ReadFrom(buffer);
 
             stream.Position = dbStart + _vmdb.HeaderSize;
 

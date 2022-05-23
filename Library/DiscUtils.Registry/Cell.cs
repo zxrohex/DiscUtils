@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Registry;
 
@@ -38,13 +39,13 @@ internal abstract class Cell : IByteArraySerializable
 
     public abstract int Size { get; }
 
-    public abstract int ReadFrom(byte[] buffer, int offset);
+    public abstract int ReadFrom(ReadOnlySpan<byte> buffer);
 
-    public abstract void WriteTo(byte[] buffer, int offset);
+    public abstract void WriteTo(Span<byte> buffer);
 
-    internal static Cell Parse(RegistryHive hive, int index, byte[] buffer, int pos)
+    internal static Cell Parse(RegistryHive hive, int index, ReadOnlySpan<byte> buffer)
     {
-        var type = EndianUtilities.BytesToString(buffer, pos, 2);
+        var type = EndianUtilities.BytesToString(buffer.Slice(0, 2));
         Cell result = type switch
         {
             "nk" => new KeyNodeCell(index),
@@ -52,9 +53,9 @@ internal abstract class Cell : IByteArraySerializable
             "vk" => new ValueCell(index),
             "lh" or "lf" => new SubKeyHashedListCell(hive, index),
             "li" or "ri" => new SubKeyIndirectListCell(hive, index),
-            _ => throw new RegistryCorruptException("Unknown cell type '" + type + "'"),
+            _ => throw new RegistryCorruptException($"Unknown cell type '{type}'"),
         };
-        result.ReadFrom(buffer, pos);
+        result.ReadFrom(buffer);
         return result;
     }
 }

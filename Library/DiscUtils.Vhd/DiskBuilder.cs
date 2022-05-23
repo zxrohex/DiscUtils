@@ -67,7 +67,7 @@ public sealed class DiskBuilder : DiskImageBuilder
             footer.UpdateChecksum();
 
             var footerSector = new byte[Sizes.Sector];
-            footer.ToBytes(footerSector, 0);
+            footer.ToBytes(footerSector);
 
             var footerStream = SparseStream.FromStream(new MemoryStream(footerSector, false),
                 Ownership.None);

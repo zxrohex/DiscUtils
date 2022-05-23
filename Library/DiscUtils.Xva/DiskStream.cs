@@ -29,10 +29,11 @@ using System.Threading.Tasks;
 using DiscUtils.Archives;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Xva;
 
-internal class DiskStream : SparseStream
+internal class DiskStream : SparseStream.ReadOnlySparseStream
 {
     private readonly TarFile _archive;
     private readonly string _dir;
@@ -66,11 +67,6 @@ internal class DiskStream : SparseStream
     public override bool CanSeek
     {
         get { return true; }
-    }
-
-    public override bool CanWrite
-    {
-        get { return false; }
     }
 
     public override IEnumerable<StreamExtent> Extents
@@ -124,8 +120,6 @@ internal class DiskStream : SparseStream
         }
     }
 
-    public override void Flush() {}
-
     public override int Read(byte[] buffer, int offset, int count)
     {
         if (_position == _length)
@@ -166,7 +160,6 @@ internal class DiskStream : SparseStream
         return numRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (_position == _length)
@@ -206,9 +199,7 @@ internal class DiskStream : SparseStream
         _position += numRead;
         return numRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (_position == _length)
@@ -244,7 +235,7 @@ internal class DiskStream : SparseStream
 
         _currentChunkData.Position = chunkOffset;
 
-        var numRead = await _currentChunkData.ReadAsync(buffer[..toRead], cancellationToken).ConfigureAwait(false);
+        var numRead = await _currentChunkData.ReadAsync(buffer.Slice(0, toRead), cancellationToken).ConfigureAwait(false);
         _position += numRead;
         return numRead;
     }
@@ -284,11 +275,10 @@ internal class DiskStream : SparseStream
 
         _currentChunkData.Position = chunkOffset;
 
-        var numRead = _currentChunkData.Read(buffer[..toRead]);
+        var numRead = _currentChunkData.Read(buffer.Slice(0, toRead));
         _position += numRead;
         return numRead;
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -308,16 +298,6 @@ internal class DiskStream : SparseStream
         }
         Position = effectiveOffset;
         return Position;
-    }
-
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
-
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException();
     }
 
     private bool ChunkExists(int i)

@@ -27,6 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vhd;
 
@@ -87,7 +88,7 @@ public class DynamicStream : MappedStream
         // Detect where next block should go (cope if the footer is missing)
         _fileStream.Position = MathUtilities.RoundDown(_fileStream.Length, Sizes.Sector) - Sizes.Sector;
         var footerBytes = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
-        var footer = Footer.FromBytes(footerBytes, 0);
+        var footer = Footer.FromBytes(footerBytes);
         _nextBlockStart = _fileStream.Position - (footer.IsValid() ? Sizes.Sector : 0);
     }
 
@@ -356,7 +357,6 @@ public class DynamicStream : MappedStream
         return numRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -457,9 +457,7 @@ public class DynamicStream : MappedStream
 
         return numRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -661,7 +659,6 @@ public class DynamicStream : MappedStream
 
         return numRead;
     }
-#endif
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -802,7 +799,6 @@ public class DynamicStream : MappedStream
         _atEof = false;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -907,9 +903,7 @@ public class DynamicStream : MappedStream
 
         _atEof = false;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -1119,7 +1113,6 @@ public class DynamicStream : MappedStream
 
         _atEof = false;
     }
-#endif
 
     public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
     {

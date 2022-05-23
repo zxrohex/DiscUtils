@@ -37,14 +37,12 @@ internal class FragmentRecord : IByteArraySerializable
         get { return RecordSize; }
     }
 
-    public int ReadFrom(byte[] buffer, int offset)
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        StartBlock = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0);
-        CompressedSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8);
+        StartBlock = EndianUtilities.ToInt64LittleEndian(buffer);
+        CompressedSize = EndianUtilities.ToInt32LittleEndian(buffer.Slice(8));
         return RecordSize;
     }
-
-    public void WriteTo(byte[] buffer, int offset) => WriteTo(buffer.AsSpan(offset));
 
     public void WriteTo(Span<byte> buffer)
     {

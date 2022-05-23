@@ -117,7 +117,7 @@ internal sealed class MetablockReader
         if (block.Available - _currentOffset < 4)
         {
             Span<byte> buffer = stackalloc byte[4];
-            Read(buffer);
+            buffer = buffer.Slice(0, Read(buffer));
             return EndianUtilities.ToUInt32LittleEndian(buffer);
         }
         var result = EndianUtilities.ToUInt32LittleEndian(block.Data, _currentOffset);
@@ -132,7 +132,7 @@ internal sealed class MetablockReader
         if (block.Available - _currentOffset < 4)
         {
             Span<byte> buffer = stackalloc byte[4];
-            Read(buffer);
+            buffer = buffer.Slice(0, Read(buffer));
             return EndianUtilities.ToInt32LittleEndian(buffer);
         }
         var result = EndianUtilities.ToInt32LittleEndian(block.Data, _currentOffset);
@@ -147,7 +147,7 @@ internal sealed class MetablockReader
         if (block.Available - _currentOffset < 2)
         {
             Span<byte> buffer = stackalloc byte[2];
-            Read(buffer);
+            buffer = buffer.Slice(0, Read(buffer));
             return EndianUtilities.ToUInt16LittleEndian(buffer);
         }
         var result = EndianUtilities.ToUInt16LittleEndian(block.Data, _currentOffset);
@@ -162,7 +162,7 @@ internal sealed class MetablockReader
         if (block.Available - _currentOffset < 2)
         {
             Span<byte> buffer = stackalloc byte[2];
-            Read(buffer);
+            buffer = buffer.Slice(0, Read(buffer));
             return EndianUtilities.ToInt16LittleEndian(buffer);
         }
         var result = EndianUtilities.ToInt16LittleEndian(block.Data, _currentOffset);
@@ -177,7 +177,7 @@ internal sealed class MetablockReader
         if (block.Available - _currentOffset < len)
         {
             Span<byte> buffer = stackalloc byte[len];
-            Read(buffer);
+            buffer = buffer.Slice(0, Read(buffer));
             return EndianUtilities.BytesToString(buffer);
         }
         var result = EndianUtilities.BytesToString(block.Data, _currentOffset, len);

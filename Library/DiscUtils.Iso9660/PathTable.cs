@@ -66,7 +66,7 @@ internal class PathTable : BuilderExtent
             ptr.LocationOfExtent = _locations[di];
             ptr.ParentDirectoryNumber = dirNumbers[di.Parent];
 
-            pos += ptr.Write(_byteSwap, _enc, _readCache, pos);
+            pos += ptr.Write(_byteSwap, _enc, _readCache.AsSpan(pos));
         }
     }
 
@@ -81,7 +81,6 @@ internal class PathTable : BuilderExtent
         return numRead;
     }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(long diskOffset, Span<byte> buffer)
     {
         long relPos = diskOffset - Start;
@@ -92,7 +91,6 @@ internal class PathTable : BuilderExtent
 
         return numRead;
     }
-#endif
 
     public override void DisposeReadState()
     {

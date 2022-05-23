@@ -192,7 +192,7 @@ public class CDReader : VfsFileSystemFacade, IClusterBasedFileSystem, IUnixFileS
                 return false;
             }
 
-            var bvd = new BaseVolumeDescriptor(buffer, 0);
+            var bvd = new BaseVolumeDescriptor(buffer);
 
             return bvd.StandardIdentifier == BaseVolumeDescriptor.Iso9660StandardIdentifier;
         }

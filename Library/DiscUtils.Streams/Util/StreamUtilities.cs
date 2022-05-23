@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Buffers;
 using System.IO;
@@ -59,7 +60,7 @@ public static class StreamUtilities
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
 
     public static IAsyncResult AsAsyncResult<T>(this Task<T> task, AsyncCallback callback, object state)
     {
@@ -85,7 +86,7 @@ public static class StreamUtilities
         return returntask;
     }
 
-#endif
+
 
     #region Stream Manipulation
 
@@ -96,7 +97,7 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static void ReadExact(Stream stream, byte[] buffer, int offset, int count)
+    public static void ReadExact(this Stream stream, byte[] buffer, int offset, int count)
     {
         var originalCount = count;
 
@@ -114,7 +115,7 @@ public static class StreamUtilities
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
@@ -122,7 +123,7 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static async Task ReadExactAsync(Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public static async Task ReadExactAsync(this Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var originalCount = count;
 
@@ -139,9 +140,8 @@ public static class StreamUtilities
             count -= numRead;
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
@@ -149,7 +149,7 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static async ValueTask ReadExactAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+    public static async ValueTask ReadExactAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var originalCount = buffer.Length;
 
@@ -162,7 +162,7 @@ public static class StreamUtilities
                 throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
             }
 
-            buffer = buffer[numRead..];
+            buffer = buffer.Slice(numRead);
         }
     }
 
@@ -173,7 +173,7 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static void ReadExact(Stream stream, Span<byte> buffer)
+    public static void ReadExact(this Stream stream, Span<byte> buffer)
     {
         var originalCount = buffer.Length;
 
@@ -186,10 +186,9 @@ public static class StreamUtilities
                 throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
             }
 
-            buffer = buffer[numRead..];
+            buffer = buffer.Slice(numRead);
         }
     }
-#endif
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -197,7 +196,7 @@ public static class StreamUtilities
     /// <param name="stream">The stream to read.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static byte[] ReadExact(Stream stream, int count)
+    public static byte[] ReadExact(this Stream stream, int count)
     {
         var buffer = new byte[count];
 
@@ -206,14 +205,14 @@ public static class StreamUtilities
         return buffer;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static async Task<byte[]> ReadExactAsync(Stream stream, int count, CancellationToken cancellationToken)
+    public static async Task<byte[]> ReadExactAsync(this Stream stream, int count, CancellationToken cancellationToken)
     {
         var buffer = new byte[count];
 
@@ -221,7 +220,7 @@ public static class StreamUtilities
 
         return buffer;
     }
-#endif
+
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -231,7 +230,7 @@ public static class StreamUtilities
     /// <param name="data">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static void ReadExact(IBuffer buffer, long pos, byte[] data, int offset, int count)
+    public static void ReadExact(this IBuffer buffer, long pos, byte[] data, int offset, int count)
     {
         var originalCount = count;
 
@@ -250,7 +249,6 @@ public static class StreamUtilities
         }
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
@@ -259,7 +257,7 @@ public static class StreamUtilities
     /// <param name="data">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static async Task ReadExactAsync(IBuffer buffer, long pos, byte[] data, int offset, int count, CancellationToken cancellationToken)
+    public static async Task ReadExactAsync(this IBuffer buffer, long pos, byte[] data, int offset, int count, CancellationToken cancellationToken)
     {
         var originalCount = count;
 
@@ -277,9 +275,7 @@ public static class StreamUtilities
             count -= numRead;
         }
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
@@ -288,7 +284,7 @@ public static class StreamUtilities
     /// <param name="data">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static async ValueTask ReadExactAsync(IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
+    public static async ValueTask ReadExactAsync(this IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
     {
         var originalCount = data.Length;
 
@@ -302,7 +298,7 @@ public static class StreamUtilities
             }
 
             pos += numRead;
-            data = data[numRead..];
+            data = data.Slice(numRead);
         }
     }
 
@@ -314,7 +310,7 @@ public static class StreamUtilities
     /// <param name="data">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static void ReadExact(IBuffer buffer, long pos, Span<byte> data)
+    public static void ReadExact(this IBuffer buffer, long pos, Span<byte> data)
     {
         var originalCount = data.Length;
 
@@ -328,10 +324,9 @@ public static class StreamUtilities
             }
 
             pos += numRead;
-            data = data[numRead..];
+            data = data.Slice(numRead);
         }
     }
-#endif
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -340,7 +335,7 @@ public static class StreamUtilities
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static byte[] ReadExact(IBuffer buffer, long pos, int count)
+    public static byte[] ReadExact(this IBuffer buffer, long pos, int count)
     {
         var result = new byte[count];
 
@@ -349,7 +344,7 @@ public static class StreamUtilities
         return result;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
@@ -357,7 +352,7 @@ public static class StreamUtilities
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static async Task<byte[]> ReadExactAsync(IBuffer buffer, long pos, int count, CancellationToken cancellationToken)
+    public static async Task<byte[]> ReadExactAsync(this IBuffer buffer, long pos, int count, CancellationToken cancellationToken)
     {
         var result = new byte[count];
 
@@ -365,7 +360,7 @@ public static class StreamUtilities
 
         return result;
     }
-#endif
+
 
     /// <summary>
     /// Read bytes until buffer filled or EOF.
@@ -375,7 +370,7 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
-    public static int ReadMaximum(Stream stream, byte[] buffer, int offset, int count)
+    public static int ReadMaximum(this Stream stream, byte[] buffer, int offset, int count)
     {
         var totalRead = 0;
 
@@ -396,7 +391,6 @@ public static class StreamUtilities
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
     /// <summary>
     /// Read bytes until buffer filled or EOF.
     /// </summary>
@@ -405,7 +399,7 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
-    public static async Task<int> ReadMaximumAsync(Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public static async Task<int> ReadMaximumAsync(this Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         var totalRead = 0;
 
@@ -425,9 +419,7 @@ public static class StreamUtilities
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Read bytes until buffer filled or EOF.
     /// </summary>
@@ -436,7 +428,7 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
-    public static async ValueTask<int> ReadMaximumAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+    public static async ValueTask<int> ReadMaximumAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var totalRead = 0;
 
@@ -449,7 +441,7 @@ public static class StreamUtilities
                 return totalRead;
             }
 
-            buffer = buffer[numRead..];
+            buffer = buffer.Slice(numRead);
             totalRead += numRead;
         }
 
@@ -464,7 +456,7 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
-    public static int ReadMaximum(Stream stream, Span<byte> buffer)
+    public static int ReadMaximum(this Stream stream, Span<byte> buffer)
     {
         var totalRead = 0;
 
@@ -477,13 +469,13 @@ public static class StreamUtilities
                 return totalRead;
             }
 
-            buffer = buffer[numRead..];
+            buffer = buffer.Slice(numRead);
             totalRead += numRead;
         }
 
         return totalRead;
     }
-#endif
+
 
     /// <summary>
     /// Read bytes until buffer filled or EOF.
@@ -494,7 +486,7 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
-    public static int ReadMaximum(IBuffer buffer, long pos, byte[] data, int offset, int count)
+    public static int ReadMaximum(this IBuffer buffer, long pos, byte[] data, int offset, int count)
     {
         var totalRead = 0;
 
@@ -516,7 +508,7 @@ public static class StreamUtilities
         return totalRead;
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Read bytes until buffer filled or EOF.
     /// </summary>
@@ -526,7 +518,7 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
-    public static async Task<int> ReadMaximumAsync(IBuffer buffer, long pos, byte[] data, int offset, int count, CancellationToken cancellationToken)
+    public static async Task<int> ReadMaximumAsync(this IBuffer buffer, long pos, byte[] data, int offset, int count, CancellationToken cancellationToken)
     {
         var totalRead = 0;
 
@@ -547,9 +539,7 @@ public static class StreamUtilities
 
         return totalRead;
     }
-#endif
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     /// <summary>
     /// Read bytes until buffer filled or EOF.
     /// </summary>
@@ -559,7 +549,7 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
-    public static async ValueTask<int> ReadMaximumAsync(IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
+    public static async ValueTask<int> ReadMaximumAsync(this IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
     {
         var totalRead = 0;
 
@@ -573,7 +563,7 @@ public static class StreamUtilities
             }
 
             pos += numRead;
-            data = data[numRead..];
+            data = data.Slice(numRead);
             totalRead += numRead;
         }
 
@@ -589,7 +579,7 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
-    public static int ReadMaximum(IBuffer buffer, long pos, Span<byte> data)
+    public static int ReadMaximum(this IBuffer buffer, long pos, Span<byte> data)
     {
         var totalRead = 0;
 
@@ -603,57 +593,56 @@ public static class StreamUtilities
             }
 
             pos += numRead;
-            data = data[numRead..];
+            data = data.Slice(numRead);
             totalRead += numRead;
         }
 
         return totalRead;
     }
-#endif
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
     /// <param name="buffer">The buffer to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static byte[] ReadAll(IBuffer buffer)
+    public static byte[] ReadAll(this IBuffer buffer)
     {
         return ReadExact(buffer, 0, (int)buffer.Capacity);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
     /// <param name="buffer">The buffer to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static Task<byte[]> ReadAllAsync(IBuffer buffer, CancellationToken cancellationToken)
+    public static Task<byte[]> ReadAllAsync(this IBuffer buffer, CancellationToken cancellationToken)
     {
         return ReadExactAsync(buffer, 0, (int)buffer.Capacity, cancellationToken);
     }
-#endif
+
 
     /// <summary>
     /// Reads a disk sector (512 bytes).
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <returns>The sector data as a byte array.</returns>
-    public static byte[] ReadSector(Stream stream)
+    public static byte[] ReadSector(this Stream stream)
     {
         return ReadExact(stream, Sizes.Sector);
     }
 
-#if NET45_OR_GREATER || NETSTANDARD || NETCOREAPP
+
     /// <summary>
     /// Reads a disk sector (512 bytes).
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <returns>The sector data as a byte array.</returns>
-    public static Task<byte[]> ReadSectorAsync(Stream stream, CancellationToken cancellationToken)
+    public static Task<byte[]> ReadSectorAsync(this Stream stream, CancellationToken cancellationToken)
     {
         return ReadExactAsync(stream, Sizes.Sector, cancellationToken);
     }
-#endif
+
 
     /// <summary>
     /// Reads a structure from a stream.
@@ -661,12 +650,12 @@ public static class StreamUtilities
     /// <typeparam name="T">The type of the structure.</typeparam>
     /// <param name="stream">The stream to read.</param>
     /// <returns>The structure.</returns>
-    public static T ReadStruct<T>(Stream stream)
+    public static T ReadStruct<T>(this Stream stream)
         where T : IByteArraySerializable, new()
     {
         var result = new T();
         var buffer = ReadExact(stream, result.Size);
-        result.ReadFrom(buffer, 0);
+        result.ReadFrom(buffer);
         return result;
     }
 
@@ -677,12 +666,12 @@ public static class StreamUtilities
     /// <param name="stream">The stream to read.</param>
     /// <param name="length">The number of bytes to read.</param>
     /// <returns>The structure.</returns>
-    public static T ReadStruct<T>(Stream stream, int length)
+    public static T ReadStruct<T>(this Stream stream, int length)
         where T : IByteArraySerializable, new()
     {
         var result = new T();
         var buffer = ReadExact(stream, length);
-        result.ReadFrom(buffer, 0);
+        result.ReadFrom(buffer);
         return result;
     }
 
@@ -692,13 +681,13 @@ public static class StreamUtilities
     /// <typeparam name="T">The type of the structure.</typeparam>
     /// <param name="stream">The stream to write to.</param>
     /// <param name="obj">The structure to write.</param>
-    public static void WriteStruct<T>(Stream stream, T obj)
+    public static void WriteStruct<T>(this Stream stream, T obj)
         where T : IByteArraySerializable
     {
         var buffer = ArrayPool<byte>.Shared.Rent(obj.Size);
         try
         {
-            obj.WriteTo(buffer, 0);
+            obj.WriteTo(buffer);
             stream.Write(buffer, 0, buffer.Length);
         }
         finally
@@ -707,5 +696,5 @@ public static class StreamUtilities
         }
     }
 
-#endregion
+    #endregion
 }

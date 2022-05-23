@@ -49,7 +49,7 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
             {
                 //shortform directory
                 var sfDir = new ShortformDirectory(Context);
-                sfDir.ReadFrom(Inode.DataFork, 0);
+                sfDir.ReadFrom(Inode.DataFork);
                 foreach (var entry in sfDir.Entries)
                 {
                     result.Add(Context.Options.FileNameEncoding.GetString(entry.Name), new DirEntry(entry, Context));
@@ -65,7 +65,7 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
 
                     var dirContent = Inode.GetContentBuffer(Context);
                     var buffer = StreamUtilities.ReadAll(dirContent);
-                    blockDir.ReadFrom(buffer, 0);
+                    blockDir.ReadFrom(buffer);
                     if (!blockDir.HasValidMagic)
                         throw new IOException("invalid block directory magic");
                     AddDirEntries(blockDir.Entries, result);
@@ -79,7 +79,7 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
             else
             {
                 var header = new BTreeExtentRoot();
-                header.ReadFrom(Inode.DataFork, 0);
+                header.ReadFrom(Inode.DataFork);
                 header.LoadBtree(Context);
                 var extents = header.GetExtents();
                 AddLeafDirExtentEntries(extents, result);
@@ -103,7 +103,7 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
                     var leafDir = new LeafDirectory(Context);
                     if (Context.SuperBlock.SbVersion == 5)
                         leafDir = new LeafDirectoryV5(Context);
-                    leafDir.ReadFrom(buffer, 0);
+                    leafDir.ReadFrom(buffer);
                     if (!leafDir.HasValidMagic)
                         throw new IOException("invalid leaf directory magic");
                     AddDirEntries(leafDir.Entries, target);
