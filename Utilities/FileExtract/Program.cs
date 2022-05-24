@@ -22,6 +22,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using DiscUtils;
 using DiscUtils.Common;
 
@@ -80,18 +81,22 @@ class Program : ProgramBase
         VolumeInfo volInfo;
         if (!string.IsNullOrEmpty(VolumeId))
         {
-            volInfo = volMgr.GetVolume(VolumeId);
+            volInfo = volMgr.GetVolume(VolumeId)
+                ?? throw new DriveNotFoundException($"Volume {VolumeId} not found");
         }
         else if (Partition >= 0)
         {
-            volInfo = volMgr.GetPhysicalVolumes()[Partition];
+            volInfo = volMgr.GetPhysicalVolumes().ElementAtOrDefault(Partition)
+                ?? throw new DriveNotFoundException($"Partition {Partition} not found");
         }
         else
         {
-            volInfo = volMgr.GetLogicalVolumes()[0];
+            volInfo = volMgr.GetLogicalVolumes().FirstOrDefault()
+                 ?? throw new DriveNotFoundException("Logical volume not found");
         }
 
-        var fsInfo = FileSystemManager.DetectFileSystems(volInfo)[0];
+        var fsInfo = FileSystemManager.DetectFileSystems(volInfo).FirstOrDefault()
+             ?? throw new DriveNotFoundException("No supported file system found");
 
         using var fs = fsInfo.Open(volInfo, FileSystemParameters);
         using Stream source = fs.OpenFile(_inFilePath.Value, FileMode.Open, FileAccess.Read);

@@ -156,7 +156,7 @@ class Program : ProgramBase
             }
             first = false;
 
-            Console.WriteLine("{0} -> {1}", entry.Key, entry.Value);
+            Console.WriteLine($"{entry.Key} -> {entry.Value}");
         }
 
         if (first)

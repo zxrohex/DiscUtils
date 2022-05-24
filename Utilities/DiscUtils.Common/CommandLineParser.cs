@@ -64,18 +64,18 @@ public class CommandLineParser
 
     public void DisplayHelp(params string[] remarks)
     {
-        Console.Write("{0}", _utilityName);
+        Console.Write(_utilityName);
         if (_switches.Count > 0)
         {
             Console.Write(" <switches>");
         }
         foreach (var el in _params)
         {
-            Console.Write(" " + el.CommandLineText);
+            Console.Write($" {el.CommandLineText}");
         }
         if (_multiParam != null)
         {
-            Console.WriteLine(" " + _multiParam.CommandLineText);
+            Console.WriteLine($" {_multiParam.CommandLineText}");
         }
         Console.WriteLine();
         Console.WriteLine();

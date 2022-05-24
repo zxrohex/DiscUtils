@@ -1,5 +1,4 @@
-﻿using DiscUtils.CoreCompat;
-using DiscUtils.Ext;
+﻿using DiscUtils.Ext;
 using DiscUtils.Fat;
 using DiscUtils.HfsPlus;
 using DiscUtils.Ntfs;
@@ -20,5 +19,6 @@ public static class SetupHelper
         Setup.SetupHelper.RegisterAssembly(typeof(Disc).Assembly);
         Setup.SetupHelper.RegisterAssembly(typeof(SquashFileSystemBuilder).Assembly);
         Setup.SetupHelper.RegisterAssembly(typeof(XfsFileSystem).Assembly);
+        Setup.SetupHelper.RegisterAssembly(typeof(VirtualFileSystem.VirtualFileSystem).Assembly);
     }
 }

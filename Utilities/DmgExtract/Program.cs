@@ -102,7 +102,7 @@ class Program : ProgramBase
             }
         }
 
-        Console.WriteLine("{0}", source.Name);
+        Console.WriteLine(source.Name);
 
         foreach (var childFile in source.GetFiles())
         {

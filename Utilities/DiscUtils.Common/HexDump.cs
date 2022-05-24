@@ -116,7 +116,7 @@ public static class HexDump
 
                     if (foundVal)
                     {
-                        output.Write("{0:x8}", i + readStart);
+                        output.Write($"{i + readStart:x8}");
 
                         for (var j = 0; j < 16; j++)
                         {
@@ -124,7 +124,7 @@ public static class HexDump
                             {
                                 output.Write(" ");
                             }
-                            output.Write(" {0:x2}", buffer[i + j]);
+                            output.Write($" {buffer[i + j]:x2}");
                         }
 
                         output.Write("  |");
@@ -134,9 +134,9 @@ public static class HexDump
                             {
                                 output.Write(" ");
                             }
-                            output.Write("{0}", (buffer[i + j] >= 32 && buffer[i + j] < 127) ? (char)buffer[i + j] : '.');
+                            output.Write((buffer[i + j] >= 32 && buffer[i + j] < 127) ? (char)buffer[i + j] : '.');
                         }
-                        output.Write("|");
+                        output.Write('|');
 
                         output.WriteLine();
                     }

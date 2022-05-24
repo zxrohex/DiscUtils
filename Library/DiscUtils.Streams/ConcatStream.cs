@@ -261,8 +261,7 @@ public class ConcatStream : SparseStream
         var lastStream = GetStream(Length, out var lastStreamOffset);
         if (value < lastStreamOffset)
         {
-            throw new IOException(string.Format(CultureInfo.InvariantCulture,
-                "Unable to reduce stream length to less than {0}", lastStreamOffset));
+            throw new IOException($"Unable to reduce stream length to less than {lastStreamOffset}");
         }
 
         _streams[lastStream].SetLength(value - lastStreamOffset);

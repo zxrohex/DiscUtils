@@ -63,7 +63,7 @@ internal class Utilities
         var parentItems = session.InvokeProvider.Item.Get(parentPath);
         if (parentItems.Count > 1)
         {
-            throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} is ambiguous", parentPath));
+            throw new IOException($"PowerShell path {parentPath} is ambiguous");
         }
         else if (parentItems.Count < 1)
         {
@@ -102,7 +102,7 @@ internal class Utilities
         }
         else if (items.Count > 1)
         {
-            throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} is ambiguous", filePath));
+            throw new IOException($"PowerShell path {filePath} is ambiguous");
         }
         else
         {
@@ -115,11 +115,11 @@ internal class Utilities
         var paths = session.Path.GetResolvedPSPathFromPSPath(filePath);
         if (paths.Count > 1)
         {
-            throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} is ambiguous", filePath));
+            throw new IOException($"PowerShell path {filePath} is ambiguous");
         }
         else if (paths.Count < 1)
         {
-            throw new IOException(string.Format(CultureInfo.InvariantCulture, "PowerShell path {0} not found", filePath));
+            throw new IOException($"PowerShell path {filePath} not found");
         }
 
         return paths[0].Path;

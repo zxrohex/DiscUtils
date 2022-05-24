@@ -51,14 +51,15 @@ class Program
 
     private static void ShowDir(DiscDirectoryInfo dirInfo, int indent)
     {
-        Console.WriteLine("{0}{1,-50} [{2}]", new String(' ', indent), dirInfo.FullName, dirInfo.CreationTimeUtc);
+        var indentStr = new string(' ', indent);
+        Console.WriteLine($"{indentStr}{dirInfo.FullName,-50} [{dirInfo.CreationTimeUtc}]");
         foreach (var subDir in dirInfo.GetDirectories())
         {
             ShowDir(subDir, indent + 0);
         }
         foreach (var file in dirInfo.GetFiles())
         {
-            Console.WriteLine("{0}{1,-50} [{2}]", new String(' ', indent), file.FullName, file.CreationTimeUtc);
+            Console.WriteLine($"{indentStr}{file.FullName,-50} [{file.CreationTimeUtc}]");
         }
     }
 }

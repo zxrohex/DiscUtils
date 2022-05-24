@@ -281,7 +281,7 @@ public abstract class ProgramBase
             stopWatch.Stop();
 
             Console.WriteLine();
-            Console.WriteLine("Time taken: {0}", stopWatch.Elapsed);
+            Console.WriteLine($"Time taken: {stopWatch.Elapsed}");
         }
         else
         {
@@ -296,7 +296,7 @@ public abstract class ProgramBase
 
     protected virtual void DisplayHeader()
     {
-        Console.WriteLine("{0} v{1}, available from http://discutils.codeplex.com", ExeName, Version);
+        Console.WriteLine($"{ExeName} v{Version}, available from http://discutils.codeplex.com");
         Console.WriteLine("Copyright (c) Kenneth Bell, 2008-2013");
         Console.WriteLine("Free software issued under the MIT License, see LICENSE.TXT for details.");
         Console.WriteLine();
@@ -341,7 +341,7 @@ public abstract class ProgramBase
 
         var remaining = TimeSpan.FromMilliseconds((timeSoFar.TotalMilliseconds / (double)e.BytesRead) * (totalBytes - e.BytesRead));
 
-        Console.Write("\r{0} ({1,3}%)  |{2}| {3:hh\\:mm\\:ss\\.f}", label, (e.BytesRead * 100) / totalBytes, progressBar, remaining, remaining.TotalHours, remaining.Minutes, remaining.Seconds, remaining.Milliseconds);
+        Console.Write($"\r{label} ({(e.BytesRead * 100) / totalBytes,3}%)  |{progressBar}| {remaining:hh\\:mm\\:ss\\.f}");
     }
 
     private CommandLineSwitch OutputFormatSwitch()

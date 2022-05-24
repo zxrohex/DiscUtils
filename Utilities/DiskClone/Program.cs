@@ -346,7 +346,7 @@ class Program : ProgramBase
             var sourceExtents = vol.GetDiskExtents();
             if (sourceExtents.Length > 1)
             {
-                Console.Error.WriteLine("Volume '{0}' is made up of multiple extents, which is not supported", sourceVolume[i]);
+                Console.Error.WriteLine($"Volume '{sourceVolume[i]}' is made up of multiple extents, which is not supported");
                 Environment.Exit(1);
             }
 
