@@ -1,3 +1,4 @@
+using DiscUtils.Streams;
 using System;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -253,24 +254,13 @@ public sealed class ObjectAce : QualifiedAce
         }
     }
 
-    private void WriteGuid(Guid val, byte[] buffer,
-                           int offset)
-    {
-        MemoryMarshal.Write(buffer.AsSpan(offset), ref val);
-    }
-
     private void WriteGuid(Guid val, Span<byte> buffer)
     {
-        MemoryMarshal.Write(buffer, ref val);
-    }
-
-    private Guid ReadGuid(byte[] buffer, int offset)
-    {
-        return MemoryMarshal.Read<Guid>(buffer.AsSpan(offset, 16));
+        EndianUtilities.WriteBytesLittleEndian(val, buffer);
     }
 
     private Guid ReadGuid(ReadOnlySpan<byte> buffer)
     {
-        return MemoryMarshal.Read<Guid>(buffer.Slice(0, 16));
+        return EndianUtilities.ToGuidLittleEndian(buffer);
     }
 }

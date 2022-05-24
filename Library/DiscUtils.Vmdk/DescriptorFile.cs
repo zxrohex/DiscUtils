@@ -313,7 +313,7 @@ internal class DescriptorFile
 #endif
         }
 
-        return MemoryMarshal.Read<Guid>(data);
+        return EndianUtilities.ToGuidLittleEndian(data);
     }
 
     private static string FormatUuid(Guid value)

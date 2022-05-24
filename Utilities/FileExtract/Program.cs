@@ -102,24 +102,13 @@ class Program : ProgramBase
         using Stream source = fs.OpenFile(_inFilePath.Value, FileMode.Open, FileAccess.Read);
         using (var outFile = new FileStream(_outFilePath.Value, FileMode.Create, FileAccess.ReadWrite, FileShare.Delete, bufferSize: 2 << 20))
         {
-            PumpStreams(source, outFile);
+            source.CopyTo(outFile);
         }
 
         if (_hexDump.IsPresent)
         {
             source.Position = 0;
             HexDump.Generate(source, Console.Out);
-        }
-    }
-
-    private static void PumpStreams(Stream inStream, Stream outStream)
-    {
-        var buffer = new byte[4096];
-        var bytesRead = inStream.Read(buffer, 0, 4096);
-        while (bytesRead != 0)
-        {
-            outStream.Write(buffer, 0, bytesRead);
-            bytesRead = inStream.Read(buffer, 0, 4096);
         }
     }
 }

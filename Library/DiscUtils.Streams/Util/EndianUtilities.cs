@@ -99,12 +99,13 @@ public static class EndianUtilities
     public static void WriteBytesLittleEndian(Guid val, Span<byte> buffer)
     {
         MemoryMarshal.Write(buffer, ref val);
+        WriteBytesLittleEndian(MemoryMarshal.Read<uint>(buffer.Slice(0, 4)), buffer.Slice(0, 4));
+        WriteBytesLittleEndian(MemoryMarshal.Read<ushort>(buffer.Slice(4, 2)), buffer.Slice(4, 2));
+        WriteBytesLittleEndian(MemoryMarshal.Read<ushort>(buffer.Slice(6, 2)), buffer.Slice(6, 2));
     }
 
     public static void WriteBytesLittleEndian(Guid val, byte[] buffer, int offset)
-    {
-        MemoryMarshal.Write(buffer.AsSpan(offset), ref val);
-    }
+        => WriteBytesLittleEndian(val, buffer.AsSpan(offset));
 
     public static void WriteBytesBigEndian(ushort val, byte[] buffer, int offset)
         => WriteBytesBigEndian(val, buffer.AsSpan(offset, sizeof(ushort)));
@@ -177,9 +178,9 @@ public static class EndianUtilities
     public static void WriteBytesBigEndian(Guid val, Span<byte> buffer)
     {
         MemoryMarshal.Write(buffer, ref val);
-        WriteBytesBigEndian(ToUInt32LittleEndian(buffer.Slice(0, 4)), buffer.Slice(0, 4));
-        WriteBytesBigEndian(ToUInt16LittleEndian(buffer.Slice(4, 2)), buffer.Slice(4, 2));
-        WriteBytesBigEndian(ToUInt16LittleEndian(buffer.Slice(6, 2)), buffer.Slice(6, 2));
+        WriteBytesBigEndian(MemoryMarshal.Read<uint>(buffer.Slice(0, 4)), buffer.Slice(0, 4));
+        WriteBytesBigEndian(MemoryMarshal.Read<ushort>(buffer.Slice(4, 2)), buffer.Slice(4, 2));
+        WriteBytesBigEndian(MemoryMarshal.Read<ushort>(buffer.Slice(6, 2)), buffer.Slice(6, 2));
     }
 
     public static ushort ToUInt16LittleEndian(byte[] buffer, int offset)
@@ -308,31 +309,27 @@ public static class EndianUtilities
         return (long)ToUInt64BigEndian(buffer);
     }
 
-    public static Guid ToGuidLittleEndian(byte[] buffer, int offset)
-    {
-        return MemoryMarshal.Read<Guid>(buffer.AsSpan(offset, 16));
-    }
+    public static Guid ToGuidLittleEndian(byte[] buffer, int offset) =>
+        ToGuidLittleEndian(buffer.AsSpan(offset));
 
     public static Guid ToGuidLittleEndian(ReadOnlySpan<byte> buffer)
     {
-        return MemoryMarshal.Read<Guid>(buffer.Slice(0, 16));
+        return new Guid(
+            ToUInt32LittleEndian(buffer.Slice(0, 4)),
+            ToUInt16LittleEndian(buffer.Slice(4, 2)),
+            ToUInt16LittleEndian(buffer.Slice(6, 2)),
+            buffer[8],
+            buffer[9],
+            buffer[10],
+            buffer[11],
+            buffer[12],
+            buffer[13],
+            buffer[14],
+            buffer[15]);
     }
 
-    public static Guid ToGuidBigEndian(byte[] buffer, int offset)
-    {
-        return new Guid(
-            ToUInt32BigEndian(buffer, offset + 0),
-            ToUInt16BigEndian(buffer, offset + 4),
-            ToUInt16BigEndian(buffer, offset + 6),
-            buffer[offset + 8],
-            buffer[offset + 9],
-            buffer[offset + 10],
-            buffer[offset + 11],
-            buffer[offset + 12],
-            buffer[offset + 13],
-            buffer[offset + 14],
-            buffer[offset + 15]);
-    }
+    public static Guid ToGuidBigEndian(byte[] buffer, int offset) =>
+        ToGuidBigEndian(buffer.AsSpan(offset));
 
     public static Guid ToGuidBigEndian(ReadOnlySpan<byte> buffer)
     {
