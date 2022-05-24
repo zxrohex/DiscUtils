@@ -1,6 +1,8 @@
 bin/
 obj/
 Build/
+Debug/
+Release/
 
 *.suo
 *.user
@@ -11,3 +13,5 @@ LaunchSettings.json
 
 # Tests
 Tests/LibraryTests/TestResults/
+*.nupkg
+*.snupkg

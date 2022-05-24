@@ -9,6 +9,7 @@
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)../SigningKey.snk</AssemblyOriginatorKeyFile>
+	<OutputPath>..\$(Configuration)</OutputPath>
   </PropertyGroup>
 
 </Project>

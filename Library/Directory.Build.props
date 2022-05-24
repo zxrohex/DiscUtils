@@ -8,6 +8,11 @@
     <PackageProjectUrl>https://github.com/LTRData/DiscUtils</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	<PackageId>LTRData.$(MSBuildProjectName)</PackageId>
+    <Company>LTR Data</Company>
+    <Authors>Olof Lagerkvist</Authors>
+	<OutputPath>..\$(Configuration)</OutputPath>
   </PropertyGroup>
 
   <!-- SourceLink support -->
