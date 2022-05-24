@@ -19,7 +19,7 @@ namespace LibraryTests.Xfs
         public void XfsVhdxZip()
         {
             SetupHelper.SetupComplete();
-            using var fs = File.OpenRead(Path.Combine("..", "..", "..", "Xfs", "Data", "xfs.zip"));
+            using var fs = File.OpenRead(Path.Combine("..", "..", "LibraryTests", "Xfs", "Data", "xfs.zip"));
             using var vhdx = ZipUtilities.ReadFileFromZip(fs);
             using var diskImage = new DiskImageFile(vhdx, Ownership.Dispose);
             using var disk = new Disk(new List<DiskImageFile> { diskImage }, Ownership.Dispose);
@@ -47,7 +47,7 @@ namespace LibraryTests.Xfs
         public void Xfs5VhdxZip()
         {
             SetupHelper.SetupComplete();
-            using var fs = File.OpenRead(Path.Combine("..", "..", "..", "Xfs", "Data", "xfs5.zip"));
+            using var fs = File.OpenRead(Path.Combine("..", "..", "LibraryTests", "Xfs", "Data", "xfs5.zip"));
             using var vhdx = ZipUtilities.ReadFileFromZip(fs);
             using var diskImage = new DiskImageFile(vhdx, Ownership.Dispose);
             using var disk = new Disk(new List<DiskImageFile> { diskImage }, Ownership.Dispose);

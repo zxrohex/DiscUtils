@@ -35,7 +35,7 @@ namespace LibraryTests.Vhdx
         [Fact]
         public void ReplayLog()
         {
-            using var fs = File.OpenRead(Path.Combine("..", "..", "..", "Vhdx", "Data", "vhdx-log-replay.zip"));
+            using var fs = File.OpenRead(Path.Combine("..", "..", "LibraryTests", "Vhdx", "Data", "vhdx-log-replay.zip"));
             using var vhdx = ZipUtilities.ReadFileFromZip(fs);
             using var diskImage = new DiskImageFile(vhdx, Ownership.Dispose);
             using var disk = new Disk(new List<DiskImageFile> { diskImage }, Ownership.Dispose);
