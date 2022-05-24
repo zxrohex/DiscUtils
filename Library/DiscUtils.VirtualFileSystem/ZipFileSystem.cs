@@ -80,8 +80,6 @@ public class ZipFileSystem : VirtualFileSystem
             {
                 var entry = AddFile(path, (mode, access) =>
                 {
-                    Stream datastream;
-
                     if (file.Length >= FileDatabufferChunkSize)
                     {
                         var data = new SparseMemoryBuffer(FileDatabufferChunkSize);
@@ -91,21 +89,16 @@ public class ZipFileSystem : VirtualFileSystem
                             throw new EndOfStreamException("Unexpected end of zip stream");
                         }
 
-                        datastream = new SparseMemoryStream(data, FileAccess.Read);
+                        return new SparseMemoryStream(data, FileAccess.Read);
                     }
                     else
                     {
                         var data = new byte[file.Length];
 
-                        if (file.Open().Read(data, 0, data.Length) < file.Length)
-                        {
-                            throw new EndOfStreamException("Unexpected end of zip stream");
-                        }
+                        file.Open().ReadExact(data, 0, data.Length);
 
-                        datastream = new MemoryStream(data, writable: false);
+                        return new MemoryStream(data, writable: false);
                     }
-
-                    return datastream;
                 });
 
                 entry.Length = file.Length;

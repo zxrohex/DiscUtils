@@ -207,7 +207,7 @@ public class TarFile : IDisposable
 
             if (hdr.FileLength == 0)
             {
-                yield return new TarFileData(hdr, source: null);
+                yield return new(hdr, source: null);
             }
             else if (hdr.FileType == UnixFileType.TarEntryLongLink &&
                 hdr.FileName.Equals("././@LongLink", StringComparison.Ordinal))
@@ -219,7 +219,7 @@ public class TarFile : IDisposable
                     throw new EndOfStreamException("Unexpected end of tar stream");
                 }
 
-                long_path = TarHeader.ReadNullTerminatedString(data).TrimEnd(' ');
+                long_path = TarHeader.ReadNullTerminatedString(data);
 
                 var moveForward = (int)(-(hdr.FileLength & 511) & 511);
 
@@ -234,9 +234,9 @@ public class TarFile : IDisposable
 
                 var datastream = new SubStream(archive, location, hdr.FileLength);
 
-                yield return new TarFileData(hdr, datastream);
+                yield return new(hdr, datastream);
 
-                archive.Position = location + hdr.FileLength + (-(datastream.Length & 511) & 511);
+                archive.Position = location + hdr.FileLength + ((-datastream.Length) & 511);
             }
             else
             {
@@ -265,9 +265,9 @@ public class TarFile : IDisposable
                     datastream = new MemoryStream(data, writable: false);
                 }
 
-                yield return new TarFileData(hdr, datastream);
+                var moveForward = (int)((-datastream.Length) & 511);
 
-                var moveForward = (int)(-(datastream.Length & 511) & 511);
+                yield return new(hdr, datastream);
 
                 if (archive.Read(hdrBuf, 0, moveForward) < moveForward)
                 {

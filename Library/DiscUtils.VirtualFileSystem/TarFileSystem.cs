@@ -10,7 +10,7 @@ using System.Diagnostics;
 
 public class TarFileSystem : VirtualFileSystem
 {
-    private readonly WeakReference _tar;
+    private readonly WeakReference<Stream> _tar;
 
     public static bool Detect(Stream archive)
     {
@@ -50,7 +50,7 @@ public class TarFileSystem : VirtualFileSystem
 
         if (ownsStream)
         {
-            _tar = new WeakReference(tar_stream);
+            _tar = new(tar_stream);
         }
 
         foreach (var file in TarFile.EnumerateFiles(tar_stream))
@@ -91,7 +91,7 @@ public class TarFileSystem : VirtualFileSystem
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing && _tar?.Target is IDisposable archive)
+        if (disposing && _tar is not null && _tar.TryGetTarget(out var archive))
         {
             archive.Dispose();
         }
