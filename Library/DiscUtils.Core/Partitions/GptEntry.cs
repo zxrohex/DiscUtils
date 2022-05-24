@@ -108,7 +108,7 @@ internal class GptEntry : IComparable<GptEntry>
         EndianUtilities.WriteBytesLittleEndian(LastUsedLogicalBlock, buffer.Slice(40));
         EndianUtilities.WriteBytesLittleEndian(Attributes, buffer.Slice(48));
         var nameBytes = Encoding.Unicode.GetBytes(Name.AsSpan(), buffer.Slice(56));
-        if (Name.Length < 36)
+        if (nameBytes < 36 * 2)
         {
             buffer.Slice(56 + nameBytes, 36 * 2 - nameBytes).Clear();
         }
