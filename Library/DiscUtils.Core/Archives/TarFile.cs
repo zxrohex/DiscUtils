@@ -25,6 +25,7 @@ namespace DiscUtils.Archives;
 using Internal;
 using Streams;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 
@@ -212,18 +213,21 @@ public class TarFile : IDisposable
             else if (hdr.FileType == UnixFileType.TarEntryLongLink &&
                 hdr.FileName.Equals("././@LongLink", StringComparison.Ordinal))
             {
-                var data = new byte[hdr.FileLength];
-
-                if (archive.Read(data, 0, data.Length) < hdr.FileLength)
+                var data = ArrayPool<byte>.Shared.Rent(checked((int)hdr.FileLength));
+                try
                 {
-                    throw new EndOfStreamException("Unexpected end of tar stream");
-                }
+                    archive.ReadExact(data, 0, (int)hdr.FileLength);
 
-                long_path = TarHeader.ReadNullTerminatedString(data);
+                    long_path = TarHeader.ReadNullTerminatedString(data.AsSpan(0, (int)hdr.FileLength));
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(data);
+                }
 
                 var moveForward = (int)(-(hdr.FileLength & 511) & 511);
 
-                if (archive.Read(hdrBuf, 0, moveForward) < moveForward)
+                if (archive.ReadMaximum(hdrBuf, 0, moveForward) < moveForward)
                 {
                     break;
                 }
@@ -257,10 +261,7 @@ public class TarFile : IDisposable
                 {
                     var data = new byte[hdr.FileLength];
 
-                    if (archive.Read(data, 0, data.Length) < hdr.FileLength)
-                    {
-                        throw new EndOfStreamException("Unexpected end of tar stream");
-                    }
+                    archive.ReadExact(data, 0, data.Length);
 
                     datastream = new MemoryStream(data, writable: false);
                 }
@@ -269,7 +270,7 @@ public class TarFile : IDisposable
 
                 yield return new(hdr, datastream);
 
-                if (archive.Read(hdrBuf, 0, moveForward) < moveForward)
+                if (archive.ReadMaximum(hdrBuf, 0, moveForward) < moveForward)
                 {
                     break;
                 }

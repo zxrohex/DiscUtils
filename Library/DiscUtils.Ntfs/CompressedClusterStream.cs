@@ -106,7 +106,7 @@ internal sealed class CompressedClusterStream : ClusterStream
 
     public override void ReadClusters(long startVcn, int count, Span<byte> buffer)
     {
-        if (buffer.Length < count * _bytesPerCluster + buffer.Length)
+        if (buffer.Length < count * _bytesPerCluster)
         {
             throw new ArgumentException("Cluster buffer too small", nameof(buffer));
         }
@@ -171,7 +171,7 @@ internal sealed class CompressedClusterStream : ClusterStream
 
     public override int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer)
     {
-        if (buffer.Length < count * _bytesPerCluster + buffer.Length)
+        if (buffer.Length < count * _bytesPerCluster)
         {
             throw new ArgumentException("Cluster buffer too small", nameof(buffer));
         }

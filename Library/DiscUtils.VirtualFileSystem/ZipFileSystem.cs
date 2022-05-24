@@ -37,7 +37,7 @@ public class ZipFileSystem : VirtualFileSystem
     }
 
     public ZipFileSystem(FileStream zip_stream, bool ownsStream)
-        : this(zip_stream, zip_stream.Name, ownsStream) { }
+        : this(zip_stream, Path.GetFileName(zip_stream.Name), ownsStream) { }
 
     public ZipFileSystem(Stream zip_stream, string label, bool ownsStream)
         : base(new VirtualFileSystemOptions
