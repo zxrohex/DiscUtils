@@ -153,9 +153,9 @@ public sealed class Nfs3SetAttributes
             && other.SetSize == SetSize
             && other.Size == Size
             && other.SetAccessTime == SetAccessTime
-            && object.Equals(other.AccessTime, AccessTime)
+            && Equals(other.AccessTime, AccessTime)
             && other.SetModifyTime == SetModifyTime
-            && object.Equals(other.ModifyTime, ModifyTime);
+            && Equals(other.ModifyTime, ModifyTime);
     }
 
     public override int GetHashCode()

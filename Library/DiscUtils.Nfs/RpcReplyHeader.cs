@@ -74,8 +74,8 @@ public class RpcReplyHeader
         }
 
         return other.Status == Status
-            && object.Equals(other.AcceptReply, AcceptReply)
-            && object.Equals(other.RejectedReply, RejectedReply);
+            && Equals(other.AcceptReply, AcceptReply)
+            && Equals(other.RejectedReply, RejectedReply);
     }
 
     public override int GetHashCode()

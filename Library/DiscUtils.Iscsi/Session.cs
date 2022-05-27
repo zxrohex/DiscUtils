@@ -371,7 +371,7 @@ public sealed class Session : IDisposable
     /// Gets the name of the iSCSI initiator seen by the target for this session.
     /// </summary>
     [ProtocolKey("InitiatorName", null, KeyUsagePhase.SecurityNegotiation, KeySender.Initiator, KeyType.Declarative, UsedForDiscovery = true)]
-    public string InitiatorName
+    public static string InitiatorName
     {
         get { return "iqn.2008-2010-04.discutils.codeplex.com"; }
     }

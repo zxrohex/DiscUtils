@@ -151,7 +151,7 @@ public class LogicalVolumeManager
         return null;
     }
 
-    private MetadataPhysicalVolumeSection GetPhysicalVolumeMetadata(MetadataVolumeGroupSection vg, string name)
+    private static MetadataPhysicalVolumeSection GetPhysicalVolumeMetadata(MetadataVolumeGroupSection vg, string name)
     {
         foreach (var pv in vg.PhysicalVolumes)
         {

@@ -89,10 +89,10 @@ public sealed class Nfs3DirectoryEntry
         }
 
         return other.Cookie == Cookie
-            && object.Equals(other.FileAttributes, FileAttributes)
-            && object.Equals(other.FileHandle, FileHandle)
+            && Equals(other.FileAttributes, FileAttributes)
+            && Equals(other.FileHandle, FileHandle)
             && other.FileId == FileId
-            && object.Equals(other.Name, Name);
+            && Equals(other.Name, Name);
     }
 
     public override int GetHashCode()

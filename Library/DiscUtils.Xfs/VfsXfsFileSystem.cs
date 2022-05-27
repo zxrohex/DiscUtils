@@ -190,7 +190,7 @@ internal sealed class VfsXfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
     /// <summary>
     /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L587
     /// </summary>
-    private long XFS_FSB_TO_BB(SuperBlock sb, long fsbno)
+    private static long XFS_FSB_TO_BB(SuperBlock sb, long fsbno)
     {
         return fsbno << (sb.BlocksizeLog2 - BBSHIFT);
     }
@@ -198,7 +198,7 @@ internal sealed class VfsXfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
     /// <summary>
     /// https://github.com/torvalds/linux/blob/2a610b8aa8e5bd449ba270e517b0e72295d62c9c/fs/xfs/libxfs/xfs_format.h#L716
     /// </summary>
-    private long XFS_AGF_DADDR(SuperBlock sb)
+    private static long XFS_AGF_DADDR(SuperBlock sb)
     {
         return 1 << (sb.SectorSizeLog2 - BBSHIFT);
     }

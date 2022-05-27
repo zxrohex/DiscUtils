@@ -69,7 +69,7 @@ public sealed class Nfs3AccessResult : Nfs3CallResult
         }
 
         return other.Access == Access
-            && object.Equals(other.ObjectAttributes, ObjectAttributes)
+            && Equals(other.ObjectAttributes, ObjectAttributes)
             && other.Status == Status;
     }
 

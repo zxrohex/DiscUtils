@@ -135,9 +135,9 @@ class Program : ProgramBase
             {
                 foreach (var elem in obj.Elements)
                 {
-                    if (elem.Format == DiscUtils.BootConfig.ElementFormat.Device)
+                    if (elem.Format == ElementFormat.Device)
                     {
-                        elem.Value = DiscUtils.BootConfig.ElementValue.ForDevice(elem.Value.ParentObject, volMgr.GetPhysicalVolumes()[0]);
+                        elem.Value = ElementValue.ForDevice(elem.Value.ParentObject, volMgr.GetPhysicalVolumes()[0]);
                     }
                 }
             }
@@ -234,7 +234,7 @@ class Program : ProgramBase
     }
 
 
-    private void CopyFile(NtfsFileSystem sourceNtfs, NtfsFileSystem destNtfs, string path)
+    private static void CopyFile(NtfsFileSystem sourceNtfs, NtfsFileSystem destNtfs, string path)
     {
         if (IsExcluded(path))
         {

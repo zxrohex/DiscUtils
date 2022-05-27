@@ -263,7 +263,7 @@ internal class Inode : IByteArraySerializable
         return Size;
     }
 
-    private DateTime ReadTimestamp(ReadOnlySpan<byte> buffer)
+    private static DateTime ReadTimestamp(ReadOnlySpan<byte> buffer)
     {
         var seconds = EndianUtilities.ToUInt32BigEndian(buffer);
         var nanoSeconds = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));

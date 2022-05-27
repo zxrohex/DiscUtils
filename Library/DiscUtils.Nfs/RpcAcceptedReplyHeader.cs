@@ -67,9 +67,9 @@ public class RpcAcceptedReplyHeader
             return false;
         }
 
-        return object.Equals(other.Verifier, Verifier)
+        return Equals(other.Verifier, Verifier)
             && other.AcceptStatus == AcceptStatus
-            && object.Equals(other.MismatchInfo, MismatchInfo);
+            && Equals(other.MismatchInfo, MismatchInfo);
     }
 
     public override int GetHashCode()

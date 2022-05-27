@@ -74,8 +74,8 @@ public sealed class Nfs3WeakCacheConsistency
             return false;
         }
 
-        return object.Equals(other.After, After)
-            && object.Equals(other.Before, Before);
+        return Equals(other.After, After)
+            && Equals(other.Before, Before);
     }
 
     public override int GetHashCode()

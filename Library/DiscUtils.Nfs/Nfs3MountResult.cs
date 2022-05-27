@@ -86,7 +86,7 @@ public sealed class Nfs3MountResult : Nfs3CallResult
 
         return other.Status == Status
             && Enumerable.SequenceEqual(other.AuthFlavours, AuthFlavours)
-            && object.Equals(other.FileHandle, FileHandle);
+            && Equals(other.FileHandle, FileHandle);
     }
 
     public override int GetHashCode()

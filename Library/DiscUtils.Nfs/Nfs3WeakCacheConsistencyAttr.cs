@@ -63,8 +63,8 @@ public sealed class Nfs3WeakCacheConsistencyAttr
         }
 
         return other.Size == Size
-            && object.Equals(other.ModifyTime, ModifyTime)
-            && object.Equals(other.ChangeTime, ChangeTime);
+            && Equals(other.ModifyTime, ModifyTime)
+            && Equals(other.ChangeTime, ChangeTime);
     }
 
     public override int GetHashCode()

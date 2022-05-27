@@ -71,7 +71,7 @@ public class NewVirtualDiskCommand : PSCmdlet
             return;
         }
 
-        if (!DiscUtils.Common.Utilities.TryParseDiskSize(Size, out var size))
+        if (!Common.Utilities.TryParseDiskSize(Size, out var size))
         {
             WriteError(new ErrorRecord(
                 new ArgumentException("Unable to parse the disk size"),

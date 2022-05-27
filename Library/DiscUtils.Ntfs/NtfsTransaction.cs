@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Threading;
 
 namespace DiscUtils.Ntfs;
 
@@ -29,30 +30,35 @@ internal sealed class NtfsTransaction : IDisposable
     [ThreadStatic]
     private static NtfsTransaction _instance;
 
-    private readonly bool _ownRecord;
+    private int _owners;
 
-    public NtfsTransaction()
+    private NtfsTransaction()
     {
-        if (_instance == null)
+    }
+
+    public static NtfsTransaction Begin()
+    {
+        _instance ??= new();
+
+        var count = Interlocked.Increment(ref _instance._owners);
+
+        if (count == 1)
         {
-            _instance = this;
-            Timestamp = DateTime.UtcNow;
-            _ownRecord = true;
+            _instance.Timestamp = DateTime.UtcNow;
         }
+
+        return _instance;
     }
 
-    public static NtfsTransaction Current
-    {
-        get { return _instance; }
-    }
+    public static NtfsTransaction Current => _instance;
 
-    public DateTime Timestamp { get; }
+    public DateTime Timestamp { get; private set; }
 
     public void Dispose()
     {
-        if (_ownRecord)
+        if (Interlocked.Decrement(ref _owners) < 0)
         {
-            _instance = null;
+            throw new ThreadStateException("NtfsTransaction object is not in expected state");
         }
     }
 }

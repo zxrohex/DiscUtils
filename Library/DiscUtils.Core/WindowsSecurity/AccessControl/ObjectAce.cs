@@ -254,12 +254,12 @@ public sealed class ObjectAce : QualifiedAce
         }
     }
 
-    private void WriteGuid(Guid val, Span<byte> buffer)
+    private static void WriteGuid(Guid val, Span<byte> buffer)
     {
         EndianUtilities.WriteBytesLittleEndian(val, buffer);
     }
 
-    private Guid ReadGuid(ReadOnlySpan<byte> buffer)
+    private static Guid ReadGuid(ReadOnlySpan<byte> buffer)
     {
         return EndianUtilities.ToGuidLittleEndian(buffer);
     }

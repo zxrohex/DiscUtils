@@ -64,7 +64,7 @@ internal class NtfsFormatter
             ? "LA"
             : new SecurityIdentifier(WellKnownSidType.AccountAdministratorSid, ComputerAccount).ToString();
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             _clusterSize = 4096;
             _mftRecordSize = 1024;

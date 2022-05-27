@@ -145,7 +145,7 @@ internal class MetadataSegmentSection
         }
     }
 
-    private IEnumerable<MetadataStripe> ParseStripesSection(TextReader data)
+    private static IEnumerable<MetadataStripe> ParseStripesSection(TextReader data)
     {
         string line;
         while ((line = Metadata.ReadLine(data)) != null)

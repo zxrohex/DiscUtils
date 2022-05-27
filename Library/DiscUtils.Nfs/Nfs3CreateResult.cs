@@ -90,9 +90,9 @@ public class Nfs3CreateResult : Nfs3CallResult
         }
 
         return other.Status == Status
-            && object.Equals(other.FileHandle, FileHandle)
-            && object.Equals(other.FileAttributes, FileAttributes)
-            && object.Equals(other.CacheConsistency, CacheConsistency);
+            && Equals(other.FileHandle, FileHandle)
+            && Equals(other.FileAttributes, FileAttributes)
+            && Equals(other.CacheConsistency, CacheConsistency);
     }
 
     public override int GetHashCode()

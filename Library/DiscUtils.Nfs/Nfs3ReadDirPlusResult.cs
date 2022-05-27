@@ -101,7 +101,7 @@ public sealed class Nfs3ReadDirPlusResult : Nfs3CallResult
         }
 
         return other.Status == Status
-            && object.Equals(other.DirAttributes, DirAttributes)
+            && Equals(other.DirAttributes, DirAttributes)
             && Enumerable.SequenceEqual(other.DirEntries, DirEntries)
             && other.CookieVerifier == CookieVerifier;
     }

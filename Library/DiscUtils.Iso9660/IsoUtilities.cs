@@ -258,11 +258,11 @@ internal static class IsoUtilities
     {
         string[] parts = { name, string.Empty, "1" };
 
-        if (name.Contains("."))
+        if (name.Contains('.'))
         {
             var endOfFilePart = name.IndexOf('.');
             parts[0] = name.Substring(0, endOfFilePart);
-            if (name.Contains(";"))
+            if (name.Contains(';'))
             {
                 var verSep = name.IndexOf(';', endOfFilePart + 1);
                 parts[1] = name.Substring(endOfFilePart + 1, verSep - (endOfFilePart + 1));
@@ -275,7 +275,7 @@ internal static class IsoUtilities
         }
         else
         {
-            if (name.Contains(";"))
+            if (name.Contains(';'))
             {
                 var verSep = name.IndexOf(';');
                 parts[0] = name.Substring(0, verSep);

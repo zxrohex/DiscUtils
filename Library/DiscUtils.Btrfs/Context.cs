@@ -126,7 +126,7 @@ internal class Context : VfsContext
         }
     }
 
-    private void CheckStriping(BlockGroupFlag flags)
+    private static void CheckStriping(BlockGroupFlag flags)
     {
         if ((flags & BlockGroupFlag.Raid0) == BlockGroupFlag.Raid0)
             throw new IOException("Raid0 not supported");

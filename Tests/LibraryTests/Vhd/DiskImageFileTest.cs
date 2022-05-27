@@ -65,10 +65,12 @@ namespace LibraryTests.Vhd
             using (var diffFile = new DiskImageFile(diffStream))
             {
                 var BasePath = @"E:\FOO\";
+#if NET461_OR_GREATER || NETSTANDARD || NETCOREAPP
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
                     BasePath = "/foo/";
                 }
+#endif
 
                 // Testing the obsolete method - disable warning
 #pragma warning disable 618

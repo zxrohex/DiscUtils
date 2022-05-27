@@ -64,7 +64,7 @@ internal class LeafNode:NodeHeader
         return Size;
     }
 
-    private BaseItem CreateItem(NodeItem item, ReadOnlySpan<byte> buffer)
+    private static BaseItem CreateItem(NodeItem item, ReadOnlySpan<byte> buffer)
     {
         var data = EndianUtilities.ToByteArray(buffer.Slice((int)(item.DataOffset), (int)item.DataSize));
         BaseItem result = item.Key.ItemType switch

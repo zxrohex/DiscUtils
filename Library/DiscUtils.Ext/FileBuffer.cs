@@ -476,7 +476,7 @@ internal class FileBuffer : Buffer, IFileBuffer
 
     public override IEnumerable<Streams.StreamExtent> GetExtentsInRange(long start, long count)
     {
-        return Streams.StreamExtent.Intersect(
+        return StreamExtent.Intersect(
             new[] { new Streams.StreamExtent(0, Capacity) },
             new Streams.StreamExtent(start, count));
     }

@@ -303,7 +303,7 @@ public abstract class ProgramBase
     }
 
 
-    protected CommandLineParameter FileOrUriParameter(string paramName, string intro, bool optional)
+    protected static CommandLineParameter FileOrUriParameter(string paramName, string intro, bool optional)
     {
         return new CommandLineParameter(
             paramName,
@@ -316,7 +316,7 @@ public abstract class ProgramBase
             optional);
     }
 
-    protected CommandLineMultiParameter FileOrUriMultiParameter(string paramName, string intro, bool optional)
+    protected static CommandLineMultiParameter FileOrUriMultiParameter(string paramName, string intro, bool optional)
     {
         return new CommandLineMultiParameter(
             paramName,
@@ -344,7 +344,7 @@ public abstract class ProgramBase
         Console.Write($"\r{label} ({(e.BytesRead * 100) / totalBytes,3}%)  |{progressBar}| {remaining:hh\\:mm\\:ss\\.f}");
     }
 
-    private CommandLineSwitch OutputFormatSwitch()
+    private static CommandLineSwitch OutputFormatSwitch()
     {
         var outputTypes = new List<string>();
         foreach (var type in VirtualDiskManager.SupportedDiskTypes)

@@ -137,7 +137,7 @@ internal sealed class OnDemandVirtualDisk : VirtualDisk
 
     private VirtualDisk OpenDisk()
     {
-        return VirtualDisk.OpenDisk(_fileSystem, _path, _access);
+        return OpenDisk(_fileSystem, _path, _access);
     }
 
     private class StreamWrapper : SparseStream

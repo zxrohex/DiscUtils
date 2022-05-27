@@ -86,7 +86,7 @@ public sealed class Nfs3ReadResult : Nfs3CallResult
         }
 
         return other.Status == Status
-            && object.Equals(other.FileAttributes, FileAttributes)
+            && Equals(other.FileAttributes, FileAttributes)
             && other.Count == Count
             && Enumerable.SequenceEqual(other.Data, Data)
             && other.Eof == Eof;

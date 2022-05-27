@@ -62,7 +62,7 @@ namespace DiscUtils.Streams.Compatibility
 
 #if !NET6_0_OR_GREATER
         public static ReadOnlyMemory<char> TrimStart(this ReadOnlyMemory<char> str)
-            => str.Slice(str.Span.TrimStart().Length - str.Length);
+            => str.Slice(str.Length - str.Span.TrimStart().Length);
 
         public static ReadOnlyMemory<char> TrimEnd(this ReadOnlyMemory<char> str)
             => str.Slice(0, str.Span.TrimEnd().Length);
@@ -71,13 +71,13 @@ namespace DiscUtils.Streams.Compatibility
             => str.TrimStart().TrimEnd();
 
         public static ReadOnlyMemory<char> TrimStart(this ReadOnlyMemory<char> str, char chr)
-            => str.Slice(str.Span.TrimStart(chr).Length - str.Length);
+            => str.Slice(str.Length - str.Span.TrimStart(chr).Length);
 
         public static ReadOnlyMemory<char> TrimEnd(this ReadOnlyMemory<char> str, char chr)
             => str.Slice(0, str.Span.TrimEnd(chr).Length);
 
         public static ReadOnlyMemory<char> Trim(this ReadOnlyMemory<char> str, char chr)
-            => str.TrimStart().TrimEnd(chr);
+            => str.TrimStart(chr).TrimEnd(chr);
 
         public static ReadOnlyMemory<char> TrimStart(this ReadOnlyMemory<char> str, ReadOnlySpan<char> chr)
             => str.Slice(str.Span.TrimStart(chr).Length - str.Length);
@@ -86,11 +86,91 @@ namespace DiscUtils.Streams.Compatibility
             => str.Slice(0, str.Span.TrimEnd(chr).Length);
 
         public static ReadOnlyMemory<char> Trim(this ReadOnlyMemory<char> str, ReadOnlySpan<char> chr)
-            => str.TrimStart().TrimEnd(chr);
+            => str.TrimStart(chr).TrimEnd(chr);
 
 #endif
 
+#if !NETCOREAPP
+
+        public static StringBuilder Append(this StringBuilder sb, ReadOnlyMemory<char> value)
+        {
+            if (MemoryMarshal.TryGetString(value, out var text, out var start, out var length))
+            {
+                return sb.Append(text, start, length);
+            }
+
+            return sb.Append(value.ToString());
+        }
+
+#endif
+
+        public static IEnumerable<ReadOnlyMemory<char>> Split(this ReadOnlyMemory<char> chars, char delimiter1, char delimiter2, StringSplitOptions options = StringSplitOptions.None)
+        {
+            while (!chars.IsEmpty)
+            {
+                var i = chars.Span.IndexOfAny(delimiter1, delimiter2);
+                if (i < 0)
+                {
+                    i = chars.Length;
+                }
+
+                var value = chars.Slice(0, i);
+
+#if NET5_0_OR_GREATER
+            if (options.HasFlag(StringSplitOptions.TrimEntries))
+            {
+                value = value.Trim();
+            }
+#endif
+
+                if (!value.IsEmpty ||
+                    !options.HasFlag(StringSplitOptions.RemoveEmptyEntries))
+                {
+                    yield return value;
+                }
+
+                if (i >= chars.Length)
+                {
+                    break;
+                }
+
+                chars = chars.Slice(i + 1);
+            }
+        }
+
+        public static ReadOnlyMemory<char> TrimStartAny(this ReadOnlyMemory<char> str, char[] chrs)
+            => str.Slice(str.Span.TrimStartAny(chrs).Length - str.Length);
+
+        public static ReadOnlyMemory<char> TrimEndAny(this ReadOnlyMemory<char> str, char[] chrs)
+            => str.Slice(0, str.Span.TrimEndAny(chrs).Length);
+
+        public static ReadOnlyMemory<char> Trim(this ReadOnlyMemory<char> str, char[] chrs)
+            => str.TrimStartAny(chrs).TrimEndAny(chrs);
+
+        public static ReadOnlySpan<char> TrimStartAny(this ReadOnlySpan<char> str, char[] characters)
+        {
+            foreach (var chr in characters)
+            {
+                str = str.TrimStart(chr);
+            }
+
+            return str;
+        }
+
+        public static ReadOnlySpan<char> TrimEndAny(this ReadOnlySpan<char> str, char[] characters)
+        {
+            foreach (var chr in characters)
+            {
+                str = str.TrimEnd(chr);
+            }
+
+            return str;
+        }
+
 #if !NETSTANDARD2_1_OR_GREATER && !NETCOREAPP
+
+        public static bool Contains(this string str, char value) => str.IndexOf(value) >= 0;
+
         public static string[] Split(this string str, char separator, int count, StringSplitOptions options = StringSplitOptions.None) =>
             str.Split(new[] { separator }, count, options);
 
@@ -164,7 +244,7 @@ namespace DiscUtils.Streams.Compatibility
             try
             {
                 bytes.CopyTo(buffer);
-                return encoding.GetString(buffer);
+                return encoding.GetString(buffer, 0, bytes.Length);
             }
             finally
             {
@@ -182,7 +262,7 @@ namespace DiscUtils.Streams.Compatibility
                 try
                 {
                     var length = encoding.GetBytes(str, 0, chars.Length, buffer, 0);
-                    buffer.AsSpan().CopyTo(bytes);
+                    buffer.AsSpan(0, length).CopyTo(bytes);
                     return length;
                 }
                 finally

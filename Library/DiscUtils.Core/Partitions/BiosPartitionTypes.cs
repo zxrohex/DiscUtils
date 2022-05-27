@@ -150,7 +150,7 @@ public static class BiosPartitionTypes
             0xFB => "VMware File System",
             0xFC => "VMware Swap",
             0xFE => "IBM OEM",
-            _ => "Unknown",
+            _ => $"Unknown 0x{type:X2}",
         };
     }
 }

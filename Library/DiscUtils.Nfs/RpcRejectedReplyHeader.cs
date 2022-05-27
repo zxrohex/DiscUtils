@@ -73,7 +73,7 @@ public class RpcRejectedReplyHeader
         }
 
         return other.Status == Status
-            && object.Equals(other.MismatchInfo, MismatchInfo)
+            && Equals(other.MismatchInfo, MismatchInfo)
             && other.AuthenticationStatus == AuthenticationStatus;
     }
 

@@ -71,7 +71,7 @@ namespace LibraryTests.Xfs
             ValidateContent(xfs);
         }
 
-        private void ValidateContent(DiscFileSystem xfs)
+        private static void ValidateContent(DiscFileSystem xfs)
         {
             Assert.True(xfs.DirectoryExists(""));
             Assert.True(xfs.FileExists("folder\\nested\\file"));

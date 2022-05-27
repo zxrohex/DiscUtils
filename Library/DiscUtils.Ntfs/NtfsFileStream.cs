@@ -103,7 +103,7 @@ internal sealed class NtfsFileStream : SparseStream
         set
         {
             AssertOpen();
-            using (new NtfsTransaction())
+            using (NtfsTransaction.Begin())
             {
                 _baseStream.Position = value;
             }
@@ -118,7 +118,7 @@ internal sealed class NtfsFileStream : SparseStream
             return;
         }
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             base.Dispose(disposing);
             _baseStream.Dispose();
@@ -132,7 +132,7 @@ internal sealed class NtfsFileStream : SparseStream
     public override void Flush()
     {
         AssertOpen();
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             _baseStream.Flush();
 
@@ -145,7 +145,7 @@ internal sealed class NtfsFileStream : SparseStream
         AssertOpen();
         StreamUtilities.AssertBufferParameters(buffer, offset, count);
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             return _baseStream.Read(buffer, offset, count);
         }
@@ -157,7 +157,7 @@ internal sealed class NtfsFileStream : SparseStream
         AssertOpen();
         StreamUtilities.AssertBufferParameters(buffer, offset, count);
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             return await _baseStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         }
@@ -169,7 +169,7 @@ internal sealed class NtfsFileStream : SparseStream
     {
         AssertOpen();
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             return _baseStream.Read(buffer);
         }
@@ -179,7 +179,7 @@ internal sealed class NtfsFileStream : SparseStream
     {
         AssertOpen();
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             return await _baseStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
@@ -189,7 +189,7 @@ internal sealed class NtfsFileStream : SparseStream
     public override long Seek(long offset, SeekOrigin origin)
     {
         AssertOpen();
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             return _baseStream.Seek(offset, origin);
         }
@@ -198,7 +198,7 @@ internal sealed class NtfsFileStream : SparseStream
     public override void SetLength(long value)
     {
         AssertOpen();
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             if (value != Length)
             {
@@ -213,7 +213,7 @@ internal sealed class NtfsFileStream : SparseStream
         AssertOpen();
         StreamUtilities.AssertBufferParameters(buffer, offset, count);
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             _isDirty = true;
             _baseStream.Write(buffer, offset, count);
@@ -226,7 +226,7 @@ internal sealed class NtfsFileStream : SparseStream
         AssertOpen();
         StreamUtilities.AssertBufferParameters(buffer, offset, count);
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             _isDirty = true;
             await _baseStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
@@ -239,7 +239,7 @@ internal sealed class NtfsFileStream : SparseStream
     {
         AssertOpen();
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             _isDirty = true;
             _baseStream.Write(buffer);
@@ -250,7 +250,7 @@ internal sealed class NtfsFileStream : SparseStream
     {
         AssertOpen();
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             _isDirty = true;
             await _baseStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
@@ -266,7 +266,7 @@ internal sealed class NtfsFileStream : SparseStream
     public override void Clear(int count)
     {
         AssertOpen();
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             _isDirty = true;
             _baseStream.Clear(count);

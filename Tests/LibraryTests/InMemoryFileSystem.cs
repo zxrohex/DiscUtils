@@ -86,22 +86,22 @@ namespace LibraryTests
             return _files.ContainsKey(path);
         }
 
-        public override string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
         {
             throw new NotImplementedException();
         }
 
-        public override string[] GetFiles(string path, string searchPattern, SearchOption searchOption)
+        public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
         {
             throw new NotImplementedException();
         }
 
-        public override string[] GetFileSystemEntries(string path)
+        public override IEnumerable<string> GetFileSystemEntries(string path)
         {
             throw new NotImplementedException();
         }
 
-        public override string[] GetFileSystemEntries(string path, string searchPattern)
+        public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
         {
             throw new NotImplementedException();
         }

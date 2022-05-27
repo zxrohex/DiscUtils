@@ -133,7 +133,7 @@ internal class MetadataVolumeGroupSection
         }
     }
 
-    private IEnumerable<MetadataLogicalVolumeSection> ParseLogicalVolumeSection(TextReader data)
+    private static IEnumerable<MetadataLogicalVolumeSection> ParseLogicalVolumeSection(TextReader data)
     {
         string line;
         while ((line = Metadata.ReadLine(data)) != null)
@@ -152,7 +152,7 @@ internal class MetadataVolumeGroupSection
         }
     }
 
-    private IEnumerable<MetadataPhysicalVolumeSection> ParsePhysicalVolumeSection(TextReader data)
+    private static IEnumerable<MetadataPhysicalVolumeSection> ParsePhysicalVolumeSection(TextReader data)
     {
         string line;
         while ((line = Metadata.ReadLine(data)) != null)

@@ -57,7 +57,7 @@ public sealed class Nfs3ModifyResult : Nfs3CallResult
         }
 
         return other.Status == Status
-            && object.Equals(other.CacheConsistency, CacheConsistency);
+            && Equals(other.CacheConsistency, CacheConsistency);
     }
 
     public override int GetHashCode()

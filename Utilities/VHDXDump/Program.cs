@@ -165,7 +165,7 @@ class Program : ProgramBase
         }
     }
 
-    private void WriteHeaderInfo(HeaderInfo info)
+    private static void WriteHeaderInfo(HeaderInfo info)
     {
         Console.WriteLine("Header Info");
         Console.WriteLine("-----------");

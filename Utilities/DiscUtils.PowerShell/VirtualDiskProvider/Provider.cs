@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -712,7 +713,7 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
         else
         {
             WriteError(new ErrorRecord(
-                new InvalidOperationException("Unrecognized object type: " + (obj != null ? obj.GetType() : null)),
+                new InvalidOperationException($"Unrecognized object type: {obj?.GetType()}"),
                 "UnknownObjectType",
                 ErrorCategory.ParserError,
                 obj));
@@ -721,7 +722,7 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
 
     private void EnumerateDisk(VirtualDisk vd, string path, bool recurse, bool namesOnly)
     {
-        if (!path.AsSpan().TrimEnd(Internal.Utilities.PathSeparators).EndsWith("!".AsSpan(), StringComparison.Ordinal))
+        if (!path.AsSpan().TrimEndAny(Internal.Utilities.PathSeparators).EndsWith("!".AsSpan(), StringComparison.Ordinal))
         {
             path += "!";
         }

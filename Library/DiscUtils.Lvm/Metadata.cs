@@ -112,7 +112,7 @@ internal class Metadata
         var values = value.Trim('[').Trim(']').ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
         for (var i = 0; i < values.Length; i++)
         {
-            values[i] = Metadata.ParseStringValue(values[i].AsSpan());
+            values[i] = ParseStringValue(values[i].AsSpan());
         }
         return values;
     }

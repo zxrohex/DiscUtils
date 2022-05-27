@@ -75,7 +75,7 @@ public sealed class Nfs3WriteResult : Nfs3CallResult
         }
 
         return other.Status == Status
-            && object.Equals(other.CacheConsistency, CacheConsistency)
+            && Equals(other.CacheConsistency, CacheConsistency)
             && other.Count == Count
             && other.WriteVerifier == WriteVerifier
             && other.HowCommitted == HowCommitted;

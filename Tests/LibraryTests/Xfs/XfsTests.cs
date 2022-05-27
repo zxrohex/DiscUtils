@@ -33,7 +33,7 @@ namespace LibraryTests.Xfs
             Assert.Equal("init.d", symlink.TargetPath);
         }
 
-        private byte[] GetInodeBuffer()
+        private static byte[] GetInodeBuffer()
         {
             var inodeBuffer = new byte[0x70];
             inodeBuffer[0x5] = (byte)InodeFormat.Local;

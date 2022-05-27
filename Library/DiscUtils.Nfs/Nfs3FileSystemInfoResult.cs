@@ -78,9 +78,9 @@ public sealed class Nfs3FileSystemInfoResult : Nfs3CallResult
         }
 
         return other.Status == Status
-            && object.Equals(other.PostOpAttributes, PostOpAttributes)
+            && Equals(other.PostOpAttributes, PostOpAttributes)
             && other.Status == Status
-            && object.Equals(other.FileSystemInfo, FileSystemInfo);
+            && Equals(other.FileSystemInfo, FileSystemInfo);
     }
 
     public override int GetHashCode()

@@ -165,13 +165,13 @@ public abstract class GenericSecurityDescriptor
         InternalSacl != null
         && (ControlFlags & ControlFlags.SystemAclPresent) != 0;
 
-    void WriteUShort(ushort val, byte[] buffer, int offset)
+    static void WriteUShort(ushort val, byte[] buffer, int offset)
     {
         buffer[offset] = (byte)val;
         buffer[offset + 1] = (byte)(val >> 8);
     }
 
-    void WriteInt(int val, byte[] buffer, int offset)
+    static void WriteInt(int val, byte[] buffer, int offset)
     {
         buffer[offset] = (byte)val;
         buffer[offset + 1] = (byte)(val >> 8);

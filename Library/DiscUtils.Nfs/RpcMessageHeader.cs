@@ -76,7 +76,7 @@ public class RpcMessageHeader
 
         return other.IsSuccess == IsSuccess
             && other.TransactionId == TransactionId
-            && object.Equals(other.ReplyHeader, ReplyHeader);
+            && Equals(other.ReplyHeader, ReplyHeader);
     }
 
     public override int GetHashCode()

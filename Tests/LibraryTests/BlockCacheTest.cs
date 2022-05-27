@@ -290,7 +290,7 @@ namespace LibraryTests
             }
         }
 
-        private MemoryStream CreateSequencedMemStream(int length, bool writable)
+        private static MemoryStream CreateSequencedMemStream(int length, bool writable)
         {
             var buffer = new byte[length];
             for (var i = 0; i < length; ++i)
@@ -306,7 +306,7 @@ namespace LibraryTests
             AssertSequenced(buffer, 0, buffer.Length, seqOffset);
         }
 
-        private void AssertSequenced(byte[] buffer, int offset, int count, int seqOffset)
+        private static void AssertSequenced(byte[] buffer, int offset, int count, int seqOffset)
         {
             for (var i = 0; i < count; ++i)
             {

@@ -87,7 +87,7 @@ internal class FatBuffer
         get { return _buffer.Length; }
     }
 
-    internal bool IsFree(uint val)
+    internal static bool IsFree(uint val)
     {
         return val == 0;
     }

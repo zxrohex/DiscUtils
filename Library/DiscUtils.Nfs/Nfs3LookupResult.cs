@@ -91,9 +91,9 @@ public sealed class Nfs3LookupResult : Nfs3CallResult
         }
 
         return other.Status == Status
-            && object.Equals(other.ObjectHandle, ObjectHandle)
-            && object.Equals(other.ObjectAttributes, ObjectAttributes)
-            && object.Equals(other.DirAttributes, DirAttributes);
+            && Equals(other.ObjectHandle, ObjectHandle)
+            && Equals(other.ObjectAttributes, ObjectAttributes)
+            && Equals(other.DirAttributes, DirAttributes);
     }
 
     public override int GetHashCode()

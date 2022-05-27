@@ -104,9 +104,9 @@ public sealed class Nfs3FileAttributes
             && other.RdevMinor == RdevMinor
             && other.FileSystemId == FileSystemId
             && other.FileId == FileId
-            && object.Equals(other.AccessTime, AccessTime)
-            && object.Equals(other.ModifyTime, ModifyTime)
-            && object.Equals(other.ChangeTime, ChangeTime);
+            && Equals(other.AccessTime, AccessTime)
+            && Equals(other.ModifyTime, ModifyTime)
+            && Equals(other.ChangeTime, ChangeTime);
     }
 
     public override int GetHashCode()

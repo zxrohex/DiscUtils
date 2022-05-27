@@ -77,7 +77,7 @@ public sealed class Nfs3ExportResult : Nfs3CallResult
 
         for (var i = 0; i < Exports.Count; i++)
         {
-            if (!object.Equals(other.Exports[i], Exports[i]))
+            if (!Equals(other.Exports[i], Exports[i]))
             {
                 return false;
             }

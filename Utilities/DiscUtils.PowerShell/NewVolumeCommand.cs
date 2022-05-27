@@ -95,7 +95,7 @@ public class NewVolumeCommand : PSCmdlet
         }
         else
         {
-            if (!DiscUtils.Common.Utilities.TryParseDiskSize(Size, out var size))
+            if (!Common.Utilities.TryParseDiskSize(Size, out var size))
             {
                 WriteError(new ErrorRecord(
                     new ArgumentException("Unable to parse the volume size"),

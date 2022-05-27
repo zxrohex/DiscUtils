@@ -212,7 +212,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="overwrite">Whether to permit over-writing of an existing file.</param>
     public override void CopyFile(string sourceFile, string destinationFile, bool overwrite)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var sourceParentDirEntry = GetDirectoryEntry(Utilities.GetDirectoryFromPath(sourceFile));
             if (sourceParentDirEntry == null || !sourceParentDirEntry.IsDirectory)
@@ -309,7 +309,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="path">The path of the directory to delete.</param>
     public override void DeleteDirectory(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -359,7 +359,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="path">The path of the file to delete.</param>
     public override void DeleteFile(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntryPath = ParsePath(path, out var attributeName, out var attributeType);
 
@@ -414,7 +414,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>true if the directory exists.</returns>
     public override bool DirectoryExists(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             // Special case - root directory
             if (string.IsNullOrEmpty(path))
@@ -433,7 +433,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>true if the file exists.</returns>
     public override bool FileExists(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntryPath = ParsePath(path, out var attributeName, out var attributeType);
 
@@ -472,7 +472,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>Array of directories matching the search pattern.</returns>
     public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
@@ -493,7 +493,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>Array of files matching the search pattern.</returns>
     public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
 
@@ -511,7 +511,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>Array of files and subdirectories.</returns>
     public override IEnumerable<string> GetFileSystemEntries(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var parentDirEntry = GetDirectoryEntry(path);
             if (parentDirEntry == null)
@@ -539,7 +539,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>Array of files and subdirectories matching the search pattern.</returns>
     public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             // TODO: Be smarter, use the B*Tree for better performance when the start of the pattern is known
             // characters
@@ -571,9 +571,9 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="destinationDirectoryName">The target directory name.</param>
     public override void MoveDirectory(string sourceDirectoryName, string destinationDirectoryName)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
-            using (new NtfsTransaction())
+            using (NtfsTransaction.Begin())
             {
                 var sourceParentDirEntry =
                     GetDirectoryEntry(Utilities.GetDirectoryFromPath(sourceDirectoryName));
@@ -624,7 +624,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="overwrite">Whether to permit a destination file to be overwritten.</param>
     public override void MoveFile(string sourceName, string destinationName, bool overwrite)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var sourceParentDirEntry = GetDirectoryEntry(Utilities.GetDirectoryFromPath(sourceName));
             if (sourceParentDirEntry == null || !sourceParentDirEntry.IsDirectory)
@@ -697,7 +697,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The attributes of the file or directory.</returns>
     public override FileAttributes GetAttributes(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -715,7 +715,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="newValue">The new attributes of the file or directory.</param>
     public override void SetAttributes(string path, FileAttributes newValue)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -799,7 +799,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The creation time.</returns>
     public override DateTime GetCreationTimeUtc(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -817,7 +817,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="newTime">The new time to set.</param>
     public override void SetCreationTimeUtc(string path, DateTime newTime)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             UpdateStandardInformation(path, delegate(StandardInformation si) { si.CreationTime = newTime; });
         }
@@ -830,7 +830,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The last access time.</returns>
     public override DateTime GetLastAccessTimeUtc(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -848,7 +848,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="newTime">The new time to set.</param>
     public override void SetLastAccessTimeUtc(string path, DateTime newTime)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             UpdateStandardInformation(path, delegate(StandardInformation si) { si.LastAccessTime = newTime; });
         }
@@ -861,7 +861,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The last write time.</returns>
     public override DateTime GetLastWriteTimeUtc(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -879,7 +879,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="newTime">The new time to set.</param>
     public override void SetLastWriteTimeUtc(string path, DateTime newTime)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             UpdateStandardInformation(path, delegate(StandardInformation si) { si.ModificationTime = newTime; });
         }
@@ -892,7 +892,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The length in bytes.</returns>
     public override long GetFileLength(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntryPath = ParsePath(path, out var attributeName, out var attributeType);
 
@@ -1110,7 +1110,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The security descriptor.</returns>
     public RawSecurityDescriptor GetSecurity(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -1129,7 +1129,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="securityDescriptor">The new security descriptor.</param>
     public void SetSecurity(string path, RawSecurityDescriptor securityDescriptor)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -1150,7 +1150,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="path">The file or directory to change.</param>
     public void RemoveSecurity(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -1175,7 +1175,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="reparsePoint">The new reparse point.</param>
     public void SetReparsePoint(string path, ReparsePoint reparsePoint)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -1239,7 +1239,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The reparse point information.</returns>
     public ReparsePoint GetReparsePoint(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -1269,7 +1269,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="path">The path to the file or directory to remove the reparse point from.</param>
     public void RemoveReparsePoint(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -1300,7 +1300,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// </remarks>
     public string GetShortName(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var parentPath = Utilities.GetDirectoryFromPath(path);
             var parentEntry = GetDirectoryEntry(parentPath);
@@ -1356,7 +1356,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             throw new ArgumentException("Short name is not a valid 8.3 file name", nameof(shortName));
         }
 
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var parentPath = Utilities.GetDirectoryFromPath(path);
             var parentEntry = GetDirectoryEntry(parentPath);
@@ -1418,7 +1418,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The standard file information.</returns>
     public WindowsFileInformation GetFileStandardInformation(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -1447,7 +1447,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="info">The standard file information.</param>
     public void SetFileStandardInformation(string path, WindowsFileInformation info)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             UpdateStandardInformation(
                 path,
@@ -1474,7 +1474,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// </remarks>
     public long GetFileId(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -1708,7 +1708,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="options">Options controlling attributes of the new Director, or <c>null</c> for defaults.</param>
     public void CreateDirectory(string path, NewFileOptions options)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
 
@@ -1785,7 +1785,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The new stream.</returns>
     public SparseStream OpenFile(string path, FileMode mode, FileAccess access, NewFileOptions options)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntryPath = ParsePath(path, out var attributeName, out var attributeType);
 
@@ -1853,7 +1853,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
      )]
     public SparseStream OpenRawStream(string file, AttributeType type, string name, FileAccess access)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var entry = GetDirectoryEntry(file);
             if (entry == null)
@@ -1873,7 +1873,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="destinationName">The name of the new hard link to the file.</param>
     public void CreateHardLink(string sourceName, string destinationName)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var sourceDirEntry = GetDirectoryEntry(sourceName);
             if (sourceDirEntry == null)
@@ -1916,7 +1916,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <remarks>All files have at least one hard link.</remarks>
     public int GetHardLinkCount(string path)
     {
-        using (new NtfsTransaction())
+        using (NtfsTransaction.Begin())
         {
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry == null)
@@ -2278,7 +2278,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         }
     }
 
-    private void DoRemoveSecurity(File file)
+    private static void DoRemoveSecurity(File file)
     {
         var legacyStream = file.GetStream(AttributeType.SecurityDescriptor, null);
         if (legacyStream != null)

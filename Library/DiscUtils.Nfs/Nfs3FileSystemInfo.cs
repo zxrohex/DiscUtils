@@ -145,7 +145,7 @@ public sealed class Nfs3FileSystemInfo
             && other.WriteMultipleSize == WriteMultipleSize
             && other.DirectoryPreferredBytes == DirectoryPreferredBytes
             && other.MaxFileSize == MaxFileSize
-            && object.Equals(other.TimePrecision, TimePrecision)
+            && Equals(other.TimePrecision, TimePrecision)
             && other.FileSystemProperties == FileSystemProperties;
     }
 

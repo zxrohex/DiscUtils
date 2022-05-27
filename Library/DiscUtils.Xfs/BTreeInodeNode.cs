@@ -71,11 +71,11 @@ internal class BTreeInodeNode : BtreeHeader
             BtreeHeader child;
             if (Level == 1)
             {
-                child = new BTreeInodeLeaf(base.SbVersion);
+                child = new BTreeInodeLeaf(SbVersion);
             }
             else
             {
-                child = new BTreeInodeNode(base.SbVersion);
+                child = new BTreeInodeNode(SbVersion);
             }
             var data = ag.Context.RawStream;
 

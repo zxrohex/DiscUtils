@@ -61,7 +61,7 @@ public class Nfs3GetAttributesResult : Nfs3CallResult
         }
 
         return other.Status == Status
-            && object.Equals(other.Attributes, Attributes);
+            && Equals(other.Attributes, Attributes);
     }
 
     public override int GetHashCode()

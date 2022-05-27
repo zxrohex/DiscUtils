@@ -101,7 +101,7 @@ public class Nfs3ReadDirResult : Nfs3CallResult
         }
 
         return other.Status == Status
-            && object.Equals(other.DirAttributes, DirAttributes)
+            && Equals(other.DirAttributes, DirAttributes)
             && other.CookieVerifier == CookieVerifier
             && Enumerable.SequenceEqual(other.DirEntries, DirEntries)
             && other.Eof == Eof;

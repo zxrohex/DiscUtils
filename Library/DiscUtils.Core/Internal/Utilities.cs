@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -157,7 +158,7 @@ public static class Utilities
     {
         return (long)BitSwap((ulong)value);
     }
-    
+
     #endregion
 
     #region Path Manipulation
@@ -169,7 +170,7 @@ public static class Utilities
     /// <returns>The directory part.</returns>
     public static string GetDirectoryFromPath(string path)
     {
-        var trimmed = path.TrimEnd(PathSeparators);
+        var trimmed = path.AsSpan().TrimEndAny(PathSeparators);
 
         var index = trimmed.LastIndexOfAny(PathSeparators);
         if (index < 0)
@@ -177,7 +178,7 @@ public static class Utilities
             return string.Empty; // No directory, just a file name
         }
 
-        return trimmed.Substring(0, index);
+        return trimmed.Slice(0, index).ToString();
     }
 
     /// <summary>
@@ -187,15 +188,15 @@ public static class Utilities
     /// <returns>The file part of the path.</returns>
     public static string GetFileFromPath(string path)
     {
-        var trimmed = path.TrimEnd(PathSeparators);
+        var trimmed = path.AsSpan().TrimEndAny(PathSeparators);
 
         var index = trimmed.LastIndexOfAny(PathSeparators);
         if (index < 0)
         {
-            return trimmed; // No directory, just a file name
+            return trimmed.ToString(); // No directory, just a file name
         }
 
-        return trimmed.Substring(index + 1);
+        return trimmed.Slice(index + 1).ToString();
     }
 
     /// <summary>
@@ -206,7 +207,9 @@ public static class Utilities
     /// <returns>The combined path.</returns>
     public static string CombinePaths(string a, string b)
     {
-#if NETFRAMEWORK && !NET461_OR_GREATER
+#if NET461_OR_GREATER || NETSTANDARD || NETCOREAPP
+        return Path.Combine(a, b);
+#else
         if (string.IsNullOrEmpty(a) || (b.Length > 0 && b[0] == '\\'))
         {
             return b;
@@ -216,8 +219,6 @@ public static class Utilities
             return a;
         }
         return a.TrimEnd('\\') + '\\' + b.TrimStart('\\');
-#else
-        return Path.Combine(a, b);
 #endif
     }
 
@@ -230,7 +231,7 @@ public static class Utilities
     /// then relativePath is returned as-is. If <paramref name="relativePath"/>
     /// contains more '..' characters than the base path contains levels of 
     /// directory, the resultant string be the root drive followed by the file name.
-    /// If no the basePath starts with '\' (no drive specified) then the returned
+    /// If the basePath starts with '\' (no drive specified) then the returned
     /// path will also start with '\'.
     /// For example: (\TEMP\Foo.txt, ..\..\Bar.txt) gives (\Bar.txt).
     /// </returns>
@@ -273,8 +274,8 @@ public static class Utilities
 
     public static string MakeRelativePath(string path, string basePath)
     {
-        var pathElements = path.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
-        var basePathElements = basePath.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
+        var pathElements = path.AsMemory().Split('\\', '/', StringSplitOptions.RemoveEmptyEntries).ToArray();
+        var basePathElements = basePath.AsMemory().Split('\\', '/', StringSplitOptions.RemoveEmptyEntries).ToArray();
 
         if (basePathElements.Length > 0 && basePath[basePath.Length - 1] != Path.DirectorySeparatorChar)
         {
@@ -285,7 +286,7 @@ public static class Utilities
         var i = 0;
         while (i < Math.Min(pathElements.Length - 1, basePathElements.Length))
         {
-            if (!pathElements[i].Equals(basePathElements[i], StringComparison.OrdinalIgnoreCase))
+            if (!pathElements[i].Span.Equals(basePathElements[i].Span, StringComparison.OrdinalIgnoreCase))
             {
                 break;
             }
@@ -297,21 +298,20 @@ public static class Utilities
         var result = new StringBuilder();
         if (i == basePathElements.Length)
         {
-            result.Append(@$".{Path.DirectorySeparatorChar}");
+            result.Append('.').Append(Path.DirectorySeparatorChar);
         }
         else if (i < basePathElements.Length)
         {
             for (var j = 0; j < basePathElements.Length - i; ++j)
             {
-                result.Append(@$"..{Path.DirectorySeparatorChar}");
+                result.Append("..").Append(Path.DirectorySeparatorChar);
             }
         }
 
         // For each remaining part of the path, add the path element
         for (var j = i; j < pathElements.Length - 1; ++j)
         {
-            result.Append(pathElements[j]);
-            result.Append(Path.DirectorySeparatorChar);
+            result.Append(pathElements[j]).Append(Path.DirectorySeparatorChar);
         }
 
         result.Append(pathElements[pathElements.Length - 1]);
@@ -402,7 +402,7 @@ public static class Utilities
             return null;
         }
 
-        if (!pattern.Contains("."))
+        if (!pattern.Contains('.'))
         {
             pattern += ".";
         }

@@ -45,7 +45,7 @@ internal class FileAllocationTable
 
     internal bool IsFree(uint val)
     {
-        return _buffer.IsFree(val);
+        return FatBuffer.IsFree(val);
     }
 
     internal bool IsEndOfChain(uint val)

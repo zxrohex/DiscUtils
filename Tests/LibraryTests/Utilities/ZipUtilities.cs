@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using DiscUtils.Streams;
+using System.IO;
 using System.IO.Compression;
 using System.Linq;
 
@@ -15,7 +16,18 @@ namespace LibraryTests.Utilities
             else
                 entry = zipArchive.GetEntry(name);
 
-            var ms = new MemoryStream();
+            Stream ms;
+
+            if (entry.Length > 100 * Sizes.OneMiB)
+            {
+                var tempFile = Path.GetTempFileName();
+                ms = new FileStream(tempFile, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+            }
+            else
+            {
+                ms = new MemoryStream();
+            }
+
             using (var zipFile = entry.Open())
                 zipFile.CopyTo(ms);
 
