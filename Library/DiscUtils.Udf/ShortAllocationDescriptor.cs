@@ -54,6 +54,6 @@ internal sealed class ShortAllocationDescriptor : IByteArraySerializable
 
     public override string ToString()
     {
-        return ExtentLocation + ":+" + ExtentLength + " [" + Flags + "]";
+        return $"{ExtentLocation}:+{ExtentLength} [{Flags}]";
     }
 }

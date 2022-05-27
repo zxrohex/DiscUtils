@@ -49,7 +49,7 @@ internal struct ObjectIdRecord : IByteArraySerializable
         return 0x38;
     }
 
-    void IByteArraySerializable.WriteTo(Span<byte> buffer)
+    public void WriteTo(Span<byte> buffer)
     {
         MftReference.WriteTo(buffer);
         EndianUtilities.WriteBytesLittleEndian(BirthVolumeId, buffer.Slice(0x08));

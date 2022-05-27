@@ -107,7 +107,7 @@ internal sealed class Quotas
             return Sid.BinaryLength;
         }
 
-        void IByteArraySerializable.WriteTo(Span<byte> buffer)
+        public void WriteTo(Span<byte> buffer)
         {
             Sid.GetBinaryForm(buffer);
         }
@@ -135,7 +135,7 @@ internal sealed class Quotas
             return 4;
         }
 
-        void IByteArraySerializable.WriteTo(Span<byte> buffer)
+        public void WriteTo(Span<byte> buffer)
         {
             EndianUtilities.WriteBytesLittleEndian(OwnerId, buffer);
         }

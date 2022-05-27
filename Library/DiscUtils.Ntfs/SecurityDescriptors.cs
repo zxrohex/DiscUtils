@@ -315,7 +315,7 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
             return 4;
         }
 
-        void IByteArraySerializable.WriteTo(Span<byte> buffer)
+        public void WriteTo(Span<byte> buffer)
         {
             EndianUtilities.WriteBytesLittleEndian(Id, buffer);
         }
@@ -339,7 +339,7 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
             return 0x14;
         }
 
-        void IByteArraySerializable.WriteTo(Span<byte> buffer)
+        public void WriteTo(Span<byte> buffer)
         {
             EndianUtilities.WriteBytesLittleEndian(Hash, buffer);
             EndianUtilities.WriteBytesLittleEndian(Id, buffer.Slice(0x04));

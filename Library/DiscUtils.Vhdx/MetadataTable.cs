@@ -100,7 +100,7 @@ internal sealed class MetadataTable : IByteArraySerializable
         return FixedSize;
     }
 
-    void IByteArraySerializable.WriteTo(Span<byte> buffer)
+    public void WriteTo(Span<byte> buffer)
     {
         EntryCount = (ushort)Entries.Count;
         EndianUtilities.WriteBytesLittleEndian(Signature, _headerData, 0);

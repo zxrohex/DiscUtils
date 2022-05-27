@@ -80,7 +80,7 @@ internal sealed class ParentLocator : IByteArraySerializable
         return 0;
     }
 
-    void IByteArraySerializable.WriteTo(Span<byte> buffer)
+    public void WriteTo(Span<byte> buffer)
     {
         if (Entries.Count != 0)
         {

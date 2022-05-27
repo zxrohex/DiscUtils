@@ -95,7 +95,7 @@ internal class ReparsePoints
             return 12;
         }
 
-        void IByteArraySerializable.WriteTo(Span<byte> buffer)
+        public void WriteTo(Span<byte> buffer)
         {
             EndianUtilities.WriteBytesLittleEndian(Tag, buffer);
             EndianUtilities.WriteBytesLittleEndian(File.Value, buffer.Slice(4));
@@ -117,7 +117,7 @@ internal class ReparsePoints
             return 0;
         }
 
-        void IByteArraySerializable.WriteTo(Span<byte> buffer) {}
+        public void WriteTo(Span<byte> buffer) {}
 
         public override string ToString()
         {

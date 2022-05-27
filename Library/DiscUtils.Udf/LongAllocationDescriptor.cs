@@ -52,6 +52,6 @@ internal class LongAllocationDescriptor : IByteArraySerializable
 
     public override string ToString()
     {
-        return ExtentLocation + ":+" + ExtentLength;
+        return $"{ExtentLocation}:+{ExtentLength}";
     }
 }

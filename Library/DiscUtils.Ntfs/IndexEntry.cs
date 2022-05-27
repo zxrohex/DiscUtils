@@ -25,15 +25,15 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
 
-internal class IndexEntry
+internal sealed class IndexEntry
 {
     public const int EndNodeSize = 0x18;
-    protected byte[] _dataBuffer;
+    private byte[] _dataBuffer;
 
-    protected IndexEntryFlags _flags;
+    private IndexEntryFlags _flags;
 
-    protected byte[] _keyBuffer;
-    protected long _vcn; // Only valid if Node flag set
+    private byte[] _keyBuffer;
+    private long _vcn; // Only valid if Node flag set
 
     public IndexEntry(bool isFileIndexEntry)
     {
@@ -75,7 +75,7 @@ internal class IndexEntry
         set { _flags = value; }
     }
 
-    protected bool IsFileIndexEntry { get; }
+    private readonly bool IsFileIndexEntry;
 
     public byte[] KeyBuffer
     {
@@ -83,7 +83,7 @@ internal class IndexEntry
         set { _keyBuffer = value; }
     }
 
-    public virtual int Size
+    public int Size
     {
         get
         {
@@ -106,7 +106,7 @@ internal class IndexEntry
         }
     }
 
-    public virtual void Read(byte[] buffer, int offset)
+    public void Read(byte[] buffer, int offset)
     {
         var dataOffset = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x00);
         var dataLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x02);
@@ -138,7 +138,7 @@ internal class IndexEntry
         }
     }
 
-    public virtual void WriteTo(Span<byte> buffer)
+    public void WriteTo(Span<byte> buffer)
     {
         var length = (ushort)Size;
 

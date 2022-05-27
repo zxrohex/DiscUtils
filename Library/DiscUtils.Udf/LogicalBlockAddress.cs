@@ -49,6 +49,6 @@ internal struct LogicalBlockAddress : IByteArraySerializable
 
     public override string ToString()
     {
-        return LogicalBlock + ",p" + Partition;
+        return $"{LogicalBlock},p{Partition}";
     }
 }

@@ -41,7 +41,7 @@ internal struct ObjectId : IByteArraySerializable, IDiagnosticTraceable
         return 16;
     }
 
-    void IByteArraySerializable.WriteTo(Span<byte> buffer)
+    public void WriteTo(Span<byte> buffer)
     {
         EndianUtilities.WriteBytesLittleEndian(Id, buffer);
     }

@@ -71,7 +71,7 @@ internal sealed class StandardInformation : IByteArraySerializable, IDiagnosticT
         return 0x30;
     }
 
-    void IByteArraySerializable.WriteTo(Span<byte> buffer)
+    public void WriteTo(Span<byte> buffer)
     {
         EndianUtilities.WriteBytesLittleEndian(CreationTime.ToFileTimeUtc(), buffer);
         EndianUtilities.WriteBytesLittleEndian(ModificationTime.ToFileTimeUtc(), buffer.Slice(0x08));

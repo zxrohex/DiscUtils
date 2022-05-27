@@ -88,7 +88,7 @@ internal class FileNameRecord : IByteArraySerializable, IDiagnosticTraceable, IE
         return 0x42 + fnLen * 2;
     }
 
-    void IByteArraySerializable.WriteTo(Span<byte> buffer)
+    public void WriteTo(Span<byte> buffer)
     {
         EndianUtilities.WriteBytesLittleEndian(ParentDirectory.Value, buffer);
         EndianUtilities.WriteBytesLittleEndian((ulong)CreationTime.ToFileTimeUtc(), buffer.Slice(0x08));

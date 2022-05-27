@@ -100,7 +100,7 @@ internal sealed class VhdxHeader : IByteArraySerializable
         return Size;
     }
 
-    void IByteArraySerializable.WriteTo(Span<byte> buffer)
+    public void WriteTo(Span<byte> buffer)
     {
         RefreshData();
         _data.AsSpan(0, (int)(4 * Sizes.OneKiB)).CopyTo(buffer);
