@@ -5,6 +5,7 @@ using System.Linq;
 
 namespace DiscUtils.VirtualFileSystem;
 
+using DiscUtils.Vfs;
 using Internal;
 using Streams;
 using System.Collections.Generic;
@@ -456,6 +457,50 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
             throw new FileNotFoundException("File not found", path);
 
         return file.Length;
+    }
+
+    public override DiscFileInfo GetFileInfo(string path)
+    {
+        var file = _root.ResolvePathToEntry(path) as VirtualFileSystemFile;
+        
+        if (file == null)
+        {
+            return new(this, path);
+        }
+
+        return new CachedDiscFileInfo(this, path, file.Attributes, file.CreationTimeUtc, file.LastAccessTimeUtc, file.LastWriteTimeUtc, file.Length);
+    }
+
+    public override DiscDirectoryInfo GetDirectoryInfo(string path)
+    {
+        var dir = _root.ResolvePathToEntry(path) as VirtualFileSystemDirectory;
+
+        if (dir == null)
+        {
+            return new(this, path);
+        }
+
+        return new CachedDirectoryInfo(this, path, dir.Attributes, dir.CreationTimeUtc, dir.LastAccessTimeUtc, dir.LastWriteTimeUtc);
+    }
+
+
+    public override DiscFileSystemInfo GetFileSystemInfo(string path)
+    {
+        var dirEntry = _root.ResolvePathToEntry(path);
+
+        if (dirEntry == null)
+        {
+            return new(this, path);
+        }
+
+        if (dirEntry is VirtualFileSystemFile file)
+        {
+            return new CachedDiscFileInfo(this, path, file.Attributes, file.CreationTimeUtc, file.LastAccessTimeUtc, file.LastWriteTimeUtc, file.Length);
+        }
+        else
+        {
+            return new CachedDirectoryInfo(this, path, dirEntry.Attributes, dirEntry.CreationTimeUtc, dirEntry.LastAccessTimeUtc, dirEntry.LastWriteTimeUtc);
+        }
     }
 
     public void Freeze()

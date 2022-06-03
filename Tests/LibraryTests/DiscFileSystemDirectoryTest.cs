@@ -370,6 +370,8 @@ namespace LibraryTests
 
             fs.CreateDirectory($"DIR{sep}CHILD");
 
+            di = fs.GetDirectoryInfo("DIR");
+
             Assert.True(baseTime < di.LastAccessTime);
         }
 
@@ -388,6 +390,8 @@ namespace LibraryTests
             di.LastWriteTime = baseTime;
 
             fs.CreateDirectory($"DIR{sep}CHILD");
+
+            di = fs.GetDirectoryInfo("DIR");
 
             Assert.True(baseTime < di.LastWriteTime);
         }

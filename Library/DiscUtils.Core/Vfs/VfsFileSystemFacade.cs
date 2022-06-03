@@ -487,7 +487,7 @@ public abstract class VfsFileSystemFacade : DiscFileSystem
     /// <remarks>The file does not need to exist.</remarks>
     public override DiscFileInfo GetFileInfo(string path)
     {
-        return new DiscFileInfo(this, path);
+        return _wrapped.GetFileInfo(path);
     }
 
     /// <summary>
@@ -498,7 +498,7 @@ public abstract class VfsFileSystemFacade : DiscFileSystem
     /// <remarks>The directory does not need to exist.</remarks>
     public override DiscDirectoryInfo GetDirectoryInfo(string path)
     {
-        return new DiscDirectoryInfo(this, path);
+        return _wrapped.GetDirectoryInfo(path);
     }
 
     /// <summary>
@@ -509,7 +509,7 @@ public abstract class VfsFileSystemFacade : DiscFileSystem
     /// <remarks>The file system object does not need to exist.</remarks>
     public override DiscFileSystemInfo GetFileSystemInfo(string path)
     {
-        return new DiscFileSystemInfo(this, path);
+        return _wrapped.GetFileSystemInfo(path);
     }
 
     /// <summary>

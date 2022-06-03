@@ -34,7 +34,7 @@ namespace DiscUtils;
 /// <remarks>
 /// This class allows navigation of the disc directory/file hierarchy.
 /// </remarks>
-public sealed class DiscDirectoryInfo : DiscFileSystemInfo
+public class DiscDirectoryInfo : DiscFileSystemInfo
 {
     /// <summary>
     /// Initializes a new instance of the DiscDirectoryInfo class.
@@ -63,7 +63,7 @@ public sealed class DiscDirectoryInfo : DiscFileSystemInfo
     /// <summary>
     /// Creates a directory.
     /// </summary>
-    public void Create()
+    public virtual void Create()
     {
         FileSystem.CreateDirectory(Path);
     }

@@ -70,7 +70,7 @@ public class TargetAddress
     /// <returns>The structured address.</returns>
     public static TargetAddress Parse(string address)
     {
-        var addrEnd = address.IndexOfAny(new[] { ':', ',' });
+        var addrEnd = address.AsSpan().IndexOfAny(':', ',');
         if (addrEnd == -1)
         {
             return new TargetAddress(address, DefaultPort, string.Empty);

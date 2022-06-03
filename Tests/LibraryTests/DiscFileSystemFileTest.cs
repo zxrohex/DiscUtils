@@ -373,6 +373,8 @@ namespace LibraryTests
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Open, FileAccess.Read)) { }
 
+            fi = fs.GetFileInfo("foo.txt");
+
             Assert.True(baseTime < fi.LastAccessTime);
         }
 
@@ -389,6 +391,8 @@ namespace LibraryTests
             fi.LastWriteTime = baseTime;
 
             using (Stream s = fs.OpenFile("foo.txt", FileMode.Open)) { s.WriteByte(1); }
+
+            fi = fs.GetFileInfo("foo.txt");
 
             Assert.True(baseTime < fi.LastWriteTime);
         }

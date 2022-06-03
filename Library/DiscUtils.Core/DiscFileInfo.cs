@@ -27,7 +27,7 @@ namespace DiscUtils;
 /// <summary>
 /// Provides information about a file on a disc.
 /// </summary>
-public sealed class DiscFileInfo : DiscFileSystemInfo
+public class DiscFileInfo : DiscFileSystemInfo
 {
     internal DiscFileInfo(DiscFileSystem fileSystem, string path)
         : base(fileSystem, path) {}
@@ -79,7 +79,7 @@ public sealed class DiscFileInfo : DiscFileSystemInfo
     /// <summary>
     /// Gets the length of the current file in bytes.
     /// </summary>
-    public long Length
+    public virtual long Length
     {
         get { return FileSystem.GetFileLength(Path); }
     }
@@ -96,7 +96,7 @@ public sealed class DiscFileInfo : DiscFileSystemInfo
     /// Creates a <see cref="StreamWriter" /> that appends text to the file represented by this <see cref="DiscFileInfo"/>.
     /// </summary>
     /// <returns>The newly created writer.</returns>
-    public StreamWriter AppendText()
+    public virtual StreamWriter AppendText()
     {
         return new StreamWriter(Open(FileMode.Append));
     }
@@ -124,7 +124,7 @@ public sealed class DiscFileInfo : DiscFileSystemInfo
     /// Creates a new file for reading and writing.
     /// </summary>
     /// <returns>The newly created stream.</returns>
-    public Stream Create()
+    public virtual Stream Create()
     {
         return Open(FileMode.Create);
     }
@@ -133,7 +133,7 @@ public sealed class DiscFileInfo : DiscFileSystemInfo
     /// Creates a new <see cref="StreamWriter"/> that writes a new text file.
     /// </summary>
     /// <returns>A new stream writer that can write to the file contents.</returns>
-    public StreamWriter CreateText()
+    public virtual StreamWriter CreateText()
     {
         return new StreamWriter(Open(FileMode.Create));
     }
@@ -142,7 +142,7 @@ public sealed class DiscFileInfo : DiscFileSystemInfo
     /// Moves a file to a new location.
     /// </summary>
     /// <param name="destinationFileName">The new name of the file.</param>
-    public void MoveTo(string destinationFileName)
+    public virtual void MoveTo(string destinationFileName)
     {
         FileSystem.MoveFile(Path, destinationFileName);
     }
@@ -153,7 +153,7 @@ public sealed class DiscFileInfo : DiscFileSystemInfo
     /// <param name="mode">The file mode for the created stream.</param>
     /// <returns>The newly created stream.</returns>
     /// <remarks>Read-only file systems only support <c>FileMode.Open</c>.</remarks>
-    public Stream Open(FileMode mode)
+    public virtual Stream Open(FileMode mode)
     {
         return FileSystem.OpenFile(Path, mode);
     }
@@ -165,7 +165,7 @@ public sealed class DiscFileInfo : DiscFileSystemInfo
     /// <param name="access">The access permissions for the created stream.</param>
     /// <returns>The newly created stream.</returns>
     /// <remarks>Read-only file systems only support <c>FileMode.Open</c> and <c>FileAccess.Read</c>.</remarks>
-    public Stream Open(FileMode mode, FileAccess access)
+    public virtual Stream Open(FileMode mode, FileAccess access)
     {
         return FileSystem.OpenFile(Path, mode, access);
     }
@@ -183,7 +183,7 @@ public sealed class DiscFileInfo : DiscFileSystemInfo
     /// Opens an existing file for reading as UTF-8 text.
     /// </summary>
     /// <returns>The newly created reader.</returns>
-    public StreamReader OpenText()
+    public virtual StreamReader OpenText()
     {
         return new StreamReader(OpenRead());
     }
@@ -192,7 +192,7 @@ public sealed class DiscFileInfo : DiscFileSystemInfo
     /// Opens a file for writing.
     /// </summary>
     /// <returns>The newly created stream.</returns>
-    public Stream OpenWrite()
+    public virtual Stream OpenWrite()
     {
         return Open(FileMode.Open, FileAccess.Write);
     }

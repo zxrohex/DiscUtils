@@ -109,6 +109,80 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         throw new NotImplementedException();
     }
 
+    public override DiscFileSystemInfo GetFileSystemInfo(string path)
+    {
+        var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry == null)
+        {
+            return new(this, path);
+        }
+
+        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : GetFile(dirEntry).FileAttributes;
+        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : GetFile(dirEntry).CreationTimeUtc;
+        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : GetFile(dirEntry).LastAccessTimeUtc;
+        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : GetFile(dirEntry).LastWriteTimeUtc;
+
+        if (attributes.HasFlag(FileAttributes.Directory))
+        {
+            return new CachedDirectoryInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc);
+        }
+        else
+        {
+            var file = ConvertDirEntryToFile(dirEntry);
+            return new CachedDiscFileInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc, file.FileLength);
+        }
+    }
+
+    public override DiscDirectoryInfo GetDirectoryInfo(string path)
+    {
+        var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry == null)
+        {
+            return new(this, path);
+        }
+
+        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : GetFile(dirEntry).FileAttributes;
+        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : GetFile(dirEntry).CreationTimeUtc;
+        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : GetFile(dirEntry).LastAccessTimeUtc;
+        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : GetFile(dirEntry).LastWriteTimeUtc;
+
+        if (attributes.HasFlag(FileAttributes.Directory))
+        {
+            return new CachedDirectoryInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc);
+        }
+        else
+        {
+            return new(this, path);
+        }
+    }
+
+    public override DiscFileInfo GetFileInfo(string path)
+    {
+        var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry == null)
+        {
+            return new(this, path);
+        }
+
+        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : GetFile(dirEntry).FileAttributes;
+        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : GetFile(dirEntry).CreationTimeUtc;
+        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : GetFile(dirEntry).LastAccessTimeUtc;
+        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : GetFile(dirEntry).LastWriteTimeUtc;
+
+        if (attributes.HasFlag(FileAttributes.Directory))
+        {
+            return new(this, path);
+        }
+        else
+        {
+            var file = ConvertDirEntryToFile(dirEntry);
+            return new CachedDiscFileInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc, file.FileLength);
+        }
+    }
+
     /// <summary>
     /// Indicates if a directory exists.
     /// </summary>

@@ -31,6 +31,7 @@ using DiscUtils.Streams;
 using System.Xml.Linq;
 using System.Xml.XPath;
 using System.Linq;
+using DiscUtils.Vfs;
 
 namespace DiscUtils.Wim;
 
@@ -477,6 +478,88 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
         }
 
         return hdr.OriginalSize;
+    }
+
+    public override DiscFileSystemInfo GetFileSystemInfo(string path)
+    {
+        var dirEntry = GetEntry(path);
+        if (dirEntry == null)
+        {
+            return new(this, path);
+        }
+
+        if (dirEntry.Attributes.HasFlag(FileAttributes.Directory))
+        {
+            return new CachedDirectoryInfo(this, path, dirEntry.Attributes, DateTime.FromFileTimeUtc(dirEntry.CreationTime),
+                                            DateTime.FromFileTimeUtc(dirEntry.LastAccessTime),
+                                            DateTime.FromFileTimeUtc(dirEntry.LastWriteTime));
+        }
+
+        var streamHash = GetFileHash(path);
+        var hdr = _file.LocateResource(streamHash);
+        long fileSize;
+
+        if (hdr == null)
+        {
+            if (Utilities.IsAllZeros(streamHash, 0, streamHash.Length))
+            {
+                fileSize = 0;
+            }
+
+            return new(this, path);
+        }
+        else
+        {
+            fileSize = hdr.OriginalSize;
+        }
+
+        return new CachedDiscFileInfo(this, path, dirEntry.Attributes, DateTime.FromFileTimeUtc(dirEntry.CreationTime),
+                                            DateTime.FromFileTimeUtc(dirEntry.LastAccessTime),
+                                            DateTime.FromFileTimeUtc(dirEntry.LastWriteTime), fileSize);
+    }
+
+    public override DiscFileInfo GetFileInfo(string path)
+    {
+        var dirEntry = GetEntry(path);
+        if (dirEntry == null || dirEntry.Attributes.HasFlag(FileAttributes.Directory))
+        {
+            return new(this, path);
+        }
+
+        var streamHash = GetFileHash(path);
+        var hdr = _file.LocateResource(streamHash);
+        long fileSize;
+
+        if (hdr == null)
+        {
+            if (Utilities.IsAllZeros(streamHash, 0, streamHash.Length))
+            {
+                fileSize = 0;
+            }
+
+            return new(this, path);
+        }
+        else
+        {
+            fileSize = hdr.OriginalSize;
+        }
+
+        return new CachedDiscFileInfo(this, path, dirEntry.Attributes, DateTime.FromFileTimeUtc(dirEntry.CreationTime),
+                                            DateTime.FromFileTimeUtc(dirEntry.LastAccessTime),
+                                            DateTime.FromFileTimeUtc(dirEntry.LastWriteTime), fileSize);
+    }
+
+    public override DiscDirectoryInfo GetDirectoryInfo(string path)
+    {
+        var dirEntry = GetEntry(path);
+        if (dirEntry == null || !dirEntry.Attributes.HasFlag(FileAttributes.Directory))
+        {
+            return new(this, path);
+        }
+
+        return new CachedDirectoryInfo(this, path, dirEntry.Attributes, DateTime.FromFileTimeUtc(dirEntry.CreationTime),
+                                        DateTime.FromFileTimeUtc(dirEntry.LastAccessTime),
+                                        DateTime.FromFileTimeUtc(dirEntry.LastWriteTime));
     }
 
     /// <summary>

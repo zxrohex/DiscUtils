@@ -31,6 +31,7 @@ using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
+using DiscUtils.Vfs;
 
 namespace DiscUtils.Fat;
 
@@ -841,6 +842,72 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
     {
         return GetDirectoryEntry(path)?.FileSize ??
             throw new FileNotFoundException("File not found", path);
+    }
+
+    public override DiscFileSystemInfo GetFileSystemInfo(string path)
+    {
+        try
+        {
+            var dirEntry = GetDirectoryEntry(path);
+            if (dirEntry != null)
+            {
+                if (dirEntry.Attributes.HasFlag(FatAttributes.Directory))
+                {
+                    return new CachedDirectoryInfo(this, path, (FileAttributes)dirEntry.Attributes,
+                                                    ConvertToUtc(dirEntry.CreationTime), ConvertToUtc(dirEntry.LastAccessTime),
+                                                    ConvertToUtc(dirEntry.LastWriteTime));
+                }
+                else
+                {
+                    return new CachedDiscFileInfo(this, path, (FileAttributes)dirEntry.Attributes, ConvertToUtc(dirEntry.CreationTime),
+                                               ConvertToUtc(dirEntry.LastAccessTime), ConvertToUtc(dirEntry.LastWriteTime),
+                                               dirEntry.FileSize);
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        return new(this, path);
+    }
+
+    public override DiscFileInfo GetFileInfo(string path)
+    {
+        try
+        {
+            var dirEntry = GetDirectoryEntry(path);
+            if (dirEntry != null && !dirEntry.Attributes.HasFlag(FatAttributes.Directory))
+            {
+                return new CachedDiscFileInfo(this, path, (FileAttributes)dirEntry.Attributes, ConvertToUtc(dirEntry.CreationTime),
+                                           ConvertToUtc(dirEntry.LastAccessTime), ConvertToUtc(dirEntry.LastWriteTime),
+                                           dirEntry.FileSize);
+            }
+        }
+        catch
+        {
+        }
+
+        return new(this, path);
+    }
+
+    public override DiscDirectoryInfo GetDirectoryInfo(string path)
+    {
+        try
+        {
+            var dirEntry = GetDirectoryEntry(path);
+            if (dirEntry != null)
+            {
+                return new CachedDirectoryInfo(this, path, (FileAttributes)dirEntry.Attributes,
+                                                ConvertToUtc(dirEntry.CreationTime), ConvertToUtc(dirEntry.LastAccessTime),
+                                                ConvertToUtc(dirEntry.LastWriteTime));
+            }
+        }
+        catch
+        {
+        }
+
+        return new(this, path);
     }
 
     /// <summary>

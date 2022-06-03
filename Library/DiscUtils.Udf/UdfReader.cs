@@ -120,7 +120,6 @@ public sealed class UdfReader : VfsFileSystemFacade
     {
         private readonly Stream _data;
         private LogicalVolumeDescriptor _lvd;
-        private PrimaryVolumeDescriptor _pvd;
         private readonly uint _sectorSize;
 
         public VfsUdfReader(Stream data)
@@ -253,7 +252,7 @@ public sealed class UdfReader : VfsFileSystemFacade
                 switch (dt.TagIdentifier)
                 {
                     case TagIdentifier.PrimaryVolumeDescriptor:
-                        _pvd = PrimaryVolumeDescriptor.FromStream(_data, sector, _sectorSize);
+                        //_pvd = PrimaryVolumeDescriptor.FromStream(_data, sector, _sectorSize);
                         break;
 
                     case TagIdentifier.ImplementationUseVolumeDescriptor:

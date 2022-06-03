@@ -135,11 +135,11 @@ internal class Directory : File
     {
         if (name.Length > 255)
         {
-            throw new IOException("Invalid file name, more than 255 characters: " + name);
+            throw new IOException($"Invalid file name, more than 255 characters: {name}");
         }
-        if (name.IndexOfAny(new[] { '\0', '/' }) != -1)
+        if (name.AsSpan().IndexOfAny('\0', '/') != -1)
         {
-            throw new IOException(@"Invalid file name, contains '\0' or '/': " + name);
+            throw new IOException($@"Invalid file name, contains '\0' or '/': {name}");
         }
 
         var newNameRecord = file.GetFileNameRecord(null, true);

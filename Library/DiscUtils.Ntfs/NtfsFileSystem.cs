@@ -31,6 +31,7 @@ using DiscUtils.Streams;
 using System.Linq;
 using DiscUtils.CoreCompat;
 using DiscUtils.Streams.Compatibility;
+using DiscUtils.Vfs;
 
 namespace DiscUtils.Ntfs;
 
@@ -918,6 +919,130 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             }
 
             return attr.Length;
+        }
+    }
+
+    public override DiscFileInfo GetFileInfo(string path)
+    {
+        using (NtfsTransaction.Begin())
+        {
+            try
+            {
+                var dirEntryPath = ParsePath(path, out var attributeName, out var attributeType);
+
+                var dirEntry = GetDirectoryEntry(dirEntryPath);
+                if (dirEntry == null)
+                {
+                    return new(this, path);
+                }
+
+                // Ordinary file length request, use info from directory entry for efficiency - if allowed
+                if (NtfsOptions.FileLengthFromDirectoryEntries && attributeName == null &&
+                    attributeType == AttributeType.Data)
+                {
+                    if (dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
+                    {
+                        return new(this, path);
+                    }
+
+                    return new CachedDiscFileInfo(this, path, dirEntry.Details.FileAttributes,
+                                               dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
+                                               dirEntry.Details.ModificationTime, (long)dirEntry.Details.RealSize);
+                }
+
+                // Alternate stream / attribute, pull info from attribute record
+                var file = GetFile(dirEntry.Reference);
+                var attr = file.GetAttribute(attributeType, attributeName);
+                if (attr != null)
+                {
+                    return new CachedDiscFileInfo(this, path, dirEntry.Details.FileAttributes, dirEntry.Details.ModificationTime,
+                                               dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime, attr.Length);
+                }
+            }
+            catch
+            {
+            }
+
+            return new(this, path);
+        }
+    }
+
+    public override DiscFileSystemInfo GetFileSystemInfo(string path)
+    {
+        using (NtfsTransaction.Begin())
+        {
+            try
+            {
+                var dirEntryPath = ParsePath(path, out var attributeName, out var attributeType);
+
+                var dirEntry = GetDirectoryEntry(dirEntryPath);
+                if (dirEntry == null)
+                {
+                    return new(this, path);
+                }
+
+                // Ordinary file length request, use info from directory entry for efficiency - if allowed
+                if (NtfsOptions.FileLengthFromDirectoryEntries && attributeName == null &&
+                    attributeType == AttributeType.Data)
+                {
+                    if (dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
+                    {
+                        return new CachedDirectoryInfo(this, path, dirEntry.Details.FileAttributes,
+                                                        dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
+                                                        dirEntry.Details.ModificationTime);
+                    }
+
+                    return new CachedDiscFileInfo(this, path, dirEntry.Details.FileAttributes,
+                                               dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
+                                               dirEntry.Details.ModificationTime, (long)dirEntry.Details.RealSize);
+                }
+
+                // Alternate stream / attribute, pull info from attribute record
+                var file = GetFile(dirEntry.Reference);
+                var attr = file.GetAttribute(attributeType, attributeName);
+                if (attr != null)
+                {
+                    return new CachedDiscFileInfo(this, path, dirEntry.Details.FileAttributes, dirEntry.Details.ModificationTime,
+                                               dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime, attr.Length);
+                }
+            }
+            catch
+            {
+            }
+
+            return new(this, path);
+        }
+    }
+
+    public override DiscDirectoryInfo GetDirectoryInfo(string path)
+    {
+        using (NtfsTransaction.Begin())
+        {
+            try
+            {
+                var dirEntryPath = ParsePath(path, out var attributeName, out var attributeType);
+
+                var dirEntry = GetDirectoryEntry(dirEntryPath);
+                if (dirEntry == null)
+                {
+                    return new(this, path);
+                }
+
+                // Ordinary file length request, use info from directory entry for efficiency - if allowed
+                if (NtfsOptions.FileLengthFromDirectoryEntries && attributeName == null &&
+                    attributeType == AttributeType.Data &&
+                    dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
+                {
+                    return new CachedDirectoryInfo(this, path, dirEntry.Details.FileAttributes,
+                                                    dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
+                                                    dirEntry.Details.ModificationTime);
+                }
+            }
+            catch
+            {
+            }
+
+            return new(this, path);
         }
     }
 

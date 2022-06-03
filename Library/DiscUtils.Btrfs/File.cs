@@ -87,7 +87,7 @@ internal class File : IVfsFile
 
     public long FileLength
     {
-        get { throw new NotImplementedException(); }
+        get { return (long)DirEntry.FileSize; }
     }
 
     public DateTime LastAccessTimeUtc
