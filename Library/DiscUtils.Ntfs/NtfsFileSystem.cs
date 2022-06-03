@@ -987,7 +987,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 {
                     if (dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
                     {
-                        return new CachedDirectoryInfo(this, path, dirEntry.Details.FileAttributes,
+                        return new CachedDiscDirectoryInfo(this, path, dirEntry.Details.FileAttributes,
                                                         dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
                                                         dirEntry.Details.ModificationTime);
                     }
@@ -1033,7 +1033,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                     attributeType == AttributeType.Data &&
                     dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
                 {
-                    return new CachedDirectoryInfo(this, path, dirEntry.Details.FileAttributes,
+                    return new CachedDiscDirectoryInfo(this, path, dirEntry.Details.FileAttributes,
                                                     dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
                                                     dirEntry.Details.ModificationTime);
                 }

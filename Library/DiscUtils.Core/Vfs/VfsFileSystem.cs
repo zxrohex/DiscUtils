@@ -125,7 +125,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         if (attributes.HasFlag(FileAttributes.Directory))
         {
-            return new CachedDirectoryInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc);
+            return new CachedDiscDirectoryInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc);
         }
         else
         {
@@ -150,7 +150,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         if (attributes.HasFlag(FileAttributes.Directory))
         {
-            return new CachedDirectoryInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc);
+            return new CachedDiscDirectoryInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc);
         }
         else
         {

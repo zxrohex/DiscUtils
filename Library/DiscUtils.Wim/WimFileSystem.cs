@@ -490,7 +490,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
 
         if (dirEntry.Attributes.HasFlag(FileAttributes.Directory))
         {
-            return new CachedDirectoryInfo(this, path, dirEntry.Attributes, DateTime.FromFileTimeUtc(dirEntry.CreationTime),
+            return new CachedDiscDirectoryInfo(this, path, dirEntry.Attributes, DateTime.FromFileTimeUtc(dirEntry.CreationTime),
                                             DateTime.FromFileTimeUtc(dirEntry.LastAccessTime),
                                             DateTime.FromFileTimeUtc(dirEntry.LastWriteTime));
         }
@@ -557,7 +557,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
             return new(this, path);
         }
 
-        return new CachedDirectoryInfo(this, path, dirEntry.Attributes, DateTime.FromFileTimeUtc(dirEntry.CreationTime),
+        return new CachedDiscDirectoryInfo(this, path, dirEntry.Attributes, DateTime.FromFileTimeUtc(dirEntry.CreationTime),
                                         DateTime.FromFileTimeUtc(dirEntry.LastAccessTime),
                                         DateTime.FromFileTimeUtc(dirEntry.LastWriteTime));
     }

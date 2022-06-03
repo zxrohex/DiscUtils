@@ -853,7 +853,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
             {
                 if (dirEntry.Attributes.HasFlag(FatAttributes.Directory))
                 {
-                    return new CachedDirectoryInfo(this, path, (FileAttributes)dirEntry.Attributes,
+                    return new CachedDiscDirectoryInfo(this, path, (FileAttributes)dirEntry.Attributes,
                                                     ConvertToUtc(dirEntry.CreationTime), ConvertToUtc(dirEntry.LastAccessTime),
                                                     ConvertToUtc(dirEntry.LastWriteTime));
                 }
@@ -898,7 +898,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
             var dirEntry = GetDirectoryEntry(path);
             if (dirEntry != null)
             {
-                return new CachedDirectoryInfo(this, path, (FileAttributes)dirEntry.Attributes,
+                return new CachedDiscDirectoryInfo(this, path, (FileAttributes)dirEntry.Attributes,
                                                 ConvertToUtc(dirEntry.CreationTime), ConvertToUtc(dirEntry.LastAccessTime),
                                                 ConvertToUtc(dirEntry.LastWriteTime));
             }

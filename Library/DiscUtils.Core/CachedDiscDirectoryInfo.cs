@@ -3,7 +3,7 @@ using System.IO;
 
 namespace DiscUtils;
 
-public class CachedDirectoryInfo : DiscDirectoryInfo
+public class CachedDiscDirectoryInfo : DiscDirectoryInfo
 {
     private FileAttributes attributes;
     private DateTime creationTimeUtc;
@@ -11,7 +11,7 @@ public class CachedDirectoryInfo : DiscDirectoryInfo
     private DateTime lastWriteTimeUtc;
     private bool exists = true;
 
-    public CachedDirectoryInfo(DiscFileSystem fileSystem, string path, FileAttributes attributes,
+    public CachedDiscDirectoryInfo(DiscFileSystem fileSystem, string path, FileAttributes attributes,
                                DateTime creationTimeUtc, DateTime lastAccessTimeUtc, DateTime lastWriteTimeUtc)
         : base(fileSystem, path)
     {

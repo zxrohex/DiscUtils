@@ -480,7 +480,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
             return new(this, path);
         }
 
-        return new CachedDirectoryInfo(this, path, dir.Attributes, dir.CreationTimeUtc, dir.LastAccessTimeUtc, dir.LastWriteTimeUtc);
+        return new CachedDiscDirectoryInfo(this, path, dir.Attributes, dir.CreationTimeUtc, dir.LastAccessTimeUtc, dir.LastWriteTimeUtc);
     }
 
 
@@ -499,7 +499,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         }
         else
         {
-            return new CachedDirectoryInfo(this, path, dirEntry.Attributes, dirEntry.CreationTimeUtc, dirEntry.LastAccessTimeUtc, dirEntry.LastWriteTimeUtc);
+            return new CachedDiscDirectoryInfo(this, path, dirEntry.Attributes, dirEntry.CreationTimeUtc, dirEntry.LastAccessTimeUtc, dirEntry.LastWriteTimeUtc);
         }
     }
 
