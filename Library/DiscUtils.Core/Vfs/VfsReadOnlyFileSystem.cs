@@ -173,6 +173,11 @@ public abstract class VfsReadOnlyFileSystem<TDirEntry, TFile, TDirectory, TConte
 
     protected override TDirEntry GetDirectoryEntry(string path)
     {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
         var entry = _lookupCache[path];
 
         if (entry is null)
@@ -184,3 +189,4 @@ public abstract class VfsReadOnlyFileSystem<TDirEntry, TFile, TDirectory, TConte
         return entry;
     }
 }
+
