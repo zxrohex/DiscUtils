@@ -40,7 +40,7 @@ namespace DiscUtils.Vfs;
 /// <typeparam name="TContext">The concrete type holding global state.</typeparam>
 public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : DiscFileSystem
     where TDirEntry : VfsDirEntry
-    where TFile : IVfsFile
+    where TFile : class, IVfsFile
     where TDirectory : class, IVfsDirectory<TDirEntry, TFile>, TFile
     where TContext : VfsContext
 {
@@ -118,10 +118,12 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
             return new(this, path);
         }
 
-        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : GetFile(dirEntry).FileAttributes;
-        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : GetFile(dirEntry).CreationTimeUtc;
-        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : GetFile(dirEntry).LastAccessTimeUtc;
-        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : GetFile(dirEntry).LastWriteTimeUtc;
+        var file = GetFile(dirEntry);
+
+        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : file.FileAttributes;
+        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : file.CreationTimeUtc;
+        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : file.LastAccessTimeUtc;
+        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : file.LastWriteTimeUtc;
 
         if (attributes.HasFlag(FileAttributes.Directory))
         {
@@ -129,7 +131,6 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         }
         else
         {
-            var file = ConvertDirEntryToFile(dirEntry);
             return new CachedDiscFileInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc, file.FileLength);
         }
     }
@@ -143,10 +144,12 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
             return new(this, path);
         }
 
-        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : GetFile(dirEntry).FileAttributes;
-        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : GetFile(dirEntry).CreationTimeUtc;
-        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : GetFile(dirEntry).LastAccessTimeUtc;
-        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : GetFile(dirEntry).LastWriteTimeUtc;
+        var file = GetFile(dirEntry);
+
+        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : file.FileAttributes;
+        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : file.CreationTimeUtc;
+        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : file.LastAccessTimeUtc;
+        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : file.LastWriteTimeUtc;
 
         if (attributes.HasFlag(FileAttributes.Directory))
         {
@@ -167,10 +170,12 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
             return new(this, path);
         }
 
-        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : GetFile(dirEntry).FileAttributes;
-        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : GetFile(dirEntry).CreationTimeUtc;
-        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : GetFile(dirEntry).LastAccessTimeUtc;
-        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : GetFile(dirEntry).LastWriteTimeUtc;
+        var file = GetFile(dirEntry);
+
+        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : file.FileAttributes;
+        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : file.CreationTimeUtc;
+        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : file.LastAccessTimeUtc;
+        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : file.LastWriteTimeUtc;
 
         if (attributes.HasFlag(FileAttributes.Directory))
         {
@@ -178,7 +183,6 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         }
         else
         {
-            var file = ConvertDirEntryToFile(dirEntry);
             return new CachedDiscFileInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc, file.FileLength);
         }
     }
@@ -344,7 +348,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         }
         catch (ArgumentException)
         {
-            throw new IOException("Invalid path: " + path);
+            throw new IOException($"Invalid path: {path}");
         }
 
         var entryPath = Utilities.CombinePaths(dirName, fileName);
@@ -601,13 +605,13 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         if (dirEntry == null || !dirEntry.IsDirectory)
         {
-            throw new DirectoryNotFoundException("No such directory: " + path);
+            throw new DirectoryNotFoundException($"No such directory: {path}");
         }
 
         return (TDirectory)GetFile(dirEntry);
     }
 
-    protected TDirEntry GetDirectoryEntry(string path)
+    protected virtual TDirEntry GetDirectoryEntry(string path)
     {
         return GetDirectoryEntry(RootDirectory, path);
     }
@@ -695,7 +699,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         return string.IsNullOrEmpty(path) || path == @"\" || path == "/";
     }
 
-    private TDirEntry GetDirectoryEntry(TDirectory dir, string path)
+    protected TDirEntry GetDirectoryEntry(TDirectory dir, string path)
     {
         var pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
         return GetDirectoryEntry(dir, pathElements, 0);
@@ -727,7 +731,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
             }
             if (entry.IsDirectory)
             {
-                return GetDirectoryEntry((TDirectory)ConvertDirEntryToFile(entry), pathEntries, pathOffset + 1);
+                return GetDirectoryEntry((TDirectory)GetFile(entry), pathEntries, pathOffset + 1);
             }
             throw new IOException($"{pathEntries[pathOffset]} is a file, not a directory");
         }
@@ -754,7 +758,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
             if (entry.IsSymlink)
             {
-                entry = ResolveSymlink(entry, path + "\\" + entry.FileName);
+                entry = ResolveSymlink(entry, $@"{path}\{entry.FileName}");
 
                 if (entry == null)
                 {

@@ -40,7 +40,7 @@ internal class Context : VfsContext
     {
         var inode = new Inode(number, this);
         var group = AllocationGroups[inode.AllocationGroup];
-        group.LoadInode(inode);
+        group.LoadInode(ref inode);
         if (inode.Magic != Inode.InodeMagic)
             throw new IOException("invalid inode magic");
         return inode;

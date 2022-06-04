@@ -21,7 +21,10 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using DiscUtils.Internal;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Vfs;
@@ -36,7 +39,7 @@ namespace DiscUtils.Vfs;
 public abstract class VfsReadOnlyFileSystem<TDirEntry, TFile, TDirectory, TContext> :
         VfsFileSystem<TDirEntry, TFile, TDirectory, TContext>
     where TDirEntry : VfsDirEntry
-    where TFile : IVfsFile
+    where TFile : class, IVfsFile
     where TDirectory : class, IVfsDirectory<TDirEntry, TFile>, TFile
     where TContext : VfsContext
 {
@@ -164,5 +167,20 @@ public abstract class VfsReadOnlyFileSystem<TDirEntry, TFile, TDirectory, TConte
     public override void SetLastWriteTimeUtc(string path, DateTime newTime)
     {
         throw new NotSupportedException();
+    }
+
+    ObjectCache<string, TDirEntry> _lookupCache = new(StringComparer.Ordinal);
+
+    protected override TDirEntry GetDirectoryEntry(string path)
+    {
+        var entry = _lookupCache[path];
+
+        if (entry is null)
+        {
+            entry = base.GetDirectoryEntry(path);
+            _lookupCache[path] = entry;
+        }
+
+        return entry;
     }
 }

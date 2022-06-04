@@ -2478,7 +2478,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                     $"No such attribute type '{typeName}'", path);
             }
 
-            attributeType = typeDefn.Type;
+            attributeType = typeDefn.Value.Type;
         }
 
         try

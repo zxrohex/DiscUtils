@@ -25,20 +25,17 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.ApplePartitionMap;
 
-internal sealed class BlockZero : IByteArraySerializable
+internal struct BlockZero : IByteArraySerializable
 {
-    public uint BlockCount;
-    public ushort BlockSize;
-    public ushort DeviceId;
-    public ushort DeviceType;
-    public ushort DriverCount;
-    public uint DriverData;
-    public ushort Signature;
+    public uint BlockCount { get; private set; }
+    public ushort BlockSize { get; private set; }
+    public ushort DeviceId { get; private set; }
+    public ushort DeviceType { get; private set; }
+    public ushort DriverCount { get; private set; }
+    public uint DriverData { get; private set; }
+    public ushort Signature { get; private set; }
 
-    public int Size
-    {
-        get { return 512; }
-    }
+    public int Size => 512;
 
     public int ReadFrom(ReadOnlySpan<byte> buffer)
     {

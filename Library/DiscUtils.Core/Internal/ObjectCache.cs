@@ -34,18 +34,24 @@ namespace DiscUtils.Internal;
 /// Can be use for two purposes - to ensure there is only one instance of a given object,
 /// and to prevent the need to recreate objects that are expensive to create.
 /// </remarks>
-internal class ObjectCache<K, V>
+internal class ObjectCache<K, V> where V : class
 {
     private const int MostRecentListSize = 20;
     private const int PruneGap = 500;
 
-    private readonly Dictionary<K, WeakReference> _entries;
+    private readonly Dictionary<K, WeakReference<V>> _entries;
     private int _nextPruneCount;
     private readonly List<KeyValuePair<K, V>> _recent;
 
     public ObjectCache()
     {
-        _entries = new Dictionary<K, WeakReference>();
+        _entries = new Dictionary<K, WeakReference<V>>();
+        _recent = new List<KeyValuePair<K, V>>();
+    }
+
+    public ObjectCache(IEqualityComparer<K> comparer)
+    {
+        _entries = new Dictionary<K, WeakReference<V>>(comparer);
         _recent = new List<KeyValuePair<K, V>>();
     }
 
@@ -65,8 +71,7 @@ internal class ObjectCache<K, V>
 
             if (_entries.TryGetValue(key, out var wRef))
             {
-                var val = (V)wRef.Target;
-                if (val != null)
+                if (wRef.TryGetTarget(out var val))
                 {
                     MakeMostRecent(key, val);
                 }
@@ -79,7 +84,7 @@ internal class ObjectCache<K, V>
 
         set
         {
-            _entries[key] = new WeakReference(value);
+            _entries[key] = new WeakReference<V>(value);
             MakeMostRecent(key, value);
             PruneEntries();
         }
@@ -108,7 +113,7 @@ internal class ObjectCache<K, V>
             var toPrune = new List<K>();
             foreach (var entry in _entries)
             {
-                if (!entry.Value.IsAlive)
+                if (!entry.Value.TryGetTarget(out _))
                 {
                     toPrune.Add(entry.Key);
                 }

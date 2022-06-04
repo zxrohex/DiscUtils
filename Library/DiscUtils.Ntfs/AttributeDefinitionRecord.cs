@@ -25,7 +25,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
 
-internal sealed class AttributeDefinitionRecord
+internal struct AttributeDefinitionRecord
 {
     public const int Size = 0xA0;
     public AttributeCollationRule CollationRule;

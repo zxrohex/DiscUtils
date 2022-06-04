@@ -551,7 +551,7 @@ public abstract class VfsFileSystemFacade : DiscFileSystem
     protected VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> GetRealFileSystem
         <TDirEntry, TFile, TDirectory, TContext>()
         where TDirEntry : VfsDirEntry
-        where TFile : IVfsFile
+        where TFile : class, IVfsFile
         where TDirectory : class, IVfsDirectory<TDirEntry, TFile>, TFile
         where TContext : VfsContext
     {

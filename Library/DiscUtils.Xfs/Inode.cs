@@ -29,9 +29,9 @@ using DiscUtils.Streams;
 using System.Linq;
 using System.Collections;
 
-internal class Inode : IByteArraySerializable
+internal struct Inode : IByteArraySerializable
 {
-    public Inode(ulong number, Context context)
+    public Inode(ulong number, Context context) : this()
     {
         var sb = context.SuperBlock;
         RelativeInodeNumber = (uint) (number & sb.RelativeInodeMask);
@@ -45,7 +45,7 @@ internal class Inode : IByteArraySerializable
         return (1u << k) - 1;
     }
 
-    public Inode(uint allocationGroup, uint relInode)
+    public Inode(uint allocationGroup, uint relInode) : this()
     {
         AllocationGroup = allocationGroup;
         RelativeInodeNumber = relInode;

@@ -26,7 +26,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ext;
 
-internal class Inode : IByteArraySerializable
+internal struct Inode : IByteArraySerializable
 {
     public uint AccessTime;
     public uint BlocksCount;

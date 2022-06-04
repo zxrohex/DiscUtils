@@ -110,7 +110,7 @@ public sealed class AttributeDefinitions
         }
     }
 
-    internal AttributeDefinitionRecord Lookup(string name)
+    internal AttributeDefinitionRecord? Lookup(string name)
     {
         foreach (var record in _attrDefs.Values)
         {
