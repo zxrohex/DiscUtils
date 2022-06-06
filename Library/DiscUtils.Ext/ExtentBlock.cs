@@ -26,7 +26,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ext;
 
-internal class ExtentBlock : IByteArraySerializable
+internal struct ExtentBlock : IByteArraySerializable
 {
     public Extent[] Extents;
     public ExtentHeader Header;

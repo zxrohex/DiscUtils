@@ -96,7 +96,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         {
             // Aligned read - pass through to underlying stream.
             WrappedStream.Position = _position;
-            var numRead = await WrappedStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            var numRead = await WrappedStream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
             _position += numRead;
             return numRead;
         }
@@ -113,7 +113,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         try
         {
             WrappedStream.Position = startPos;
-            var read = await WrappedStream.ReadAsync(tempBuffer, 0, (int)(endPos - startPos), cancellationToken).ConfigureAwait(false);
+            var read = await WrappedStream.ReadAsync(tempBuffer.AsMemory(0, (int)(endPos - startPos)), cancellationToken).ConfigureAwait(false);
             var available = Math.Min(count, read - startOffset);
 
             Array.Copy(tempBuffer, startOffset, buffer, offset, available);
@@ -256,7 +256,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         if (startOffset != 0)
         {
             WrappedStream.Position = alignedPos;
-            await WrappedStream.ReadAsync(_alignmentBuffer, 0, _blockSize, cancellationToken).ConfigureAwait(false);
+            await WrappedStream.ReadAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
 
             Array.Copy(buffer, offset, _alignmentBuffer, startOffset, Math.Min(count, _blockSize - startOffset));
 
@@ -286,7 +286,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         }
 
         WrappedStream.Position = alignedPos;
-        await WrappedStream.ReadAsync(_alignmentBuffer, 0, _blockSize, cancellationToken).ConfigureAwait(false);
+        await WrappedStream.ReadAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
 
         Array.Copy(buffer, offset + (int)(alignedPos - _position), _alignmentBuffer, 0, (int)Math.Min(count - (alignedPos - _position), unalignedEnd - alignedPos));
 

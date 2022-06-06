@@ -156,6 +156,8 @@ public class DiscFileSystemInfo
         get { return Utilities.GetFileFromPath(Path); }
     }
 
+    private DiscDirectoryInfo _parent;
+
     /// <summary>
     /// Gets the <see cref="DiscDirectoryInfo"/> of the directory containing the current <see cref="DiscFileSystemInfo"/> object.
     /// </summary>
@@ -168,7 +170,7 @@ public class DiscFileSystemInfo
                 return null;
             }
 
-            return new DiscDirectoryInfo(FileSystem, Utilities.GetDirectoryFromPath(Path));
+            return _parent ??= new DiscDirectoryInfo(FileSystem, Utilities.GetDirectoryFromPath(Path));
         }
     }
 

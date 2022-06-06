@@ -1,5 +1,4 @@
-﻿using DiscUtils.CoreCompat;
-using DiscUtils.Iscsi;
+﻿using DiscUtils.Iscsi;
 using DiscUtils.Nfs;
 using DiscUtils.OpticalDisk;
 

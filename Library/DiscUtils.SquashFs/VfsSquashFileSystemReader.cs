@@ -21,7 +21,6 @@
 //
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using DiscUtils.Compression;
@@ -33,6 +32,8 @@ namespace DiscUtils.SquashFs;
 internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry, File, Directory, Context>,
                                            IUnixFileSystem
 {
+    public override bool IsCaseSensitive => true;
+
     public const int MetadataBufferSize = 8 * 1024;
     private readonly BlockCache<Block> _blockCache;
 

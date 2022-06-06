@@ -1,5 +1,4 @@
-﻿using DiscUtils.CoreCompat;
-using DiscUtils.Dmg;
+﻿using DiscUtils.Dmg;
 using DiscUtils.Iso9660;
 using DiscUtils.Wim;
 

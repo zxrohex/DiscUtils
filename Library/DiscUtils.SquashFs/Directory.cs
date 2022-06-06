@@ -22,7 +22,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using DiscUtils.Internal;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.SquashFs;
@@ -41,28 +41,33 @@ internal class Directory : File, IVfsDirectory<DirectoryEntry, File>
         }
     }
 
-    public IReadOnlyCollection<DirectoryEntry> AllEntries
+    FastDictionary<DirectoryEntry> _allEntries;
+
+    public IReadOnlyDictionary<string, DirectoryEntry> AllEntries
     {
         get
         {
-            var records = new List<DirectoryEntry>();
-
-            var reader = Context.DirectoryReader;
-            reader.SetPosition(_dirInode.StartBlock, _dirInode.Offset);
-
-            // For some reason, always 3 greater than actual..
-            while (reader.DistanceFrom(_dirInode.StartBlock, _dirInode.Offset) < _dirInode.FileSize - 3)
+            if (_allEntries is null)
             {
-                var header = DirectoryHeader.ReadFrom(reader);
+                _allEntries = new(StringComparer.Ordinal, entry => entry.FileName);
 
-                for (var i = 0; i < header.Count + 1; ++i)
+                var reader = Context.DirectoryReader;
+                reader.SetPosition(_dirInode.StartBlock, _dirInode.Offset);
+
+                // For some reason, always 3 greater than actual..
+                while (reader.DistanceFrom(_dirInode.StartBlock, _dirInode.Offset) < _dirInode.FileSize - 3)
                 {
-                    var record = DirectoryRecord.ReadFrom(reader);
-                    records.Add(new DirectoryEntry(header, record));
+                    var header = DirectoryHeader.ReadFrom(reader);
+
+                    for (var i = 0; i < header.Count + 1; ++i)
+                    {
+                        var record = DirectoryRecord.ReadFrom(reader);
+                        _allEntries.Add(new DirectoryEntry(header, record));
+                    }
                 }
             }
 
-            return records;
+            return _allEntries;
         }
     }
 
@@ -72,17 +77,7 @@ internal class Directory : File, IVfsDirectory<DirectoryEntry, File>
     }
 
     public DirectoryEntry GetEntryByName(string name)
-    {
-        foreach (var entry in AllEntries)
-        {
-            if (entry.FileName == name)
-            {
-                return entry;
-            }
-        }
-
-        return null;
-    }
+        => AllEntries.TryGetValue(name, out var entry) ? entry : null;
 
     public DirectoryEntry CreateNewFile(string name)
     {

@@ -100,7 +100,7 @@ internal class ExtentStream : ReadOnlyCompatibilityStream
         var toRead = (int)Math.Min((uint)count, _dataLength - _position);
 
         _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
-        var numRead = await _isoStream.ReadAsync(buffer, offset, toRead, cancellationToken).ConfigureAwait(false);
+        var numRead = await _isoStream.ReadAsync(buffer.AsMemory(offset, toRead), cancellationToken).ConfigureAwait(false);
         _position += numRead;
         return numRead;
     }

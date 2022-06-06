@@ -25,7 +25,6 @@ using System.IO;
 
 namespace DiscUtils.Ntfs.Internals;
 
-using DiscUtils.CoreCompat;
 using Streams;
 
 /// <summary>

@@ -22,7 +22,6 @@
 
 using DiscUtils.Streams.Compatibility;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -394,7 +393,7 @@ public static class Utilities
     /// The wildcard * (star) matches zero or more characters (including '.'), and ?
     /// (question mark) matches precisely one character (except '.').
     /// </remarks>
-    public static Regex ConvertWildcardsToRegEx(string pattern)
+    public static Func<string, bool> ConvertWildcardsToRegEx(string pattern, bool ignoreCase)
     {
         if (pattern.Equals("*", StringComparison.Ordinal) ||
             pattern.Equals("*.*", StringComparison.Ordinal))
@@ -407,8 +406,26 @@ public static class Utilities
             pattern += ".";
         }
 
+        if (pattern.AsSpan().IndexOfAny('*', '?') < 0)
+        {
+            if (ignoreCase)
+            {
+                return name => StringComparer.OrdinalIgnoreCase.Equals(name, pattern);
+            }
+            else
+            {
+                return name => StringComparer.Ordinal.Equals(name, pattern);
+            }
+        }
+
+        var regexOptions = RegexOptions.CultureInvariant;
+        if (ignoreCase)
+        {
+            regexOptions |= RegexOptions.IgnoreCase;
+        }
+
         var query = $"^{Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", "[^.]")}$";
-        return new Regex(query, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return new Regex(query, regexOptions).IsMatch;
     }
 
     public static FileAttributes FileAttributesFromUnixFileType(this UnixFileType fileType)

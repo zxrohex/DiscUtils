@@ -20,8 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System.Globalization;
-
 namespace DiscUtils.Ntfs;
 
 public class DataRun

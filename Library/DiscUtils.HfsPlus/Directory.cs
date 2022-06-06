@@ -22,7 +22,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using DiscUtils.Internal;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.HfsPlus;
@@ -32,27 +32,32 @@ internal sealed class Directory : File, IVfsDirectory<DirEntry, File>
     public Directory(Context context, CatalogNodeId nodeId, CommonCatalogFileInfo fileInfo)
         : base(context, nodeId, fileInfo) {}
 
-    public IReadOnlyCollection<DirEntry> AllEntries
+    FastDictionary<DirEntry> _allEntries;
+
+    public IReadOnlyDictionary<string, DirEntry> AllEntries
     {
         get
         {
-            var results = new List<DirEntry>();
+            if (_allEntries is null)
+            {
+                _allEntries = new(StringComparer.Ordinal, entry => entry.FileName);
 
-            Context.Catalog.VisitRange((key, data) =>
-                   {
-                       if (key.NodeId == NodeId)
+                Context.Catalog.VisitRange((key, data) =>
                        {
-                           if (data != null && !string.IsNullOrEmpty(key.Name) && DirEntry.IsFileOrDirectory(data))
+                           if (key.NodeId == NodeId)
                            {
-                               results.Add(new DirEntry(key.Name, data));
+                               if (data != null && !string.IsNullOrEmpty(key.Name) && DirEntry.IsFileOrDirectory(data))
+                               {
+                                   _allEntries.Add(new DirEntry(key.Name, data));
+                               }
+
+                               return 0;
                            }
+                           return key.NodeId < NodeId ? -1 : 1;
+                       });
+            }
 
-                           return 0;
-                       }
-                       return key.NodeId < NodeId ? -1 : 1;
-                   });
-
-            return results;
+            return _allEntries;
         }
     }
 

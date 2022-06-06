@@ -22,7 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using DiscUtils.Core.WindowsSecurity.AccessControl;
 using System.Text;
 using DiscUtils.Streams;
 using DiscUtils.Internal;

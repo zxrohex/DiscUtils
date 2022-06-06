@@ -32,6 +32,8 @@ namespace DiscUtils.Swap;
 /// </summary>
 public sealed class SwapFileSystem : VfsReadOnlyFileSystem<VfsDirEntry, IVfsFile, IVfsDirectory<VfsDirEntry, IVfsFile>, SwapContext>
 {
+    public override bool IsCaseSensitive => true;
+
     /// <summary>
     /// Initializes a new instance of the SwapFileSystem class.
     /// </summary>

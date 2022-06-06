@@ -61,9 +61,7 @@ internal struct DirectoryRecord : IByteArraySerializable
         var recordLen = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(4));
         int nameLen = buffer[6];
         FileType = buffer[7];
-        Name = _nameEncoding.GetString(buffer.Slice(8, nameLen));
-
-        Name = Name.Replace('\\', '/');
+        Name = _nameEncoding.GetString(buffer.Slice(8, nameLen)).SanitizeFileName();
 
         return recordLen;
     }

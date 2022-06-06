@@ -27,7 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
-using Buffer=DiscUtils.Streams.Buffer;
+using Buffer = DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.Compression;
 
@@ -72,18 +72,6 @@ internal class ZlibBuffer : Buffer
     }
 
 
-    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (pos != position)
-        {
-            throw new NotSupportedException();
-        }
-
-        var read = await _stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-        position += read;
-        return read;
-    }
-
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (pos != position)
@@ -124,5 +112,14 @@ internal class ZlibBuffer : Buffer
     public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
     {
         yield return new StreamExtent(0, _stream.Length);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && _ownership == Ownership.Dispose)
+        {
+            _stream?.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }

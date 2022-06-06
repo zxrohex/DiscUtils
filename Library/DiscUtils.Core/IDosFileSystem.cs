@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DiscUtils;
+﻿namespace DiscUtils;
 
 public interface IDosFileSystem : IFileSystem
 {

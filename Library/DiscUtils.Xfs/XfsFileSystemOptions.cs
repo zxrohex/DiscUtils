@@ -22,7 +22,6 @@
 
 namespace DiscUtils.Xfs;
 
-using System;
 using System.Text;
 
 /// <summary>

@@ -20,8 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System.Collections.Generic;
-using System.Globalization;
+using System;
 using System.IO;
 using System.Text;
 using DiscUtils.Internal;
@@ -31,7 +30,7 @@ namespace DiscUtils.Wim;
 
 internal class DirectoryEntry
 {
-    public Dictionary<string, AlternateStreamEntry> AlternateStreams;
+    public FastDictionary<AlternateStreamEntry> AlternateStreams;
     public FileAttributes Attributes;
     public long CreationTime;
     public string FileName;
@@ -113,16 +112,16 @@ internal class DirectoryEntry
 
         if (result.StreamCount > 0)
         {
-            result.AlternateStreams = new Dictionary<string, AlternateStreamEntry>();
+            result.AlternateStreams = new FastDictionary<AlternateStreamEntry>(StringComparer.OrdinalIgnoreCase, entry => entry.Name);
             for (var i = 0; i < result.StreamCount; ++i)
             {
                 var stream = AlternateStreamEntry.ReadFrom(reader);
 
                 // Avoid crashes on badly built WIM files with multiple streams without
                 // a stream name
-                if (!result.AlternateStreams.ContainsKey(stream.Name))
+                if (!result.AlternateStreams.Contains(stream.Name))
                 {
-                    result.AlternateStreams.Add(stream.Name, stream);
+                    result.AlternateStreams.Add(stream);
                 }
             }
         }

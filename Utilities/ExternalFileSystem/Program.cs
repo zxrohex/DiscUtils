@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using DiscUtils;
+using DiscUtils.Internal;
 using DiscUtils.Setup;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
@@ -208,28 +209,28 @@ class MyFile : IVfsFile
 
 class MyDirectory : MyFile, IVfsDirectory<MyDirEntry, MyFile>
 {
-    private List<MyDirEntry> _entries;
+    private readonly FastDictionary<MyDirEntry> _entries;
 
     public MyDirectory(MyDirEntry dirEntry, bool isRoot)
         : base(dirEntry)
     {
-        _entries = new List<MyDirEntry>();
+        _entries = new(StringComparer.OrdinalIgnoreCase, entry => entry.FileName);
 
         if (isRoot)
         {
             for (var i = 0; i < 4; ++i)
             {
-                _entries.Add(new MyDirEntry("DIR" + i, true));
+                _entries.Add(new MyDirEntry($"DIR{i}", true));
             }
         }
 
         for (var i = 0; i < 6; ++i)
         {
-            _entries.Add(new MyDirEntry("FILE" + i, false));
+            _entries.Add(new MyDirEntry($"FILE{i}", false));
         }
     }
 
-    public IReadOnlyCollection<MyDirEntry> AllEntries
+    public IReadOnlyDictionary<string, MyDirEntry> AllEntries
     {
         get { return _entries; }
     }
@@ -240,17 +241,7 @@ class MyDirectory : MyFile, IVfsDirectory<MyDirEntry, MyFile>
     }
 
     public MyDirEntry GetEntryByName(string name)
-    {
-        foreach (var entry in _entries)
-        {
-            if (string.Compare(name, entry.FileName, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                return entry;
-            }
-        }
-
-        return null;
-    }
+        => AllEntries.TryGetValue(name, out var entry) ? entry : null;
 
     public MyDirEntry CreateNewFile(string name)
     {
@@ -270,6 +261,8 @@ class MyFileSystem : VfsFileSystem<MyDirEntry, MyFile, MyDirectory, MyContext>
         this.Context = new MyContext();
         this.RootDirectory = new MyDirectory(new MyDirEntry("", true), true);
     }
+
+    public override bool IsCaseSensitive => false;
 
     public override string VolumeLabel
     {

@@ -24,7 +24,6 @@ using System;
 using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
-using System.Runtime.Serialization;
 
 namespace DiscUtils.Vhd;
 

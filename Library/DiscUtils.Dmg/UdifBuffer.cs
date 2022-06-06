@@ -115,47 +115,6 @@ internal class UdifBuffer : Buffer
     }
 
 
-    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        var totalCopied = 0;
-        var currentPos = pos;
-
-        while (totalCopied < count && currentPos < Capacity)
-        {
-            LoadRun(currentPos);
-
-            var bufferOffset = (int)(currentPos - (_activeRunOffset + _activeRun.SectorStart * Sizes.Sector));
-            var toCopy = (int)Math.Min(_activeRun.SectorCount * Sizes.Sector - bufferOffset, count - totalCopied);
-
-            switch (_activeRun.Type)
-            {
-                case RunType.Zeros:
-                    Array.Clear(buffer, offset + totalCopied, toCopy);
-                    break;
-
-                case RunType.Raw:
-                    _stream.Position = _activeRun.CompOffset + bufferOffset;
-                    await StreamUtilities.ReadExactAsync(_stream, buffer, offset + totalCopied, toCopy, cancellationToken).ConfigureAwait(false);
-                    break;
-
-                case RunType.AdcCompressed:
-                case RunType.ZlibCompressed:
-                case RunType.BZlibCompressed:
-                case RunType.LzfseCompressed:
-                    Array.Copy(_decompBuffer, bufferOffset, buffer, offset + totalCopied, toCopy);
-                    break;
-
-                default:
-                    throw new NotImplementedException("Reading from run of type " + _activeRun.Type);
-            }
-
-            currentPos += toCopy;
-            totalCopied += toCopy;
-        }
-
-        return totalCopied;
-    }
-
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var totalCopied = 0;

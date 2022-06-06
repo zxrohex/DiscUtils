@@ -121,38 +121,6 @@ internal sealed class FileBuffer : Buffer
         return totalRead;
     }
 
-    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        var totalRead = 0;
-
-        var limitedCount = (int)Math.Min(count, Math.Max(0, Capacity - pos));
-
-        while (totalRead < limitedCount)
-        {
-            var extent = FindExtent(pos, out var extentLogicalStart);
-            var extentStreamStart = extent.StartBlock * (long)_context.VolumeHeader.BlockSize;
-            var extentSize = extent.BlockCount * (long)_context.VolumeHeader.BlockSize;
-
-            var extentOffset = pos + totalRead - extentLogicalStart;
-            var toRead = (int)Math.Min(limitedCount - totalRead, extentSize - extentOffset);
-
-            // Remaining in extent can create a situation where amount to read is zero, and that appears
-            // to be OK, just need to exit thie while loop to avoid infinite loop.
-            if (toRead == 0)
-            {
-                break;
-            }
-
-            var volStream = _context.VolumeStream;
-            volStream.Position = extentStreamStart + extentOffset;
-            var numRead = await volStream.ReadAsync(buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
-
-            totalRead += numRead;
-        }
-
-        return totalRead;
-    }
-
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var totalRead = 0;

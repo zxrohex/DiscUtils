@@ -23,9 +23,6 @@
 using System;
 using System.Globalization;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 

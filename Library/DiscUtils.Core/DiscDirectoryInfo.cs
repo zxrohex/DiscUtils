@@ -20,11 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using DiscUtils.Internal;
 
 namespace DiscUtils;
 

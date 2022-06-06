@@ -98,7 +98,7 @@ internal class HashStreamCore : CompatibilityStream
             throw new InvalidOperationException("Reads must be contiguous");
         }
 
-        int numRead = await _wrapped.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        int numRead = await _wrapped.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
 
         _hashAlg.AppendData(buffer, offset, numRead);
         _hashPos += numRead;

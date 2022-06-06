@@ -22,7 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -177,7 +176,7 @@ public class ConcatStream : SparseStream
 
             _streams[activeStream].Position = _position - activeStreamStartPos;
 
-            numRead = await _streams[activeStream].ReadAsync(buffer, offset + totalRead, count - totalRead, cancellationToken).ConfigureAwait(false);
+            numRead = await _streams[activeStream].ReadAsync(buffer.AsMemory(offset + totalRead, count - totalRead), cancellationToken).ConfigureAwait(false);
 
             totalRead += numRead;
             _position += numRead;

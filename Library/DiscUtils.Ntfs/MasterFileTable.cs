@@ -22,8 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -411,7 +409,7 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
             var dirEntry = _self.DirectoryEntry;
             if (dirEntry != null)
             {
-                dirEntry.UpdateFrom(_self);
+                dirEntry.Value.UpdateFrom(_self);
             }
 
             _self.UpdateRecordInMft();

@@ -91,7 +91,7 @@ public class PositionWrappingStream : WrappingStream
 
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        var read = await base.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        var read = await base.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         _position += read;
         return read;
     }

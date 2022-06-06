@@ -54,10 +54,10 @@ public class DynamicDiskManager : IDiagnosticTraceable
     /// <param name="linePrefix">The prefix to place at the start of each line.</param>
     public void Dump(TextWriter writer, string linePrefix)
     {
-        writer.WriteLine(linePrefix + "DISK GROUPS");
+        writer.WriteLine($"{linePrefix}DISK GROUPS");
         foreach (var group in _groups.Values)
         {
-            group.Dump(writer, linePrefix + "  ");
+            group.Dump(writer, $"{linePrefix}  ");
         }
     }
 

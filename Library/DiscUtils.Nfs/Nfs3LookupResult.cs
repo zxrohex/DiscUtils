@@ -20,8 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-
 namespace DiscUtils.Nfs;
 
 public sealed class Nfs3LookupResult : Nfs3CallResult

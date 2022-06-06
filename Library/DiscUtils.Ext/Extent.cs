@@ -25,7 +25,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ext;
 
-internal class Extent : IByteArraySerializable
+internal struct Extent : IByteArraySerializable
 {
     public uint FirstLogicalBlock;
     public ushort FirstPhysicalBlockHi;

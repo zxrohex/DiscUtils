@@ -24,7 +24,6 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 
 namespace DiscUtils.Iso9660;

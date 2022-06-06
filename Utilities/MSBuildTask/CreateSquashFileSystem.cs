@@ -23,8 +23,6 @@
 namespace MSBuildTask;
 
 using System;
-using System.Collections.Generic;
-using DiscUtils.Iso9660;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using DiscUtils.SquashFs;

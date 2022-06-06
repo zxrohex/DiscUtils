@@ -28,6 +28,8 @@ using System.IO;
 using System.Collections.Generic;
 using DiscUtils.Vfs;
 using DiscUtils.Streams;
+using DiscUtils.Internal;
+using DiscUtils.CoreCompat;
 
 internal class Directory : File, IVfsDirectory<DirEntry, File>
 {
@@ -36,60 +38,61 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
     {
     }
 
-    private Dictionary<string,DirEntry> _allEntries;
+    private FastDictionary<DirEntry> _allEntries;
 
-    public IReadOnlyCollection<DirEntry> AllEntries
+    public IReadOnlyDictionary<string, DirEntry> AllEntries
     {
         get
         {
-            if (_allEntries != null)
-                return new List<DirEntry>(_allEntries.Values);
-            var result = new Dictionary<string, DirEntry>();
-            if (Inode.Format == InodeFormat.Local)
+            if (_allEntries is null)
             {
-                //shortform directory
-                var sfDir = new ShortformDirectory(Context);
-                sfDir.ReadFrom(Inode.DataFork);
-                foreach (var entry in sfDir.Entries)
+                var result = new FastDictionary<DirEntry>(StringComparer.Ordinal, entry => entry.FileName);
+                if (Inode.Format == InodeFormat.Local)
                 {
-                    result.Add(Context.Options.FileNameEncoding.GetString(entry.Name), new DirEntry(entry, Context));
+                    //shortform directory
+                    var sfDir = new ShortformDirectory(Context);
+                    sfDir.ReadFrom(Inode.DataFork);
+                    foreach (var entry in sfDir.Entries)
+                    {
+                        result.Add(new DirEntry(entry, Context));
+                    }
                 }
-            }
-            else if (Inode.Format == InodeFormat.Extents)
-            {
-                if (Inode.Extents == 1)
+                else if (Inode.Format == InodeFormat.Extents)
                 {
-                    var blockDir = new BlockDirectory(Context);
-                    if (Context.SuperBlock.SbVersion == 5)
-                        blockDir = new BlockDirectoryV5(Context);
+                    if (Inode.Extents == 1)
+                    {
+                        var blockDir = new BlockDirectory(Context);
+                        if (Context.SuperBlock.SbVersion == 5)
+                            blockDir = new BlockDirectoryV5(Context);
 
-                    var dirContent = Inode.GetContentBuffer(Context);
-                    var buffer = StreamUtilities.ReadAll(dirContent);
-                    blockDir.ReadFrom(buffer);
-                    if (!blockDir.HasValidMagic)
-                        throw new IOException("invalid block directory magic");
-                    AddDirEntries(blockDir.Entries, result);
+                        var dirContent = Inode.GetContentBuffer(Context);
+                        var buffer = StreamUtilities.ReadAll(dirContent);
+                        blockDir.ReadFrom(buffer);
+                        if (!blockDir.HasValidMagic)
+                            throw new IOException("invalid block directory magic");
+                        AddDirEntries(blockDir.Entries, result);
+                    }
+                    else
+                    {
+                        var extents = Inode.GetExtents();
+                        AddLeafDirExtentEntries(extents, result);
+                    }
                 }
                 else
                 {
-                    var extents = Inode.GetExtents();
+                    var header = new BTreeExtentRoot();
+                    header.ReadFrom(Inode.DataFork);
+                    header.LoadBtree(Context);
+                    var extents = header.GetExtents();
                     AddLeafDirExtentEntries(extents, result);
                 }
+                _allEntries = result;
             }
-            else
-            {
-                var header = new BTreeExtentRoot();
-                header.ReadFrom(Inode.DataFork);
-                header.LoadBtree(Context);
-                var extents = header.GetExtents();
-                AddLeafDirExtentEntries(extents, result);
-            }
-            _allEntries = result;
-            return result.Values;
+            return _allEntries;
         }
     }
 
-    private void AddLeafDirExtentEntries(IEnumerable<Extent> extents, Dictionary<string, DirEntry> target)
+    private void AddLeafDirExtentEntries(IEnumerable<Extent> extents, FastDictionary<DirEntry> target)
     {
         var leafOffset = LeafDirectory.LeafOffset / Context.SuperBlock.Blocksize;
 
@@ -113,14 +116,14 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
         }
     }
 
-    private void AddDirEntries(IEnumerable<BlockDirectoryData> entries, Dictionary<string, DirEntry> target)
+    private void AddDirEntries(IEnumerable<BlockDirectoryData> entries, FastDictionary<DirEntry> target)
     {
         foreach (var entry in entries)
         {
             if (entry is not IDirectoryEntry dirEntry) continue;
-            var name = Context.Options.FileNameEncoding.GetString(dirEntry.Name);
+            var name = Context.Options.FileNameEncoding.GetString(dirEntry.Name).SanitizeFileName();
             if (name == "." || name == "..") continue;
-            target.Add(name, new DirEntry(dirEntry, Context));
+            target.Add(new DirEntry(dirEntry, Context));
         }
     }
 
@@ -130,17 +133,7 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
     }
 
     public DirEntry GetEntryByName(string name)
-    {
-        foreach (var entry in AllEntries)
-        {
-            if (entry.FileName == name)
-            {
-                return entry;
-            }
-        }
-
-        return null;
-    }
+        => AllEntries.TryGetValue(name, out var entry) ? entry : null;
 
     public DirEntry CreateNewFile(string name)
     {

@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils;
+using DiscUtils.Internal;
 using DiscUtils.Streams;
 
 namespace LibraryTests
@@ -33,15 +34,15 @@ namespace LibraryTests
     /// </summary>
     class DiskBuilderFileSystem : DiscFileSystem
     {
-        private IDictionary<string, DiskImageFileSpecification> _files;
+        private FastDictionary<DiskImageFileSpecification> _files;
 
         public DiskBuilderFileSystem(IEnumerable<DiskImageFileSpecification> fileSpecs)
         {
-            _files = new Dictionary<string, DiskImageFileSpecification>();
+            _files = new(StringComparer.Ordinal, entry => entry.Name);
 
             foreach (var fileSpec in fileSpecs)
             {
-                _files.Add(fileSpec.Name, fileSpec);
+                _files.Add(fileSpec);
             }
         }
 

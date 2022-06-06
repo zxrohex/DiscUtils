@@ -128,60 +128,6 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
         return totalToRead;
     }
 
-
-    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        var record = _attribute.PrimaryRecord;
-
-        if (!CanRead)
-        {
-            throw new IOException("Attempt to read from file not opened for read");
-        }
-
-        StreamUtilities.AssertBufferParameters(buffer, offset, count);
-
-        if (pos >= Capacity)
-        {
-            return 0;
-        }
-
-        // Limit read to length of attribute
-        var totalToRead = (int)Math.Min(count, Capacity - pos);
-        var toRead = totalToRead;
-
-        // Handle uninitialized bytes at end of attribute
-        if (pos + totalToRead > record.InitializedDataLength)
-        {
-            if (pos >= record.InitializedDataLength)
-            {
-                // We're just reading zero bytes from the uninitialized area
-                Array.Clear(buffer, offset, totalToRead);
-                return totalToRead;
-            }
-
-            // Partial read of uninitialized area
-            Array.Clear(buffer, offset + (int)(record.InitializedDataLength - pos),
-                (int)(pos + toRead - record.InitializedDataLength));
-            toRead = (int)(record.InitializedDataLength - pos);
-        }
-
-        var numRead = 0;
-        while (numRead < toRead)
-        {
-            IBuffer extentBuffer = _attribute.RawBuffer;
-
-            var justRead = await extentBuffer.ReadAsync(pos + numRead, buffer, offset + numRead, toRead - numRead, cancellationToken).ConfigureAwait(false);
-            if (justRead == 0)
-            {
-                break;
-            }
-
-            numRead += justRead;
-        }
-
-        return totalToRead;
-    }
-
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var record = _attribute.PrimaryRecord;
@@ -318,30 +264,6 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
         }
 
         _attribute.RawBuffer.Write(pos, buffer, offset, count);
-
-        if (!record.IsNonResident)
-        {
-            _file.MarkMftRecordDirty();
-        }
-    }
-
-    public override async ValueTask WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        var record = _attribute.PrimaryRecord;
-
-        if (!CanWrite)
-        {
-            throw new IOException("Attempt to write to file not opened for write");
-        }
-
-        StreamUtilities.AssertBufferParameters(buffer, offset, count);
-
-        if (count == 0)
-        {
-            return;
-        }
-
-        await _attribute.RawBuffer.WriteAsync(pos, buffer, offset, count, cancellationToken).ConfigureAwait(false);
 
         if (!record.IsNonResident)
         {

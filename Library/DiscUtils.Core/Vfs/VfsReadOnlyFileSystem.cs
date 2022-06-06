@@ -21,9 +21,7 @@
 //
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -167,6 +165,129 @@ public abstract class VfsReadOnlyFileSystem<TDirEntry, TFile, TDirectory, TConte
     public override void SetLastWriteTimeUtc(string path, DateTime newTime)
     {
         throw new NotSupportedException();
+    }
+
+    public override DiscFileSystemInfo GetFileSystemInfo(string path)
+    {
+        if (IsRoot(path) && RootDirectory != null)
+        {
+            return Root;
+        }
+
+        var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
+
+        if (dirEntry == null)
+        {
+            return new CachedDiscFileInfo(this, path);
+        }
+
+        var file = GetFile(dirEntry);
+
+        if (file == null)
+        {
+            return new CachedDiscFileInfo(this, path);
+        }
+
+        var attributes = file.FileAttributes;
+        var creationTimeUtc = file.CreationTimeUtc;
+        var lastAccessTimeUtc = file.LastAccessTimeUtc;
+        var lastWriteTimeUtc = file.LastWriteTimeUtc;
+
+        if (attributes.HasFlag(FileAttributes.Directory))
+        {
+            return new CachedDiscDirectoryInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc);
+        }
+        else
+        {
+            return new CachedDiscFileInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc, file.FileLength);
+        }
+    }
+
+    public override DiscDirectoryInfo GetDirectoryInfo(string path)
+    {
+        if (IsRoot(path) && RootDirectory != null)
+        {
+            return Root;
+        }
+
+        var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
+
+        if (dirEntry == null)
+        {
+            return new CachedDiscDirectoryInfo(this, path);
+        }
+
+        var file = GetFile(dirEntry);
+
+        if (file == null)
+        {
+            return new CachedDiscDirectoryInfo(this, path);
+        }
+
+        var attributes = file.FileAttributes;
+        var creationTimeUtc = file.CreationTimeUtc;
+        var lastAccessTimeUtc = file.LastAccessTimeUtc;
+        var lastWriteTimeUtc = file.LastWriteTimeUtc;
+
+        if (attributes.HasFlag(FileAttributes.Directory))
+        {
+            return new CachedDiscDirectoryInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc);
+        }
+        else
+        {
+            return new CachedDiscDirectoryInfo(this, path);
+        }
+    }
+
+    public override DiscFileInfo GetFileInfo(string path)
+    {
+        if (IsRoot(path) && RootDirectory != null)
+        {
+            return new CachedDiscFileInfo(this, path);
+        }
+
+        var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
+
+        if (dirEntry == null)
+        {
+            return new CachedDiscFileInfo(this, path);
+        }
+
+        var file = GetFile(dirEntry);
+
+        if (file == null)
+        {
+            return new CachedDiscFileInfo(this, path);
+        }
+
+        var attributes = file.FileAttributes;
+        var creationTimeUtc = file.CreationTimeUtc;
+        var lastAccessTimeUtc = file.LastAccessTimeUtc;
+        var lastWriteTimeUtc = file.LastWriteTimeUtc;
+
+        if (attributes.HasFlag(FileAttributes.Directory))
+        {
+            return new CachedDiscFileInfo(this, path);
+        }
+        else
+        {
+            return new CachedDiscFileInfo(this, path, attributes, creationTimeUtc, lastAccessTimeUtc, lastWriteTimeUtc, file.FileLength);
+        }
     }
 
     ObjectCache<string, TDirEntry> _lookupCache = new(StringComparer.Ordinal);

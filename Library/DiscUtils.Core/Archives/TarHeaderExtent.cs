@@ -22,7 +22,6 @@
 
 namespace DiscUtils.Archives;
 
-using Internal;
 using Streams;
 using System;
 

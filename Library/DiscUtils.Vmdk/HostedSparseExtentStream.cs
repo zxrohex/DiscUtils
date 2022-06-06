@@ -245,7 +245,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
             // Need to skip some bytes, but DefaultStream doesn't support seeking...
             await StreamUtilities.ReadExactAsync(deflateStream, grainOffset, cancellationToken).ConfigureAwait(false);
 
-            return await deflateStream.ReadAsync(buffer, bufferOffset, numToRead, cancellationToken).ConfigureAwait(false);
+            return await deflateStream.ReadAsync(buffer.AsMemory(bufferOffset, numToRead), cancellationToken).ConfigureAwait(false);
         }
         return await base.ReadGrainAsync(buffer, bufferOffset, grainStart, grainOffset, numToRead, cancellationToken).ConfigureAwait(false);
     }

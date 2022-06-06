@@ -21,7 +21,6 @@
 //
 
 using System;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using DiscUtils.Compression;
 using DiscUtils.Ntfs;

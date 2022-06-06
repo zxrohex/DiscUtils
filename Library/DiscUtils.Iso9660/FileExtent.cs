@@ -93,11 +93,11 @@ internal class FileExtent : BuilderExtent
         }
 
         // Read up to EOF
-        var numRead = await _readStream.ReadAsync(block, offset, count, cancellationToken).ConfigureAwait(false);
+        var numRead = await _readStream.ReadAsync(block.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         totalRead += numRead;
         while (numRead > 0 && totalRead < count)
         {
-            numRead = await _readStream.ReadAsync(block, offset + totalRead, count - totalRead, cancellationToken).ConfigureAwait(false);
+            numRead = await _readStream.ReadAsync(block.AsMemory(offset + totalRead, count - totalRead), cancellationToken).ConfigureAwait(false);
             totalRead += numRead;
         }
 

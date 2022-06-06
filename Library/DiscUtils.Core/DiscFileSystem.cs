@@ -76,13 +76,12 @@ public abstract class DiscFileSystem :
     /// <returns>true if the file system is read-write.</returns>
     public abstract bool CanWrite { get; }
 
+    private DiscDirectoryInfo _root;
+
     /// <summary>
     /// Gets the root directory of the file system.
     /// </summary>
-    public virtual DiscDirectoryInfo Root
-    {
-        get { return new DiscDirectoryInfo(this, string.Empty); }
-    }
+    public virtual DiscDirectoryInfo Root => _root ??= new(this, string.Empty);
 
     /// <summary>
     /// Gets the volume label.

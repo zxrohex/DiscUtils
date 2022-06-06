@@ -5,7 +5,6 @@ using System.Linq;
 
 namespace DiscUtils.VirtualFileSystem;
 
-using DiscUtils.Vfs;
 using Internal;
 using Streams;
 using System.Collections.Generic;
@@ -69,6 +68,10 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         get => Options.VolumeLabel;
         set => Options.VolumeLabel = value;
     }
+    public IEqualityComparer<string> NameComparer =>
+        Options.CaseSensitive
+        ? StringComparer.Ordinal
+        : StringComparer.OrdinalIgnoreCase;
 
     public virtual void SetUsedSpace(long size) => _used_space = size;
 
@@ -178,7 +181,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
             .Select(name => Path.Combine(path, name));
     }
 
-    public static Func<string, bool> GetFilter(string pattern)
+    public Func<string, bool> GetFilter(string pattern)
     {
         if (string.IsNullOrEmpty(pattern) ||
             pattern.Equals("*", StringComparison.Ordinal) ||
@@ -186,10 +189,19 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         {
             return name => true;
         }
+        else if (pattern.AsSpan().IndexOfAny('?', '*') < 0)
+        {
+            return name => NameComparer.Equals(pattern, name);
+        }
         else
         {
             var query = $"^{Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", "[^.]")}$";
-            return new Regex(query, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant).IsMatch;
+            var regexOptions = RegexOptions.CultureInvariant;
+            if (!Options.CaseSensitive)
+            {
+                regexOptions |= RegexOptions.IgnoreCase;
+            }
+            return new Regex(query, regexOptions).IsMatch;
         }
     }
 

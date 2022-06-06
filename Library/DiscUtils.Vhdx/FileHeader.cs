@@ -21,7 +21,6 @@
 //
 
 using System;
-using System.Runtime.InteropServices;
 using System.Text;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;

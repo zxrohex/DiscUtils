@@ -24,7 +24,6 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.RegularExpressions;
 using DiscUtils.Internal;
 
 namespace DiscUtils.Fat;
@@ -282,14 +281,14 @@ internal sealed class FileName : IEquatable<FileName>
         }
     }
 
-    public bool IsMatch(Regex regex, Encoding encoding)
+    public bool IsMatch(Func<string, bool> filter, Encoding encoding)
     {
         var search_name = GetDisplayName(encoding);
         if (search_name.IndexOf('.') < 0)
         {
             search_name += '.';
         }
-        return regex.IsMatch(search_name);
+        return filter(search_name);
     }
 
     public string GetRawName(Encoding encoding) => encoding.GetString(_raw, 0, 11).TrimEnd();

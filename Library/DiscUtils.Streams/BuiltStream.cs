@@ -203,12 +203,11 @@ public class BuiltStream : SparseStream
                 var nextExtent = FindNext(_position);
                 if (nextExtent != null)
                 {
-                    numRead = await _baseStream.ReadAsync(buffer, offset + totalRead,
-                        (int)Math.Min(count - totalRead, nextExtent.Start - _position), cancellationToken).ConfigureAwait(false);
+                    numRead = await _baseStream.ReadAsync(buffer.AsMemory(offset + totalRead, (int)Math.Min(count - totalRead, nextExtent.Start - _position)), cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
-                    numRead = await _baseStream.ReadAsync(buffer, offset + totalRead, count - totalRead, cancellationToken).ConfigureAwait(false);
+                    numRead = await _baseStream.ReadAsync(buffer.AsMemory(offset + totalRead, count - totalRead), cancellationToken).ConfigureAwait(false);
                 }
             }
             else

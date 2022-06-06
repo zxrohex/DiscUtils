@@ -22,7 +22,6 @@
 
 using System;
 using System.IO;
-using DiscUtils;
 using DiscUtils.Iso9660;
 using Xunit;
 

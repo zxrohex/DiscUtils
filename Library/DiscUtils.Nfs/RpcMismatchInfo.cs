@@ -21,8 +21,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-
 namespace DiscUtils.Nfs;
 
 public class RpcMismatchInfo

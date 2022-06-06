@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Internal;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -29,13 +30,13 @@ namespace DiscUtils.SquashFs;
 internal sealed class BuilderDirectory : BuilderNode
 {
     private readonly List<Entry> _children;
-    private readonly Dictionary<string, Entry> _index;
+    private readonly FastDictionary<Entry> _index;
     private DirectoryInode _inode;
 
     public BuilderDirectory()
     {
         _children = new List<Entry>();
-        _index = new Dictionary<string, Entry>();
+        _index = new FastDictionary<Entry>(StringComparer.Ordinal, entry => entry.Name);
     }
 
     public override Inode Inode
@@ -52,12 +53,12 @@ internal sealed class BuilderDirectory : BuilderNode
 
         if (_index.ContainsKey(name))
         {
-            throw new IOException("The directory entry '" + name + "' already exists");
+            throw new IOException($"The directory entry '{name}' already exists");
         }
 
         var newEntry = new Entry { Name = name, Node = node };
         _children.Add(newEntry);
-        _index.Add(name, newEntry);
+        _index.Add(newEntry);
     }
 
     public BuilderNode GetChild(string name)
@@ -74,15 +75,15 @@ internal sealed class BuilderDirectory : BuilderNode
     {
         foreach (var entry in _index)
         {
-            if (entry.Value.Node is BuilderDirectory subdir)
+            if (entry.Node is BuilderDirectory subdir)
             {
                 foreach (var subdir_entry in subdir.EnumerateTree())
                 {
-                    yield return new KeyValuePair<string, BuilderNode>(Path.Combine(entry.Key, subdir_entry.Key), subdir_entry.Value);
+                    yield return new KeyValuePair<string, BuilderNode>(Path.Combine(entry.Name, subdir_entry.Key), subdir_entry.Value);
                 }
             }
 
-            yield return new KeyValuePair<string, BuilderNode>(entry.Key, entry.Value.Node);
+            yield return new KeyValuePair<string, BuilderNode>(entry.Name, entry.Node);
         }
     }
 
@@ -90,7 +91,7 @@ internal sealed class BuilderDirectory : BuilderNode
     {
         foreach (var entry in _index)
         {
-            if (entry.Value.Node is BuilderDirectory subdir)
+            if (entry.Node is BuilderDirectory subdir)
             {
                 foreach (var subdir_entry in subdir.EnumerateTreeEntries())
                 {
@@ -98,7 +99,7 @@ internal sealed class BuilderDirectory : BuilderNode
                 }
             }
 
-            yield return entry.Value.Node;
+            yield return entry.Node;
         }
     }
 

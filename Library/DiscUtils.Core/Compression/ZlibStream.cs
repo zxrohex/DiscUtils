@@ -25,7 +25,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 
@@ -200,7 +199,7 @@ public class ZlibStream : CompatibilityStream
     {
         CheckParams(buffer, offset, count);
 
-        var numRead = await _deflateStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        var numRead = await _deflateStream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         _adler32.Process(buffer.AsSpan(offset, numRead));
         return numRead;
     }

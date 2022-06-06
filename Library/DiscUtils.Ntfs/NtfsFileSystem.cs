@@ -22,16 +22,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using DiscUtils.Core.WindowsSecurity.AccessControl;
-using System.Text.RegularExpressions;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using System.Linq;
-using DiscUtils.CoreCompat;
 using DiscUtils.Streams.Compatibility;
-using DiscUtils.Vfs;
 
 namespace DiscUtils.Ntfs;
 
@@ -114,9 +110,9 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         if (VolumeInfo.Version >= VolumeInformation.VersionW2k)
         {
             _context.SecurityDescriptors = new SecurityDescriptors(GetFile(MasterFileTable.SecureIndex));
-            _context.ObjectIds = new ObjectIds(GetFile(GetDirectoryEntry(@"$Extend\$ObjId").Reference));
-            _context.ReparsePoints = new ReparsePoints(GetFile(GetDirectoryEntry(@"$Extend\$Reparse").Reference));
-            _context.Quotas = new Quotas(GetFile(GetDirectoryEntry(@"$Extend\$Quota").Reference));
+            _context.ObjectIds = new ObjectIds(GetFile(GetDirectoryEntry(@"$Extend\$ObjId").Value.Reference));
+            _context.ReparsePoints = new ReparsePoints(GetFile(GetDirectoryEntry(@"$Extend\$Reparse").Value.Reference));
+            _context.Quotas = new Quotas(GetFile(GetDirectoryEntry(@"$Extend\$Quota").Value.Reference));
         }
 #if false
         byte[] buffer = new byte[1024];
@@ -216,41 +212,41 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         using (NtfsTransaction.Begin())
         {
             var sourceParentDirEntry = GetDirectoryEntry(Utilities.GetDirectoryFromPath(sourceFile));
-            if (sourceParentDirEntry == null || !sourceParentDirEntry.IsDirectory)
+            if (sourceParentDirEntry == null || !sourceParentDirEntry.Value.IsDirectory)
             {
                 throw new FileNotFoundException("No such file", sourceFile);
             }
 
-            var sourceParentDir = GetDirectory(sourceParentDirEntry.Reference);
+            var sourceParentDir = GetDirectory(sourceParentDirEntry.Value.Reference);
 
             var sourceEntry = sourceParentDir.GetEntryByName(Utilities.GetFileFromPath(sourceFile));
-            if (sourceEntry == null || sourceEntry.IsDirectory)
+            if (sourceEntry == null || sourceEntry.Value.IsDirectory)
             {
                 throw new FileNotFoundException("No such file", sourceFile);
             }
 
-            var origFile = GetFile(sourceEntry.Reference);
+            var origFile = GetFile(sourceEntry.Value.Reference);
 
             var destParentDirEntry = GetDirectoryEntry(Utilities.GetDirectoryFromPath(destinationFile));
-            if (destParentDirEntry == null || !destParentDirEntry.IsDirectory)
+            if (destParentDirEntry == null || !destParentDirEntry.Value.IsDirectory)
             {
                 throw new FileNotFoundException("Destination directory not found", destinationFile);
             }
 
-            var destParentDir = GetDirectory(destParentDirEntry.Reference);
+            var destParentDir = GetDirectory(destParentDirEntry.Value.Reference);
 
             var destDirEntry = destParentDir.GetEntryByName(Utilities.GetFileFromPath(destinationFile));
-            if (destDirEntry != null && !destDirEntry.IsDirectory)
+            if (destDirEntry != null && !destDirEntry.Value.IsDirectory)
             {
                 if (overwrite)
                 {
-                    if (destDirEntry.Reference.MftIndex == sourceEntry.Reference.MftIndex)
+                    if (destDirEntry.Value.Reference.MftIndex == sourceEntry.Value.Reference.MftIndex)
                     {
                         throw new IOException("Destination file already exists and is the source file");
                     }
 
-                    var oldFile = GetFile(destDirEntry.Reference);
-                    destParentDir.RemoveEntry(destDirEntry);
+                    var oldFile = GetFile(destDirEntry.Value.Reference);
+                    destParentDir.RemoveEntry(destDirEntry.Value);
                     if (oldFile.HardLinkCount == 0)
                     {
                         oldFile.Delete();
@@ -291,7 +287,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             }
 
             AddFileToDirectory(newFile, destParentDir, Utilities.GetFileFromPath(destinationFile), null);
-            destParentDirEntry.UpdateFrom(destParentDir);
+            destParentDirEntry.Value.UpdateFrom(destParentDir);
         }
     }
 
@@ -320,27 +316,27 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             var parent = Utilities.GetDirectoryFromPath(path);
 
             var parentDirEntry = GetDirectoryEntry(parent);
-            if (parentDirEntry == null || !parentDirEntry.IsDirectory)
+            if (parentDirEntry == null || !parentDirEntry.Value.IsDirectory)
             {
-                throw new DirectoryNotFoundException("No such directory: " + path);
+                throw new DirectoryNotFoundException($"No such directory: {path}");
             }
 
-            var parentDir = GetDirectory(parentDirEntry.Reference);
+            var parentDir = GetDirectory(parentDirEntry.Value.Reference);
 
             var dirEntry = parentDir.GetEntryByName(Utilities.GetFileFromPath(path));
-            if (dirEntry == null || !dirEntry.IsDirectory)
+            if (dirEntry == null || !dirEntry.Value.IsDirectory)
             {
-                throw new DirectoryNotFoundException("No such directory: " + path);
+                throw new DirectoryNotFoundException($"No such directory: {path}");
             }
 
-            var dir = GetDirectory(dirEntry.Reference);
+            var dir = GetDirectory(dirEntry.Value.Reference);
 
             if (!dir.IsEmpty)
             {
                 throw new IOException("Unable to delete non-empty directory");
             }
 
-            if ((dirEntry.Details.FileAttributes & FileAttributes.ReparsePoint) != 0)
+            if ((dirEntry.Value.Details.FileAttributes & FileAttributes.ReparsePoint) != 0)
             {
                 RemoveReparsePoint(dir);
             }
@@ -367,24 +363,24 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             var parentDirPath = Utilities.GetDirectoryFromPath(dirEntryPath);
 
             var parentDirEntry = GetDirectoryEntry(parentDirPath);
-            if (parentDirEntry == null || !parentDirEntry.IsDirectory)
+            if (parentDirEntry == null || !parentDirEntry.Value.IsDirectory)
             {
                 throw new FileNotFoundException("No such file", path);
             }
 
-            var parentDir = GetDirectory(parentDirEntry.Reference);
+            var parentDir = GetDirectory(parentDirEntry.Value.Reference);
 
             var dirEntry = parentDir.GetEntryByName(Utilities.GetFileFromPath(dirEntryPath));
-            if (dirEntry == null || dirEntry.IsDirectory)
+            if (dirEntry == null || dirEntry.Value.IsDirectory)
             {
                 throw new FileNotFoundException("No such file", path);
             }
 
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
 
             if (string.IsNullOrEmpty(attributeName) && attributeType == AttributeType.Data)
             {
-                if ((dirEntry.Details.FileAttributes & FileAttributes.ReparsePoint) != 0)
+                if ((dirEntry.Value.Details.FileAttributes & FileAttributes.ReparsePoint) != 0)
                 {
                     RemoveReparsePoint(file);
                 }
@@ -423,7 +419,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 return true;
             }
             var dirEntry = GetDirectoryEntry(path);
-            return dirEntry != null && (dirEntry.Details.FileAttributes & FileAttributes.Directory) != 0;
+            return dirEntry != null && (dirEntry.Value.Details.FileAttributes & FileAttributes.Directory) != 0;
         }
     }
 
@@ -446,13 +442,13 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
 
             // Ordinary file length request, use info from directory entry
             if (attributeName == null && attributeType == AttributeType.Data &&
-                !dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
+                !dirEntry.Value.Details.FileAttributes.HasFlag(FileAttributes.Directory))
             {
                 return true;
             }
 
             // Alternate stream / attribute, pull info from attribute record
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
             var attr = file.GetAttribute(attributeType, attributeName);
             if (attr == null)
             {
@@ -475,7 +471,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     {
         using (NtfsTransaction.Begin())
         {
-            var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+            var re = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
             foreach (var dir in DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false))
             {
@@ -496,9 +492,9 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     {
         using (NtfsTransaction.Begin())
         {
-            var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+            var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
-            foreach (var result in DoSearch(path, re, searchOption == SearchOption.AllDirectories, false, true))
+            foreach (var result in DoSearch(path, filter, searchOption == SearchOption.AllDirectories, false, true))
             {
                 yield return result;
             }
@@ -520,7 +516,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new DirectoryNotFoundException($"The directory '{path}' does not exist");
             }
 
-            var parentDir = GetDirectory(parentDirEntry.Reference);
+            var parentDir = GetDirectory(parentDirEntry.Value.Reference);
 
             foreach (var entry in parentDir
                 .GetAllEntries(filter: true)
@@ -544,7 +540,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         {
             // TODO: Be smarter, use the B*Tree for better performance when the start of the pattern is known
             // characters
-            var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+            var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
             var parentDirEntry = GetDirectoryEntry(path);
             if (parentDirEntry == null)
@@ -552,10 +548,10 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new DirectoryNotFoundException($"The directory '{path}' does not exist");
             }
 
-            var parentDir = GetDirectory(parentDirEntry.Reference);
+            var parentDir = GetDirectory(parentDirEntry.Value.Reference);
 
             var results = parentDir.GetAllEntries(true)
-                .Where(dirEntry => re is null || re.IsMatch(dirEntry.Details.FileName))
+                .Where(dirEntry => filter is null || filter(dirEntry.Details.FileName))
                 .Select(dirEntry => Utilities.CombinePaths(path, dirEntry.Details.FileName));
 
             foreach (var result in results)
@@ -578,31 +574,31 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 var sourceParentDirEntry =
                     GetDirectoryEntry(Utilities.GetDirectoryFromPath(sourceDirectoryName));
-                if (sourceParentDirEntry == null || !sourceParentDirEntry.IsDirectory)
+                if (sourceParentDirEntry == null || !sourceParentDirEntry.Value.IsDirectory)
                 {
-                    throw new DirectoryNotFoundException("No such directory: " + sourceDirectoryName);
+                    throw new DirectoryNotFoundException($"No such directory: {sourceDirectoryName}");
                 }
 
-                var sourceParentDir = GetDirectory(sourceParentDirEntry.Reference);
+                var sourceParentDir = GetDirectory(sourceParentDirEntry.Value.Reference);
 
                 var sourceEntry =
                     sourceParentDir.GetEntryByName(Utilities.GetFileFromPath(sourceDirectoryName));
-                if (sourceEntry == null || !sourceEntry.IsDirectory)
+                if (sourceEntry == null || !sourceEntry.Value.IsDirectory)
                 {
-                    throw new DirectoryNotFoundException("No such directory: " + sourceDirectoryName);
+                    throw new DirectoryNotFoundException($"No such directory: {sourceDirectoryName}");
                 }
 
-                var file = GetFile(sourceEntry.Reference);
+                var file = GetFile(sourceEntry.Value.Reference);
 
                 var destParentDirEntry =
                     GetDirectoryEntry(Utilities.GetDirectoryFromPath(destinationDirectoryName));
-                if (destParentDirEntry == null || !destParentDirEntry.IsDirectory)
+                if (destParentDirEntry == null || !destParentDirEntry.Value.IsDirectory)
                 {
                     throw new DirectoryNotFoundException("Destination directory not found: " +
                                                          destinationDirectoryName);
                 }
 
-                var destParentDir = GetDirectory(destParentDirEntry.Reference);
+                var destParentDir = GetDirectory(destParentDirEntry.Value.Reference);
 
                 var destDirEntry =
                     destParentDir.GetEntryByName(Utilities.GetFileFromPath(destinationDirectoryName));
@@ -611,7 +607,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                     throw new IOException("Destination directory already exists");
                 }
 
-                RemoveFileFromDirectory(sourceParentDir, file, sourceEntry.Details.FileName);
+                RemoveFileFromDirectory(sourceParentDir, file, sourceEntry.Value.Details.FileName);
                 AddFileToDirectory(file, destParentDir, Utilities.GetFileFromPath(destinationDirectoryName), null);
             }
         }
@@ -628,41 +624,41 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         using (NtfsTransaction.Begin())
         {
             var sourceParentDirEntry = GetDirectoryEntry(Utilities.GetDirectoryFromPath(sourceName));
-            if (sourceParentDirEntry == null || !sourceParentDirEntry.IsDirectory)
+            if (sourceParentDirEntry == null || !sourceParentDirEntry.Value.IsDirectory)
             {
                 throw new FileNotFoundException("No such file", sourceName);
             }
 
-            var sourceParentDir = GetDirectory(sourceParentDirEntry.Reference);
+            var sourceParentDir = GetDirectory(sourceParentDirEntry.Value.Reference);
 
             var sourceEntry = sourceParentDir.GetEntryByName(Utilities.GetFileFromPath(sourceName));
-            if (sourceEntry == null || sourceEntry.IsDirectory)
+            if (sourceEntry == null || sourceEntry.Value.IsDirectory)
             {
                 throw new FileNotFoundException("No such file", sourceName);
             }
 
-            var file = GetFile(sourceEntry.Reference);
+            var file = GetFile(sourceEntry.Value.Reference);
 
             var destParentDirEntry = GetDirectoryEntry(Utilities.GetDirectoryFromPath(destinationName));
-            if (destParentDirEntry == null || !destParentDirEntry.IsDirectory)
+            if (destParentDirEntry == null || !destParentDirEntry.Value.IsDirectory)
             {
                 throw new FileNotFoundException("Destination directory not found", destinationName);
             }
 
-            var destParentDir = GetDirectory(destParentDirEntry.Reference);
+            var destParentDir = GetDirectory(destParentDirEntry.Value.Reference);
 
             var destDirEntry = destParentDir.GetEntryByName(Utilities.GetFileFromPath(destinationName));
-            if (destDirEntry != null && !destDirEntry.IsDirectory)
+            if (destDirEntry != null && !destDirEntry.Value.IsDirectory)
             {
                 if (overwrite)
                 {
-                    if (destDirEntry.Reference.MftIndex == sourceEntry.Reference.MftIndex)
+                    if (destDirEntry.Value.Reference.MftIndex == sourceEntry.Value.Reference.MftIndex)
                     {
                         throw new IOException("Destination file already exists and is the source file");
                     }
 
-                    var oldFile = GetFile(destDirEntry.Reference);
-                    destParentDir.RemoveEntry(destDirEntry);
+                    var oldFile = GetFile(destDirEntry.Value.Reference);
+                    destParentDir.RemoveEntry(destDirEntry.Value);
                     if (oldFile.HardLinkCount == 0)
                     {
                         oldFile.Delete();
@@ -674,7 +670,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 }
             }
 
-            RemoveFileFromDirectory(sourceParentDir, file, sourceEntry.Details.FileName);
+            RemoveFileFromDirectory(sourceParentDir, file, sourceEntry.Value.Details.FileName);
             AddFileToDirectory(file, destParentDir, Utilities.GetFileFromPath(destinationName), null);
         }
     }
@@ -705,7 +701,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            return dirEntry.Details.FileAttributes;
+            return dirEntry.Value.Details.FileAttributes;
         }
     }
 
@@ -724,7 +720,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new FileNotFoundException("File not found", path);
             }
 
-            var oldValue = dirEntry.Details.FileAttributes;
+            var oldValue = dirEntry.Value.Details.FileAttributes;
             var changedAttribs = oldValue ^ newValue;
 
             if (changedAttribs == 0)
@@ -738,11 +734,11 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new ArgumentException("Attempt to change attributes that are read-only", nameof(newValue));
             }
 
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
 
             if ((changedAttribs & FileAttributes.SparseFile) != 0)
             {
-                if (dirEntry.IsDirectory)
+                if (dirEntry.Value.IsDirectory)
                 {
                     throw new ArgumentException("Attempt to change sparse attribute on a directory",
                         nameof(newValue));
@@ -767,7 +763,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 }
             }
 
-            if ((changedAttribs & FileAttributes.Compressed) != 0 && !dirEntry.IsDirectory)
+            if ((changedAttribs & FileAttributes.Compressed) != 0 && !dirEntry.Value.IsDirectory)
             {
                 if ((newValue & FileAttributes.Compressed) == 0)
                 {
@@ -788,7 +784,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 }
             }
 
-            UpdateStandardInformation(dirEntry, file,
+            UpdateStandardInformation(dirEntry.Value, file,
                 delegate(StandardInformation si) { si.FileAttributes = FileNameRecord.SetAttributes(newValue, si.FileAttributes); });
         }
     }
@@ -807,7 +803,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            return dirEntry.Details.CreationTime;
+            return dirEntry.Value.Details.CreationTime;
         }
     }
 
@@ -838,7 +834,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            return dirEntry.Details.LastAccessTime;
+            return dirEntry.Value.Details.LastAccessTime;
         }
     }
 
@@ -869,7 +865,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            return dirEntry.Details.ModificationTime;
+            return dirEntry.Value.Details.ModificationTime;
         }
     }
 
@@ -907,11 +903,11 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             if (NtfsOptions.FileLengthFromDirectoryEntries && attributeName == null &&
                 attributeType == AttributeType.Data)
             {
-                return (long)dirEntry.Details.RealSize;
+                return (long)dirEntry.Value.Details.RealSize;
             }
 
             // Alternate stream / attribute, pull info from attribute record
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
             var attr = file.GetAttribute(attributeType, attributeName);
             if (attr == null)
             {
@@ -940,23 +936,23 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 if (NtfsOptions.FileLengthFromDirectoryEntries && attributeName == null &&
                     attributeType == AttributeType.Data)
                 {
-                    if (dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
+                    if (dirEntry.Value.Details.FileAttributes.HasFlag(FileAttributes.Directory))
                     {
                         return new(this, path);
                     }
 
-                    return new CachedDiscFileInfo(this, path, dirEntry.Details.FileAttributes,
-                                               dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
-                                               dirEntry.Details.ModificationTime, (long)dirEntry.Details.RealSize);
+                    return new CachedDiscFileInfo(this, path, dirEntry.Value.Details.FileAttributes,
+                                               dirEntry.Value.Details.ModificationTime, dirEntry.Value.Details.ModificationTime,
+                                               dirEntry.Value.Details.ModificationTime, (long)dirEntry.Value.Details.RealSize);
                 }
 
                 // Alternate stream / attribute, pull info from attribute record
-                var file = GetFile(dirEntry.Reference);
+                var file = GetFile(dirEntry.Value.Reference);
                 var attr = file.GetAttribute(attributeType, attributeName);
                 if (attr != null)
                 {
-                    return new CachedDiscFileInfo(this, path, dirEntry.Details.FileAttributes, dirEntry.Details.ModificationTime,
-                                               dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime, attr.Length);
+                    return new CachedDiscFileInfo(this, path, dirEntry.Value.Details.FileAttributes, dirEntry.Value.Details.ModificationTime,
+                                               dirEntry.Value.Details.ModificationTime, dirEntry.Value.Details.ModificationTime, attr.Length);
                 }
             }
             catch
@@ -985,25 +981,25 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 if (NtfsOptions.FileLengthFromDirectoryEntries && attributeName == null &&
                     attributeType == AttributeType.Data)
                 {
-                    if (dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
+                    if (dirEntry.Value.Details.FileAttributes.HasFlag(FileAttributes.Directory))
                     {
-                        return new CachedDiscDirectoryInfo(this, path, dirEntry.Details.FileAttributes,
-                                                        dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
-                                                        dirEntry.Details.ModificationTime);
+                        return new CachedDiscDirectoryInfo(this, path, dirEntry.Value.Details.FileAttributes,
+                                                        dirEntry.Value.Details.ModificationTime, dirEntry.Value.Details.ModificationTime,
+                                                        dirEntry.Value.Details.ModificationTime);
                     }
 
-                    return new CachedDiscFileInfo(this, path, dirEntry.Details.FileAttributes,
-                                               dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
-                                               dirEntry.Details.ModificationTime, (long)dirEntry.Details.RealSize);
+                    return new CachedDiscFileInfo(this, path, dirEntry.Value.Details.FileAttributes,
+                                               dirEntry.Value.Details.ModificationTime, dirEntry.Value.Details.ModificationTime,
+                                               dirEntry.Value.Details.ModificationTime, (long)dirEntry.Value.Details.RealSize);
                 }
 
                 // Alternate stream / attribute, pull info from attribute record
-                var file = GetFile(dirEntry.Reference);
+                var file = GetFile(dirEntry.Value.Reference);
                 var attr = file.GetAttribute(attributeType, attributeName);
                 if (attr != null)
                 {
-                    return new CachedDiscFileInfo(this, path, dirEntry.Details.FileAttributes, dirEntry.Details.ModificationTime,
-                                               dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime, attr.Length);
+                    return new CachedDiscFileInfo(this, path, dirEntry.Value.Details.FileAttributes, dirEntry.Value.Details.ModificationTime,
+                                               dirEntry.Value.Details.ModificationTime, dirEntry.Value.Details.ModificationTime, attr.Length);
                 }
             }
             catch
@@ -1031,11 +1027,11 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 // Ordinary file length request, use info from directory entry for efficiency - if allowed
                 if (NtfsOptions.FileLengthFromDirectoryEntries && attributeName == null &&
                     attributeType == AttributeType.Data &&
-                    dirEntry.Details.FileAttributes.HasFlag(FileAttributes.Directory))
+                    dirEntry.Value.Details.FileAttributes.HasFlag(FileAttributes.Directory))
                 {
-                    return new CachedDiscDirectoryInfo(this, path, dirEntry.Details.FileAttributes,
-                                                    dirEntry.Details.ModificationTime, dirEntry.Details.ModificationTime,
-                                                    dirEntry.Details.ModificationTime);
+                    return new CachedDiscDirectoryInfo(this, path, dirEntry.Value.Details.FileAttributes,
+                                                    dirEntry.Value.Details.ModificationTime, dirEntry.Value.Details.ModificationTime,
+                                                    dirEntry.Value.Details.ModificationTime);
                 }
             }
             catch
@@ -1078,12 +1074,12 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         SplitPath(path, out var plainPath, out var attributeName);
 
         var dirEntry = GetDirectoryEntry(plainPath);
-        if (dirEntry == null || dirEntry.IsDirectory)
+        if (dirEntry == null || dirEntry.Value.IsDirectory)
         {
             throw new FileNotFoundException("No such file", path);
         }
 
-        var file = GetFile(dirEntry.Reference);
+        var file = GetFile(dirEntry.Value.Reference);
 
         var stream = file.GetStream(AttributeType.Data, attributeName);
         if (stream == null)
@@ -1110,12 +1106,12 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         SplitPath(path, out var plainPath, out var attributeName);
 
         var dirEntry = GetDirectoryEntry(plainPath);
-        if (dirEntry == null || dirEntry.IsDirectory)
+        if (dirEntry == null || dirEntry.Value.IsDirectory)
         {
             throw new FileNotFoundException("No such file", path);
         }
 
-        var file = GetFile(dirEntry.Reference);
+        var file = GetFile(dirEntry.Value.Reference);
 
         var stream = file.GetStream(AttributeType.Data, attributeName);
         if (stream == null)
@@ -1242,7 +1238,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
             return DoGetSecurity(file);
         }
     }
@@ -1261,11 +1257,11 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
             DoSetSecurity(file, securityDescriptor);
 
             // Update the directory entry used to open the file
-            dirEntry.UpdateFrom(file);
+            dirEntry.Value.UpdateFrom(file);
         }
     }
 
@@ -1284,11 +1280,11 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             }
             else
             {
-                var file = GetFile(dirEntry.Reference);
+                var file = GetFile(dirEntry.Value.Reference);
                 DoRemoveSecurity(file);
 
                 // Update the directory entry used to open the file
-                dirEntry.UpdateFrom(file);
+                dirEntry.Value.UpdateFrom(file);
             }
         }
     }
@@ -1307,7 +1303,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
 
             var stream = file.GetStream(AttributeType.ReparsePoint, null);
             if (stream != null)
@@ -1317,7 +1313,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 var oldRpBuffer = StreamUtilities.ReadExact(contentStream, (int)contentStream.Length);
                 var rp = new ReparsePointRecord();
                 rp.ReadFrom(oldRpBuffer, 0);
-                _context.ReparsePoints.Remove(rp.Tag, dirEntry.Reference);
+                _context.ReparsePoints.Remove(rp.Tag, dirEntry.Value.Reference);
             }
             else
             {
@@ -1346,14 +1342,14 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             stdInfoStream?.SetContent(si);
 
             // Update the directory entry used to open the file, so it's accurate
-            dirEntry.Details.EASizeOrReparsePointTag = newRp.Tag;
-            dirEntry.UpdateFrom(file);
+            dirEntry.Value.Details.EASizeOrReparsePointTag = newRp.Tag;
+            dirEntry.Value.UpdateFrom(file);
 
             // Write attribute changes back to the Master File Table
             file.UpdateRecordInMft();
 
             // Add the reparse point to the index
-            _context.ReparsePoints.Add(newRp.Tag, dirEntry.Reference);
+            _context.ReparsePoints.Add(newRp.Tag, dirEntry.Value.Reference);
         }
     }
 
@@ -1371,7 +1367,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
 
             var stream = file.GetStream(AttributeType.ReparsePoint, null);
             if (stream != null)
@@ -1401,11 +1397,11 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
             RemoveReparsePoint(file);
 
             // Update the directory entry used to open the file, so it's accurate
-            dirEntry.UpdateFrom(file);
+            dirEntry.Value.UpdateFrom(file);
 
             // Write attribute changes back to the Master File Table
             file.UpdateRecordInMft();
@@ -1429,12 +1425,12 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         {
             var parentPath = Utilities.GetDirectoryFromPath(path);
             var parentEntry = GetDirectoryEntry(parentPath);
-            if (parentEntry == null || (parentEntry.Details.FileAttributes & FileAttributes.Directory) == 0)
+            if (parentEntry == null || (parentEntry.Value.Details.FileAttributes & FileAttributes.Directory) == 0)
             {
                 throw new DirectoryNotFoundException("Parent directory not found");
             }
 
-            var dir = GetDirectory(parentEntry.Reference);
+            var dir = GetDirectory(parentEntry.Value.Reference);
             if (dir == null)
             {
                 throw new DirectoryNotFoundException("Parent directory not found");
@@ -1446,18 +1442,18 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new FileNotFoundException("Path not found", path);
             }
 
-            if (givenEntry.Details.FileNameNamespace == FileNameNamespace.Dos)
+            if (givenEntry.Value.Details.FileNameNamespace == FileNameNamespace.Dos)
             {
-                return givenEntry.Details.FileName;
+                return givenEntry.Value.Details.FileName;
             }
-            if (givenEntry.Details.FileNameNamespace == FileNameNamespace.Win32)
+            if (givenEntry.Value.Details.FileNameNamespace == FileNameNamespace.Win32)
             {
-                var file = GetFile(givenEntry.Reference);
+                var file = GetFile(givenEntry.Value.Reference);
 
                 foreach (var stream in file.GetStreams(AttributeType.FileName, null))
                 {
                     var fnr = stream.GetContent<FileNameRecord>();
-                    if (fnr.ParentDirectory.Equals(givenEntry.Details.ParentDirectory)
+                    if (fnr.ParentDirectory.Equals(givenEntry.Value.Details.ParentDirectory)
                         && fnr.FileNameNamespace == FileNameNamespace.Dos)
                     {
                         return fnr.FileName;
@@ -1485,12 +1481,12 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         {
             var parentPath = Utilities.GetDirectoryFromPath(path);
             var parentEntry = GetDirectoryEntry(parentPath);
-            if (parentEntry == null || (parentEntry.Details.FileAttributes & FileAttributes.Directory) == 0)
+            if (parentEntry == null || (parentEntry.Value.Details.FileAttributes & FileAttributes.Directory) == 0)
             {
                 throw new DirectoryNotFoundException("Parent directory not found");
             }
 
-            var dir = GetDirectory(parentEntry.Reference);
+            var dir = GetDirectory(parentEntry.Value.Reference);
             if (dir == null)
             {
                 throw new DirectoryNotFoundException("Parent directory not found");
@@ -1502,8 +1498,8 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new FileNotFoundException("Path not found", path);
             }
 
-            var givenNamespace = givenEntry.Details.FileNameNamespace;
-            var file = GetFile(givenEntry.Reference);
+            var givenNamespace = givenEntry.Value.Details.FileNameNamespace;
+            var file = GetFile(givenEntry.Value.Reference);
 
             if (givenNamespace == FileNameNamespace.Posix && file.HasWin32OrDosName)
             {
@@ -1511,10 +1507,10 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             }
 
             // Convert Posix/Win32AndDos to just Win32
-            if (givenEntry.Details.FileNameNamespace != FileNameNamespace.Win32)
+            if (givenEntry.Value.Details.FileNameNamespace != FileNameNamespace.Win32)
             {
-                dir.RemoveEntry(givenEntry);
-                dir.AddEntry(file, givenEntry.Details.FileName, FileNameNamespace.Win32);
+                dir.RemoveEntry(givenEntry.Value);
+                dir.AddEntry(file, givenEntry.Value.Details.FileName, FileNameNamespace.Win32);
             }
 
             // Remove any existing Dos names, and set the new one
@@ -1522,17 +1518,17 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             foreach (var stream in nameStreams)
             {
                 var fnr = stream.GetContent<FileNameRecord>();
-                if (fnr.ParentDirectory.Equals(givenEntry.Details.ParentDirectory)
+                if (fnr.ParentDirectory.Equals(givenEntry.Value.Details.ParentDirectory)
                     && fnr.FileNameNamespace == FileNameNamespace.Dos)
                 {
                     var oldEntry = dir.GetEntryByName(fnr.FileName);
-                    dir.RemoveEntry(oldEntry);
+                    dir.RemoveEntry(oldEntry.Value);
                 }
             }
 
             dir.AddEntry(file, shortName, FileNameNamespace.Dos);
 
-            parentEntry.UpdateFrom(dir);
+            parentEntry.Value.UpdateFrom(dir);
         }
     }
 
@@ -1551,7 +1547,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new FileNotFoundException("File not found", path);
             }
 
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
             var si = file.StandardInformation;
 
             return new WindowsFileInformation
@@ -1606,7 +1602,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 throw new FileNotFoundException("File not found", path);
             }
-            return (long)dirEntry.Reference.Value;
+            return (long)dirEntry.Value.Reference.Value;
         }
     }
 
@@ -1626,7 +1622,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             throw new FileNotFoundException("File not found", path);
         }
 
-        var file = GetFile(dirEntry.Reference);
+        var file = GetFile(dirEntry.Value.Reference);
 
         if (file == null)
         {
@@ -1875,10 +1871,10 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                         }
 
                         DoSetSecurity(childDir, newSd);
-                        childDirEntry.UpdateFrom(childDir);
+                        childDirEntry.Value.UpdateFrom(childDir);
 
                         // Update the directory entry by which we found the directory we've just modified
-                        focusDirEntry.UpdateFrom(focusDir);
+                        focusDirEntry.Value.UpdateFrom(focusDir);
 
                         focusDir = childDir;
                     }
@@ -1892,10 +1888,10 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 }
                 else
                 {
-                    focusDir = GetDirectory(childDirEntry.Reference);
+                    focusDir = GetDirectory(childDirEntry.Value.Reference);
                 }
 
-                focusDirEntry = childDirEntry;
+                focusDirEntry = childDirEntry.Value;
             }
         }
     }
@@ -1929,12 +1925,12 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             }
 
             if (string.IsNullOrEmpty(attributeName) &&
-                (entry.Details.FileAttributes & FileAttributes.Directory) != 0 &&
+                (entry.Value.Details.FileAttributes & FileAttributes.Directory) != 0 &&
                 attributeType == AttributeType.Data)
             {
                 throw new IOException("Attempt to open directory as a file");
             }
-            var file = GetFile(entry.Reference);
+            var file = GetFile(entry.Value.Reference);
 
             if (file == null)
             {
@@ -1955,7 +1951,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 }
             }
 
-            SparseStream stream = new NtfsFileStream(this, entry, attributeType, attributeName, access);
+            SparseStream stream = new NtfsFileStream(this, entry.Value, attributeType, attributeName, access);
 
             if (mode == FileMode.Create || mode == FileMode.Truncate)
             {
@@ -1986,7 +1982,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new FileNotFoundException("No such file", file);
             }
 
-            var fileObj = GetFile(entry.Reference);
+            var fileObj = GetFile(entry.Value.Reference);
             return fileObj.OpenStream(type, name, access);
         }
     }
@@ -2009,12 +2005,12 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             var destinationDirName = Utilities.GetDirectoryFromPath(destinationName);
             var destinationDirSelfEntry = GetDirectoryEntry(destinationDirName);
             if (destinationDirSelfEntry == null ||
-                (destinationDirSelfEntry.Details.FileAttributes & FileAttributes.Directory) == 0)
+                (destinationDirSelfEntry.Value.Details.FileAttributes & FileAttributes.Directory) == 0)
             {
                 throw new FileNotFoundException("Destination directory not found", destinationDirName);
             }
 
-            var destinationDir = GetDirectory(destinationDirSelfEntry.Reference);
+            var destinationDir = GetDirectory(destinationDirSelfEntry.Value.Reference);
             if (destinationDir == null)
             {
                 throw new FileNotFoundException("Destination directory not found", destinationDirName);
@@ -2027,9 +2023,9 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new IOException("A file with this name already exists: " + destinationName);
             }
 
-            var file = GetFile(sourceDirEntry.Reference);
+            var file = GetFile(sourceDirEntry.Value.Reference);
             destinationDir.AddEntry(file, Utilities.GetFileFromPath(destinationName), FileNameNamespace.Posix);
-            destinationDirSelfEntry.UpdateFrom(destinationDir);
+            destinationDirSelfEntry.Value.UpdateFrom(destinationDir);
         }
     }
 
@@ -2049,7 +2045,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 throw new FileNotFoundException("File not found", path);
             }
 
-            var file = GetFile(dirEntry.Reference);
+            var file = GetFile(dirEntry.Value.Reference);
 
             if (file == null)
             {
@@ -2094,7 +2090,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         _context.RawStream.Write(bpbSector, 0, bpbSector.Length);
     }
 
-    internal DirectoryEntry GetDirectoryEntry(string path)
+    internal DirectoryEntry? GetDirectoryEntry(string path)
     {
         return GetDirectoryEntry(GetDirectory(MasterFileTable.RootDirIndex), path);
     }
@@ -2129,7 +2125,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
 
         foreach (var alias in aliases)
         {
-            var de = dir.GetEntryByName(alias);
+            var de = dir.GetEntryByName(alias).Value;
             dir.RemoveEntry(de);
         }
     }
@@ -2137,8 +2133,8 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     private static IEnumerable<string> GetAliases(Directory dir, File file, string name)
     {
         var dirEntry = dir.GetEntryByName(name);
-        if (dirEntry.Details.FileNameNamespace == FileNameNamespace.Dos
-            || dirEntry.Details.FileNameNamespace == FileNameNamespace.Win32)
+        if (dirEntry.Value.Details.FileNameNamespace == FileNameNamespace.Dos
+            || dirEntry.Value.Details.FileNameNamespace == FileNameNamespace.Win32)
         {
             foreach (var fnStream in file.GetStreams(AttributeType.FileName, null))
             {
@@ -2192,7 +2188,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     {
         DirectoryEntry result;
         var parentDirEntry = GetDirectoryEntry(Utilities.GetDirectoryFromPath(path));
-        var parentDir = GetDirectory(parentDirEntry.Reference);
+        var parentDir = GetDirectory(parentDirEntry.Value.Reference);
 
         var newFileAttrs = parentDir.StandardInformation.FileAttributes;
         if (options != null && options.Compressed.HasValue)
@@ -2226,7 +2222,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             DoSetSecurity(file, newSd);
             result.UpdateFrom(file);
 
-            parentDirEntry.UpdateFrom(parentDir);
+            parentDirEntry.Value.UpdateFrom(parentDir);
         }
         finally
         {
@@ -2239,13 +2235,13 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         return result;
     }
 
-    private DirectoryEntry GetDirectoryEntry(Directory dir, string path)
+    private DirectoryEntry? GetDirectoryEntry(Directory dir, string path)
     {
         var pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
         return GetDirectoryEntry(dir, pathElements, 0);
     }
 
-    private IEnumerable<string> DoSearch(string path, Regex regex, bool subFolders, bool dirs, bool files)
+    private IEnumerable<string> DoSearch(string path, Func<string, bool> filter, bool subFolders, bool dirs, bool files)
     {
         var parentDirEntry = GetDirectoryEntry(path);
         if (parentDirEntry == null)
@@ -2253,7 +2249,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             throw new DirectoryNotFoundException($"The directory '{path}' was not found");
         }
 
-        var parentDir = GetDirectory(parentDirEntry.Reference);
+        var parentDir = GetDirectory(parentDirEntry.Value.Reference);
         if (parentDir == null)
         {
             throw new DirectoryNotFoundException($"The directory '{path}' was not found");
@@ -2265,7 +2261,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
 
             if ((isDir && dirs) || (!isDir && files))
             {
-                if (regex is null || regex.IsMatch(de.SearchName))
+                if (filter is null || filter(de.SearchName))
                 {
                     yield return Utilities.CombinePaths(path, de.Details.FileName);
                 }
@@ -2273,7 +2269,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
 
             if (subFolders && isDir)
             {
-                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.Details.FileName), regex, subFolders, dirs, files))
+                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.Details.FileName), filter, subFolders, dirs, files))
                 {
                     yield return subdirentry;
                 }
@@ -2281,24 +2277,22 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         }
     }
 
-    private DirectoryEntry GetDirectoryEntry(Directory dir, string[] pathEntries, int pathOffset)
+    private DirectoryEntry? GetDirectoryEntry(Directory dir, string[] pathEntries, int pathOffset)
     {
-        DirectoryEntry entry;
-
         if (pathEntries.Length == 0)
         {
             return dir.DirectoryEntry;
         }
-        entry = dir.GetEntryByName(pathEntries[pathOffset]);
+        var entry = dir.GetEntryByName(pathEntries[pathOffset]);
         if (entry != null)
         {
             if (pathOffset == pathEntries.Length - 1)
             {
                 return entry;
             }
-            if ((entry.Details.FileAttributes & FileAttributes.Directory) != 0)
+            if ((entry.Value.Details.FileAttributes & FileAttributes.Directory) != 0)
             {
-                return GetDirectoryEntry(GetDirectory(entry.Reference), pathEntries, pathOffset + 1);
+                return GetDirectoryEntry(GetDirectory(entry.Value.Reference), pathEntries, pathOffset + 1);
             }
             throw new IOException($"{pathEntries[pathOffset]} is a file, not a directory");
         }
@@ -2445,9 +2439,9 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         {
             throw new FileNotFoundException("File not found", path);
         }
-        var file = GetFile(dirEntry.Reference);
+        var file = GetFile(dirEntry.Value.Reference);
 
-        UpdateStandardInformation(dirEntry, file, modifier);
+        UpdateStandardInformation(dirEntry.Value, file, modifier);
     }
 
     private string ParsePath(string path, out string attributeName, out AttributeType attributeType)

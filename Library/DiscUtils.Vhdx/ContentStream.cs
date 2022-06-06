@@ -273,8 +273,8 @@ public sealed class ContentStream : MappedStream
             if (blockStatus == PayloadBlockStatus.FullyPresent)
             {
                 _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
-                var read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer, offset + totalRead,
-                    Math.Min(blockBytesRemaining, totalToRead - totalRead), cancellationToken).ConfigureAwait(false);
+                var read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer.AsMemory(offset + totalRead,
+                    Math.Min(blockBytesRemaining, totalToRead - totalRead)), cancellationToken).ConfigureAwait(false);
 
                 totalRead += read;
             }
@@ -289,12 +289,12 @@ public sealed class ContentStream : MappedStream
                 if (present)
                 {
                     _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
-                    read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
+                    read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer.AsMemory(offset + totalRead, toRead), cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
                     _parentStream.Position = _position + totalRead;
-                    read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
+                    read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer.AsMemory(offset + totalRead, toRead), cancellationToken).ConfigureAwait(false);
                 }
 
                 totalRead += read;
@@ -302,8 +302,8 @@ public sealed class ContentStream : MappedStream
             else if (blockStatus == PayloadBlockStatus.NotPresent)
             {
                 _parentStream.Position = _position + totalRead;
-                var read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer, offset + totalRead,
-                    Math.Min(blockBytesRemaining, totalToRead - totalRead), cancellationToken).ConfigureAwait(false);
+                var read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer.AsMemory(offset + totalRead,
+                    Math.Min(blockBytesRemaining, totalToRead - totalRead)), cancellationToken).ConfigureAwait(false);
 
                 totalRead += read;
             }

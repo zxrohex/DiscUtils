@@ -1,6 +1,4 @@
-﻿using System;
-using System.Text;
-using DiscUtils.Streams;
+﻿using System.Text;
 using DiscUtils.Xfs;
 using Xunit;
 

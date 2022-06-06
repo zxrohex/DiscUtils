@@ -21,7 +21,6 @@
 //
 
 using System;
-using System.Text;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Udf;

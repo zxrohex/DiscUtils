@@ -22,7 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -78,16 +77,16 @@ internal class Directory : File
 
     public override void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "DIRECTORY (" + base.ToString() + ")");
-        writer.WriteLine(indent + "  File Number: " + IndexInMft);
+        writer.WriteLine($"{indent}DIRECTORY ({base.ToString()})");
+        writer.WriteLine($"{indent}  File Number: {IndexInMft}");
 
         if (Index != null)
         {
             foreach (var entry in Index.Entries)
             {
-                writer.WriteLine(indent + "  DIRECTORY ENTRY (" + entry.Key.FileName + ")");
-                writer.WriteLine(indent + "    MFT Ref: " + entry.Value);
-                entry.Key.Dump(writer, indent + "    ");
+                writer.WriteLine($"{indent}  DIRECTORY ENTRY ({entry.Key.FileName})");
+                writer.WriteLine($"{indent}    MFT Ref: {entry.Value}");
+                entry.Key.Dump(writer, $"{indent}    ");
             }
         }
     }
@@ -113,7 +112,7 @@ internal class Directory : File
         return dir;
     }
 
-    internal DirectoryEntry GetEntryByName(string name)
+    internal DirectoryEntry? GetEntryByName(string name)
     {
         var searchName = name;
 

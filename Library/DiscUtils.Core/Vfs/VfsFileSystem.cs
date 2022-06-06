@@ -22,10 +22,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -44,6 +43,8 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
     where TDirectory : class, IVfsDirectory<TDirEntry, TFile>, TFile
     where TContext : VfsContext
 {
+    public abstract bool IsCaseSensitive { get; }
+
     private readonly ObjectCache<long, TFile> _fileCache;
 
     /// <summary>
@@ -111,7 +112,17 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
     public override DiscFileSystemInfo GetFileSystemInfo(string path)
     {
+        if (IsRoot(path) && RootDirectory != null)
+        {
+            return Root;
+        }
+
         var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
 
         if (dirEntry == null)
         {
@@ -120,10 +131,15 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         var file = GetFile(dirEntry);
 
-        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : file.FileAttributes;
-        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : file.CreationTimeUtc;
-        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : file.LastAccessTimeUtc;
-        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : file.LastWriteTimeUtc;
+        if (file == null)
+        {
+            return new(this, path);
+        }
+
+        var attributes = file.FileAttributes;
+        var creationTimeUtc = file.CreationTimeUtc;
+        var lastAccessTimeUtc = file.LastAccessTimeUtc;
+        var lastWriteTimeUtc = file.LastWriteTimeUtc;
 
         if (attributes.HasFlag(FileAttributes.Directory))
         {
@@ -137,7 +153,17 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
     public override DiscDirectoryInfo GetDirectoryInfo(string path)
     {
+        if (IsRoot(path) && RootDirectory != null)
+        {
+            return Root;
+        }
+
         var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
 
         if (dirEntry == null)
         {
@@ -146,10 +172,15 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         var file = GetFile(dirEntry);
 
-        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : file.FileAttributes;
-        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : file.CreationTimeUtc;
-        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : file.LastAccessTimeUtc;
-        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : file.LastWriteTimeUtc;
+        if (file == null)
+        {
+            return new(this, path);
+        }
+
+        var attributes = file.FileAttributes;
+        var creationTimeUtc = file.CreationTimeUtc;
+        var lastAccessTimeUtc = file.LastAccessTimeUtc;
+        var lastWriteTimeUtc = file.LastWriteTimeUtc;
 
         if (attributes.HasFlag(FileAttributes.Directory))
         {
@@ -163,7 +194,17 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
     public override DiscFileInfo GetFileInfo(string path)
     {
+        if (IsRoot(path) && RootDirectory != null)
+        {
+            return new CachedDiscFileInfo(this, path);
+        }
+
         var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
 
         if (dirEntry == null)
         {
@@ -172,10 +213,15 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         var file = GetFile(dirEntry);
 
-        var attributes = dirEntry.HasVfsFileAttributes ? dirEntry.FileAttributes : file.FileAttributes;
-        var creationTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.CreationTimeUtc : file.CreationTimeUtc;
-        var lastAccessTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastAccessTimeUtc : file.LastAccessTimeUtc;
-        var lastWriteTimeUtc = dirEntry.HasVfsTimeInfo ? dirEntry.LastWriteTimeUtc : file.LastWriteTimeUtc;
+        if (file == null)
+        {
+            return new(this, path);
+        }
+
+        var attributes = file.FileAttributes;
+        var creationTimeUtc = file.CreationTimeUtc;
+        var lastAccessTimeUtc = file.LastAccessTimeUtc;
+        var lastWriteTimeUtc = file.LastWriteTimeUtc;
 
         if (attributes.HasFlag(FileAttributes.Directory))
         {
@@ -201,6 +247,11 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         var dirEntry = GetDirectoryEntry(path);
 
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
+
         if (dirEntry != null)
         {
             return dirEntry.IsDirectory;
@@ -216,11 +267,48 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
     /// <returns>true if the file exists.</returns>
     public override bool FileExists(string path)
     {
+        if (IsRoot(path) && RootDirectory != null)
+        {
+            return false;
+        }
+
         var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
 
         if (dirEntry != null)
         {
             return !dirEntry.IsDirectory;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Indicates if a file or directory exists.
+    /// </summary>
+    /// <param name="path">The path to test.</param>
+    /// <returns>true if the file exists.</returns>
+    public override bool Exists(string path)
+    {
+        if (IsRoot(path) && RootDirectory != null)
+        {
+            return true;
+        }
+
+        var dirEntry = GetDirectoryEntry(path);
+
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
+
+        if (dirEntry != null)
+        {
+            return true;
         }
 
         return false;
@@ -236,9 +324,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
     /// <returns>Array of directories matching the search pattern.</returns>
     public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
     {
-        var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
-
-        var dirs = DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false);
+        var dirs = DoSearch(path, searchPattern, searchOption == SearchOption.AllDirectories, true, false);
         return dirs;
     }
 
@@ -252,9 +338,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
     /// <returns>Array of files matching the search pattern.</returns>
     public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
     {
-        var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
-
-        var results = DoSearch(path, re, searchOption == SearchOption.AllDirectories, false, true);
+        var results = DoSearch(path, searchPattern, searchOption == SearchOption.AllDirectories, false, true);
         return results;
     }
 
@@ -272,7 +356,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         }
 
         var parentDir = GetDirectory(fullPath);
-        return parentDir.AllEntries
+        return parentDir.AllEntries.Values
             .Select(m => Utilities.CombinePaths(fullPath, FormatFileName(m.FileName)));
     }
 
@@ -285,12 +369,12 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
     /// <returns>Array of files and subdirectories matching the search pattern.</returns>
     public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
     {
-        var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+        var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, !IsCaseSensitive);
 
         var parentDir = GetDirectory(path);
 
-        var result = parentDir.AllEntries
-            .Where(dirEntry => re is null || re.IsMatch(dirEntry.SearchName))
+        var result = parentDir.AllEntries.Values
+            .Where(dirEntry => filter is null || filter(dirEntry.SearchName))
             .Select(dirEntry => Utilities.CombinePaths(path, dirEntry.FileName));
 
         return result;
@@ -641,7 +725,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         if (dir != null)
         {
-            foreach (var subentry in dir.AllEntries)
+            foreach (var subentry in dir.AllEntries.Values)
             {
                 ForAllDirEntries(Utilities.CombinePaths(path, subentry.FileName), handler);
             }
@@ -670,6 +754,11 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
             throw new FileNotFoundException("No such file or directory", path);
         }
 
+        if (dirEntry != null && dirEntry.IsSymlink)
+        {
+            dirEntry = ResolveSymlink(dirEntry, path);
+        }
+
         return GetFile(dirEntry);
     }
 
@@ -694,7 +783,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         return name;
     }
 
-    private static bool IsRoot(string path)
+    protected static bool IsRoot(string path)
     {
         return string.IsNullOrEmpty(path) || path == @"\" || path == "/";
     }
@@ -738,7 +827,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         return null;
     }
 
-    private IEnumerable<string> DoSearch(string path, Regex regex, bool subFolders, bool dirs, bool files)
+    private IEnumerable<string> DoSearch(string path, string searchPattern, bool subFolders, bool dirs, bool files)
     {
         var parentDir = GetDirectory(path);
         if (parentDir == null)
@@ -752,7 +841,41 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
             resultPrefixPath = Utilities.DirectorySeparatorString;
         }
 
-        foreach (var de in parentDir.AllEntries)
+        if (parentDir.AllEntries.TryGetValue(searchPattern, out var entry))
+        {
+            var isDir = entry.IsDirectory;
+
+            if ((isDir && dirs) || (!isDir && files))
+            {
+                yield return Utilities.CombinePaths(resultPrefixPath, FormatFileName(entry.FileName));
+            }
+
+            yield break;
+        }
+
+        var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, !IsCaseSensitive);
+
+        foreach (var e in DoSearch(path, filter, subFolders, dirs, files))
+        {
+            yield return e;
+        }
+    }
+
+    private IEnumerable<string> DoSearch(string path, Func<string, bool> filter, bool subFolders, bool dirs, bool files)
+    {
+        var parentDir = GetDirectory(path);
+        if (parentDir == null)
+        {
+            throw new DirectoryNotFoundException($"The directory '{path}' was not found");
+        }
+
+        var resultPrefixPath = path;
+        if (IsRoot(path))
+        {
+            resultPrefixPath = Utilities.DirectorySeparatorString;
+        }
+
+        foreach (var de in parentDir.AllEntries.Values)
         {
             var entry = de;
 
@@ -774,7 +897,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
             if ((isDir && dirs) || (!isDir && files))
             {
-                if (regex is null || regex.IsMatch(de.SearchName))
+                if (filter is null || filter(de.SearchName))
                 {
                     yield return Utilities.CombinePaths(resultPrefixPath, FormatFileName(entry.FileName));
                 }
@@ -782,7 +905,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
             if (subFolders && isDir)
             {
-                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(resultPrefixPath, FormatFileName(entry.FileName)), regex,
+                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(resultPrefixPath, FormatFileName(entry.FileName)), filter,
                     subFolders, dirs, files))
                 {
                     yield return subdirentry;
@@ -791,7 +914,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         }
     }
 
-    private TDirEntry ResolveSymlink(TDirEntry entry, string path)
+    protected virtual TDirEntry ResolveSymlink(TDirEntry entry, string path)
     {
         var currentEntry = entry;
         if (path.Length > 0 && path[0] != '\\' && path[0] != '/')
@@ -804,7 +927,8 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
         {
             if (GetFile(currentEntry) is not IVfsSymlink<TDirEntry, TFile> symlink)
             {
-                return null; // throw new FileNotFoundException("Unable to resolve symlink", path);
+                Trace.WriteLine($"Unable to resolve symlink '{path}'");
+                return null;
             }
 
             currentPath = Utilities.ResolvePath(currentPath.TrimEnd(Utilities.PathSeparators), symlink.TargetPath);
@@ -812,7 +936,8 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
             if (currentEntry == null)
             {
-                return null; // throw new FileNotFoundException("Unable to resolve symlink", path);
+                Trace.WriteLine($"Unable to resolve symlink '{path}'");
+                return null;
             }
 
             --resolvesLeft;
@@ -820,7 +945,8 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         if (currentEntry != null && currentEntry.IsSymlink)
         {
-            return null; // throw new FileNotFoundException("Unable to resolve symlink - too many links", path);
+            Trace.WriteLine($"Unable to resolve symlink - too many links '{path}'");
+            return null;
         }
 
         return currentEntry;

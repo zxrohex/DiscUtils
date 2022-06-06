@@ -27,6 +27,7 @@ using System;
 using System.IO;
 using DiscUtils.Vfs;
 using DiscUtils.Internal;
+using DiscUtils.CoreCompat;
 
 internal class DirEntry : VfsDirEntry
 {
@@ -44,7 +45,7 @@ internal class DirEntry : VfsDirEntry
     public DirEntry(IDirectoryEntry entry, Context context):this(context)
     {
         _entry = entry;
-        _name = _context.Options.FileNameEncoding.GetString(_entry.Name);
+        _name = _context.Options.FileNameEncoding.GetString(_entry.Name).SanitizeFileName();
         Inode = _context.GetInode(_entry.Inode);
     }
     public Inode Inode { get; private set; }

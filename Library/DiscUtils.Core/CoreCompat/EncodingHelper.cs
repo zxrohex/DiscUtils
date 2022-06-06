@@ -17,4 +17,15 @@ internal static class EncodingHelper
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 #endif
     }
+
+    private readonly static char[] _invalidFileNameChars = {'\\', '/', '*', '?', ':'};
+
+    public static string SanitizeFileName(this string fileName)
+    {
+        foreach (var c in _invalidFileNameChars)
+        {
+            fileName = fileName.Replace(c, '_');
+        }
+        return fileName;
+    }
 }

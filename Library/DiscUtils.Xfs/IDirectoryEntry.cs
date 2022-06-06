@@ -21,9 +21,6 @@
 //
 
 namespace DiscUtils.Xfs;
-
-using System;
-
 internal interface IDirectoryEntry
 {
     byte[] Name { get; }

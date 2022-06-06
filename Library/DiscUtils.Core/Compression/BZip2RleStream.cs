@@ -24,7 +24,6 @@
 // Based on "libbzip2", Copyright (C) 1996-2007 Julian R Seward.
 //
 
-using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 using System;
 using System.IO;

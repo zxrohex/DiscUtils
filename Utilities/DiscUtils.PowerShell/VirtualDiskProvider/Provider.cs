@@ -27,7 +27,6 @@ using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Provider;
-using System.Net;
 using System.Text;
 using DiscUtils.Complete;
 using DiscUtils.Ntfs;

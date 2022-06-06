@@ -27,7 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
-using Buffer=DiscUtils.Streams.Buffer;
+using Buffer = DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.Ext;
 
@@ -57,59 +57,6 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         get { return _inode.FileSize; }
     }
 
-    public override int Read(long pos, byte[] buffer, int offset, int count)
-    {
-        if (pos > _inode.FileSize)
-        {
-            return 0;
-        }
-
-        long blockSize = _context.SuperBlock.BlockSize;
-
-        int totalRead = 0;
-        int totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
-
-        ExtentBlock extents = _inode.Extents;
-
-        while (totalBytesRemaining > 0)
-        {
-            uint logicalBlock = (uint)((pos + totalRead) / blockSize);
-            int blockOffset = (int)(pos + totalRead - logicalBlock * blockSize);
-
-            int numRead = 0;
-
-            Extent extent = FindExtent(extents, logicalBlock);
-            if (extent == null)
-            {
-                throw new IOException("Unable to find extent for block " + logicalBlock);
-            }
-            if (extent.FirstLogicalBlock > logicalBlock)
-            {
-                numRead =
-                    (int)
-                    Math.Min(totalBytesRemaining,
-                        (extent.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
-                Array.Clear(buffer, offset + totalRead, numRead);
-            }
-            else
-            {
-                long physicalBlock = logicalBlock - extent.FirstLogicalBlock + (long)extent.FirstPhysicalBlock;
-                int toRead =
-                    (int)
-                    Math.Min(totalBytesRemaining,
-                        (extent.NumBlocks - (logicalBlock - extent.FirstLogicalBlock)) * blockSize - blockOffset);
-
-                _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
-                numRead = _context.RawStream.Read(buffer, offset + totalRead, toRead);
-            }
-
-            totalBytesRemaining -= numRead;
-            totalRead += numRead;
-        }
-
-        return totalRead;
-    }
-
     public IEnumerable<StreamExtent> EnumerateAllocationExtents()
     {
         var pos = 0;
@@ -119,7 +66,7 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
             yield break;
         }
 
-        long blockSize = _context.SuperBlock.BlockSize;
+        var blockSize = (int)_context.SuperBlock.BlockSize;
 
         var count = _inode.FileSize;
         int totalRead = 0;
@@ -134,27 +81,34 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
 
             int numRead = 0;
 
-            Extent extent = FindExtent(extents, logicalBlock);
+            var extent = FindExtent(extents, logicalBlock);
             if (extent == null)
             {
-                throw new IOException("Unable to find extent for block " + logicalBlock);
+                throw new IOException($"Unable to find extent for block {logicalBlock}");
             }
-            if (extent.FirstLogicalBlock > logicalBlock)
+            if (extent.Value.FirstLogicalBlock > logicalBlock)
             {
                 numRead =
                     (int)
                     Math.Min(totalBytesRemaining,
-                        (extent.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+                        (extent.Value.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
             }
             else
             {
-                long physicalBlock = logicalBlock - extent.FirstLogicalBlock + (long)extent.FirstPhysicalBlock;
+                long physicalBlock = logicalBlock - extent.Value.FirstLogicalBlock + (long)extent.Value.FirstPhysicalBlock;
                 int toRead =
                     (int)
                     Math.Min(totalBytesRemaining,
-                        (extent.NumBlocks - (logicalBlock - extent.FirstLogicalBlock)) * blockSize - blockOffset);
+                        (extent.Value.NumBlocks - (logicalBlock - extent.Value.FirstLogicalBlock)) * blockSize - blockOffset);
 
-                yield return new(physicalBlock * blockSize + blockOffset, toRead);
+                if (toRead == 0)
+                {
+                    numRead = blockSize;
+                }
+                else
+                {
+                    yield return new(physicalBlock * blockSize + blockOffset, toRead);
+                }
                 numRead = toRead;
             }
 
@@ -163,15 +117,14 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         }
     }
 
-
-    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    public override int Read(long pos, byte[] buffer, int offset, int count)
     {
         if (pos > _inode.FileSize)
         {
             return 0;
         }
 
-        long blockSize = _context.SuperBlock.BlockSize;
+        var blockSize = (int)_context.SuperBlock.BlockSize;
 
         int totalRead = 0;
         int totalBytesRemaining = (int)Math.Min(count, _inode.FileSize - pos);
@@ -185,29 +138,37 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
 
             int numRead = 0;
 
-            Extent extent = FindExtent(extents, logicalBlock);
+            var extent = FindExtent(extents, logicalBlock);
             if (extent == null)
             {
-                throw new IOException("Unable to find extent for block " + logicalBlock);
+                throw new IOException($"Unable to find extent for block {logicalBlock}");
             }
-            if (extent.FirstLogicalBlock > logicalBlock)
+            if (extent.Value.FirstLogicalBlock > logicalBlock)
             {
                 numRead =
                     (int)
                     Math.Min(totalBytesRemaining,
-                        (extent.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+                        (extent.Value.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
                 Array.Clear(buffer, offset + totalRead, numRead);
             }
             else
             {
-                long physicalBlock = logicalBlock - extent.FirstLogicalBlock + (long)extent.FirstPhysicalBlock;
+                long physicalBlock = logicalBlock - extent.Value.FirstLogicalBlock + (long)extent.Value.FirstPhysicalBlock;
                 int toRead =
                     (int)
                     Math.Min(totalBytesRemaining,
-                        (extent.NumBlocks - (logicalBlock - extent.FirstLogicalBlock)) * blockSize - blockOffset);
+                        (extent.Value.NumBlocks - (logicalBlock - extent.Value.FirstLogicalBlock)) * blockSize - blockOffset);
 
-                _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
-                numRead = await _context.RawStream.ReadAsync(buffer, offset + totalRead, toRead, cancellationToken).ConfigureAwait(false);
+                if (toRead == 0)
+                {
+                    buffer.AsSpan(offset + totalRead, blockSize).Clear();
+                    numRead = blockSize;
+                }
+                else
+                {
+                    _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
+                    numRead = _context.RawStream.Read(buffer, offset + totalRead, toRead);
+                }
             }
 
             totalBytesRemaining -= numRead;
@@ -224,7 +185,7 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
             return 0;
         }
 
-        long blockSize = _context.SuperBlock.BlockSize;
+        var blockSize = (int)_context.SuperBlock.BlockSize;
 
         int totalRead = 0;
         int totalBytesRemaining = (int)Math.Min(buffer.Length, _inode.FileSize - pos);
@@ -238,29 +199,37 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
 
             int numRead = 0;
 
-            Extent extent = FindExtent(extents, logicalBlock);
+            var extent = FindExtent(extents, logicalBlock);
             if (extent == null)
             {
-                throw new IOException("Unable to find extent for block " + logicalBlock);
+                throw new IOException($"Unable to find extent for block {logicalBlock}");
             }
-            if (extent.FirstLogicalBlock > logicalBlock)
+            if (extent.Value.FirstLogicalBlock > logicalBlock)
             {
                 numRead =
                     (int)
                     Math.Min(totalBytesRemaining,
-                        (extent.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+                        (extent.Value.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
                 buffer.Span.Slice(totalRead, numRead).Clear();
             }
             else
             {
-                long physicalBlock = logicalBlock - extent.FirstLogicalBlock + (long)extent.FirstPhysicalBlock;
+                long physicalBlock = logicalBlock - extent.Value.FirstLogicalBlock + (long)extent.Value.FirstPhysicalBlock;
                 int toRead =
                     (int)
                     Math.Min(totalBytesRemaining,
-                        (extent.NumBlocks - (logicalBlock - extent.FirstLogicalBlock)) * blockSize - blockOffset);
+                        (extent.Value.NumBlocks - (logicalBlock - extent.Value.FirstLogicalBlock)) * blockSize - blockOffset);
 
-                _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
-                numRead = await _context.RawStream.ReadAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+                if (toRead == 0)
+                {
+                    buffer.Span.Slice(totalRead, blockSize).Clear();
+                    numRead = blockSize;
+                }
+                else
+                {
+                    _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
+                    numRead = await _context.RawStream.ReadAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+                }
             }
 
             totalBytesRemaining -= numRead;
@@ -278,7 +247,7 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
             return 0;
         }
 
-        long blockSize = _context.SuperBlock.BlockSize;
+        var blockSize = (int)_context.SuperBlock.BlockSize;
 
         int totalRead = 0;
         int totalBytesRemaining = (int)Math.Min(buffer.Length, _inode.FileSize - pos);
@@ -292,29 +261,37 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
 
             int numRead = 0;
 
-            Extent extent = FindExtent(extents, logicalBlock);
+            var extent = FindExtent(extents, logicalBlock);
             if (extent == null)
             {
-                throw new IOException("Unable to find extent for block " + logicalBlock);
+                throw new IOException($"Unable to find extent for block {logicalBlock}");
             }
-            if (extent.FirstLogicalBlock > logicalBlock)
+            if (extent.Value.FirstLogicalBlock > logicalBlock)
             {
                 numRead =
                     (int)
                     Math.Min(totalBytesRemaining,
-                        (extent.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+                        (extent.Value.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
                 buffer.Slice(totalRead, numRead).Clear();
             }
             else
             {
-                long physicalBlock = logicalBlock - extent.FirstLogicalBlock + (long)extent.FirstPhysicalBlock;
+                long physicalBlock = logicalBlock - extent.Value.FirstLogicalBlock + (long)extent.Value.FirstPhysicalBlock;
                 int toRead =
                     (int)
                     Math.Min(totalBytesRemaining,
-                        (extent.NumBlocks - (logicalBlock - extent.FirstLogicalBlock)) * blockSize - blockOffset);
+                        (extent.Value.NumBlocks - (logicalBlock - extent.Value.FirstLogicalBlock)) * blockSize - blockOffset);
 
-                _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
-                numRead = _context.RawStream.Read(buffer.Slice(totalRead, toRead));
+                if (toRead == 0)
+                {
+                    buffer.Slice(totalRead, blockSize).Clear();
+                    numRead = blockSize;
+                }
+                else
+                {
+                    _context.RawStream.Position = physicalBlock * blockSize + blockOffset;
+                    numRead = _context.RawStream.Read(buffer.Slice(totalRead, toRead));
+                }
             }
 
             totalBytesRemaining -= numRead;
@@ -344,11 +321,11 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
             new Streams.StreamExtent(start, count));
     }
 
-    private Extent FindExtent(ExtentBlock node, uint logicalBlock)
+    private Extent? FindExtent(ExtentBlock node, uint logicalBlock)
     {
         if (node.Index != null)
         {
-            ExtentIndex idxEntry = null;
+            ExtentIndex? idxEntry = null;
 
             if (node.Index.Length == 0)
             {
@@ -375,12 +352,12 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
                 idxEntry = node.Index[node.Index.Length - 1];
             }
 
-            ExtentBlock subBlock = LoadExtentBlock(idxEntry);
+            ExtentBlock subBlock = LoadExtentBlock(idxEntry.Value);
             return FindExtent(subBlock, logicalBlock);
         }
         if (node.Extents != null)
         {
-            Extent entry = null;
+            Extent? entry = null;
 
             if (node.Extents.Length == 0)
             {

@@ -31,6 +31,8 @@ namespace DiscUtils.HfsPlus;
 
 internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
 {
+    public override bool IsCaseSensitive => true;
+
     public HfsPlusFileSystemImpl(Stream s)
         : base(new DiscFileSystemOptions())
     {

@@ -21,6 +21,7 @@
 //
 
 using System;
+using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 
 namespace DiscUtils.SquashFs;
@@ -60,7 +61,7 @@ internal class DirectoryRecord : IByteArraySerializable
             Type = (InodeType)reader.ReadUShort()
         };
         var size = reader.ReadUShort();
-        result.Name = reader.ReadString(size + 1);
+        result.Name = reader.ReadString(size + 1).SanitizeFileName();
 
         return result;
     }

@@ -20,8 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using DiscUtils.Streams;
-using System;
 using System.Collections.Generic;
 
 namespace DiscUtils.Ntfs.Internals;

@@ -20,11 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using DiscUtils.CoreCompat;
-using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 using System;
-using System.Globalization;
 
 namespace DiscUtils.Vmdk;
 

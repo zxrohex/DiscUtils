@@ -351,7 +351,7 @@ public sealed class BlockCacheStream : SparseStream
             _stats.LargeReadsIn++;
             _stats.TotalReadsOut++;
             _wrappedStream.Position = _position;
-            var numRead = await _wrappedStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            var numRead = await _wrappedStream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
             _position = _wrappedStream.Position;
 
             if (_position >= Length)

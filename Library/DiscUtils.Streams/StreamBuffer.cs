@@ -20,7 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,7 +31,7 @@ namespace DiscUtils.Streams;
 /// <summary>
 /// Converts a Stream into an IBuffer instance.
 /// </summary>
-public sealed class StreamBuffer : Buffer, IDisposable
+public sealed class StreamBuffer : Buffer
 {
     private readonly Ownership _ownership;
     private SparseStream _stream;
@@ -97,9 +96,9 @@ public sealed class StreamBuffer : Buffer, IDisposable
     /// <summary>
     /// Disposes of this instance.
     /// </summary>
-    public void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        if (_ownership == Ownership.Dispose)
+        if (disposing && _ownership == Ownership.Dispose)
         {
             if (_stream != null)
             {
@@ -121,20 +120,6 @@ public sealed class StreamBuffer : Buffer, IDisposable
     {
         _stream.Position = pos;
         return _stream.Read(buffer, offset, count);
-    }
-
-    /// <summary>
-    /// Reads from the buffer into a byte array.
-    /// </summary>
-    /// <param name="pos">The offset within the buffer to start reading.</param>
-    /// <param name="buffer">The destination byte array.</param>
-    /// <param name="offset">The start offset within the destination buffer.</param>
-    /// <param name="count">The number of bytes to read.</param>
-    /// <returns>The actual number of bytes read.</returns>
-    public override ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        _stream.Position = pos;
-        return new(_stream.ReadAsync(buffer, offset, count, cancellationToken));
     }
 
     /// <summary>
@@ -176,19 +161,6 @@ public sealed class StreamBuffer : Buffer, IDisposable
     {
         _stream.Position = pos;
         _stream.Write(buffer, offset, count);
-    }
-
-    /// <summary>
-    /// Writes a byte array into the buffer.
-    /// </summary>
-    /// <param name="pos">The start offset within the buffer.</param>
-    /// <param name="buffer">The source byte array.</param>
-    /// <param name="offset">The start offset within the source byte array.</param>
-    /// <param name="count">The number of bytes to write.</param>
-    public override ValueTask WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        _stream.Position = pos;
-        return new(_stream.WriteAsync(buffer, offset, count, cancellationToken));
     }
 
     /// <summary>

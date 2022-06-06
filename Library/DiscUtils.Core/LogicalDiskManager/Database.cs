@@ -24,7 +24,6 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
-using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 
 namespace DiscUtils.LogicalDiskManager;

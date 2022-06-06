@@ -21,8 +21,6 @@
 //
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using DiscUtils.Core.WindowsSecurity;
 using DiscUtils.Streams;

@@ -326,7 +326,7 @@ public sealed class SnapshotStream : SparseStream
         if (_diffStream == null)
         {
             _baseStream.Position = _position;
-            numRead = await _baseStream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            numRead = await _baseStream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -347,7 +347,7 @@ public sealed class SnapshotStream : SparseStream
                 var totalBaseRead = 0;
                 while (totalBaseRead < baseToRead)
                 {
-                    totalBaseRead += await _baseStream.ReadAsync(buffer, offset + totalBaseRead, baseToRead - totalBaseRead, cancellationToken).ConfigureAwait(false);
+                    totalBaseRead += await _baseStream.ReadAsync(buffer.AsMemory(offset + totalBaseRead, baseToRead - totalBaseRead), cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -360,10 +360,7 @@ public sealed class SnapshotStream : SparseStream
                 var overlayNumRead = 0;
                 while (overlayNumRead < extent.Length)
                 {
-                    overlayNumRead += await _diffStream.ReadAsync(
-                        buffer,
-                        (int)(offset + (extent.Start - _position) + overlayNumRead),
-                        (int)(extent.Length - overlayNumRead), cancellationToken).ConfigureAwait(false);
+                    overlayNumRead += await _diffStream.ReadAsync(buffer.AsMemory((int)(offset + (extent.Start - _position) + overlayNumRead), (int)(extent.Length - overlayNumRead)), cancellationToken).ConfigureAwait(false);
                 }
             }
 

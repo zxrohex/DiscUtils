@@ -24,7 +24,6 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using DiscUtils.Compression;
-using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 

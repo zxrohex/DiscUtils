@@ -128,30 +128,6 @@ public class SubBuffer : Buffer
     /// <param name="offset">The start offset within the destination buffer.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The actual number of bytes read.</returns>
-    public override ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (count < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to read negative bytes");
-        }
-
-        if (pos >= _length)
-        {
-            return new(0);
-        }
-
-        return _parent.ReadAsync(pos + _first, buffer, offset,
-            (int)Math.Min(count, Math.Min(_length - pos, int.MaxValue)), cancellationToken);
-    }
-
-    /// <summary>
-    /// Reads from the buffer into a byte array.
-    /// </summary>
-    /// <param name="pos">The offset within the buffer to start reading.</param>
-    /// <param name="buffer">The destination byte array.</param>
-    /// <param name="offset">The start offset within the destination buffer.</param>
-    /// <param name="count">The number of bytes to read.</param>
-    /// <returns>The actual number of bytes read.</returns>
     public override ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (pos >= _length)
@@ -200,28 +176,6 @@ public class SubBuffer : Buffer
         }
 
         _parent.Write(pos + _first, buffer, offset, count);
-    }
-
-    /// <summary>
-    /// Writes a byte array into the buffer.
-    /// </summary>
-    /// <param name="pos">The start offset within the buffer.</param>
-    /// <param name="buffer">The source byte array.</param>
-    /// <param name="offset">The start offset within the source byte array.</param>
-    /// <param name="count">The number of bytes to write.</param>
-    public override ValueTask WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (count < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write negative bytes");
-        }
-
-        if (pos + count > _length)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to write beyond end of substream");
-        }
-
-        return _parent.WriteAsync(pos + _first, buffer, offset, count, cancellationToken);
     }
 
     /// <summary>

@@ -25,7 +25,6 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
-using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;

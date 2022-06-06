@@ -33,8 +33,10 @@ namespace DiscUtils.Streams;
 /// </summary>
 public abstract class Buffer :
     MarshalByRefObject, 
-    IBuffer
+    IBuffer, IDisposable
 {
+    private bool disposedValue;
+
     /// <summary>
     /// Gets a value indicating whether this buffer can be read.
     /// </summary>
@@ -127,15 +129,6 @@ public abstract class Buffer :
     public abstract IEnumerable<StreamExtent> GetExtentsInRange(long start, long count);
 
 
-    public virtual ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-        new(Read(pos, buffer, offset, count));
-
-    public virtual ValueTask WriteAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        Write(pos, buffer, offset, count);
-        return new();
-    }
-
     public abstract int Read(long pos, Span<byte> buffer);
 
     public abstract void Write(long pos, ReadOnlySpan<byte> buffer);
@@ -147,5 +140,35 @@ public abstract class Buffer :
     {
         Write(pos, buffer.Span);
         return new();
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposedValue)
+        {
+            if (disposing)
+            {
+                // TODO: dispose managed state (managed objects)
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+
+            // TODO: set large fields to null
+            disposedValue = true;
+        }
+    }
+
+    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+    ~Buffer()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: false);
+    }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }

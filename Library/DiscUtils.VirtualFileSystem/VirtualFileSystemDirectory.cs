@@ -19,16 +19,7 @@ public sealed class VirtualFileSystemDirectory : VirtualFileSystemDirectoryEntry
     internal VirtualFileSystemDirectory(VirtualFileSystem fileSystem)
         : base(fileSystem)
     {
-        StringComparer nameComparer;
-        if (!fileSystem.Options.CaseSensitive)
-        {
-            nameComparer = StringComparer.OrdinalIgnoreCase;
-        }
-        else
-        {
-            nameComparer = StringComparer.Ordinal;
-        }
-        _entries = new Dictionary<string, VirtualFileSystemDirectoryEntry>(nameComparer);
+        _entries = new Dictionary<string, VirtualFileSystemDirectoryEntry>(fileSystem.NameComparer);
     }
 
     internal VirtualFileSystemDirectory(VirtualFileSystemDirectory parent, string name)

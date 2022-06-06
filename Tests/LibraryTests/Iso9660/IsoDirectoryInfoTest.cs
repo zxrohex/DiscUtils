@@ -23,7 +23,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using DiscUtils;
 using DiscUtils.Iso9660;
 using Xunit;
 

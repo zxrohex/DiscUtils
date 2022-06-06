@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 using DiscUtils.Vfs;
@@ -30,7 +31,7 @@ namespace DiscUtils.Udf;
 
 internal class Directory : File, IVfsDirectory<FileIdentifier, File>
 {
-    private readonly List<FileIdentifier> _entries;
+    private readonly FastDictionary<FileIdentifier> _entries;
 
     public Directory(UdfContext context, LogicalPartition partition, FileEntry fileEntry)
         : base(context, partition, fileEntry, (uint)partition.LogicalBlockSize)
@@ -40,7 +41,7 @@ internal class Directory : File, IVfsDirectory<FileIdentifier, File>
             throw new NotImplementedException("Very large directory");
         }
 
-        _entries = new List<FileIdentifier>();
+        _entries = new(StringComparer.OrdinalIgnoreCase, entry => entry.Name);
 
         var contentBytes = StreamUtilities.ReadExact(FileContent, 0, (int)FileContent.Capacity);
 
@@ -59,7 +60,7 @@ internal class Directory : File, IVfsDirectory<FileIdentifier, File>
         }
     }
 
-    public IReadOnlyCollection<FileIdentifier> AllEntries
+    public IReadOnlyDictionary<string, FileIdentifier> AllEntries
     {
         get { return _entries; }
     }
@@ -75,15 +76,5 @@ internal class Directory : File, IVfsDirectory<FileIdentifier, File>
     }
 
     public FileIdentifier GetEntryByName(string name)
-    {
-        foreach (var entry in _entries)
-        {
-            if (string.Compare(entry.Name, name, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                return entry;
-            }
-        }
-
-        return null;
-    }
+        => AllEntries.TryGetValue(name, out var entry) ? entry : null;
 }

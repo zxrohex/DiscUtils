@@ -20,7 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System.Globalization;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Udf;

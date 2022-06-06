@@ -22,7 +22,6 @@
 
 using System;
 using System.Buffers;
-using System.Globalization;
 
 namespace DiscUtils.Compression;
 

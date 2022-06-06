@@ -9,7 +9,7 @@ public class CachedDiscDirectoryInfo : DiscDirectoryInfo
     private DateTime creationTimeUtc;
     private DateTime lastAccessTimeUtc;
     private DateTime lastWriteTimeUtc;
-    private bool exists = true;
+    private bool exists;
 
     public CachedDiscDirectoryInfo(DiscFileSystem fileSystem, string path, FileAttributes attributes,
                                DateTime creationTimeUtc, DateTime lastAccessTimeUtc, DateTime lastWriteTimeUtc)
@@ -19,6 +19,13 @@ public class CachedDiscDirectoryInfo : DiscDirectoryInfo
         this.creationTimeUtc = creationTimeUtc;
         this.lastAccessTimeUtc = lastAccessTimeUtc;
         this.lastWriteTimeUtc = lastWriteTimeUtc;
+        exists = true;
+    }
+
+    public CachedDiscDirectoryInfo(DiscFileSystem fileSystem, string path)
+        : base(fileSystem, path)
+    {
+        exists = false;
     }
 
     public override FileAttributes Attributes

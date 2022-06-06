@@ -20,7 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System.IO;
 using System.Management.Automation;
 using DiscUtils.Registry;
 

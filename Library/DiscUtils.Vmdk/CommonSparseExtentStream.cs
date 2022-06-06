@@ -260,8 +260,7 @@ internal abstract class CommonSparseExtentStream : MappedStream
             {
                 // Read from parent stream, to at most the end of grain table's coverage
                 _parentDiskStream.Position = _position + _diskOffset;
-                numRead = await _parentDiskStream.ReadAsync(buffer, offset + totalRead,
-                    (int)Math.Min(maxToRead - totalRead, _gtCoverage - grainTableOffset), cancellationToken).ConfigureAwait(false);
+                numRead = await _parentDiskStream.ReadAsync(buffer.AsMemory(offset + totalRead, (int)Math.Min(maxToRead - totalRead, _gtCoverage - grainTableOffset)), cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -274,7 +273,7 @@ internal abstract class CommonSparseExtentStream : MappedStream
                 if (GetGrainTableEntry(grain) == 0)
                 {
                     _parentDiskStream.Position = _position + _diskOffset;
-                    numRead = await _parentDiskStream.ReadAsync(buffer, offset + totalRead, numToRead, cancellationToken).ConfigureAwait(false);
+                    numRead = await _parentDiskStream.ReadAsync(buffer.AsMemory(offset + totalRead, numToRead), cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {

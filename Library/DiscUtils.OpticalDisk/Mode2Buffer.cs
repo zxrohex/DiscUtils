@@ -22,7 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
@@ -89,27 +88,6 @@ internal class Mode2Buffer : Streams.Buffer
     }
 
 
-    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        var totalToRead = (int)Math.Min(Capacity - pos, count);
-        var totalRead = 0;
-
-        while (totalRead < totalToRead)
-        {
-            var thisPos = pos + totalRead;
-            var sector = thisPos / DiscImageFile.Mode1SectorSize;
-            var sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
-
-            await StreamUtilities.ReadExactAsync(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize, cancellationToken).ConfigureAwait(false);
-
-            var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
-            Array.Copy(_iobuffer, 24 + sectorOffset, buffer, offset + totalRead, bytesToCopy);
-            totalRead += bytesToCopy;
-        }
-
-        return totalRead;
-    }
-
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var totalToRead = (int)Math.Min(Capacity - pos, buffer.Length);
@@ -121,7 +99,7 @@ internal class Mode2Buffer : Streams.Buffer
             var sector = thisPos / DiscImageFile.Mode1SectorSize;
             var sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
 
-            await StreamUtilities.ReadExactAsync(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize, cancellationToken).ConfigureAwait(false);
+            await StreamUtilities.ReadExactAsync(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer.AsMemory(0, DiscImageFile.Mode2SectorSize), cancellationToken).ConfigureAwait(false);
 
             var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
             _iobuffer.AsMemory(24 + sectorOffset, bytesToCopy).CopyTo(buffer.Slice(totalRead));

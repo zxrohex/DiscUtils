@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DiscUtils.HfsPlus;
+﻿namespace DiscUtils.HfsPlus;
 
 /// <summary>
 /// If a file is compressed, then it will have an extended attribute with name <c>com.apple.decmpfs</c>.

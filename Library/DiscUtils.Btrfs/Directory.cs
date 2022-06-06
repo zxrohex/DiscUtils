@@ -22,9 +22,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using DiscUtils.Btrfs.Base;
 using DiscUtils.Btrfs.Base.Items;
+using DiscUtils.Internal;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.Btrfs;
@@ -36,15 +36,15 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
         
     }
 
-    private Dictionary<string, DirEntry> _allEntries;
+    private FastDictionary<DirEntry> _allEntries;
 
-    public IReadOnlyCollection<DirEntry> AllEntries
+    public IReadOnlyDictionary<string, DirEntry> AllEntries
     {
         get
         {
             if (_allEntries != null)
-                return _allEntries.Values;
-            var result = new Dictionary<string, DirEntry>();
+                return _allEntries;
+            var result = new FastDictionary<DirEntry>(StringComparer.Ordinal, entry => entry.FileName);
             var treeId = DirEntry.TreeId;
             var objectId = DirEntry.ObjectId;
             if (DirEntry.IsSubtree)
@@ -58,10 +58,10 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
             foreach (var item in items)
             {
                 var inode = tree.FindFirst(item.ChildLocation, Context);
-                result.Add(item.Name, new DirEntry(treeId, item, (InodeItem)inode));
+                result.Add(new DirEntry(treeId, item, (InodeItem)inode));
             }
             _allEntries = result;
-            return result.Values;
+            return result;
         }
     }
 
@@ -71,17 +71,7 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
     }
 
     public DirEntry GetEntryByName(string name)
-    {
-        foreach (var entry in AllEntries)
-        {
-            if (entry.FileName == name)
-            {
-                return entry;
-            }
-        }
-
-        return null;
-    }
+        => AllEntries.TryGetValue(name, out var entry) ? entry : null;
 
     public DirEntry CreateNewFile(string name)
     {

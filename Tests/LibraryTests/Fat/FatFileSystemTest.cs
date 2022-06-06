@@ -23,14 +23,12 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using DiscUtils;
 using DiscUtils.Fat;
 using DiscUtils.Setup;
 using DiscUtils.Streams;
 using Xunit;
-using FileSystemInfo = DiscUtils.FileSystemInfo;
 
 namespace LibraryTests.Fat
 {

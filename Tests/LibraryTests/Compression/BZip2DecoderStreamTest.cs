@@ -22,7 +22,6 @@
 
 using System.IO;
 using System.Text;
-using DiscUtils;
 using DiscUtils.Compression;
 using DiscUtils.Streams;
 using Xunit;

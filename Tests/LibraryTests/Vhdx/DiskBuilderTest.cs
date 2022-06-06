@@ -20,12 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using DiscUtils;
 using DiscUtils.Streams;
 using DiscUtils.Vhdx;
 using System.Linq;
 using Xunit;
-using Xunit.Sdk;
 
 namespace LibraryTests.Vhdx
 {

@@ -22,7 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Text;
 using DiscUtils.Streams;
@@ -191,7 +190,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
             Abort();
         }
 
-        var extendDir = new Directory(_context, _context.Mft.GetRecord(extendDirEntry.Reference));
+        var extendDir = new Directory(_context, _context.Mft.GetRecord(extendDirEntry.Value.Reference));
 
         var objIdDirEntry = extendDir.GetEntryByName("$ObjId");
         if (objIdDirEntry == null)
@@ -201,7 +200,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         }
 
         // Stash ObjectIds
-        _context.ObjectIds = new ObjectIds(new File(_context, _context.Mft.GetRecord(objIdDirEntry.Reference)));
+        _context.ObjectIds = new ObjectIds(new File(_context, _context.Mft.GetRecord(objIdDirEntry.Value.Reference)));
 
         var sysVolInfDirEntry = rootDir.GetEntryByName("System Volume Information");
         if (sysVolInfDirEntry == null)

@@ -25,7 +25,6 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Btrfs.Base;
 using DiscUtils.Btrfs.Base.Items;
-using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;

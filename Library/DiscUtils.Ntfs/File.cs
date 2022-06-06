@@ -27,7 +27,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
@@ -108,7 +107,7 @@ internal class File
         get { return _context; }
     }
 
-    public DirectoryEntry DirectoryEntry
+    public DirectoryEntry? DirectoryEntry
     {
         get
         {

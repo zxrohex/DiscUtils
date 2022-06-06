@@ -31,6 +31,8 @@ using System.Collections.Generic;
 
 internal sealed class VfsXfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
 {
+    public override bool IsCaseSensitive => true;
+
     private static readonly int XFS_ALLOC_AGFL_RESERVE = 4;
 
     private static readonly int BBSHIFT = 9;

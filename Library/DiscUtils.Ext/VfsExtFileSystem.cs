@@ -30,6 +30,8 @@ namespace DiscUtils.Ext;
 
 internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
 {
+    public override bool IsCaseSensitive => true;
+
     internal const IncompatibleFeatures SupportedIncompatibleFeatures =
         IncompatibleFeatures.FileType
         | IncompatibleFeatures.FlexBlockGroups

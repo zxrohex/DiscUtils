@@ -21,7 +21,6 @@
 //
 
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 
 namespace DiscUtils.Vfs;
 
@@ -37,7 +36,7 @@ public interface IVfsDirectory<TDirEntry, TFile> : IVfsFile
     /// <summary>
     /// Gets all of the directory entries.
     /// </summary>
-    IReadOnlyCollection<TDirEntry> AllEntries { get; }
+    IReadOnlyDictionary<string, TDirEntry> AllEntries { get; }
 
     /// <summary>
     /// Gets a self-reference, if available.

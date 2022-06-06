@@ -22,16 +22,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
-using DiscUtils.Vfs;
 
 namespace DiscUtils.Fat;
 
@@ -1151,7 +1147,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
     /// <returns>Array of directories matching the search pattern.</returns>
     public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
     {
-        var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+        var re = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
         var dirs = DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false);
         return dirs;
@@ -1183,9 +1179,9 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
     /// <returns>Array of files matching the search pattern.</returns>
     public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
     {
-        var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+        var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
-        var results = DoSearch(path, re, searchOption == SearchOption.AllDirectories, false, true);
+        var results = DoSearch(path, filter, searchOption == SearchOption.AllDirectories, false, true);
         return results;
     }
 
@@ -1214,7 +1210,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
     /// <returns>Array of files and subdirectories matching the search pattern.</returns>
     public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
     {
-        var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+        var re = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
         var dir = GetDirectory(path);
         var entries = dir.Entries;
@@ -1791,7 +1787,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         return -1;
     }
 
-    private IEnumerable<string> DoSearch(string path, Regex regex, bool subFolders, bool dirs, bool files)
+    private IEnumerable<string> DoSearch(string path, Func<string, bool> filter, bool subFolders, bool dirs, bool files)
     {
         var dir = GetDirectory(path);
         if (dir == null)
@@ -1807,7 +1803,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
 
             if ((isDir && dirs) || (!isDir && files))
             {
-                if (regex is null || de.Name.IsMatch(regex, FatOptions.FileNameEncoding))
+                if (filter is null || de.Name.IsMatch(filter, FatOptions.FileNameEncoding))
                 {
                     yield return Utilities.CombinePaths(path, de.Name.GetDisplayName(FatOptions.FileNameEncoding));
                 }
@@ -1816,7 +1812,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
             if (subFolders && isDir)
             {
                 foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.Name.GetDisplayName(FatOptions.FileNameEncoding)),
-                    regex, subFolders, dirs, files))
+                    filter, subFolders, dirs, files))
                 {
                     yield return subdirentry;
                 }

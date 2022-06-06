@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.IO;
 using System.IO.Compression;
@@ -72,11 +73,14 @@ internal class SizedDeflateStream : DeflateStream
 
     public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        var read = await base.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
+#else
         var read = await base.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+#endif
         _position += read;
         return read;
     }
-
 
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public override int Read(Span<byte> buffer)
@@ -93,7 +97,5 @@ internal class SizedDeflateStream : DeflateStream
         return read;
     }
 #endif
-
-
 
 }

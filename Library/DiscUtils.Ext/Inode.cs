@@ -80,12 +80,11 @@ internal struct Inode : IByteArraySerializable
         Flags = (InodeFlags)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(32));
 
         FastSymlink = null;
-        Extents = null;
+        Extents = default;
         DirectBlocks = null;
         if (FileType == UnixFileType.Link && BlocksCount == 0)
         {
-            FastSymlink = new byte[60];
-            buffer.Slice(40, 60).CopyTo(FastSymlink);
+            FastSymlink = buffer.Slice(40, 60).ToArray();
         }
         else if ((Flags & InodeFlags.ExtentsUsed) != 0)
         {

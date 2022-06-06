@@ -22,7 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 

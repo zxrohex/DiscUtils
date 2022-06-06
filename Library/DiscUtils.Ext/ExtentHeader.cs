@@ -25,7 +25,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ext;
 
-internal class ExtentHeader : IByteArraySerializable
+internal struct ExtentHeader : IByteArraySerializable
 {
     public const ushort HeaderMagic = 0xf30a;
     public ushort Depth;

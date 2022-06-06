@@ -26,7 +26,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
@@ -241,7 +240,7 @@ internal class DiskStream : SparseStream
                 var filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
                                offsetInBlock;
                 _fileStream.Position = filePos;
-                await StreamUtilities.ReadExactAsync(_fileStream, buffer, offset + numRead, toRead, cancellationToken).ConfigureAwait(false);
+                await StreamUtilities.ReadExactAsync(_fileStream, buffer.AsMemory(offset + numRead, toRead), cancellationToken).ConfigureAwait(false);
             }
 
             _position += toRead;

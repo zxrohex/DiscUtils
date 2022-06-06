@@ -30,8 +30,10 @@ using DiscUtils.Vfs;
 
 namespace DiscUtils.Btrfs;
 
-internal sealed class VfsBtrfsFileSystem :VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
+internal sealed class VfsBtrfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
 {
+    public override bool IsCaseSensitive => true;
+
     public VfsBtrfsFileSystem(Stream stream) 
         :this(stream, new BtrfsFileSystemOptions())
     {

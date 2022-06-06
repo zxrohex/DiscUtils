@@ -157,8 +157,7 @@ public class SubStream : MappedStream
         }
 
         _parent.Position = _first + _position;
-        var numRead = await _parent.ReadAsync(buffer, offset,
-            (int)Math.Min(count, Math.Min(_length - _position, int.MaxValue)), cancellationToken).ConfigureAwait(false);
+        var numRead = await _parent.ReadAsync(buffer.AsMemory(offset, (int)Math.Min(count, Math.Min(_length - _position, int.MaxValue))), cancellationToken).ConfigureAwait(false);
         _position += numRead;
         return numRead;
     }

@@ -23,7 +23,6 @@
 using System;
 using System.Globalization;
 using System.Reflection;
-using DiscUtils.CoreCompat;
 
 namespace DiscUtils.Iscsi;
 

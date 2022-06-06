@@ -682,6 +682,8 @@ public class ValidatingFileSystem<TFileSystem, TChecker> : DiscFileSystem
         }
     }
 
+    private DiscDirectoryInfo _root;
+
     /// <summary>
     /// Gets the root directory of the file system.
     /// </summary>
@@ -689,7 +691,7 @@ public class ValidatingFileSystem<TFileSystem, TChecker> : DiscFileSystem
     {
         get
         {
-            return new DiscDirectoryInfo(this, "");
+            return _root ??= new DiscDirectoryInfo(this, string.Empty);
         }
     }
 

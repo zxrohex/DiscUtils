@@ -86,12 +86,14 @@ public class NativeFileSystem : DiscFileSystem
         get { return true; }
     }
 
+    private DiscDirectoryInfo _root;
+
     /// <summary>
     /// Gets the root directory of the file system.
     /// </summary>
     public override DiscDirectoryInfo Root
     {
-        get { return new DiscDirectoryInfo(this, string.Empty); }
+        get { return _root ??= new DiscDirectoryInfo(this, string.Empty); }
     }
 
     /// <summary>

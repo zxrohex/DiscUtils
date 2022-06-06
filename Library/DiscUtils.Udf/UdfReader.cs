@@ -118,6 +118,8 @@ public sealed class UdfReader : VfsFileSystemFacade
 
     private sealed class VfsUdfReader : VfsReadOnlyFileSystem<FileIdentifier, File, Directory, UdfContext>
     {
+        public override bool IsCaseSensitive => false;
+
         private readonly Stream _data;
         private LogicalVolumeDescriptor _lvd;
         private readonly uint _sectorSize;

@@ -1,6 +1,5 @@
 ﻿using DiscUtils.Btrfs;
 using DiscUtils.BootConfig;
-using DiscUtils.CoreCompat;
 using DiscUtils.Dmg;
 using DiscUtils.Ext;
 using DiscUtils.Fat;

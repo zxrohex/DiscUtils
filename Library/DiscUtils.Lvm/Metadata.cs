@@ -22,7 +22,6 @@
 
 namespace DiscUtils.Lvm;
 
-using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;

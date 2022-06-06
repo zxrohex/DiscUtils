@@ -22,10 +22,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 
@@ -318,7 +315,7 @@ public class NfsFileSystem : DiscFileSystem
     {
         try
         {
-            var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+            var re = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: false);
 
             var dirs = DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false);
             return dirs;
@@ -341,9 +338,9 @@ public class NfsFileSystem : DiscFileSystem
     {
         try
         {
-            var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+            var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: false);
 
-            var results = DoSearch(path, re, searchOption == SearchOption.AllDirectories, false, true);
+            var results = DoSearch(path, filter, searchOption == SearchOption.AllDirectories, false, true);
             return results;
         }
         catch (Nfs3Exception ne)
@@ -381,9 +378,9 @@ public class NfsFileSystem : DiscFileSystem
     {
         try
         {
-            var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+            var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: false);
 
-            var results = DoSearch(path, re, false, true, true);
+            var results = DoSearch(path, filter, false, true, true);
             return results;
         }
         catch (Nfs3Exception ne)
@@ -776,7 +773,7 @@ public class NfsFileSystem : DiscFileSystem
         throw new IOException("NFS Status: " + ne.Message, ne);
     }
 
-    private IEnumerable<string> DoSearch(string path, Regex regex, bool subFolders, bool dirs, bool files)
+    private IEnumerable<string> DoSearch(string path, Func<string, bool> filter, bool subFolders, bool dirs, bool files)
     {
         var dir = GetDirectory(path);
 
@@ -793,7 +790,7 @@ public class NfsFileSystem : DiscFileSystem
             {
                 var searchName = de.Name.IndexOf('.') == -1 ? de.Name + "." : de.Name;
 
-                if (regex is null || regex.IsMatch(searchName))
+                if (filter is null || filter(searchName))
                 {
                     yield return Utilities.CombinePaths(path, de.Name);
                 }
@@ -801,7 +798,7 @@ public class NfsFileSystem : DiscFileSystem
 
             if (subFolders && isDir)
             {
-                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.Name), regex, subFolders, dirs, files))
+                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.Name), filter, subFolders, dirs, files))
                 {
                     yield return subdirentry;
                 }

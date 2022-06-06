@@ -23,7 +23,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
@@ -34,15 +34,15 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
     public Directory(Context context, uint inodeNum, Inode inode)
         : base(context, inodeNum, inode) {}
 
-    List<DirEntry> dirEntries;
+    FastDictionary<DirEntry> dirEntries;
 
-    public IReadOnlyCollection<DirEntry> AllEntries
+    public IReadOnlyDictionary<string, DirEntry> AllEntries
     {
         get
         {
             if (dirEntries == null)
             {
-                dirEntries = new List<DirEntry>();
+                dirEntries = new(StringComparer.Ordinal, entry => entry.FileName);
 
                 var content = FileContent;
                 var blockSize = Context.SuperBlock.BlockSize;
@@ -85,23 +85,10 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
         }
     }
 
-    public DirEntry Self
-    {
-        get { return null; }
-    }
+    public DirEntry Self => null;
 
     public DirEntry GetEntryByName(string name)
-    {
-        foreach (var entry in AllEntries)
-        {
-            if (entry.FileName == name)
-            {
-                return entry;
-            }
-        }
-
-        return null;
-    }
+        => AllEntries.TryGetValue(name, out var entry) ? entry : null;
 
     public DirEntry CreateNewFile(string name)
     {

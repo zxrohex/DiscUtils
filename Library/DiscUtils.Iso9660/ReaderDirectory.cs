@@ -20,7 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using DiscUtils.CoreCompat;
+using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
 using System;
@@ -33,7 +33,7 @@ namespace DiscUtils.Iso9660;
 
 internal class ReaderDirectory : File, IVfsDirectory<ReaderDirEntry, File>
 {
-    private readonly List<ReaderDirEntry> _records;
+    private readonly FastDictionary<ReaderDirEntry> _records;
 
     public ReaderDirectory(IsoContext context, ReaderDirEntry dirEntry)
         : base(context, dirEntry)
@@ -44,7 +44,7 @@ internal class ReaderDirectory : File, IVfsDirectory<ReaderDirEntry, File>
             Array.Clear(buffer, 0, buffer.Length);
             Stream extent = new ExtentStream(_context.DataStream, dirEntry.Record.LocationOfExtent, uint.MaxValue, 0, 0);
 
-            _records = new List<ReaderDirEntry>();
+            _records = new(StringComparer.OrdinalIgnoreCase, entry => entry.FileName);
 
             var totalLength = dirEntry.Record.DataLength;
             uint totalRead = 0;
@@ -96,7 +96,7 @@ internal class ReaderDirectory : File, IVfsDirectory<ReaderDirEntry, File>
         get { return Self.Record.SystemUseData; }
     }
 
-    public IReadOnlyCollection<ReaderDirEntry> AllEntries
+    public IReadOnlyDictionary<string, ReaderDirEntry> AllEntries
     {
         get { return _records; }
     }
@@ -112,7 +112,7 @@ internal class ReaderDirectory : File, IVfsDirectory<ReaderDirEntry, File>
             normName = normName.Slice(0, normName.LastIndexOf(';') + 1);
         }
 
-        foreach (var r in _records)
+        foreach (var r in _records.Values)
         {
             var toComp = IsoUtilities.NormalizeFileName(r.FileName).ToUpper(CultureInfo.InvariantCulture);
             if (!anyVerMatch && toComp.AsSpan().Equals(normName, StringComparison.CurrentCultureIgnoreCase))

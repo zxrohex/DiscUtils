@@ -31,6 +31,8 @@ namespace DiscUtils.Iso9660;
 internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderDirectory, IsoContext>,
                              IClusterBasedFileSystem, IUnixFileSystem
 {
+    public override bool IsCaseSensitive => false;
+
     private static readonly Iso9660Variant[] DefaultVariantsNoJoliet = { Iso9660Variant.RockRidge, Iso9660Variant.Iso9660 };
 
     private static readonly Iso9660Variant[] DefaultVariantsWithJoliet = { Iso9660Variant.Joliet, Iso9660Variant.RockRidge, Iso9660Variant.Iso9660 };

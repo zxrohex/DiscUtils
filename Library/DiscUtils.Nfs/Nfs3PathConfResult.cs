@@ -20,8 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-
 namespace DiscUtils.Nfs;
 
 public class Nfs3PathConfResult : Nfs3CallResult

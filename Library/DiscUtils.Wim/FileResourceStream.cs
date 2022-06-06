@@ -166,7 +166,7 @@ internal class FileResourceStream : SparseStream.ReadOnlySparseStream
             }
 
             _currentChunkStream.Position = chunkOffset;
-            var numRead = await _currentChunkStream.ReadAsync(buffer, offset + totalRead, numToRead, cancellationToken).ConfigureAwait(false);
+            var numRead = await _currentChunkStream.ReadAsync(buffer.AsMemory(offset + totalRead, numToRead), cancellationToken).ConfigureAwait(false);
             if (numRead == 0)
             {
                 return totalRead;

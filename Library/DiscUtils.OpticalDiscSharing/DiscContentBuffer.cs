@@ -22,16 +22,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
-using Buffer=DiscUtils.Streams.Buffer;
+using Buffer = DiscUtils.Streams.Buffer;
 
 #pragma warning disable IDE0079 // Remove unnecessary suppression
 #pragma warning disable SYSLIB0014 // Type or member is obsolete
@@ -90,27 +88,6 @@ internal sealed class DiscContentBuffer : Buffer
         while (read < Math.Min(total, count))
         {
             read += s.Read(buffer, offset + read, count - read);
-        }
-
-        return read;
-    }
-
-    public override async ValueTask<int> ReadAsync(long pos, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        var response = await SendRequestAsync(() =>
-        {
-            var wr = (HttpWebRequest)WebRequest.Create(_uri);
-            wr.Method = "GET";
-            wr.AddRange((int)pos, (int)(pos + count - 1));
-            return wr;
-        }).ConfigureAwait(false);
-
-        using var s = response.GetResponseStream();
-        var total = (int)response.ContentLength;
-        var read = 0;
-        while (read < Math.Min(total, count))
-        {
-            read += await s.ReadAsync(buffer, offset + read, count - read).ConfigureAwait(false);
         }
 
         return read;

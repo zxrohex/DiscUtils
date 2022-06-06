@@ -22,16 +22,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using DiscUtils.Core.WindowsSecurity.AccessControl;
-using System.Text.RegularExpressions;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using System.Xml.Linq;
 using System.Xml.XPath;
 using System.Linq;
-using DiscUtils.Vfs;
 
 namespace DiscUtils.Wim;
 
@@ -220,9 +217,9 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
         {
             foreach (var altStream in dirEntry.AlternateStreams)
             {
-                if (!string.IsNullOrEmpty(altStream.Key))
+                if (!string.IsNullOrEmpty(altStream.Name))
                 {
-                    yield return altStream.Key;
+                    yield return altStream.Name;
                 }
             }
         }
@@ -294,9 +291,9 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
     /// <returns>Array of directories matching the search pattern.</returns>
     public override IEnumerable<string> GetDirectories(string path, string searchPattern, SearchOption searchOption)
     {
-        var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+        var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
-        var dirs = DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false);
+        var dirs = DoSearch(path, filter, searchOption == SearchOption.AllDirectories, true, false);
         return dirs;
     }
 
@@ -310,7 +307,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
     /// <returns>Array of files matching the search pattern.</returns>
     public override IEnumerable<string> GetFiles(string path, string searchPattern, SearchOption searchOption)
     {
-        var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+        var re = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
         var results = DoSearch(path, re, searchOption == SearchOption.AllDirectories, false, true);
         return results;
@@ -343,7 +340,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
     /// <returns>Array of files and subdirectories matching the search pattern.</returns>
     public override IEnumerable<string> GetFileSystemEntries(string path, string searchPattern)
     {
-        var re = Utilities.ConvertWildcardsToRegEx(searchPattern);
+        var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
         var parentDirEntry = GetEntry(path);
         if (parentDirEntry == null)
@@ -354,7 +351,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
         var parentDir = GetDirectory(parentDirEntry.SubdirOffset);
 
         var result = parentDir
-            .Where(dirEntry => re is null || re.IsMatch(dirEntry.FileName))
+            .Where(dirEntry => filter is null || filter(dirEntry.FileName))
             .Select(dirEntry => Utilities.CombinePaths(path, dirEntry.FileName));
 
         return result;
@@ -745,7 +742,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
         return nextEntry;
     }
 
-    private IEnumerable<string> DoSearch(string path, Regex regex, bool subFolders, bool dirs, bool files)
+    private IEnumerable<string> DoSearch(string path, Func<string, bool> filter, bool subFolders, bool dirs, bool files)
     {
         var parentDirEntry = GetEntry(path);
 
@@ -762,7 +759,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
 
             if ((isDir && dirs) || (!isDir && files))
             {
-                if (regex is null || regex.IsMatch(de.SearchName))
+                if (filter is null || filter(de.SearchName))
                 {
                     yield return Utilities.CombinePaths(path, de.FileName);
                 }
@@ -770,7 +767,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
 
             if (subFolders && isDir)
             {
-                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.FileName), regex, subFolders, dirs, files))
+                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.FileName), filter, subFolders, dirs, files))
                 {
                     yield return subdirentry;
                 }

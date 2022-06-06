@@ -166,7 +166,7 @@ public class StripedStream : SparseStream
             Stream targetStream = _wrapped[streamIdx];
             targetStream.Position = streamStripe * _stripeSize + stripeOffset;
 
-            var numRead = await targetStream.ReadAsync(buffer, offset + totalRead, stripeToRead, cancellationToken).ConfigureAwait(false);
+            var numRead = await targetStream.ReadAsync(buffer.AsMemory(offset + totalRead, stripeToRead), cancellationToken).ConfigureAwait(false);
             _position += numRead;
             totalRead += numRead;
         }

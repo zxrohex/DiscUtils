@@ -123,32 +123,6 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static async Task ReadExactAsync(this Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        var originalCount = count;
-
-        while (count > 0)
-        {
-            var numRead = await stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-
-            if (numRead == 0)
-            {
-                throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
-            }
-
-            offset += numRead;
-            count -= numRead;
-        }
-    }
-
-
-    /// <summary>
-    /// Read bytes until buffer filled or throw EndOfStreamException.
-    /// </summary>
-    /// <param name="stream">The stream to read.</param>
-    /// <param name="buffer">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
     public static async ValueTask ReadExactAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var originalCount = buffer.Length;
@@ -212,11 +186,11 @@ public static class StreamUtilities
     /// <param name="stream">The stream to read.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static async Task<byte[]> ReadExactAsync(this Stream stream, int count, CancellationToken cancellationToken)
+    public static async ValueTask<byte[]> ReadExactAsync(this Stream stream, int count, CancellationToken cancellationToken)
     {
         var buffer = new byte[count];
 
-        await ReadExactAsync(stream, buffer, 0, count, cancellationToken).ConfigureAwait(false);
+        await ReadExactAsync(stream, buffer, cancellationToken).ConfigureAwait(false);
 
         return buffer;
     }
@@ -237,33 +211,6 @@ public static class StreamUtilities
         while (count > 0)
         {
             var numRead = buffer.Read(pos, data, offset, count);
-
-            if (numRead == 0)
-            {
-                throw new EndOfStreamException($"Unable to complete read of {originalCount} bytes");
-            }
-
-            pos += numRead;
-            offset += numRead;
-            count -= numRead;
-        }
-    }
-
-    /// <summary>
-    /// Read bytes until buffer filled or throw EndOfStreamException.
-    /// </summary>
-    /// <param name="buffer">The stream to read.</param>
-    /// <param name="pos">The position in buffer to read from.</param>
-    /// <param name="data">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
-    public static async Task ReadExactAsync(this IBuffer buffer, long pos, byte[] data, int offset, int count, CancellationToken cancellationToken)
-    {
-        var originalCount = count;
-
-        while (count > 0)
-        {
-            var numRead = await buffer.ReadAsync(pos, data, offset, count, cancellationToken).ConfigureAwait(false);
 
             if (numRead == 0)
             {
@@ -352,11 +299,11 @@ public static class StreamUtilities
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static async Task<byte[]> ReadExactAsync(this IBuffer buffer, long pos, int count, CancellationToken cancellationToken)
+    public static async ValueTask<byte[]> ReadExactAsync(this IBuffer buffer, long pos, int count, CancellationToken cancellationToken)
     {
         var result = new byte[count];
 
-        await ReadExactAsync(buffer, pos, result, 0, count, cancellationToken).ConfigureAwait(false);
+        await ReadExactAsync(buffer, pos, result, cancellationToken).ConfigureAwait(false);
 
         return result;
     }
@@ -377,35 +324,6 @@ public static class StreamUtilities
         while (count > 0)
         {
             var numRead = stream.Read(buffer, offset, count);
-
-            if (numRead == 0)
-            {
-                return totalRead;
-            }
-
-            offset += numRead;
-            count -= numRead;
-            totalRead += numRead;
-        }
-
-        return totalRead;
-    }
-
-    /// <summary>
-    /// Read bytes until buffer filled or EOF.
-    /// </summary>
-    /// <param name="stream">The stream to read.</param>
-    /// <param name="buffer">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
-    /// <returns>The number of bytes actually read.</returns>
-    public static async Task<int> ReadMaximumAsync(this Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        var totalRead = 0;
-
-        while (count > 0)
-        {
-            var numRead = await stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
 
             if (numRead == 0)
             {
@@ -518,37 +436,6 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
-    public static async Task<int> ReadMaximumAsync(this IBuffer buffer, long pos, byte[] data, int offset, int count, CancellationToken cancellationToken)
-    {
-        var totalRead = 0;
-
-        while (count > 0)
-        {
-            var numRead = await buffer.ReadAsync(pos, data, offset, count, cancellationToken).ConfigureAwait(false);
-
-            if (numRead == 0)
-            {
-                return totalRead;
-            }
-
-            pos += numRead;
-            offset += numRead;
-            count -= numRead;
-            totalRead += numRead;
-        }
-
-        return totalRead;
-    }
-
-    /// <summary>
-    /// Read bytes until buffer filled or EOF.
-    /// </summary>
-    /// <param name="buffer">The stream to read.</param>
-    /// <param name="pos">The position in buffer to read from.</param>
-    /// <param name="data">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
-    /// <returns>The number of bytes actually read.</returns>
     public static async ValueTask<int> ReadMaximumAsync(this IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
     {
         var totalRead = 0;
@@ -616,7 +503,7 @@ public static class StreamUtilities
     /// </summary>
     /// <param name="buffer">The buffer to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static Task<byte[]> ReadAllAsync(this IBuffer buffer, CancellationToken cancellationToken)
+    public static ValueTask<byte[]> ReadAllAsync(this IBuffer buffer, CancellationToken cancellationToken)
     {
         return ReadExactAsync(buffer, 0, (int)buffer.Capacity, cancellationToken);
     }
@@ -638,7 +525,7 @@ public static class StreamUtilities
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <returns>The sector data as a byte array.</returns>
-    public static Task<byte[]> ReadSectorAsync(this Stream stream, CancellationToken cancellationToken)
+    public static ValueTask<byte[]> ReadSectorAsync(this Stream stream, CancellationToken cancellationToken)
     {
         return ReadExactAsync(stream, Sizes.Sector, cancellationToken);
     }

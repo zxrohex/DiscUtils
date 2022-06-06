@@ -23,7 +23,6 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using DiscUtils.CoreCompat;
 using DiscUtils.Streams;
 #if !NET5_0_OR_GREATER
 using System.Security.Permissions;

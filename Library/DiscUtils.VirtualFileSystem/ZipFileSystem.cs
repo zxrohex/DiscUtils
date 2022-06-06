@@ -1,13 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 
 namespace DiscUtils.VirtualFileSystem;
 
-using Archives;
 using Streams;
-using Internal;
 
 public class ZipFileSystem : VirtualFileSystem
 {

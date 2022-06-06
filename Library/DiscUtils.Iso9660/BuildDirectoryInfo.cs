@@ -24,7 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using DiscUtils.CoreCompat;
+using DiscUtils.Internal;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Iso9660;
@@ -35,7 +35,7 @@ namespace DiscUtils.Iso9660;
 public sealed class BuildDirectoryInfo : BuildDirectoryMember
 {
     internal static readonly Comparer<BuildDirectoryInfo> PathTableSortComparison = new PathTableComparison();
-    private readonly Dictionary<string, BuildDirectoryMember> _members;
+    private readonly FastDictionary<BuildDirectoryMember> _members;
 
     private readonly BuildDirectoryInfo _parent;
     private List<BuildDirectoryMember> _sortedMembers;
@@ -45,7 +45,7 @@ public sealed class BuildDirectoryInfo : BuildDirectoryMember
     {
         _parent = parent == null ? this : parent;
         HierarchyDepth = parent == null ? 0 : parent.HierarchyDepth + 1;
-        _members = new Dictionary<string, BuildDirectoryMember>();
+        _members = new(StringComparer.OrdinalIgnoreCase, entry => entry.Name);
     }
 
     internal int HierarchyDepth { get; }
@@ -71,7 +71,7 @@ public sealed class BuildDirectoryInfo : BuildDirectoryMember
 
     internal void Add(BuildDirectoryMember member)
     {
-        _members.Add(member.Name, member);
+        _members.Add(member);
         _sortedMembers = null;
     }
 

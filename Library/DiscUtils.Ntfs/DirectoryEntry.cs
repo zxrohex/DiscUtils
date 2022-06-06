@@ -22,7 +22,7 @@
 
 namespace DiscUtils.Ntfs;
 
-internal sealed class DirectoryEntry
+internal struct DirectoryEntry
 {
     private readonly Directory _directory;
 

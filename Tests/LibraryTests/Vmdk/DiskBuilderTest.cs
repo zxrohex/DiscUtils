@@ -22,7 +22,6 @@
 
 using System.IO;
 using System.Linq;
-using DiscUtils;
 using DiscUtils.Streams;
 using DiscUtils.Vmdk;
 using Xunit;

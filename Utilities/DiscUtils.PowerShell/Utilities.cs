@@ -20,7 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using System.Globalization;
 using System.IO;
 using System.Management.Automation;
 

@@ -28,7 +28,6 @@ using System.IO;
 using DiscUtils.Vfs;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
-using System.Linq;
 using System.Collections.Generic;
 
 internal class File : IVfsFile
