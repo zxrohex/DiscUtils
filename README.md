@@ -1,21 +1,24 @@
-
 # Project Description
-
-[![Build status](https://ci.appveyor.com/api/projects/status/020ddq6h1phbiyqe?svg=true)](https://ci.appveyor.com/project/LordMike/discutils)
 
 DiscUtils is a .NET library to read and write ISO files and Virtual Machine disk files (VHD, VDI, XVA, VMDK, etc). DiscUtils is developed in C# with no native code (or P/Invoke).
 
-Implementation of the ISO, UDF, FAT and NTFS file systems is now fairly stable. VHD, XVA, VMDK and VDI disk formats are implemented, as well as read/write Registry support. The library also includes a simple iSCSI initiator, for accessing disks via iSCSI and an NFS client implementation.
+### This fork
 
-Note: this is a fork of https://github.com/quamotion/DiscUtils, which itself is a fork of https://discutils.codeplex.com/. 
+This is a fork of https://github.com/DiscUtils/DiscUtils, a fork of https://github.com/quamotion/DiscUtils, which is a fork of https://discutils.codeplex.com/.
+
+This fork has the primary goal of modernized and optimized code, better compatibility with non-Windows platforms and much better performance at the cost of dropping support for older .NET Framework versions and some breaking interface changes compared to upstream DiscUtils. For example, there is support for `async` and `Span<byte>` versions of read and write on `Stream` objects throughout all I/O paths and methods for enumerating files in directories return `IEnumerable` objects instead of building temporary lists and arrays.
+
+All libraries target .NET Framework 4.6 and 4.8, .NET Standard 2.0 and 2.1 as well as .NET 6.0.
+
+### Implementation status
+
+Implementations of the ISO, UDF, FAT and NTFS file systems are fairly stable. Lots of work have been carried out to solve issues with Ext2/3/4, SquashFs and Btrfs implementations, but there are probably a few bugs left. It is also possible to open TAR and ZIP archives as file systems. VHD, XVA, VMDK and VDI disk formats are implemented, as well as read/write Registry support. The library also includes a simple iSCSI initiator, for accessing disks via iSCSI and an NFS client implementation.
 
 ### Wiki
 
 See more up to date documentation at the [Wiki](https://github.com/DiscUtils/DiscUtils/wiki)
 
 ### Implementation in this repository
-
-This repository has performed a few changes to the core DiscUtils library. For starters, all projects have been converted to .NET Core, and are targeting .NET 2.0 through 5.0, in addition to .NET Standard 2.0 (thanks [Quamotion](https://github.com/Quamotion)). 
 
 The DiscUtils library has been split into 25 independent projects, which can function without the others present. This reduces the "cost" of having DiscUtils immensely, as we're down from the 1 MB binary it used to be.
 
@@ -107,19 +110,3 @@ using (FileStream fs = File.Create(@"myfloppy.vfd"))
 
 Again, start browsing the file system at floppy.Root.
 
-## Development releases
-
-Automated CI builds are available on Myget. Add this source to your nuget configuration:
-
-> https://www.myget.org/F/discutils/api/v3/index.json 
-
-.. or add this to a `NuGet.Config` file (Casing important on linux), in your repository:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <add key="DiscUtils" value="https://www.myget.org/F/discutils/api/v3/index.json" />
-  </packageSources>
-</configuration>
-```
