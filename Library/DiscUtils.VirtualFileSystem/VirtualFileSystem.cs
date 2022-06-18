@@ -323,17 +323,18 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
             Length = new FileInfo(existingPhysicalPath).Length
         };
 
-    public void AddDirectory(string name, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
+    public VirtualFileSystemDirectory AddDirectory(string name, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
     {
         var member = AddDirectory(name);
         member.Attributes = attributes;
         member.CreationTimeUtc = creationTime.ToUniversalTime();
         member.LastWriteTimeUtc = writtenTime.ToUniversalTime();
         member.LastAccessTimeUtc = accessedTime.ToUniversalTime();
+        return member;
     }
 
 
-    public void AddFile(string path, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+    public VirtualFileSystemFile AddFile(string path, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
         new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
             Path.GetFileName(path),
             (mode, access) => new MemoryStream(content, access.HasFlag(FileAccess.Write)))
@@ -345,7 +346,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
             Length = content.Length
         };
 
-    public void AddFile(string path, Stream source, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+    public VirtualFileSystemFile AddFile(string path, Stream source, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
         new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
             Path.GetFileName(path), (mode, access) => SparseStream.FromStream(source, Ownership.None))
         {
@@ -356,7 +357,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
             Length = source.Length
         };
 
-    public void AddFile(string path, string existingPhysicalPath, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+    public VirtualFileSystemFile AddFile(string path, string existingPhysicalPath, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
         new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
             Path.GetFileName(path),
             (mode, access) => File.Open(existingPhysicalPath, mode, access))
@@ -680,4 +681,16 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
         return file.FileId;
     }
+
+    void IFileSystemBuilder.AddDirectory(string name, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+        AddDirectory(name, creationTime, writtenTime, accessedTime, attributes);
+
+    void IFileSystemBuilder.AddFile(string name, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+        AddFile(name, content, creationTime, writtenTime, accessedTime, attributes);
+
+    void IFileSystemBuilder.AddFile(string name, Stream source, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+        AddFile(name, source, creationTime, writtenTime, accessedTime, attributes);
+
+    void IFileSystemBuilder.AddFile(string name, string sourcePath, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
+        AddFile(name, sourcePath, creationTime, writtenTime, accessedTime, attributes);
 }
