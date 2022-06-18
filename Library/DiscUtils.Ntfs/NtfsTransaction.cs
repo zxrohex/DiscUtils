@@ -50,7 +50,10 @@ internal sealed class NtfsTransaction : IDisposable
         return _instance;
     }
 
-    public static NtfsTransaction Current => _instance;
+    public static NtfsTransaction Current
+        => _instance is null || _instance._owners == 0
+        ? null
+        : _instance;
 
     public DateTime Timestamp { get; private set; }
 
