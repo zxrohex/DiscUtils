@@ -34,7 +34,7 @@ internal sealed class Metadata
 {
     private readonly Stream _regionStream;
 
-    private Guid _page83Data;
+    public Guid Page83Data { get; }
 
     public Metadata(Stream regionStream)
     {
@@ -44,7 +44,7 @@ internal sealed class Metadata
 
         FileParameters = ReadStruct<FileParameters>(MetadataTable.FileParametersGuid, false);
         DiskSize = ReadValue(MetadataTable.VirtualDiskSizeGuid, false, EndianUtilities.ToUInt64LittleEndian);
-        _page83Data = ReadValue(MetadataTable.Page83DataGuid, false, EndianUtilities.ToGuidLittleEndian);
+        Page83Data = ReadValue(MetadataTable.Page83DataGuid, false, EndianUtilities.ToGuidLittleEndian);
         LogicalSectorSize = ReadValue(MetadataTable.LogicalSectorSizeGuid, false,
             EndianUtilities.ToUInt32LittleEndian);
         PhysicalSectorSize = ReadValue(MetadataTable.PhysicalSectorSizeGuid, false,
@@ -157,7 +157,7 @@ internal sealed class Metadata
         return default(T);
     }
 
-#if !NET5_0_OR_GREATER
+#if !NETCOREAPP
     [SecurityPermission(SecurityAction.Demand, UnmanagedCode = true)]
 #endif
     private T ReadValue<T>(Guid itemId, bool isUser, Reader<T> reader)

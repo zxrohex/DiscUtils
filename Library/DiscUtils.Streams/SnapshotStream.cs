@@ -591,7 +591,7 @@ public sealed class SnapshotStream : SparseStream
         if (_diffStream != null)
         {
             _diffStream.Position = _position;
-            await _diffStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            await _diffStream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
 
             // Beware of Linq's delayed model - force execution now by placing into a list.
             // Without this, large execution chains can build up (v. slow) and potential for stack overflow.
@@ -603,7 +603,7 @@ public sealed class SnapshotStream : SparseStream
         else
         {
             _baseStream.Position = _position;
-            await _baseStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            await _baseStream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
             _position += count;
         }
     }

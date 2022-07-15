@@ -106,7 +106,7 @@ public sealed class CircularStream : WrappingStream
         {
             var toWrite = (int)Math.Min(count - totalWritten, Length - Position);
 
-            await base.WriteAsync(buffer, offset + totalWritten, toWrite, cancellationToken).ConfigureAwait(false);
+            await base.WriteAsync(buffer.AsMemory(offset + totalWritten, toWrite), cancellationToken).ConfigureAwait(false);
 
             WrapPosition();
 

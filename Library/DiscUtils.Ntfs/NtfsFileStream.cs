@@ -229,7 +229,7 @@ internal sealed class NtfsFileStream : SparseStream
         using (NtfsTransaction.Begin())
         {
             _isDirty = true;
-            await _baseStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            await _baseStream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         }
     }
 

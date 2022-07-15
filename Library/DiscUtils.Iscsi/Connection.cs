@@ -29,6 +29,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Iscsi;
 
@@ -222,7 +223,7 @@ internal sealed class Connection : IDisposable
 
         var toSend = Math.Min(Math.Min(outBufferCount, Session.ImmediateData ? Session.FirstBurstLength : 0), MaxTargetReceiveDataSegmentLength);
         var packet = req.GetBytes(cmd, outBuffer.Span.Slice(0, toSend), true, inBufferMax != 0, outBufferCount != 0, (uint)(outBufferCount != 0 ? outBufferCount : inBufferMax));
-        await _stream.WriteAsync(packet, 0, packet.Length, cancellationToken).ConfigureAwait(false);
+        await _stream.WriteAsync(packet, cancellationToken).ConfigureAwait(false);
         await _stream.FlushAsync(cancellationToken).ConfigureAwait(false);
         var numSent = toSend;
         var pktsSent = 0;
@@ -240,7 +241,7 @@ internal sealed class Connection : IDisposable
 
                 var pkt = new DataOutPacket(this, cmd.TargetLun);
                 packet = pkt.GetBytes(outBuffer.Span.Slice(numSent, toSend), toSend == numApproved, pktsSent++, (uint)numSent, targetTransferTag);
-                await _stream.WriteAsync(packet, 0, packet.Length, cancellationToken).ConfigureAwait(false);
+                await _stream.WriteAsync(packet, cancellationToken).ConfigureAwait(false);
                 await _stream.FlushAsync(cancellationToken).ConfigureAwait(false);
 
                 numApproved -= toSend;

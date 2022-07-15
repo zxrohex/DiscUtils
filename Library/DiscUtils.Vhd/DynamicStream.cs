@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -380,7 +381,7 @@ public class DynamicStream : MappedStream
             var block = _position / _dynamicHeader.BlockSize;
             var offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
 
-            if (PopulateBlockBitmap(block))
+            if (await PopulateBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false))
             {
                 var sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
                 var offsetInSector = (int)(offsetInBlock % Sizes.Sector);
@@ -481,7 +482,7 @@ public class DynamicStream : MappedStream
             var block = _position / _dynamicHeader.BlockSize;
             var offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
 
-            if (PopulateBlockBitmap(block))
+            if (await PopulateBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false))
             {
                 var sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
                 var offsetInSector = (int)(offsetInBlock % Sizes.Sector);
@@ -819,9 +820,9 @@ public class DynamicStream : MappedStream
             var block = _position / _dynamicHeader.BlockSize;
             var offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
 
-            if (!PopulateBlockBitmap(block))
+            if (!await PopulateBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false))
             {
-                AllocateBlock(block);
+                await AllocateBlockAsync(block, cancellationToken);
             }
 
             var sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
@@ -859,7 +860,7 @@ public class DynamicStream : MappedStream
 
                 // Write the sector back
                 _fileStream.Position = sectorStart;
-                await _fileStream.WriteAsync(sectorBuffer, 0, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                await _fileStream.WriteAsync(sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
 
                 // Update the in-memory block bitmap
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
@@ -875,7 +876,7 @@ public class DynamicStream : MappedStream
 
                 _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) * Sizes.Sector +
                                        _blockBitmapSize;
-                await _fileStream.WriteAsync(buffer, offset + numWritten, toWrite, cancellationToken).ConfigureAwait(false);
+                await _fileStream.WriteAsync(buffer.AsMemory(offset + numWritten, toWrite), cancellationToken).ConfigureAwait(false);
 
                 // Update all of the bits in the block bitmap
                 for (var i = offset; i < offset + toWrite; i += Sizes.Sector)
@@ -924,9 +925,9 @@ public class DynamicStream : MappedStream
             var block = _position / _dynamicHeader.BlockSize;
             var offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
 
-            if (!PopulateBlockBitmap(block))
+            if (!await PopulateBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false))
             {
-                AllocateBlock(block);
+                await AllocateBlockAsync(block, cancellationToken);
             }
 
             var sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
@@ -964,7 +965,7 @@ public class DynamicStream : MappedStream
 
                 // Write the sector back
                 _fileStream.Position = sectorStart;
-                await _fileStream.WriteAsync(sectorBuffer, 0, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                await _fileStream.WriteAsync(sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
 
                 // Update the in-memory block bitmap
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
@@ -998,7 +999,7 @@ public class DynamicStream : MappedStream
 
             if (blockBitmapDirty)
             {
-                WriteBlockBitmap(block);
+                await WriteBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false);
             }
 
             numWritten += toWrite;
@@ -1274,6 +1275,26 @@ public class DynamicStream : MappedStream
         return true;
     }
 
+    private async ValueTask<bool> PopulateBlockBitmapAsync(long block, CancellationToken cancellationToken)
+    {
+        if (_blockBitmaps[block] != null)
+        {
+            // Nothing to do...
+            return true;
+        }
+
+        if (_blockAllocationTable[block] == uint.MaxValue)
+        {
+            // No such block stored...
+            return false;
+        }
+
+        // Read in bitmap
+        _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
+        _blockBitmaps[block] = await StreamUtilities.ReadExactAsync(_fileStream, _blockBitmapSize, cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
     private void AllocateBlock(long block)
     {
         if (_blockAllocationTable[block] != uint.MaxValue)
@@ -1309,10 +1330,59 @@ public class DynamicStream : MappedStream
         }
     }
 
+    private async ValueTask AllocateBlockAsync(long block, CancellationToken cancellationToken)
+    {
+        if (_blockAllocationTable[block] != uint.MaxValue)
+        {
+            throw new ArgumentException("Attempt to allocate existing block");
+        }
+
+        _newBlocksAllocated = true;
+        var newBlockStart = _nextBlockStart;
+
+        // Create and write new sector bitmap
+        var bitmap = new byte[_blockBitmapSize];
+        _fileStream.Position = newBlockStart;
+        await _fileStream.WriteAsync(bitmap.AsMemory(0, _blockBitmapSize), cancellationToken).ConfigureAwait(false);
+        _blockBitmaps[block] = bitmap;
+
+        _nextBlockStart += _blockBitmapSize + _dynamicHeader.BlockSize;
+        if (_fileStream.Length < _nextBlockStart)
+        {
+            _fileStream.SetLength(_nextBlockStart);
+        }
+
+        // Update the BAT entry for the new block
+        var entryBuffer = ArrayPool<byte>.Shared.Rent(4);
+        try
+        {
+            EndianUtilities.WriteBytesBigEndian((uint)(newBlockStart / 512), entryBuffer);
+            _fileStream.Position = _dynamicHeader.TableOffset + block * 4;
+            await _fileStream.WriteAsync(entryBuffer, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(entryBuffer);
+        }
+
+        _blockAllocationTable[block] = (uint)(newBlockStart / 512);
+
+        if (_autoCommitFooter)
+        {
+            await UpdateFooterAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private void WriteBlockBitmap(long block)
     {
         _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
         _fileStream.Write(_blockBitmaps[block], 0, _blockBitmapSize);
+    }
+
+    private Task WriteBlockBitmapAsync(long block, CancellationToken cancellationToken)
+    {
+        _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
+        return _fileStream.WriteAsync(_blockBitmaps[block], 0, _blockBitmapSize, cancellationToken);
     }
 
     private void CheckDisposed()
@@ -1337,5 +1407,23 @@ public class DynamicStream : MappedStream
             _fileStream.Position = _nextBlockStart;
             _fileStream.Write(_footerCache, 0, _footerCache.Length);
         }
+    }
+
+    private Task UpdateFooterAsync(CancellationToken cancellationToken)
+    {
+        if (_newBlocksAllocated)
+        {
+            // Update the footer at the end of the file (if we allocated new blocks).
+            if (_footerCache == null)
+            {
+                _fileStream.Position = 0;
+                _footerCache = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+            }
+
+            _fileStream.Position = _nextBlockStart;
+            return _fileStream.WriteAsync(_footerCache, 0, _footerCache.Length, cancellationToken);
+        }
+
+        return Task.CompletedTask;
     }
 }

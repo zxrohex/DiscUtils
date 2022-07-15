@@ -21,6 +21,8 @@
 //
 
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 
@@ -100,6 +102,14 @@ public sealed class Chunk
         return new BlockBitmap(data, offset, bytesPerBlock);
     }
 
+    public async ValueTask<BlockBitmap> GetBlockBitmapAsync(int block, CancellationToken cancellationToken)
+    {
+        var bytesPerBlock = (int)(Sizes.OneMiB / _blocksPerChunk);
+        var offset = bytesPerBlock * block;
+        var data = await LoadSectorBitmapAsync(cancellationToken).ConfigureAwait(false);
+        return new BlockBitmap(data, offset, bytesPerBlock);
+    }
+
     public void WriteBlockBitmap(int block)
     {
         var bytesPerBlock = (int)(Sizes.OneMiB / _blocksPerChunk);
@@ -157,6 +167,17 @@ public sealed class Chunk
         {
             _file.Position = SectorBitmapPos;
             _sectorBitmap = StreamUtilities.ReadExact(_file, (int)Sizes.OneMiB);
+        }
+
+        return _sectorBitmap;
+    }
+
+    private async ValueTask<byte[]> LoadSectorBitmapAsync(CancellationToken cancellationToken)
+    {
+        if (_sectorBitmap == null)
+        {
+            _file.Position = SectorBitmapPos;
+            _sectorBitmap = await StreamUtilities.ReadExactAsync(_file, (int)Sizes.OneMiB, cancellationToken).ConfigureAwait(false);
         }
 
         return _sectorBitmap;

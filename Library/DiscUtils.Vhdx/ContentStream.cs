@@ -280,7 +280,7 @@ public sealed class ContentStream : MappedStream
             }
             else if (blockStatus == PayloadBlockStatus.PartiallyPresent)
             {
-                var bitmap = chunk.GetBlockBitmap(blockIndex);
+                var bitmap = await chunk.GetBlockBitmapAsync(blockIndex, cancellationToken).ConfigureAwait(false);
 
                 var numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
                 var toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
@@ -361,7 +361,7 @@ public sealed class ContentStream : MappedStream
             }
             else if (blockStatus == PayloadBlockStatus.PartiallyPresent)
             {
-                var bitmap = chunk.GetBlockBitmap(blockIndex);
+                var bitmap = await chunk.GetBlockBitmapAsync(blockIndex, cancellationToken).ConfigureAwait(false);
 
                 var numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
                 var toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
@@ -596,11 +596,11 @@ public sealed class ContentStream : MappedStream
 
             var toWrite = Math.Min(blockBytesRemaining, count - totalWritten);
             _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
-            await _fileStream.WriteAsync(buffer, offset + totalWritten, toWrite, cancellationToken).ConfigureAwait(false);
+            await _fileStream.WriteAsync(buffer.AsMemory(offset + totalWritten, toWrite), cancellationToken).ConfigureAwait(false);
 
             if (blockStatus == PayloadBlockStatus.PartiallyPresent)
             {
-                var bitmap = chunk.GetBlockBitmap(blockIndex);
+                var bitmap = await chunk.GetBlockBitmapAsync(blockIndex, cancellationToken).ConfigureAwait(false);
                 var changed = bitmap.MarkSectorsPresent(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
 
                 if (changed)
@@ -650,7 +650,7 @@ public sealed class ContentStream : MappedStream
 
             if (blockStatus == PayloadBlockStatus.PartiallyPresent)
             {
-                var bitmap = chunk.GetBlockBitmap(blockIndex);
+                var bitmap = await chunk.GetBlockBitmapAsync(blockIndex, cancellationToken).ConfigureAwait(false);
                 var changed = bitmap.MarkSectorsPresent(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
 
                 if (changed)

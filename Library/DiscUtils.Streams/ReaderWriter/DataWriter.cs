@@ -63,7 +63,7 @@ public abstract class DataWriter
 
     public virtual ValueTask WriteBytesAsync(byte[] value, int offset, int count, CancellationToken cancellationToken)
     {
-        return new(_stream.WriteAsync(value, offset, count, cancellationToken));
+        return _stream.WriteAsync(value.AsMemory(offset, count), cancellationToken);
     }
 
     public virtual ValueTask WriteBytesAsync(ReadOnlyMemory<byte> value, CancellationToken cancellationToken)

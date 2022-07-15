@@ -865,7 +865,7 @@ public sealed class BlockCacheStream : SparseStream
         try
         {
             _wrappedStream.Position = _position;
-            await _wrappedStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            await _wrappedStream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         }
         catch
         {

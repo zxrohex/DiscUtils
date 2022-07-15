@@ -114,7 +114,6 @@ internal class UdifBuffer : Buffer
         return totalCopied;
     }
 
-
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var totalCopied = 0;
@@ -122,7 +121,7 @@ internal class UdifBuffer : Buffer
 
         while (totalCopied < buffer.Length && currentPos < Capacity)
         {
-            LoadRun(currentPos);
+            await LoadRunAsync(currentPos, cancellationToken).ConfigureAwait(false);
 
             var bufferOffset = (int)(currentPos - (_activeRunOffset + _activeRun.SectorStart * Sizes.Sector));
             var toCopy = (int)Math.Min(_activeRun.SectorCount * Sizes.Sector - bufferOffset, buffer.Length - totalCopied);
@@ -359,6 +358,45 @@ internal class UdifBuffer : Buffer
         throw new IOException("No block for sector " + findSector);
     }
 
+    private async ValueTask LoadRunAsync(long pos, CancellationToken cancellationToken)
+    {
+        if (_activeRun != null
+            && pos >= _activeRunOffset + _activeRun.SectorStart * Sizes.Sector
+            && pos < _activeRunOffset + (_activeRun.SectorStart + _activeRun.SectorCount) * Sizes.Sector)
+        {
+            return;
+        }
+
+        var findSector = pos / 512;
+        foreach (var block in Blocks)
+        {
+            if (block.FirstSector <= findSector && block.FirstSector + block.SectorCount > findSector)
+            {
+                // Make sure the decompression buffer is big enough
+                if (_decompBuffer == null || _decompBuffer.Length < block.DecompressBufferRequested * Sizes.Sector)
+                {
+                    _decompBuffer = new byte[block.DecompressBufferRequested * Sizes.Sector];
+                }
+
+                foreach (var run in block.Runs)
+                {
+                    if (block.FirstSector + run.SectorStart <= findSector &&
+                        block.FirstSector + run.SectorStart + run.SectorCount > findSector)
+                    {
+                        await LoadRunAsync(run, cancellationToken).ConfigureAwait(false);
+                        _activeRunOffset = block.FirstSector * Sizes.Sector;
+                        return;
+                    }
+                }
+
+                throw new IOException("No run for sector " + findSector + " in block starting at " +
+                                      block.FirstSector);
+            }
+        }
+
+        throw new IOException("No block for sector " + findSector);
+    }
+
     private void LoadRun(CompressedRun run)
     {
         var toCopy = (int)(run.SectorCount * Sizes.Sector);
@@ -391,6 +429,63 @@ internal class UdifBuffer : Buffer
                             Ownership.None))
                 {
                     StreamUtilities.ReadExact(ds, _decompBuffer, 0, toCopy);
+                }
+
+                break;
+
+            case RunType.LzfseCompressed:
+                _stream.Position = run.CompOffset;
+                var lzfseCompressed = StreamUtilities.ReadExact(_stream, (int)run.CompLength);
+                if (Lzfse.LzfseCompressor.Decompress(lzfseCompressed, _decompBuffer) != toCopy)
+                {
+                    throw new InvalidDataException("Run too short when decompressed");
+                }
+
+                break;
+
+            case RunType.Zeros:
+            case RunType.Raw:
+                break;
+
+            default:
+                throw new NotImplementedException("Unrecognized run type " + run.Type);
+        }
+
+        _activeRun = run;
+    }
+
+    private async ValueTask LoadRunAsync(CompressedRun run, CancellationToken cancellationToken)
+    {
+        var toCopy = (int)(run.SectorCount * Sizes.Sector);
+
+        switch (run.Type)
+        {
+            case RunType.ZlibCompressed:
+                _stream.Position = run.CompOffset + 2; // 2 byte zlib header
+                using (var ds = new DeflateStream(_stream, CompressionMode.Decompress, true))
+                {
+                    await StreamUtilities.ReadExactAsync(ds, _decompBuffer.AsMemory(0, toCopy), cancellationToken).ConfigureAwait(false);
+                }
+
+                break;
+
+            case RunType.AdcCompressed:
+                _stream.Position = run.CompOffset;
+                var compressed = await StreamUtilities.ReadExactAsync(_stream, (int)run.CompLength, cancellationToken).ConfigureAwait(false);
+                if (ADCDecompress(compressed, 0, compressed.Length, _decompBuffer, 0) != toCopy)
+                {
+                    throw new InvalidDataException("Run too short when decompressed");
+                }
+
+                break;
+
+            case RunType.BZlibCompressed:
+                using (
+                    var ds =
+                        new BZip2DecoderStream(new SubStream(_stream, run.CompOffset, run.CompLength),
+                            Ownership.None))
+                {
+                    await StreamUtilities.ReadExactAsync(ds, _decompBuffer.AsMemory(0, toCopy), cancellationToken).ConfigureAwait(false);
                 }
 
                 break;

@@ -448,7 +448,7 @@ public sealed class TracingStream : CompatibilityStream
         var position = _wrapped.Position;
         try
         {
-            await _wrapped.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            await _wrapped.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
             if (_active && _traceWrites)
             {
                 CreateAndAddRecord("WRITE", position, count);

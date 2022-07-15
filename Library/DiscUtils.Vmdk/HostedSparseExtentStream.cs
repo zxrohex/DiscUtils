@@ -161,7 +161,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
 
             var numToWrite = Math.Min(count - totalWritten, grainSize - grainOffset);
             _fileStream.Position = (long)GetGrainTableEntry(grain) * Sizes.Sector + grainOffset;
-            await _fileStream.WriteAsync(buffer, offset + totalWritten, numToWrite, cancellationToken).ConfigureAwait(false);
+            await _fileStream.WriteAsync(buffer.AsMemory(offset + totalWritten, numToWrite), cancellationToken).ConfigureAwait(false);
 
             _position += numToWrite;
             totalWritten += numToWrite;
@@ -484,7 +484,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
 
         _fileStream.Position = grainStartPos;
 
-        await _fileStream.WriteAsync(content, 0, content.Length, cancellationToken).ConfigureAwait(false);
+        await _fileStream.WriteAsync(content, cancellationToken).ConfigureAwait(false);
 
         await LoadGrainTableAsync(grainTable, cancellationToken).ConfigureAwait(false);
         SetGrainTableEntry(grain, (uint)(grainStartPos / Sizes.Sector));
@@ -516,12 +516,12 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         }
 
         _fileStream.Position = _globalDirectory[_currentGrainTable] * (long)Sizes.Sector;
-        await _fileStream.WriteAsync(_grainTable, 0, _grainTable.Length, cancellationToken).ConfigureAwait(false);
+        await _fileStream.WriteAsync(_grainTable, cancellationToken).ConfigureAwait(false);
 
         if (_redundantGlobalDirectory != null)
         {
             _fileStream.Position = _redundantGlobalDirectory[_currentGrainTable] * (long)Sizes.Sector;
-            await _fileStream.WriteAsync(_grainTable, 0, _grainTable.Length, cancellationToken).ConfigureAwait(false);
+            await _fileStream.WriteAsync(_grainTable, cancellationToken).ConfigureAwait(false);
         }
     }
 }

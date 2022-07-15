@@ -222,12 +222,8 @@ internal sealed class OnDemandVirtualDisk : VirtualDisk
             return disk.Content.Read(buffer, offset, count);
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            using var disk = OpenDisk();
-            disk.Content.Position = _position;
-            return await disk.Content.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
-        }
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
         public override int Read(Span<byte> buffer)
         {
@@ -290,7 +286,7 @@ internal sealed class OnDemandVirtualDisk : VirtualDisk
         {
             using var disk = OpenDisk();
             disk.Content.Position = _position;
-            await disk.Content.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            await disk.Content.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         }
 
         public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)

@@ -21,8 +21,12 @@
 //
 
 using System;
+using System.Buffers;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vdi;
 
@@ -156,9 +160,23 @@ internal class HeaderRecord
 
     public void Write(Stream s)
     {
-        var buffer = new byte[HeaderSize];
+        Span<byte> buffer = stackalloc byte[(int)HeaderSize];
         Write(buffer);
-        s.Write(buffer, 0, buffer.Length);
+        s.Write(buffer.Slice(0, (int)HeaderSize));
+    }
+
+    public async ValueTask WriteAsync(Stream s, CancellationToken cancellationToken)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent((int)HeaderSize);
+        try
+        {
+            Write(buffer);
+            await s.WriteAsync(buffer.AsMemory(0, (int)HeaderSize), cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     public int Write(Span<byte> buffer)

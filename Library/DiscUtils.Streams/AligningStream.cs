@@ -245,7 +245,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         if (startOffset == 0 && (count % _blockSize == 0 || _position + count == Length))
         {
             WrappedStream.Position = _position;
-            await WrappedStream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            await WrappedStream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
             _position += count;
             return;
         }
@@ -261,7 +261,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
             Array.Copy(buffer, offset, _alignmentBuffer, startOffset, Math.Min(count, _blockSize - startOffset));
 
             WrappedStream.Position = alignedPos;
-            await WrappedStream.WriteAsync(_alignmentBuffer, 0, _blockSize, cancellationToken).ConfigureAwait(false);
+            await WrappedStream.WriteAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
         }
 
         alignedPos = MathUtilities.RoundUp(_position, _blockSize);
@@ -275,7 +275,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         if (passthroughLength > 0)
         {
             WrappedStream.Position = alignedPos;
-            await WrappedStream.WriteAsync(buffer, offset + (int)(alignedPos - _position), passthroughLength, cancellationToken).ConfigureAwait(false);
+            await WrappedStream.WriteAsync(buffer.AsMemory(offset + (int)(alignedPos - _position), passthroughLength), cancellationToken).ConfigureAwait(false);
         }
 
         alignedPos += passthroughLength;
@@ -291,7 +291,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         Array.Copy(buffer, offset + (int)(alignedPos - _position), _alignmentBuffer, 0, (int)Math.Min(count - (alignedPos - _position), unalignedEnd - alignedPos));
 
         WrappedStream.Position = alignedPos;
-        await WrappedStream.WriteAsync(_alignmentBuffer, 0, _blockSize, cancellationToken).ConfigureAwait(false);
+        await WrappedStream.WriteAsync(_alignmentBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
 
         _position = unalignedEnd;
     }

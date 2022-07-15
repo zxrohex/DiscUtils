@@ -65,7 +65,7 @@ public sealed class XdrDataWriter : BigEndianDataWriter
 
     public override async ValueTask WriteBytesAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        await _stream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        await _stream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         if ((count & 0x3) != 0)
         {
             var paddingSize = 4 - (buffer.Length & 0x3);

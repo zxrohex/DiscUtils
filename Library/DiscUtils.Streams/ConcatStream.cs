@@ -325,7 +325,7 @@ public class ConcatStream : SparseStream
                 numToWrite = (int)Math.Min(count - totalWritten, _streams[streamIdx].Length - streamPos);
             }
 
-            await _streams[streamIdx].WriteAsync(buffer, offset + totalWritten, numToWrite, cancellationToken).ConfigureAwait(false);
+            await _streams[streamIdx].WriteAsync(buffer.AsMemory(offset + totalWritten, numToWrite), cancellationToken).ConfigureAwait(false);
 
             totalWritten += numToWrite;
             _position += numToWrite;

@@ -334,13 +334,18 @@ public static class CompatExtensions
         return ReadUsingArrayAsync(stream, buffer, cancellationToken);
     }
 
-    public static async ValueTask<int> ReadUsingArrayAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+    public static ValueTask<int> ReadUsingArrayAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (MemoryMarshal.TryGetArray<byte>(buffer, out var arraySegment))
         {
-            return await stream.ReadAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count, cancellationToken).ConfigureAwait(false);
+            return new(stream.ReadAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count, cancellationToken));
         }
 
+        return ReadUsingTemporaryArrayAsync(stream, buffer, cancellationToken);
+    }
+
+    private static async ValueTask<int> ReadUsingTemporaryArrayAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
         var bytes = ArrayPool<byte>.Shared.Rent(buffer.Length);
         try
         {
@@ -374,20 +379,23 @@ public static class CompatExtensions
         }
     }
 
-    public static async ValueTask WriteAsync(this Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    public static ValueTask WriteAsync(this Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         if (stream is CompatibilityStream compatibilityStream)
         {
-            await compatibilityStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
-            return;
+            return compatibilityStream.WriteAsync(buffer, cancellationToken);
         }
 
-        if (MemoryMarshal.TryGetArray<byte>(buffer, out var arraySegment))
+        if (MemoryMarshal.TryGetArray(buffer, out var arraySegment))
         {
-            await stream.WriteAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count, cancellationToken).ConfigureAwait(false);
-            return;
+            return new(stream.WriteAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count, cancellationToken));
         }
 
+        return new(WriteUsingTemporaryArrayAsync(stream, buffer, cancellationToken));
+    }
+
+    private static async Task WriteUsingTemporaryArrayAsync(Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
         var bytes = ArrayPool<byte>.Shared.Rent(buffer.Length);
         try
         {

@@ -122,7 +122,7 @@ public class PositionWrappingStream : WrappingStream
 
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        await base.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        await base.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         _position += count;
     }
 

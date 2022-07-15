@@ -574,7 +574,7 @@ internal class DiskStream : SparseStream
                     var filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset;
 
                     _fileStream.Position = filePos;
-                    await _fileStream.WriteAsync(writeBuffer, writeBufferOffset, _fileHeader.BlockSize, cancellationToken).ConfigureAwait(false);
+                    await _fileStream.WriteAsync(writeBuffer.AsMemory(writeBufferOffset, _fileHeader.BlockSize), cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -589,10 +589,10 @@ internal class DiskStream : SparseStream
                 // Update the file header on disk, to indicate where the next free block is
                 _fileHeader.BlocksAllocated++;
                 _fileStream.Position = PreHeaderRecord.Size;
-                _fileHeader.Write(_fileStream);
+                await _fileHeader.WriteAsync(_fileStream, cancellationToken).ConfigureAwait(false);
 
                 // Update the block table on disk, to indicate where this block is
-                WriteBlockTableEntry(block);
+                await WriteBlockTableEntryAsync(block, cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -601,7 +601,7 @@ internal class DiskStream : SparseStream
                 var filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
                                offsetInBlock;
                 _fileStream.Position = filePos;
-                await _fileStream.WriteAsync(buffer, offset + numWritten, toWrite, cancellationToken).ConfigureAwait(false);
+                await _fileStream.WriteAsync(buffer.AsMemory(offset + numWritten, toWrite), cancellationToken).ConfigureAwait(false);
             }
 
             numWritten += toWrite;
@@ -809,10 +809,10 @@ internal class DiskStream : SparseStream
                 // Update the file header on disk, to indicate where the next free block is
                 _fileHeader.BlocksAllocated++;
                 _fileStream.Position = PreHeaderRecord.Size;
-                _fileHeader.Write(_fileStream);
+                await _fileHeader.WriteAsync(_fileStream, cancellationToken).ConfigureAwait(false);
 
                 // Update the block table on disk, to indicate where this block is
-                WriteBlockTableEntry(block);
+                await WriteBlockTableEntryAsync(block, cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -875,6 +875,22 @@ internal class DiskStream : SparseStream
 
         _fileStream.Position = _fileHeader.BlocksOffset + block * 4;
         _fileStream.Write(buffer);
+    }
+
+    private async ValueTask WriteBlockTableEntryAsync(int block, CancellationToken cancellationToken)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(4);
+        try
+        {
+            EndianUtilities.WriteBytesLittleEndian(_blockTable[block], buffer);
+
+            _fileStream.Position = _fileHeader.BlocksOffset + block * 4;
+            await _fileStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     private void CheckDisposed()

@@ -475,11 +475,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
         SparseStream stream;
 
-        if (file is not IVfsFileWithStreams fileStreams || attributeName == null)
-        {
-            stream = new BufferStream(file.FileContent, access);
-        }
-        else
+        if (file is IVfsFileWithStreams fileStreams && attributeName != null)
         {
             stream = fileStreams.OpenExistingStream(attributeName);
             if (stream == null)
@@ -493,6 +489,10 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
                     throw new FileNotFoundException("No such attribute on file", path);
                 }
             }
+        }
+        else
+        {
+            stream = new BufferStream(file.FileContent, access);
         }
 
         if (mode == FileMode.Create || mode == FileMode.Truncate)
