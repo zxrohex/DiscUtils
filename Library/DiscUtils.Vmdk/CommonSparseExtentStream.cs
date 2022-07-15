@@ -620,6 +620,40 @@ internal abstract class CommonSparseExtentStream : MappedStream
         return true;
     }
 
+    protected async ValueTask<bool> LoadGrainTableAsync(int index, CancellationToken cancellationToken)
+    {
+        // Current grain table, so early-out
+        if (_grainTable != null && _currentGrainTable == index)
+        {
+            return true;
+        }
+
+        // This grain table not present in grain directory, so can't load it...
+        if (_globalDirectory[index] == 0)
+        {
+            return false;
+        }
+
+        // Cached grain table?
+        var cachedGrainTable = _grainTableCache[index];
+        if (cachedGrainTable != null)
+        {
+            _currentGrainTable = index;
+            _grainTable = cachedGrainTable;
+            return true;
+        }
+
+        // Not cached, so read
+        _fileStream.Position = (long)_globalDirectory[index] * Sizes.Sector;
+        var newGrainTable = await StreamUtilities.ReadExactAsync(_fileStream, (int)_header.NumGTEsPerGT * 4, cancellationToken).ConfigureAwait(false);
+        _currentGrainTable = index;
+        _grainTable = newGrainTable;
+
+        _grainTableCache[index] = newGrainTable;
+
+        return true;
+    }
+
     protected void CheckDisposed()
     {
         if (_fileStream == null)

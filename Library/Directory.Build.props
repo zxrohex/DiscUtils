@@ -12,9 +12,9 @@
 	<PackageId>LTRData.$(MSBuildProjectName)</PackageId>
     <Company>LTR Data</Company>
     <Authors>Olof Lagerkvist</Authors>
-	<PackageOutputPath>$(LocalNuGetPath)\$(Configuration)</PackageOutputPath>
+	<PackageOutputPath>$(LocalNuGetPath)</PackageOutputPath>
 	<OutputPath>..\$(Configuration)</OutputPath>
-    <FileVersion>1.0.1</FileVersion>
+    <FileVersion>1.0.2</FileVersion>
     <PackageVersion>$(FileVersion)</PackageVersion>
   </PropertyGroup>
 

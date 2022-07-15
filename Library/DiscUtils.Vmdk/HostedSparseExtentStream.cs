@@ -128,6 +128,48 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         _atEof = _position == Length;
     }
 
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        CheckDisposed();
+
+        if (!CanWrite)
+        {
+            throw new InvalidOperationException("Cannot write to this stream");
+        }
+
+        if (_position + count > Length)
+        {
+            throw new IOException("Attempt to write beyond end of stream");
+        }
+
+        var totalWritten = 0;
+        while (totalWritten < count)
+        {
+            var grainTable = (int)(_position / _gtCoverage);
+            var grainTableOffset = (int)(_position - grainTable * _gtCoverage);
+
+            await LoadGrainTableAsync(grainTable, cancellationToken).ConfigureAwait(false);
+
+            var grainSize = (int)(_header.GrainSize * Sizes.Sector);
+            var grain = grainTableOffset / grainSize;
+            var grainOffset = grainTableOffset - grain * grainSize;
+
+            if (GetGrainTableEntry(grain) == 0)
+            {
+                await AllocateGrainAsync(grainTable, grain, cancellationToken).ConfigureAwait(false);
+            }
+
+            var numToWrite = Math.Min(count - totalWritten, grainSize - grainOffset);
+            _fileStream.Position = (long)GetGrainTableEntry(grain) * Sizes.Sector + grainOffset;
+            await _fileStream.WriteAsync(buffer, offset + totalWritten, numToWrite, cancellationToken).ConfigureAwait(false);
+
+            _position += numToWrite;
+            totalWritten += numToWrite;
+        }
+
+        _atEof = _position == Length;
+    }
+
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         CheckDisposed();
@@ -157,6 +199,43 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
             var numToWrite = Math.Min(buffer.Length - totalWritten, grainSize - grainOffset);
             _fileStream.Position = (long)GetGrainTableEntry(grain) * Sizes.Sector + grainOffset;
             _fileStream.Write(buffer.Slice(totalWritten, numToWrite));
+
+            _position += numToWrite;
+            totalWritten += numToWrite;
+        }
+
+        _atEof = _position == Length;
+    }
+
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        CheckDisposed();
+
+        if (!CanWrite)
+        {
+            throw new InvalidOperationException("Cannot write to this stream");
+        }
+
+        var totalWritten = 0;
+        while (totalWritten < buffer.Length)
+        {
+            var grainTable = (int)(_position / _gtCoverage);
+            var grainTableOffset = (int)(_position - grainTable * _gtCoverage);
+
+            await LoadGrainTableAsync(grainTable, cancellationToken).ConfigureAwait(false);
+
+            var grainSize = (int)(_header.GrainSize * Sizes.Sector);
+            var grain = grainTableOffset / grainSize;
+            var grainOffset = grainTableOffset - grain * grainSize;
+
+            if (GetGrainTableEntry(grain) == 0)
+            {
+                await AllocateGrainAsync(grainTable, grain, cancellationToken).ConfigureAwait(false);
+            }
+
+            var numToWrite = Math.Min(buffer.Length - totalWritten, grainSize - grainOffset);
+            _fileStream.Position = (long)GetGrainTableEntry(grain) * Sizes.Sector + grainOffset;
+            await _fileStream.WriteAsync(buffer.Slice(totalWritten, numToWrite), cancellationToken).ConfigureAwait(false);
 
             _position += numToWrite;
             totalWritten += numToWrite;
@@ -375,13 +454,41 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         _parentDiskStream.Position = _diskOffset +
                                      (grain + _header.NumGTEsPerGT * grainTable) * _header.GrainSize *
                                      Sizes.Sector;
-        var content = StreamUtilities.ReadExact(_parentDiskStream, (int)_header.GrainSize * Sizes.Sector);
+
+        var size = (int)Math.Min(_header.GrainSize * Sizes.Sector, _parentDiskStream.Length - _parentDiskStream.Position);
+
+        var content = StreamUtilities.ReadExact(_parentDiskStream, size);
+        
         _fileStream.Position = grainStartPos;
+        
         _fileStream.Write(content, 0, content.Length);
 
         LoadGrainTable(grainTable);
         SetGrainTableEntry(grain, (uint)(grainStartPos / Sizes.Sector));
         WriteGrainTable();
+    }
+
+    private async ValueTask AllocateGrainAsync(int grainTable, int grain, CancellationToken cancellationToken)
+    {
+        // Calculate start pos for new grain
+        var grainStartPos = MathUtilities.RoundUp(_fileStream.Length, _header.GrainSize * Sizes.Sector);
+
+        // Copy-on-write semantics, read the bytes from parent and write them out to this extent.
+        _parentDiskStream.Position = _diskOffset +
+                                     (grain + _header.NumGTEsPerGT * grainTable) * _header.GrainSize *
+                                     Sizes.Sector;
+
+        var size = (int)Math.Min(_header.GrainSize * Sizes.Sector, _parentDiskStream.Length - _parentDiskStream.Position);
+
+        var content = await StreamUtilities.ReadExactAsync(_parentDiskStream, size, cancellationToken).ConfigureAwait(false);
+
+        _fileStream.Position = grainStartPos;
+
+        await _fileStream.WriteAsync(content, 0, content.Length, cancellationToken).ConfigureAwait(false);
+
+        await LoadGrainTableAsync(grainTable, cancellationToken).ConfigureAwait(false);
+        SetGrainTableEntry(grain, (uint)(grainStartPos / Sizes.Sector));
+        await WriteGrainTableAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private void WriteGrainTable()
@@ -398,6 +505,23 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         {
             _fileStream.Position = _redundantGlobalDirectory[_currentGrainTable] * (long)Sizes.Sector;
             _fileStream.Write(_grainTable, 0, _grainTable.Length);
+        }
+    }
+
+    private async ValueTask WriteGrainTableAsync(CancellationToken cancellationToken)
+    {
+        if (_grainTable == null)
+        {
+            throw new InvalidOperationException("No grain table loaded");
+        }
+
+        _fileStream.Position = _globalDirectory[_currentGrainTable] * (long)Sizes.Sector;
+        await _fileStream.WriteAsync(_grainTable, 0, _grainTable.Length, cancellationToken).ConfigureAwait(false);
+
+        if (_redundantGlobalDirectory != null)
+        {
+            _fileStream.Position = _redundantGlobalDirectory[_currentGrainTable] * (long)Sizes.Sector;
+            await _fileStream.WriteAsync(_grainTable, 0, _grainTable.Length, cancellationToken).ConfigureAwait(false);
         }
     }
 }
