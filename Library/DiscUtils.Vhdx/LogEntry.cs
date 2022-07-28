@@ -244,14 +244,15 @@ internal sealed class LogEntry
         public override void WriteData(Stream target)
         {
             target.Seek((long)FileOffset, SeekOrigin.Begin);
-            var zeroBuffer = ArrayPool<byte>.Shared.Rent((int)(4 * Sizes.OneKiB));
+            const int size = (int)(4 * Sizes.OneKiB);
+            var zeroBuffer = ArrayPool<byte>.Shared.Rent(size);
             try
             {
-                Array.Clear(zeroBuffer, 0, zeroBuffer.Length);
+                Array.Clear(zeroBuffer, 0, size);
                 var total = ZeroLength;
                 while (total > 0)
                 {
-                    var count = (int)(4 * Sizes.OneKiB);
+                    var count = size;
                     if (total < (uint)count)
                         count = (int)total;
                     target.Write(zeroBuffer, 0, count);
@@ -260,7 +261,7 @@ internal sealed class LogEntry
             }
             finally
             {
-
+                ArrayPool<byte>.Shared.Return(zeroBuffer);
             }
         }
     }

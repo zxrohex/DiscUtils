@@ -1358,7 +1358,7 @@ public class DynamicStream : MappedStream
         {
             EndianUtilities.WriteBytesBigEndian((uint)(newBlockStart / 512), entryBuffer);
             _fileStream.Position = _dynamicHeader.TableOffset + block * 4;
-            await _fileStream.WriteAsync(entryBuffer, cancellationToken).ConfigureAwait(false);
+            await _fileStream.WriteAsync(entryBuffer.AsMemory(0, 4), cancellationToken).ConfigureAwait(false);
         }
         finally
         {

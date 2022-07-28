@@ -25,6 +25,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -61,25 +62,18 @@ public sealed class AttributeDefinitions
     {
         _attrDefs = new Dictionary<AttributeType, AttributeDefinitionRecord>();
 
-        var buffer = ArrayPool<byte>.Shared.Rent(AttributeDefinitionRecord.Size);
-        try
+        Span<byte> buffer = stackalloc byte[AttributeDefinitionRecord.Size];
+        using Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.Read);
+        while (StreamUtilities.ReadMaximum(s, buffer) == AttributeDefinitionRecord.Size)
         {
-            using Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.Read);
-            while (StreamUtilities.ReadMaximum(s, buffer, 0, AttributeDefinitionRecord.Size) == AttributeDefinitionRecord.Size)
-            {
-                var record = new AttributeDefinitionRecord();
-                record.Read(buffer, 0);
+            var record = new AttributeDefinitionRecord();
+            record.Read(buffer);
 
-                // NULL terminator record
-                if (record.Type != AttributeType.None)
-                {
-                    _attrDefs.Add(record.Type, record);
-                }
+            // NULL terminator record
+            if (record.Type != AttributeType.None)
+            {
+                _attrDefs.Add(record.Type, record);
             }
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 
@@ -89,25 +83,18 @@ public sealed class AttributeDefinitions
         attribs.Sort();
 
         using Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite);
-        var buffer = ArrayPool<byte>.Shared.Rent(AttributeDefinitionRecord.Size);
-        try
+        Span<byte> buffer = stackalloc byte[AttributeDefinitionRecord.Size];
+        for (var i = 0; i < attribs.Count; ++i)
         {
-            for (var i = 0; i < attribs.Count; ++i)
-            {
-                Array.Clear(buffer, 0, AttributeDefinitionRecord.Size);
-                var attrDef = _attrDefs[attribs[i]];
-                attrDef.Write(buffer, 0);
+            buffer.Clear();
+            var attrDef = _attrDefs[attribs[i]];
+            attrDef.Write(buffer);
 
-                s.Write(buffer, 0, AttributeDefinitionRecord.Size);
-            }
+            s.Write(buffer);
+        }
 
-            Array.Clear(buffer, 0, AttributeDefinitionRecord.Size);
-            s.Write(buffer, 0, AttributeDefinitionRecord.Size);
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
+        buffer.Clear();
+        s.Write(buffer);
     }
 
     internal AttributeDefinitionRecord? Lookup(string name)

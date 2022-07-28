@@ -618,7 +618,7 @@ internal sealed class Connection : IDisposable
                 parameters.WriteTo(paramBuffer, 0);
 
                 var req = new LoginRequest(this);
-                var packet = req.GetBytes(paramBuffer, 0, paramBuffer.Length, true);
+                var packet = req.GetBytes(paramBuffer, 0, parameters.Size, true);
 
                 _stream.Write(packet, 0, packet.Length);
             }

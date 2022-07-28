@@ -885,7 +885,7 @@ internal class DiskStream : SparseStream
             EndianUtilities.WriteBytesLittleEndian(_blockTable[block], buffer);
 
             _fileStream.Position = _fileHeader.BlocksOffset + block * 4;
-            await _fileStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+            await _fileStream.WriteAsync(buffer.AsMemory(0, 4), cancellationToken).ConfigureAwait(false);
         }
         finally
         {
