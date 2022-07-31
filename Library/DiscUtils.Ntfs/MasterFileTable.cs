@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -161,16 +162,16 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "MASTER FILE TABLE");
-        writer.WriteLine(indent + "  Record Length: " + RecordSize);
+        writer.WriteLine($"{indent}MASTER FILE TABLE");
+        writer.WriteLine($"{indent}  Record Length: {RecordSize}");
 
         foreach (var record in Records)
         {
-            record.Dump(writer, indent + "  ");
+            record.Dump(writer, $"{indent}  ");
 
             foreach (var attr in record.Attributes)
             {
-                attr.Dump(writer, indent + "     ");
+                attr.Dump(writer, $"{indent}     ");
             }
         }
     }
@@ -254,11 +255,18 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
         _bitmap.MarkPresentRange(0, 1);
 
         // Write the MFT's own record to itself
-        var buffer = new byte[RecordSize];
-        fileRec.ToBytes(buffer, 0);
-        _recordStream.Position = 0;
-        _recordStream.Write(buffer, 0, RecordSize);
-        _recordStream.Flush();
+        var buffer = ArrayPool<byte>.Shared.Rent(RecordSize);
+        try
+        {
+            fileRec.ToBytes(buffer, 0);
+            _recordStream.Position = 0;
+            _recordStream.Write(buffer, 0, RecordSize);
+            _recordStream.Flush();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
 
         return _self;
     }
@@ -395,37 +403,44 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
             throw new IOException("Attempting to write over-sized MFT record");
         }
 
-        var buffer = new byte[RecordSize];
-        record.ToBytes(buffer, 0);
-
-        _recordStream.Position = record.MasterFileTableIndex * RecordSize;
-        _recordStream.Write(buffer, 0, RecordSize);
-        _recordStream.Flush();
-
-        // We may have modified our own meta-data by extending the data stream, so
-        // make sure our records are up-to-date.
-        if (_self.MftRecordIsDirty)
+        var buffer = ArrayPool<byte>.Shared.Rent(RecordSize);
+        try
         {
-            var dirEntry = _self.DirectoryEntry;
-            if (dirEntry != null)
+            record.ToBytes(buffer, 0);
+
+            _recordStream.Position = record.MasterFileTableIndex * RecordSize;
+            _recordStream.Write(buffer, 0, RecordSize);
+            _recordStream.Flush();
+
+            // We may have modified our own meta-data by extending the data stream, so
+            // make sure our records are up-to-date.
+            if (_self.MftRecordIsDirty)
             {
-                dirEntry.Value.UpdateFrom(_self);
+                var dirEntry = _self.DirectoryEntry;
+                if (dirEntry != null)
+                {
+                    dirEntry.Value.UpdateFrom(_self);
+                }
+
+                _self.UpdateRecordInMft();
             }
 
-            _self.UpdateRecordInMft();
+            // Need to update Mirror.  OpenRaw is OK because this is short duration, and we don't
+            // extend or otherwise modify any meta-data, just the content of the Data stream.
+            if (record.MasterFileTableIndex < 4 && _self.Context.GetFileByIndex != null)
+            {
+                var mftMirror = _self.Context.GetFileByIndex(MftMirrorIndex);
+                if (mftMirror != null)
+                {
+                    using Stream s = mftMirror.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite);
+                    s.Position = record.MasterFileTableIndex * RecordSize;
+                    s.Write(buffer, 0, RecordSize);
+                }
+            }
         }
-
-        // Need to update Mirror.  OpenRaw is OK because this is short duration, and we don't
-        // extend or otherwise modify any meta-data, just the content of the Data stream.
-        if (record.MasterFileTableIndex < 4 && _self.Context.GetFileByIndex != null)
+        finally
         {
-            var mftMirror = _self.Context.GetFileByIndex(MftMirrorIndex);
-            if (mftMirror != null)
-            {
-                using Stream s = mftMirror.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite);
-                s.Position = record.MasterFileTableIndex * RecordSize;
-                s.Write(buffer, 0, RecordSize);
-            }
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 
@@ -599,14 +614,16 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
         return clusterToRole;
     }
 
-    public BlockBitmap GetAllocationBitMap()
+    public AllocationBitmap GetAllocationBitMap()
     {
         var totalClusterBytes =
             (int)
             MathUtilities.Ceil(_self.Context.BiosParameterBlock.TotalSectors64,
                 _self.Context.BiosParameterBlock.SectorsPerCluster * 8);
 
-        var clusterbytes = new byte[totalClusterBytes];
+        var clusterBytes = new byte[totalClusterBytes];
+
+        var clusterBitmap = new AllocationBitmap(clusterBytes, 0, totalClusterBytes);
 
         foreach (var fr in Records)
         {
@@ -621,31 +638,37 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
             {
                 foreach (var range in stream.GetClusters())
                 {
-                    if (range.Offset >= 0 && range.Offset < clusterbytes.Length)
+                    if (range.Offset >= 0)
                     {
-                        for (var cluster = range.Offset; cluster < range.Offset + range.Count; ++cluster)
-                        {
-                            clusterbytes[cluster >> 3] |= (byte)(1 << (int)(cluster & 0x7));
-                        }
+                        clusterBitmap.MarkBitsAllocated(range.Offset, range.Count);
                     }
                 }
             }
         }
 
-        return new BlockBitmap(clusterbytes, 0, totalClusterBytes);
+        return clusterBitmap;
     }
 
     private static void Wipe(Stream s)
     {
         s.Position = 0;
 
-        var buffer = new byte[64 * Sizes.OneKiB];
-        var numWiped = 0;
-        while (numWiped < s.Length)
+        var bufferSize = 64 * Sizes.OneKiB;
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
         {
-            var toWrite = (int)Math.Min(buffer.Length, s.Length - s.Position);
-            s.Write(buffer, 0, toWrite);
-            numWiped += toWrite;
+            Array.Clear(buffer, 0, bufferSize);
+            var numWiped = 0;
+            while (numWiped < s.Length)
+            {
+                var toWrite = (int)Math.Min(bufferSize, s.Length - s.Position);
+                s.Write(buffer, 0, toWrite);
+                numWiped += toWrite;
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 }
