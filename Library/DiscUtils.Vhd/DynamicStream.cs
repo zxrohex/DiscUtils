@@ -244,7 +244,7 @@ public class DynamicStream : MappedStream
         }
     }
 
-    public BlockBitmap GetBlockBitmap(int block)
+    public AllocationBitmap GetBlockBitmap(int block)
     {
         if (!PopulateBlockBitmap(block))
         {
@@ -253,7 +253,7 @@ public class DynamicStream : MappedStream
 
         var data = _blockBitmaps[block];
 
-        return new BlockBitmap(data, 0, (int)(_dynamicHeader.BlockSize / Sizes.Sector / 8));
+        return new AllocationBitmap(data, 0, (int)(_dynamicHeader.BlockSize / Sizes.Sector / 8));
     }
 
     public override int Read(byte[] buffer, int offset, int count)

@@ -94,20 +94,20 @@ public sealed class Chunk
         return new BatEntry(_batData, block * 8).PayloadBlockStatus;
     }
 
-    public BlockBitmap GetBlockBitmap(int block)
+    public AllocationBitmap GetBlockBitmap(int block)
     {
         var bytesPerBlock = (int)(Sizes.OneMiB / _blocksPerChunk);
         var offset = bytesPerBlock * block;
         var data = LoadSectorBitmap();
-        return new BlockBitmap(data, offset, bytesPerBlock);
+        return new AllocationBitmap(data, offset, bytesPerBlock);
     }
 
-    public async ValueTask<BlockBitmap> GetBlockBitmapAsync(int block, CancellationToken cancellationToken)
+    public async ValueTask<AllocationBitmap> GetBlockBitmapAsync(int block, CancellationToken cancellationToken)
     {
         var bytesPerBlock = (int)(Sizes.OneMiB / _blocksPerChunk);
         var offset = bytesPerBlock * block;
         var data = await LoadSectorBitmapAsync(cancellationToken).ConfigureAwait(false);
-        return new BlockBitmap(data, offset, bytesPerBlock);
+        return new AllocationBitmap(data, offset, bytesPerBlock);
     }
 
     public void WriteBlockBitmap(int block)

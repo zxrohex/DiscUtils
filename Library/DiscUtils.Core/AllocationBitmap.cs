@@ -20,22 +20,43 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+
 namespace DiscUtils;
 
-public sealed class BlockBitmap
+/// <summary>
+/// Bitmap where each bit can be marked as unused or in use, with methods
+/// for finding contiguous in-use or unused bits.
+/// </summary>
+public sealed class AllocationBitmap
 {
     private readonly byte[] _data;
-    private readonly int _length;
+    private readonly long _length;
     private readonly int _offset;
 
-    public BlockBitmap(byte[] data, int offset, int length)
+    /// <summary>
+    /// Create an instance over an existing bitmap stored in an array.
+    /// </summary>
+    /// <param name="data">Existing array</param>
+    /// <param name="offset">Byte offset into array where bitmap starts</param>
+    /// <param name="length">Number of bytes to use in the array</param>
+    public AllocationBitmap(byte[] data, int offset, int length)
     {
+        // Just trigger bound checks
+        data.AsSpan(offset, length);
+
         _data = data;
         _offset = offset;
         _length = length;
     }
 
-    public int ContiguousSectors(int first, out bool state)
+    /// <summary>
+    /// Find number of contiguous bits
+    /// </summary>
+    /// <param name="first">Bit number where search should start</param>
+    /// <param name="state">Returns bit state of bits in found sequence</param>
+    /// <returns>Number of contiguous bits found</returns>
+    public int ContiguousBits(int first, out bool state)
     {
         var matched = 0;
         var bitPos = first % 8;
@@ -71,11 +92,17 @@ public sealed class BlockBitmap
         return matched;
     }
 
-    internal bool MarkSectorsPresent(int first, int count)
+    /// <summary>
+    /// Marks bits as allocated
+    /// </summary>
+    /// <param name="first">Bit number of first bit to mark as allocated</param>
+    /// <param name="count">Number of bits to mark, including the first one</param>
+    /// <returns>True if any bit states were changed</returns>
+    internal bool MarkBitsAllocated(long first, long count)
     {
         var changed = false;
         var marked = 0;
-        var bitPos = first % 8;
+        var bitPos = (int)first % 8;
         var bytePos = first / 8;
 
         while (marked < count)

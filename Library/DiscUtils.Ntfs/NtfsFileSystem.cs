@@ -28,6 +28,7 @@ using DiscUtils.Internal;
 using DiscUtils.Streams;
 using System.Linq;
 using DiscUtils.Streams.Compatibility;
+using System.Buffers;
 
 namespace DiscUtils.Ntfs;
 
@@ -1327,12 +1328,19 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 Content = reparsePoint.Content
             };
 
-            var contentBuffer = new byte[newRp.Size];
-            newRp.WriteTo(contentBuffer, 0);
-            using (Stream contentStream = stream.Value.Open(FileAccess.ReadWrite))
+            var contentBuffer = ArrayPool<byte>.Shared.Rent(newRp.Size);
+            try
             {
-                contentStream.Write(contentBuffer, 0, contentBuffer.Length);
-                contentStream.SetLength(contentBuffer.Length);
+                newRp.WriteTo(contentBuffer, 0);
+                using (Stream contentStream = stream.Value.Open(FileAccess.ReadWrite))
+                {
+                    contentStream.Write(contentBuffer, 0, newRp.Size);
+                    contentStream.SetLength(newRp.Size);
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(contentBuffer);
             }
 
             // Update the standard information attribute - so it reflects the actual file state
@@ -2619,14 +2627,23 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             long usedCluster = 0;
             var bitmap = _context.ClusterBitmap.Bitmap;
             var processed = 0L;
-            while (processed < bitmap.Size)
+
+            var bufferSize = 4 * Sizes.OneKiB;
+            var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+            try
             {
-                var buffer = new byte[4*Sizes.OneKiB];
-                var count = bitmap.GetBytes(processed, buffer, 0, buffer.Length);
-                usedCluster += BitCounter.Count(buffer, 0, count);
-                processed += count;
+                while (processed < bitmap.Size)
+                {
+                    var count = bitmap.GetBytes(processed, buffer, 0, bufferSize);
+                    usedCluster += BitCounter.Count(buffer, 0, count);
+                    processed += count;
+                }
             }
-            return (usedCluster* ClusterSize);
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+            return usedCluster * ClusterSize;
         }
     }
 

@@ -24,7 +24,7 @@ namespace DiscUtils.Streams;
 
 public static class Sizes
 {
-    public const long OneKiB = 1024;
+    public const int OneKiB = 1024;
     public const long OneMiB = 1024 * OneKiB;
     public const long OneGiB = 1024 * OneMiB;
 

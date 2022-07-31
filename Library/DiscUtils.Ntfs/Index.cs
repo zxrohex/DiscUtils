@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Internal;
@@ -442,13 +443,21 @@ internal class Index : IDisposable
     private void WriteRootNodeToDisk()
     {
         _rootNode.Header.AllocatedSizeOfEntries = (uint)_rootNode.CalcSize();
-        var buffer = new byte[_rootNode.Header.AllocatedSizeOfEntries + _root.Size];
-        _root.WriteTo(buffer);
-        _rootNode.WriteTo(buffer, _root.Size);
-        using Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Write);
-        s.Position = 0;
-        s.Write(buffer, 0, buffer.Length);
-        s.SetLength(s.Position);
+        var bufferSize = (int)(_rootNode.Header.AllocatedSizeOfEntries + _root.Size);
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
+        {
+            _root.WriteTo(buffer);
+            _rootNode.WriteTo(buffer, _root.Size);
+            using Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Write);
+            s.Position = 0;
+            s.Write(buffer, 0, bufferSize);
+            s.SetLength(s.Position);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     private void NodeAsString(TextWriter writer, string prefix, IndexNode node, string id)

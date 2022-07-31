@@ -75,10 +75,13 @@ internal struct NtfsStream
     public void SetContent<T>(T value)
         where T : IByteArraySerializable, IDiagnosticTraceable, new()
     {
-        var buffer = new byte[value.Size];
+        var buffer = value.Size <= 1024
+            ? stackalloc byte[value.Size]
+            : new byte[value.Size];
+        
         value.WriteTo(buffer);
-        using Stream s = Open(FileAccess.Write);
-        s.Write(buffer, 0, buffer.Length);
+        using var s = Open(FileAccess.Write);
+        s.Write(buffer);
         s.SetLength(buffer.Length);
     }
 

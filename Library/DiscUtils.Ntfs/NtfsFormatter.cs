@@ -25,6 +25,8 @@ using System.IO;
 using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.Core.WindowsSecurity;
 using DiscUtils.Streams;
+using System.Buffers;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -123,18 +125,24 @@ internal class NtfsFormatter
             {
                 s.SetLength(Math.Min(Math.Max(2 * Sizes.OneMiB, totalClusters / 500 * _clusterSize),
                     64 * Sizes.OneMiB));
-                var buffer = new byte[1024 * 1024];
-                for (var i = 0; i < buffer.Length; ++i)
+                
+                var bufferSize = 1024 * 1024;
+                var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+                try
                 {
-                    buffer[i] = 0xFF;
-                }
+                    buffer.AsSpan(0, bufferSize).Fill(0xff);
 
-                long totalWritten = 0;
-                while (totalWritten < s.Length)
+                    long totalWritten = 0;
+                    while (totalWritten < s.Length)
+                    {
+                        var toWrite = (int)Math.Min(s.Length - totalWritten, bufferSize);
+                        s.Write(buffer, 0, toWrite);
+                        totalWritten += toWrite;
+                    }
+                }
+                finally
                 {
-                    var toWrite = (int)Math.Min(s.Length - totalWritten, buffer.Length);
-                    s.Write(buffer, 0, toWrite);
-                    totalWritten += toWrite;
+                    ArrayPool<byte>.Shared.Return(buffer);
                 }
             }
 
@@ -143,7 +151,7 @@ internal class NtfsFormatter
             volNameStream.SetContent(new VolumeName(Label ?? "New Volume"));
             var volInfoStream = volumeFile.CreateStream(AttributeType.VolumeInformation, null);
             volInfoStream.SetContent(new VolumeInformation(3, 1, VolumeInformationFlags.None));
-            SetSecurityAttribute(volumeFile, "O:" + localAdminString + "G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)");
+            SetSecurityAttribute(volumeFile, $"O:{localAdminString}G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)");
             volumeFile.UpdateRecordInMft();
 
             _context.GetFileByIndex =
@@ -279,11 +287,17 @@ internal class NtfsFormatter
 
         if (wipe)
         {
-            var wipeBuffer = new byte[bpb.BytesPerCluster];
+            var wipeBuffer = bpb.BytesPerCluster <= 1024
+                ? stackalloc byte[bpb.BytesPerCluster]
+                : new byte[bpb.BytesPerCluster];
+
+            wipeBuffer.Clear();
+
             _context.RawStream.Position = firstCluster * bpb.BytesPerCluster;
+            
             for (ulong i = 0; i < numClusters; ++i)
             {
-                _context.RawStream.Write(wipeBuffer, 0, wipeBuffer.Length);
+                _context.RawStream.Write(wipeBuffer);
             }
         }
 

@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
@@ -78,13 +79,21 @@ internal class IndexBlock : FixupRecordBase
 
     internal void WriteToDisk()
     {
-        var buffer = new byte[_index.IndexBufferSize];
-        ToBytes(buffer, 0);
+        var bufferSize = (int)_index.IndexBufferSize;
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
+        {
+            ToBytes(buffer, 0);
 
-        var stream = _index.AllocationStream;
-        stream.Position = _streamPosition;
-        stream.Write(buffer, 0, buffer.Length);
-        stream.Flush();
+            var stream = _index.AllocationStream;
+            stream.Position = _streamPosition;
+            stream.Write(buffer, 0, buffer.Length);
+            stream.Flush();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     protected override void Read(byte[] buffer, int offset)

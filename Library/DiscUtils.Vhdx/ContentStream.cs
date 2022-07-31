@@ -201,7 +201,7 @@ public sealed class ContentStream : MappedStream
             {
                 var bitmap = chunk.GetBlockBitmap(blockIndex);
 
-                var numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
+                var numSectors = bitmap.ContiguousBits(sectorIndex, out var present);
                 var toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
                 int read;
 
@@ -282,7 +282,7 @@ public sealed class ContentStream : MappedStream
             {
                 var bitmap = await chunk.GetBlockBitmapAsync(blockIndex, cancellationToken).ConfigureAwait(false);
 
-                var numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
+                var numSectors = bitmap.ContiguousBits(sectorIndex, out var present);
                 var toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
                 int read;
 
@@ -363,7 +363,7 @@ public sealed class ContentStream : MappedStream
             {
                 var bitmap = await chunk.GetBlockBitmapAsync(blockIndex, cancellationToken).ConfigureAwait(false);
 
-                var numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
+                var numSectors = bitmap.ContiguousBits(sectorIndex, out var present);
                 var toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
                 int read;
 
@@ -444,7 +444,7 @@ public sealed class ContentStream : MappedStream
             {
                 var bitmap = chunk.GetBlockBitmap(blockIndex);
 
-                var numSectors = bitmap.ContiguousSectors(sectorIndex, out var present);
+                var numSectors = bitmap.ContiguousBits(sectorIndex, out var present);
                 var toRead = (int)Math.Min(numSectors * _metadata.LogicalSectorSize, totalToRead - totalRead);
                 int read;
 
@@ -551,7 +551,7 @@ public sealed class ContentStream : MappedStream
             if (blockStatus == PayloadBlockStatus.PartiallyPresent)
             {
                 var bitmap = chunk.GetBlockBitmap(blockIndex);
-                var changed = bitmap.MarkSectorsPresent(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
+                var changed = bitmap.MarkBitsAllocated(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
 
                 if (changed)
                 {
@@ -601,7 +601,7 @@ public sealed class ContentStream : MappedStream
             if (blockStatus == PayloadBlockStatus.PartiallyPresent)
             {
                 var bitmap = await chunk.GetBlockBitmapAsync(blockIndex, cancellationToken).ConfigureAwait(false);
-                var changed = bitmap.MarkSectorsPresent(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
+                var changed = bitmap.MarkBitsAllocated(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
 
                 if (changed)
                 {
@@ -651,7 +651,7 @@ public sealed class ContentStream : MappedStream
             if (blockStatus == PayloadBlockStatus.PartiallyPresent)
             {
                 var bitmap = await chunk.GetBlockBitmapAsync(blockIndex, cancellationToken).ConfigureAwait(false);
-                var changed = bitmap.MarkSectorsPresent(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
+                var changed = bitmap.MarkBitsAllocated(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
 
                 if (changed)
                 {
@@ -701,7 +701,7 @@ public sealed class ContentStream : MappedStream
             if (blockStatus == PayloadBlockStatus.PartiallyPresent)
             {
                 var bitmap = chunk.GetBlockBitmap(blockIndex);
-                var changed = bitmap.MarkSectorsPresent(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
+                var changed = bitmap.MarkBitsAllocated(sectorIndex, (int)(toWrite / _metadata.LogicalSectorSize));
 
                 if (changed)
                 {

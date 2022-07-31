@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -487,15 +488,24 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
     {
         var ok = true;
 
+        var genericRecord = new GenericFixupRecord(bytesPerSector);
+
         //
         // Verify the attributes seem OK...
         //
-        var tempBuffer = new byte[recordData.Length];
-        Array.Copy(recordData, tempBuffer, tempBuffer.Length);
-        var genericRecord = new GenericFixupRecord(bytesPerSector);
-        genericRecord.FromBytes(tempBuffer, 0);
+        var tempBuffer = ArrayPool<byte>.Shared.Rent(recordData.Length);
+        try
+        {
+            Array.Copy(recordData, tempBuffer, recordData.Length);
+            genericRecord.FromBytes(tempBuffer, 0);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(tempBuffer);
+        }
 
         int pos = EndianUtilities.ToUInt16LittleEndian(genericRecord.Content, 0x14);
+
         while (EndianUtilities.ToUInt32LittleEndian(genericRecord.Content, pos) != 0xFFFFFFFF)
         {
             int attrLen;

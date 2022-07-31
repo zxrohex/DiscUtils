@@ -155,5 +155,5 @@ public sealed class MasterFileTable
 
     public (uint IndexInMft, ushort AttributeId)[] GetClusterList() => _mft.GetClusterList();
 
-    public BlockBitmap GetAllocationBitMap() => _mft.GetAllocationBitMap();
+    public DiscUtils.AllocationBitmap GetAllocationBitMap() => _mft.GetAllocationBitMap();
 }
