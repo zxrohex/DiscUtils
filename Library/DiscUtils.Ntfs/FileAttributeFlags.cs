@@ -19,6 +19,10 @@ internal enum FileAttributeFlags : uint
     Offline = 0x00001000,
     NotIndexed = 0x00002000,
     Encrypted = 0x00004000,
+    IntegrityStream = 0x00008000,
+    Virtual = 0x00010000,
+    NoScrubData = 0x00020000,
+    ExtendedAttributes = 0x00040000,
     Directory = 0x10000000,
     IndexView = 0x20000000
 }
