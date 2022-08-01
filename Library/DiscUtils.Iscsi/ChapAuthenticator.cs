@@ -155,7 +155,7 @@ internal class ChapAuthenticator : Authenticator
             var result = new StringBuilder("0x");
             for (var i = 0; i < hash.Length; ++i)
             {
-                result.Append(hash[i].ToString("x2", CultureInfo.InvariantCulture));
+                result.AppendFormat("x2", hash[i]);
             }
 
             return result.ToString();
