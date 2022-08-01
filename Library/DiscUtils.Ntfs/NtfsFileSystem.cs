@@ -88,6 +88,18 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 BlockSize = _context.BiosParameterBlock.BytesPerCluster
             };
+            if (cacheSettings.ReadCacheSize < cacheSettings.BlockSize)
+            {
+                cacheSettings.ReadCacheSize = cacheSettings.BlockSize;
+            }
+            if (cacheSettings.LargeReadSize < cacheSettings.BlockSize)
+            {
+                cacheSettings.LargeReadSize = cacheSettings.BlockSize;
+            }
+            if (cacheSettings.OptimumReadSize < cacheSettings.BlockSize)
+            {
+                cacheSettings.OptimumReadSize = cacheSettings.BlockSize;
+            }
             _context.RawStream = new BlockCacheStream(SparseStream.FromStream(stream, Ownership.None),
                 Ownership.None, cacheSettings);
         }

@@ -48,7 +48,7 @@ internal class BiosParameterBlock
     public byte RawIndexBufferSize;
     public byte RawMftRecordSize;
     public ushort ReservedSectors; // Must be 0
-    public byte SectorsPerCluster;
+    public int SectorsPerCluster;
     public ushort SectorsPerTrack; // Value: 0x3F 0x00
     public byte SignatureByte; // Value: 0x80
     public ushort TotalSectors16; // Must be 0
@@ -104,7 +104,7 @@ internal class BiosParameterBlock
             OemId = NTFS_OEM_ID,
             BytesPerSector = Sizes.Sector
         };
-        bpb.SectorsPerCluster = (byte)(clusterSize / bpb.BytesPerSector);
+        bpb.SectorsPerCluster = clusterSize / bpb.BytesPerSector;
         bpb.ReservedSectors = 0;
         bpb.NumFats = 0;
         bpb.FatRootEntriesCount = 0;
@@ -139,7 +139,7 @@ internal class BiosParameterBlock
             TotalSectors64 = EndianUtilities.ToInt64LittleEndian(bytes, offset + 0x28),
             MftCluster = EndianUtilities.ToInt64LittleEndian(bytes, offset + 0x30),
             RawMftRecordSize = bytes[offset + 0x40],
-            SectorsPerCluster = bytes[offset + 0x0D]
+            SectorsPerCluster = DecodeSingleByteSize(bytes[offset + 0x0D])
         };
         if (!bpb.IsValid(long.MaxValue)) return bpb;
 
@@ -165,7 +165,7 @@ internal class BiosParameterBlock
     {
         EndianUtilities.StringToBytes(OemId, buffer, offset + 0x03, 8);
         EndianUtilities.WriteBytesLittleEndian(BytesPerSector, buffer, offset + 0x0B);
-        buffer[offset + 0x0D] = SectorsPerCluster;
+        buffer[offset + 0x0D] = EncodeSingleByteSize(SectorsPerCluster);
         EndianUtilities.WriteBytesLittleEndian(ReservedSectors, buffer, offset + 0x0E);
         buffer[offset + 0x10] = NumFats;
         EndianUtilities.WriteBytesLittleEndian(FatRootEntriesCount, buffer, offset + 0x11);
@@ -188,12 +188,40 @@ internal class BiosParameterBlock
         EndianUtilities.WriteBytesLittleEndian(VolumeSerialNumber, buffer, offset + 0x48);
     }
 
+    internal static int DecodeSingleByteSize(byte rawSize)
+    {
+        if ((rawSize & 0x80) != 0)
+        {
+            return 1 << -(sbyte)rawSize;
+        }
+        
+        return rawSize;
+    }
+
+    internal static byte EncodeSingleByteSize(int size)
+    {
+        if (size < 128)
+        {
+            return (byte)size;
+        }
+
+        var count = 1;
+
+        for (; size != 0; size >>= 1)
+        {
+            count--;
+        }
+
+        return (byte)(sbyte)count;
+    }
+
     internal int CalcRecordSize(byte rawSize)
     {
         if ((rawSize & 0x80) != 0)
         {
             return 1 << -(sbyte)rawSize;
         }
+        
         return rawSize * SectorsPerCluster * BytesPerSector;
     }
 
