@@ -49,7 +49,7 @@ internal struct DirectoryEntry
             var fileName = Details.FileName;
             if (fileName.IndexOf('.') == -1)
             {
-                return fileName + ".";
+                return $"{fileName}.";
             }
             return fileName;
         }

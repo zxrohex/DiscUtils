@@ -63,20 +63,7 @@ public class CommandLineMultiParameter
         get { return _isOptional; }
     }
 
-    internal string CommandLineText
-    {
-        get
-        {
-            if (_isOptional)
-            {
-                return "[" + _name + "0 " + _name + "1" + " ...]";
-            }
-            else
-            {
-                return _name + "0 " + _name + "1" + " ...";
-            }
-        }
-    }
+    internal string CommandLineText => _isOptional ? $"[{_name}0 {_name}1 ...]" : $"{_name}0 {_name}1 ...";
 
     internal int NameDisplayLength
     {
@@ -87,7 +74,7 @@ public class CommandLineMultiParameter
     {
         var text = Utilities.WordWrap((_isOptional ? "Optional. " : "") + _description, perLineDescWidth).ToArray();
 
-        writer.WriteLine(lineTemplate, _name + "0..n", text[0]);
+        writer.WriteLine(lineTemplate, $"{_name}0..n", text[0]);
         for (var i = 1; i < text.Length; ++i)
         {
             writer.WriteLine(lineTemplate, "", text[i]);

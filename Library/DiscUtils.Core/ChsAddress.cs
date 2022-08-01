@@ -91,8 +91,5 @@ public sealed class ChsAddress
     /// Gets a string representation of this object, in the form (C/H/S).
     /// </summary>
     /// <returns>The string representation.</returns>
-    public override string ToString()
-    {
-        return "(" + Cylinder + "/" + Head + "/" + Sector + ")";
-    }
+    public override string ToString() => $"({Cylinder}/{Head}/{Sector})";
 }

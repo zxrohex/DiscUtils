@@ -217,7 +217,7 @@ internal sealed class DiscContentBuffer : Buffer
 
                 var resp = CalcDigestResponse(authParams["nonce"], wr.RequestUri.AbsolutePath, wr.Method, authParams["realm"]);
 
-                _authHeader = "Digest username=\"" + _userName + "\", realm=\"ODS\", nonce=\"" + authParams["nonce"] + "\", uri=\"" + wr.RequestUri.AbsolutePath + "\", response=\"" + resp + "\"";
+                _authHeader = $"Digest username=\"{_userName}\", realm=\"ODS\", nonce=\"{authParams["nonce"]}\", uri=\"{wr.RequestUri.AbsolutePath}\", response=\"{resp}\"";
 
                 (wresp as IDisposable).Dispose();
 
@@ -259,7 +259,7 @@ internal sealed class DiscContentBuffer : Buffer
 
                 var resp = CalcDigestResponse(authParams["nonce"], wr.RequestUri.AbsolutePath, wr.Method, authParams["realm"]);
 
-                _authHeader = "Digest username=\"" + _userName + "\", realm=\"ODS\", nonce=\"" + authParams["nonce"] + "\", uri=\"" + wr.RequestUri.AbsolutePath + "\", response=\"" + resp + "\"";
+                _authHeader = $"Digest username=\"{_userName}\", realm=\"ODS\", nonce=\"{authParams["nonce"]}\", uri=\"{wr.RequestUri.AbsolutePath}\", response=\"{resp}\"";
 
                 (wresp as IDisposable).Dispose();
 
@@ -273,20 +273,33 @@ internal sealed class DiscContentBuffer : Buffer
         }
     }
 
+#if NET5_0_OR_GREATER
+
+    private static byte[] CalcMD5Hash(byte[] bytes) => MD5.HashData(bytes);
+
+#else
+
+    [ThreadStatic]
+    private static MD5 _md5;
+
+    private static byte[] CalcMD5Hash(byte[] bytes)
+    {
+        _md5 ??= MD5.Create();
+        return _md5.ComputeHash(bytes);
+    }
+
+#endif
 
     private string CalcDigestResponse(string nonce, string uriPath, string method, string realm)
     {
-        var a2 = method + ":" + uriPath;
-        var ha2hash = MD5.Create();
-        var ha2 = ToHexString(ha2hash.ComputeHash(Encoding.ASCII.GetBytes(a2)));
+        var a2 = $"{method}:{uriPath}";
+        var ha2 = ToHexString(CalcMD5Hash(Encoding.ASCII.GetBytes(a2)));
 
-        var a1 = _userName + ":" + realm + ":" + _password;
-        var ha1hash = MD5.Create();
-        var ha1 = ToHexString(ha1hash.ComputeHash(Encoding.ASCII.GetBytes(a1)));
+        var a1 = $"{_userName}:{realm}:{_password}";
+        var ha1 = ToHexString(CalcMD5Hash(Encoding.ASCII.GetBytes(a1)));
 
-        var toHash = ha1 + ":" + nonce + ":" + ha2;
-        var respHas = MD5.Create();
-        var hash = respHas.ComputeHash(Encoding.ASCII.GetBytes(toHash));
+        var toHash = $"{ha1}:{nonce}:{ha2}";
+        var hash = CalcMD5Hash(Encoding.ASCII.GetBytes(toHash));
         return ToHexString(hash);
     }
 

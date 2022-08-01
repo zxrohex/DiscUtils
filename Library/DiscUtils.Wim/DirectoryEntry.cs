@@ -51,7 +51,7 @@ internal class DirectoryEntry
         {
             if (FileName.IndexOf('.') == -1)
             {
-                return FileName + ".";
+                return $"{FileName}.";
             }
             return FileName;
         }

@@ -93,7 +93,7 @@ internal class DeviceElementValue : ElementValue
     {
         if (_parentObject != Guid.Empty)
         {
-            return _parentObject + ":" + _record;
+            return $"{_parentObject}:{_record}";
         }
         if (_record != null)
         {

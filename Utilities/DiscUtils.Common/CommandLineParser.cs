@@ -95,12 +95,12 @@ public class CommandLineParser
 
         foreach (var p in _params)
         {
-            p.WriteDescription(Console.Out, "  {0,-" + maxNameLen + "}  {1}", 74 - maxNameLen);
+            p.WriteDescription(Console.Out, $"  {{0,-{maxNameLen}}}  {{1}}", 74 - maxNameLen);
             Console.WriteLine();
         }
         if (_multiParam != null)
         {
-            _multiParam.WriteDescription(Console.Out, "  {0,-" + maxNameLen + "}  {1}", 74 - maxNameLen);
+            _multiParam.WriteDescription(Console.Out, $"  {{0,-{maxNameLen}}}  {{1}}", 74 - maxNameLen);
             Console.WriteLine();
         }
 
@@ -115,7 +115,7 @@ public class CommandLineParser
 
         foreach (var s in _switches)
         {
-            s.WriteDescription(Console.Out, "  {0,-" + maxSwitchLen + "}  {1}", 74 - maxSwitchLen);
+            s.WriteDescription(Console.Out, $"  {{0,-{maxSwitchLen}}}  {{1}}", 74 - maxSwitchLen);
             Console.WriteLine();
         }
 
@@ -128,7 +128,7 @@ public class CommandLineParser
 
                 foreach(var line in text)
                 {
-                    Console.WriteLine("  " + line);
+                    Console.WriteLine($"  {line}");
                 }
                 Console.WriteLine();
             }

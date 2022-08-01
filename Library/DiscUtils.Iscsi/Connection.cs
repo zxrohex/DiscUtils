@@ -382,7 +382,7 @@ internal sealed class Connection : IDisposable
     {
         if (number != 0 && number != ExpectedStatusSequenceNumber)
         {
-            throw new InvalidProtocolException("Unexpected status sequence number " + number + ", expected " + ExpectedStatusSequenceNumber);
+            throw new InvalidProtocolException($"Unexpected status sequence number {number}, expected {ExpectedStatusSequenceNumber}");
         }
 
         ExpectedStatusSequenceNumber = number + 1;
@@ -544,7 +544,7 @@ internal sealed class Connection : IDisposable
 
         if (resp.NextStage != NextLoginStage)
         {
-            throw new LoginException("iSCSI Target wants to transition to a different login stage: " + resp.NextStage + " (expected: " + NextLoginStage + ")");
+            throw new LoginException($"iSCSI Target wants to transition to a different login stage: {resp.NextStage} (expected: {NextLoginStage})");
         }
 
         CurrentLoginStage = resp.NextStage;
@@ -670,7 +670,7 @@ internal sealed class Connection : IDisposable
 
         if (resp.NextStage != NextLoginStage)
         {
-            throw new LoginException("iSCSI Target wants to transition to a different login stage: " + resp.NextStage + " (expected: " + NextLoginStage + ")");
+            throw new LoginException($"iSCSI Target wants to transition to a different login stage: {resp.NextStage} (expected: {NextLoginStage})");
         }
 
         CurrentLoginStage = resp.NextStage;

@@ -132,10 +132,10 @@ internal class AttributeList : IByteArraySerializable, IDiagnosticTraceable, ICo
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "ATTRIBUTE LIST RECORDS");
+        writer.WriteLine($"{indent}ATTRIBUTE LIST RECORDS");
         foreach (var r in _records)
         {
-            r.Dump(writer, indent + "  ");
+            r.Dump(writer, $"{indent}  ");
         }
     }
 }

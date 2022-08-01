@@ -117,13 +117,13 @@ internal class AttributeListRecord : IDiagnosticTraceable, IByteArraySerializabl
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "ATTRIBUTE LIST RECORD");
-        writer.WriteLine(indent + "                 Type: " + Type);
-        writer.WriteLine(indent + "        Record Length: " + RecordLength);
-        writer.WriteLine(indent + "                 Name: " + Name);
-        writer.WriteLine(indent + "            Start VCN: " + StartVcn);
-        writer.WriteLine(indent + "  Base File Reference: " + BaseFileReference);
-        writer.WriteLine(indent + "         Attribute ID: " + AttributeId);
+        writer.WriteLine($"{indent}ATTRIBUTE LIST RECORD");
+        writer.WriteLine($"{indent}                 Type: {Type}");
+        writer.WriteLine($"{indent}        Record Length: {RecordLength}");
+        writer.WriteLine($"{indent}                 Name: {Name}");
+        writer.WriteLine($"{indent}            Start VCN: {StartVcn}");
+        writer.WriteLine($"{indent}  Base File Reference: {BaseFileReference}");
+        writer.WriteLine($"{indent}         Attribute ID: {AttributeId}");
     }
 
     public static AttributeListRecord FromAttribute(AttributeRecord attr, FileRecordReference mftRecord)

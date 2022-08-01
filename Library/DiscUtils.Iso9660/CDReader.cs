@@ -106,6 +106,16 @@ public class CDReader : VfsFileSystemFacade, IClusterBasedFileSystem, IUnixFileS
     }
 
     /// <summary>
+    /// Gets the size (in bytes) of each sector.
+    /// </summary>
+    public int SectorSize => GetRealFileSystem<VfsCDReader>().SectorSize;
+
+    /// <summary>
+    /// Gets the total number of sectors managed by the file system.
+    /// </summary>
+    public long TotalSectors => GetRealFileSystem<VfsCDReader>().TotalSectors;
+
+    /// <summary>
     /// Converts a cluster (index) into an absolute byte position in the underlying stream.
     /// </summary>
     /// <param name="cluster">The cluster to convert.</param>

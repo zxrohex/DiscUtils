@@ -63,8 +63,5 @@ internal sealed class BTreeLeafRecord<TKey> : BTreeNodeRecord
         throw new NotImplementedException();
     }
 
-    public override string ToString()
-    {
-        return Key + ":" + Data;
-    }
+    public override string ToString() => $"{Key}:{Data}";
 }

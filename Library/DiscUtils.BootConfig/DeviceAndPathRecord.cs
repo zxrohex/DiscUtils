@@ -40,10 +40,7 @@ internal class DeviceAndPathRecord : DeviceRecord
         throw new NotImplementedException();
     }
 
-    public override string ToString()
-    {
-        return _container + ":" + _path;
-    }
+    public override string ToString() => $"{_container}:{_path}";
 
     protected override void DoParse(byte[] data, int offset)
     {

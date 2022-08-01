@@ -73,8 +73,8 @@ internal class DescriptorFileEntry
         return _type switch
         {
             DescriptorFileEntryType.NoValue => Key,
-            DescriptorFileEntryType.Plain => Key + sep + "=" + sep + Value,
-            DescriptorFileEntryType.Quoted => Key + sep + "=" + sep + "\"" + Value + "\"",
+            DescriptorFileEntryType.Plain => $"{Key}{sep}={sep}{Value}",
+            DescriptorFileEntryType.Quoted => $"{Key}{sep}={sep}\"{Value}\"",
             _ => throw new InvalidOperationException($"Unknown type: {_type}"),
         };
     }

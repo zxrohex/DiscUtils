@@ -266,15 +266,19 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
         get { return Context.VolumeDescriptor.VolumeIdentifier; }
     }
 
-    public long ClusterSize
+    public int SectorSize
     {
         get { return IsoUtilities.SectorSize; }
     }
 
-    public long TotalClusters
+    public long TotalSectors
     {
         get { return Context.VolumeDescriptor.VolumeSpaceSize; }
     }
+
+    public long ClusterSize => SectorSize;
+
+    public long TotalClusters => TotalSectors;
 
     public long ClusterToOffset(long cluster)
     {

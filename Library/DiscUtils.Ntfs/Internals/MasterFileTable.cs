@@ -94,7 +94,7 @@ public sealed class MasterFileTable
     /// <summary>
     /// First index available for 'normal' files.
     /// </summary>
-    private const uint FirstNormalFileIndex = 24;
+    public const uint FirstNormalFileIndex = 24;
 
     private readonly INtfsContext _context;
     private readonly InternalMasterFileTable _mft;

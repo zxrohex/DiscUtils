@@ -114,10 +114,10 @@ public class CommandLineSwitch
 
         for (var i = 0; i < shortSwitches.Length; ++i)
         {
-            result[i] = "-" + shortSwitches[i];
+            result[i] = $"-{shortSwitches[i]}";
             if (param != null)
             {
-                result[i] += " <" + param + ">";
+                result[i] += $" <{param}>";
             }
             maxLen = Math.Max(result[i].Length, maxLen);
         }
@@ -125,7 +125,7 @@ public class CommandLineSwitch
         result[result.Length - 1] = "-" + fullSwitch;
         if (param != null)
         {
-            result[result.Length - 1] += " <" + param + ">";
+            result[result.Length - 1] += $" <{param}>";
         }
         maxLen = Math.Max(result[result.Length - 1].Length, maxLen);
 

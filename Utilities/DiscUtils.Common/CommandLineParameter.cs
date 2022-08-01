@@ -67,7 +67,7 @@ public class CommandLineParameter
         {
             if (_isOptional)
             {
-                return "[" + _name + "]";
+                return $"[{_name}]";
             }
             else
             {

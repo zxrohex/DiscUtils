@@ -40,6 +40,16 @@ public interface IClusterBasedFileSystem : IFileSystem
     long TotalClusters { get; }
 
     /// <summary>
+    /// Gets the size (in bytes) of each sector.
+    /// </summary>
+    int SectorSize { get; }
+
+    /// <summary>
+    /// Gets the total number of sectors managed by the file system.
+    /// </summary>
+    long TotalSectors { get; }
+
+    /// <summary>
     /// Converts a cluster (index) into an absolute byte position in the underlying stream.
     /// </summary>
     /// <param name="cluster">The cluster to convert.</param>

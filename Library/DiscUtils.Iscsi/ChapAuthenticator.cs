@@ -109,10 +109,25 @@ internal class ChapAuthenticator : Authenticator
         return data;
     }
 
+#if NET5_0_OR_GREATER
+
+    private static byte[] CalcMD5Hash(byte[] bytes, int offset, int count) => MD5.HashData(bytes.AsSpan(offset, count));
+
+#else
+
+    [ThreadStatic]
+    private static MD5 _md5;
+
+    private static byte[] CalcMD5Hash(byte[] bytes, int offset, int count)
+    {
+        _md5 ??= MD5.Create();
+        return _md5.ComputeHash(bytes, offset, count);
+    }
+
+#endif
+
     private string CalcResponse()
     {
-        using var md5 = MD5.Create();
-
         var toHashLength = 1 + _password.Length + _challenge.Length;
         var toHash = ArrayPool<byte>.Shared.Rent(toHashLength);
         try
@@ -121,8 +136,22 @@ internal class ChapAuthenticator : Authenticator
             Encoding.ASCII.GetBytes(_password, 0, _password.Length, toHash, 1);
             Array.Copy(_challenge, 0, toHash, _password.Length + 1, _challenge.Length);
 
-            var hash = md5.ComputeHash(toHash, 0, toHashLength);
+            var hash = CalcMD5Hash(toHash, 0, toHashLength);
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            var result = string.Create(2 + hash.Length * 2, hash,
+                (span, bytes) =>
+                {
+                    "0x".AsSpan().CopyTo(span);
+                    for (var i = 0; i < hash.Length; ++i)
+                    {
+                        span = span.Slice(2);
+                        hash[i].TryFormat(span, out _, "x2");
+                    }
+                });
+
+            return result;
+#else
             var result = new StringBuilder("0x");
             for (var i = 0; i < hash.Length; ++i)
             {
@@ -130,6 +159,7 @@ internal class ChapAuthenticator : Authenticator
             }
 
             return result.ToString();
+#endif
         }
         finally
         {

@@ -188,6 +188,8 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         get { return _context.BiosParameterBlock.BytesPerCluster; }
     }
 
+    public int SectorSize => _context.BiosParameterBlock.BytesPerSector;
+
     /// <summary>
     /// Gets the total number of clusters managed by the file system.
     /// </summary>
@@ -199,6 +201,8 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 _context.BiosParameterBlock.SectorsPerCluster);
         }
     }
+
+    public long TotalSectors => _context.BiosParameterBlock.TotalSectors64;
 
     public AttributeDefinitions AttributeDefinitions => _context.AttributeDefinitions;
 
@@ -1150,8 +1154,8 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="linePrefix">The indent to apply to the start of each line of output.</param>
     public void Dump(TextWriter writer, string linePrefix)
     {
-        writer.WriteLine(linePrefix + "NTFS File System Dump");
-        writer.WriteLine(linePrefix + "=====================");
+        writer.WriteLine($"{linePrefix}NTFS File System Dump");
+        writer.WriteLine($"{linePrefix}=====================");
 
         ////_context.Mft.Dump(writer, linePrefix);
         writer.WriteLine(linePrefix);
@@ -1185,7 +1189,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         GetDirectory(MasterFileTable.RootDirIndex).Dump(writer, linePrefix);
 
         writer.WriteLine(linePrefix);
-        writer.WriteLine(linePrefix + "FULL FILE LISTING");
+        writer.WriteLine($"{linePrefix}FULL FILE LISTING");
         foreach (var record in _context.Mft.Records)
         {
             // Don't go through cache - these are short-lived, and this is (just!) diagnostics
@@ -1198,20 +1202,20 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 {
                     try
                     {
-                        writer.WriteLine(linePrefix + "  INDEX (" + stream.Name + ")");
-                        f.GetIndex(stream.Name).Dump(writer, linePrefix + "    ");
+                        writer.WriteLine($"{linePrefix}  INDEX ({stream.Name})");
+                        f.GetIndex(stream.Name).Dump(writer, $"{linePrefix}    ");
                     }
                     catch (Exception e)
                     {
-                        writer.WriteLine(linePrefix + "!Exception: " + e);
+                        writer.WriteLine($"{linePrefix}!Exception: {e}");
                     }
                 }
             }
         }
 
         writer.WriteLine(linePrefix);
-        writer.WriteLine(linePrefix + "DIRECTORY TREE");
-        writer.WriteLine(linePrefix + $"{Path.DirectorySeparatorChar} (5)");
+        writer.WriteLine($"{linePrefix}DIRECTORY TREE");
+        writer.WriteLine($"{linePrefix}{Path.DirectorySeparatorChar} (5)");
         DumpDirectory(GetDirectory(MasterFileTable.RootDirIndex), writer, linePrefix); // 5 = Root Dir
     }
 

@@ -80,8 +80,5 @@ internal sealed class CatalogKey : BTreeKey, IComparable<CatalogKey>
         return CompareTo(other as CatalogKey);
     }
 
-    public override string ToString()
-    {
-        return Name + " (" + NodeId + ")";
-    }
+    public override string ToString() => $"{Name} ({NodeId})";
 }

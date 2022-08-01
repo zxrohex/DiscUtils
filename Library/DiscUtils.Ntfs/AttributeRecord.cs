@@ -138,12 +138,12 @@ internal abstract class AttributeRecord : IComparable<AttributeRecord>
 
     public virtual void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "ATTRIBUTE RECORD");
-        writer.WriteLine(indent + "            Type: " + _type);
-        writer.WriteLine(indent + "    Non-Resident: " + _nonResidentFlag);
-        writer.WriteLine(indent + "            Name: " + _name);
-        writer.WriteLine(indent + "           Flags: " + _flags);
-        writer.WriteLine(indent + "     AttributeId: " + _attributeId);
+        writer.WriteLine($"{indent}ATTRIBUTE RECORD");
+        writer.WriteLine($"{indent}            Type: {_type}");
+        writer.WriteLine($"{indent}    Non-Resident: {_nonResidentFlag}");
+        writer.WriteLine($"{indent}            Name: {_name}");
+        writer.WriteLine($"{indent}           Flags: {_flags}");
+        writer.WriteLine($"{indent}     AttributeId: {_attributeId}");
     }
 
     protected virtual void Read(byte[] buffer, int offset, out int length)

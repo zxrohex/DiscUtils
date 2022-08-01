@@ -187,14 +187,14 @@ internal class DescriptorFile
         content.Append("# Disk DescriptorFile\n");
         for (var i = 0; i < _header.Count; ++i)
         {
-            content.Append(_header[i].ToString(false) + "\n");
+            content.Append($"{_header[i].ToString(false)}\n");
         }
 
         content.Append("\n");
         content.Append("# Extent description\n");
         for (var i = 0; i < Extents.Count; ++i)
         {
-            content.Append(Extents[i] + "\n");
+            content.Append($"{Extents[i]}\n");
         }
 
         content.Append("\n");
@@ -202,7 +202,7 @@ internal class DescriptorFile
         content.Append("#DDB\n");
         for (var i = 0; i < _diskDataBase.Count; ++i)
         {
-            content.Append(_diskDataBase[i].ToString(true) + "\n");
+            content.Append($"{_diskDataBase[i].ToString(true)}\n");
         }
 
         var contentBytes = Encoding.ASCII.GetBytes(content.ToString());
