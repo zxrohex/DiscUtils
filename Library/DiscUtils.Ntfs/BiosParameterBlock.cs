@@ -190,7 +190,7 @@ internal class BiosParameterBlock
 
     internal static int DecodeSingleByteSize(byte rawSize)
     {
-        if ((rawSize & 0x80) != 0)
+        if (rawSize > 0x80)
         {
             return 1 << -(sbyte)rawSize;
         }
@@ -217,7 +217,7 @@ internal class BiosParameterBlock
 
     internal int CalcRecordSize(byte rawSize)
     {
-        if ((rawSize & 0x80) != 0)
+        if (rawSize > 0x80)
         {
             return 1 << -(sbyte)rawSize;
         }

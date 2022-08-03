@@ -83,7 +83,7 @@ internal class File
 
             string bestName = null;
 
-            if (attrs != null && attrs.Count != 0)
+            if (attrs.Count != 0)
             {
                 bestName = attrs[0].ToString();
 
@@ -127,7 +127,7 @@ internal class File
             // Root dir is stored without root directory flag set in FileNameRecord, simulate it.
             if (_records[0].MasterFileTableIndex == MasterFileTable.RootDirIndex)
             {
-                record.Flags |= FileAttributeFlags.Directory;
+                record.Flags |= NtfsFileAttributes.Directory;
             }
 
             return new DirectoryEntry(_context.GetDirectoryByRef(record.ParentDirectory), MftReference, record);
@@ -218,22 +218,22 @@ internal class File
         get { return GetStream(AttributeType.StandardInformation, null)?.GetContent<StandardInformation>(); }
     }
 
-    public static File CreateNew(INtfsContext context, FileAttributeFlags dirFlags)
+    public static File CreateNew(INtfsContext context, NtfsFileAttributes dirFlags)
     {
         return CreateNew(context, FileRecordFlags.None, dirFlags);
     }
 
-    public static File CreateNew(INtfsContext context, FileRecordFlags flags, FileAttributeFlags dirFlags)
+    public static File CreateNew(INtfsContext context, FileRecordFlags flags, NtfsFileAttributes dirFlags)
     {
         var newFile = context.AllocateFile(flags);
 
         var fileFlags =
-            FileAttributeFlags.Archive
+            NtfsFileAttributes.Archive
             | FileRecord.ConvertFlags(flags)
-            | (dirFlags & FileAttributeFlags.Compressed);
+            | (dirFlags & NtfsFileAttributes.Compressed);
 
         var dataAttrFlags = AttributeFlags.None;
-        if ((dirFlags & FileAttributeFlags.Compressed) != 0)
+        if ((dirFlags & NtfsFileAttributes.Compressed) != 0)
         {
             dataAttrFlags |= AttributeFlags.Compressed;
         }
@@ -459,7 +459,8 @@ internal class File
 
     public bool StreamExists(AttributeType attrType, string name)
     {
-        return GetStream(attrType, name) != null;
+        return _attributes
+            .Any(attr => attr.Type == attrType && attr.Name == name);
     }
 
     public NtfsStream? GetStream(AttributeType attrType, string name)
@@ -752,7 +753,7 @@ internal class File
         // Directories don't have directory flag set in StandardInformation, so set from MFT record
         if ((_records[0].Flags & FileRecordFlags.IsDirectory) != 0)
         {
-            fileName.Flags |= FileAttributeFlags.Directory;
+            fileName.Flags |= NtfsFileAttributes.Directory;
         }
 
         if (anonDataAttr != null)
@@ -769,7 +770,7 @@ internal class File
                 if (fnr.Equals(fileName))
                 {
                     fnr = new FileNameRecord(fileName);
-                    fnr.Flags &= ~FileAttributeFlags.ReparsePoint;
+                    fnr.Flags &= ~NtfsFileAttributes.ReparsePoint;
                     stream.SetContent(fnr);
                 }
             }
@@ -1206,6 +1207,36 @@ internal class File
         {
             _file = file;
             _attr = attr;
+
+            // ToDo: Implement decompression of WofCompressedData
+#if false
+            if (!access.HasFlag(FileAccess.Write))
+            {
+                var info = file.StandardInformation;
+
+                if (info != null &&
+                    info.FileAttributes.HasFlag(NtfsFileAttributes.SparseFile |
+                    NtfsFileAttributes.ReparsePoint | NtfsFileAttributes.ExtendedAttributes))
+                {
+                    var reparse_stream = file.GetStream(AttributeType.ReparsePoint, null);
+                    var compressed_stream = file.GetStream(AttributeType.Data, "WofCompressedData");
+
+                    if (reparse_stream.HasValue && compressed_stream.HasValue)
+                    {
+                        const uint ReparsePointTagWofCompressed = 0x80000017u;
+                        var reparse_point = reparse_stream.Value.GetContent<ReparsePointRecord>();
+                        if (reparse_point.Tag == ReparsePointTagWofCompressed)
+                        {
+                            var compressed_data = compressed_stream.Value.GetContent();
+                            var uncompressed_size = attr.Length;
+
+                            // ToDo: Implement decompression of WofCompressedData
+                        }
+                    }
+                }
+            }
+#endif
+
             _wrapped = attr.Open(access);
         }
 

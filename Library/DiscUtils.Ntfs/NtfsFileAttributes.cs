@@ -22,13 +22,13 @@
 
 using System;
 
-namespace DiscUtils.Ntfs.Internals;
+namespace DiscUtils.Ntfs;
 
 /// <summary>
 /// File attributes as stored natively by NTFS.
 /// </summary>
 [Flags]
-public enum NtfsFileAttributes
+public enum NtfsFileAttributes : uint
 {
     /// <summary>
     /// No attributes.
@@ -73,7 +73,7 @@ public enum NtfsFileAttributes
     /// <summary>
     /// The file content is stored in sparse form.
     /// </summary>
-    Sparse = 0x00000200,
+    SparseFile = 0x00000200,
 
     /// <summary>
     /// The file has a reparse point attached.
@@ -99,6 +99,14 @@ public enum NtfsFileAttributes
     /// The file content is encrypted.
     /// </summary>
     Encrypted = 0x00004000,
+
+    IntegrityStream = 0x00008000,
+
+    Virtual = 0x00010000,
+
+    NoScrubData = 0x00020000,
+
+    ExtendedAttributes = 0x00040000,
 
     /// <summary>
     /// The file is actually a directory.

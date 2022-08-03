@@ -35,7 +35,7 @@ internal class FileNameRecord : IByteArraySerializable, IDiagnosticTraceable, IE
     public uint EASizeOrReparsePointTag;
     public string FileName;
     public FileNameNamespace FileNameNamespace;
-    public FileAttributeFlags Flags;
+    public NtfsFileAttributes Flags;
     public DateTime LastAccessTime;
     public DateTime MftChangedTime;
     public DateTime ModificationTime;
@@ -78,7 +78,7 @@ internal class FileNameRecord : IByteArraySerializable, IDiagnosticTraceable, IE
         LastAccessTime = ReadDateTime(buffer.Slice(0x20));
         AllocatedSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x28));
         RealSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x30));
-        Flags = (FileAttributeFlags)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x38));
+        Flags = (NtfsFileAttributes)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x38));
         EASizeOrReparsePointTag = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x3C));
         var fnLen = buffer[0x40];
         FileNameNamespace = (FileNameNamespace)buffer[0x41];
@@ -115,7 +115,7 @@ internal class FileNameRecord : IByteArraySerializable, IDiagnosticTraceable, IE
         writer.WriteLine($"{indent}          Real Size: {RealSize}");
         writer.WriteLine($"{indent}              Flags: {Flags}");
 
-        if ((Flags & FileAttributeFlags.ReparsePoint) != 0)
+        if ((Flags & NtfsFileAttributes.ReparsePoint) != 0)
         {
             writer.WriteLine($"{indent}  Reparse Point Tag: {EASizeOrReparsePointTag}");
         }
@@ -145,17 +145,17 @@ internal class FileNameRecord : IByteArraySerializable, IDiagnosticTraceable, IE
         return FileName;
     }
 
-    internal static FileAttributeFlags SetAttributes(FileAttributes attrs, FileAttributeFlags flags)
+    internal static NtfsFileAttributes SetAttributes(FileAttributes attrs, NtfsFileAttributes flags)
     {
         var attrMask = (FileAttributes)0xFFFF & ~FileAttributes.Directory;
-        return (FileAttributeFlags)(((uint)flags & 0xFFFF0000) | (uint)(attrs & attrMask));
+        return (NtfsFileAttributes)(((uint)flags & 0xFFFF0000) | (uint)(attrs & attrMask));
     }
 
-    internal static FileAttributes ConvertFlags(FileAttributeFlags flags)
+    internal static FileAttributes ConvertFlags(NtfsFileAttributes flags)
     {
         var result = (FileAttributes)((uint)flags & 0xFFFF);
 
-        if ((flags & FileAttributeFlags.Directory) != 0)
+        if ((flags & NtfsFileAttributes.Directory) != 0)
         {
             result |= FileAttributes.Directory;
         }

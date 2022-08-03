@@ -96,13 +96,13 @@ internal class Directory : File
         return base.ToString() + Path.DirectorySeparatorChar;
     }
 
-    internal new static Directory CreateNew(INtfsContext context, FileAttributeFlags parentDirFlags)
+    internal new static Directory CreateNew(INtfsContext context, NtfsFileAttributes parentDirFlags)
     {
         var dir = (Directory)context.AllocateFile(FileRecordFlags.IsDirectory);
 
         StandardInformation.InitializeNewFile(
             dir,
-            FileAttributeFlags.Archive | (parentDirFlags & FileAttributeFlags.Compressed));
+            NtfsFileAttributes.Archive | (parentDirFlags & NtfsFileAttributes.Compressed));
 
         // Create the index root attribute by instantiating a new index
         dir.CreateIndex("$I30", AttributeType.FileName, AttributeCollationRule.Filename);
@@ -235,9 +235,9 @@ internal class Directory : File
     private bool FilterEntry(DirectoryIndexEntry entry)
     {
         // Weed out short-name entries for files and any hidden / system / metadata files.
-        if ((entry.Key.Flags & FileAttributeFlags.Hidden) != 0
+        if ((entry.Key.Flags & NtfsFileAttributes.Hidden) != 0
             && _context.Options.HideHiddenFiles
-            || (entry.Key.Flags & FileAttributeFlags.System) != 0
+            || (entry.Key.Flags & NtfsFileAttributes.System) != 0
             && _context.Options.HideSystemFiles
             || entry.Value.MftIndex < 24
             && _context.Options.HideMetafiles

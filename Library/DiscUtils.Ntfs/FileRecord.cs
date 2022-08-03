@@ -86,23 +86,23 @@ internal class FileRecord : FixupRecordBase
 
     public ushort SequenceNumber { get; set; }
 
-    public static FileAttributeFlags ConvertFlags(FileRecordFlags source)
+    public static NtfsFileAttributes ConvertFlags(FileRecordFlags source)
     {
-        var result = FileAttributeFlags.None;
+        var result = NtfsFileAttributes.None;
 
         if ((source & FileRecordFlags.IsDirectory) != 0)
         {
-            result |= FileAttributeFlags.Directory;
+            result |= NtfsFileAttributes.Directory;
         }
 
         if ((source & FileRecordFlags.HasViewIndex) != 0)
         {
-            result |= FileAttributeFlags.IndexView;
+            result |= NtfsFileAttributes.IndexView;
         }
 
         if ((source & FileRecordFlags.IsMetaFile) != 0)
         {
-            result |= FileAttributeFlags.Hidden | FileAttributeFlags.System;
+            result |= NtfsFileAttributes.Hidden | NtfsFileAttributes.System;
         }
 
         return result;

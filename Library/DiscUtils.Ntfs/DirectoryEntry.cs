@@ -37,7 +37,7 @@ internal struct DirectoryEntry
 
     public bool IsDirectory
     {
-        get { return (Details.Flags & FileAttributeFlags.Directory) != 0; }
+        get { return (Details.Flags & NtfsFileAttributes.Directory) != 0; }
     }
 
     public FileRecordReference Reference { get; }

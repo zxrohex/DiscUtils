@@ -31,7 +31,7 @@ internal sealed class StandardInformation : IByteArraySerializable, IDiagnosticT
     private bool _haveExtraFields = true;
     public uint ClassId;
     public DateTime CreationTime;
-    public FileAttributeFlags FileAttributes;
+    public NtfsFileAttributes FileAttributes;
     public DateTime LastAccessTime;
     public uint MaxVersions;
     public DateTime MftChangedTime;
@@ -53,7 +53,7 @@ internal sealed class StandardInformation : IByteArraySerializable, IDiagnosticT
         ModificationTime = ReadDateTime(buffer.Slice(0x08));
         MftChangedTime = ReadDateTime(buffer.Slice(0x10));
         LastAccessTime = ReadDateTime(buffer.Slice(0x18));
-        FileAttributes = (FileAttributeFlags)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x20));
+        FileAttributes = (NtfsFileAttributes)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x20));
         MaxVersions = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x24));
         Version = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x28));
         ClassId = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x2C));
@@ -106,7 +106,7 @@ internal sealed class StandardInformation : IByteArraySerializable, IDiagnosticT
         writer.WriteLine($"{indent}     Update Seq Num: {UpdateSequenceNumber}");
     }
 
-    public static StandardInformation InitializeNewFile(File file, FileAttributeFlags flags)
+    public static StandardInformation InitializeNewFile(File file, NtfsFileAttributes flags)
     {
         var now = DateTime.UtcNow;
 
@@ -124,7 +124,7 @@ internal sealed class StandardInformation : IByteArraySerializable, IDiagnosticT
         return si;
     }
 
-    internal static FileAttributes ConvertFlags(FileAttributeFlags flags, bool isDirectory)
+    internal static FileAttributes ConvertFlags(NtfsFileAttributes flags, bool isDirectory)
     {
         var result = (FileAttributes)((uint)flags & 0xFFFF);
 
@@ -136,9 +136,9 @@ internal sealed class StandardInformation : IByteArraySerializable, IDiagnosticT
         return result;
     }
 
-    internal static FileAttributeFlags SetFileAttributes(FileAttributes newAttributes, FileAttributeFlags existing)
+    internal static NtfsFileAttributes SetFileAttributes(FileAttributes newAttributes, NtfsFileAttributes existing)
     {
-        return (FileAttributeFlags)(((uint)existing & 0xFFFF0000) | ((uint)newAttributes & 0xFFFF));
+        return (NtfsFileAttributes)(((uint)existing & 0xFFFF0000) | ((uint)newAttributes & 0xFFFF));
     }
 
     private static DateTime ReadDateTime(ReadOnlySpan<byte> buffer)

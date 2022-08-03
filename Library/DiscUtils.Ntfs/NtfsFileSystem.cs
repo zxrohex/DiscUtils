@@ -1362,7 +1362,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             // Update the standard information attribute - so it reflects the actual file state
             var stdInfoStream = file.GetStream(AttributeType.StandardInformation, null);
             var si = stdInfoStream?.GetContent<StandardInformation>();
-            si.FileAttributes |= FileAttributeFlags.ReparsePoint;
+            si.FileAttributes |= NtfsFileAttributes.ReparsePoint;
             stdInfoStream?.SetContent(si);
 
             // Update the directory entry used to open the file, so it's accurate
@@ -1870,11 +1870,11 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                     {
                         if (options.Compressed.Value)
                         {
-                            newDirAttrs |= FileAttributeFlags.Compressed;
+                            newDirAttrs |= NtfsFileAttributes.Compressed;
                         }
                         else
                         {
-                            newDirAttrs &= ~FileAttributeFlags.Compressed;
+                            newDirAttrs &= ~NtfsFileAttributes.Compressed;
                         }
                     }
 
@@ -2219,11 +2219,11 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         {
             if (options.Compressed.Value)
             {
-                newFileAttrs |= FileAttributeFlags.Compressed;
+                newFileAttrs |= NtfsFileAttributes.Compressed;
             }
             else
             {
-                newFileAttrs &= ~FileAttributeFlags.Compressed;
+                newFileAttrs &= ~NtfsFileAttributes.Compressed;
             }
         }
 
@@ -2375,7 +2375,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             // Update the standard information attribute - so it reflects the actual file state
             var stdInfoStream = file.GetStream(AttributeType.StandardInformation, null).Value;
             var si = stdInfoStream.GetContent<StandardInformation>();
-            si.FileAttributes &= ~FileAttributeFlags.ReparsePoint;
+            si.FileAttributes &= ~NtfsFileAttributes.ReparsePoint;
             stdInfoStream.SetContent(si);
 
             // Remove the reparse point from the index

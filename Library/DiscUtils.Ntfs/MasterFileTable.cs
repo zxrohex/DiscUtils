@@ -233,7 +233,7 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
 
         _self = new File(context, fileRec);
 
-        StandardInformation.InitializeNewFile(_self, FileAttributeFlags.Hidden | FileAttributeFlags.System);
+        StandardInformation.InitializeNewFile(_self, NtfsFileAttributes.Hidden | NtfsFileAttributes.System);
 
         var recordsStream = _self.CreateStream(AttributeType.Data, null, firstRecordsCluster,
             numRecordsClusters, (uint)bpb.BytesPerCluster);

@@ -20,13 +20,14 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
 
-internal struct NtfsStream
+internal readonly struct NtfsStream
 {
     private readonly File _file;
 
@@ -56,15 +57,23 @@ internal struct NtfsStream
     public T GetContent<T>()
         where T : IByteArraySerializable, IDiagnosticTraceable, new()
     {
-        byte[] buffer;
-        using (Stream s = Open(FileAccess.Read))
-        {
-            buffer = StreamUtilities.ReadExact(s, (int)s.Length);
-        }
-
+        var buffer = GetContent();
         var value = new T();
         value.ReadFrom(buffer);
         return value;
+    }
+
+    /// <summary>
+    /// Gets the content of a stream as a byte array.
+    /// </summary>
+    /// <returns>The content.</returns>
+    public byte[] GetContent()
+    {
+        using var s = Open(FileAccess.Read);
+
+        var buffer = StreamUtilities.ReadExact(s, (int)s.Length);
+
+        return buffer;
     }
 
     /// <summary>
@@ -78,11 +87,21 @@ internal struct NtfsStream
         var buffer = value.Size <= 1024
             ? stackalloc byte[value.Size]
             : new byte[value.Size];
-        
+
         value.WriteTo(buffer);
+
+        SetContent(buffer);
+    }
+
+    /// <summary>
+    /// Sets the content of a stream.
+    /// </summary>
+    /// <param name="content">The new value for the stream.</param>
+    public void SetContent(ReadOnlySpan<byte> content)
+    {
         using var s = Open(FileAccess.Write);
-        s.Write(buffer);
-        s.SetLength(buffer.Length);
+        s.Write(content);
+        s.SetLength(content.Length);
     }
 
     public SparseStream Open(FileAccess access)

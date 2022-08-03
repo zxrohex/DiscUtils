@@ -225,7 +225,7 @@ public class StripedStream : SparseStream
             var streamIdx = (int)(stripe % _wrapped.Count);
             var streamStripe = stripe / _wrapped.Count;
 
-            Stream targetStream = _wrapped[streamIdx];
+            var targetStream = _wrapped[streamIdx];
             targetStream.Position = streamStripe * _stripeSize + stripeOffset;
 
             var numRead = targetStream.Read(buffer.Slice(totalRead, stripeToRead));

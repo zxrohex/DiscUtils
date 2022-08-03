@@ -63,7 +63,7 @@ public sealed class AttributeDefinitions
         _attrDefs = new Dictionary<AttributeType, AttributeDefinitionRecord>();
 
         Span<byte> buffer = stackalloc byte[AttributeDefinitionRecord.Size];
-        using Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.Read);
+        using var s = file.OpenStream(AttributeType.Data, null, FileAccess.Read);
         while (StreamUtilities.ReadMaximum(s, buffer) == AttributeDefinitionRecord.Size)
         {
             var record = new AttributeDefinitionRecord();
@@ -82,7 +82,7 @@ public sealed class AttributeDefinitions
         var attribs = new List<AttributeType>(_attrDefs.Keys);
         attribs.Sort();
 
-        using Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite);
+        using var s = file.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite);
         Span<byte> buffer = stackalloc byte[AttributeDefinitionRecord.Size];
         for (var i = 0; i < attribs.Count; ++i)
         {

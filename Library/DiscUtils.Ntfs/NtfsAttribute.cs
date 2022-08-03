@@ -254,7 +254,7 @@ internal class NtfsAttribute : IDiagnosticTraceable
         {
             try
             {
-                using Stream s = Open(FileAccess.Read);
+                using var s = Open(FileAccess.Read);
                 var hex = string.Empty;
                 System.Span<byte> buffer = stackalloc byte[32];
                 var numBytes = s.Read(buffer);

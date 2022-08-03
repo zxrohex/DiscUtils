@@ -160,7 +160,7 @@ public sealed class MasterFileTableEntry
     /// </summary>
     /// <param name="attr">Attribute to open</param>
     /// <param name="access">Access</param>
-    public SparseStream Open(IAttributeLocator attr, System.IO.FileAccess access) =>
+    public SparseStream Open(IAttributeLocator attr, FileAccess access) =>
         File.OpenStream(attr.Identifier, attr.AttributeType, access);
 
     public IEnumerable<Range<long, long>> GetClusters(IAttributeLocator attr) =>

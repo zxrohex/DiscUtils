@@ -182,18 +182,18 @@ internal class NtfsFormatter
             upcaseFile.UpdateRecordInMft();
 
             var objIdFile = File.CreateNew(_context, FileRecordFlags.IsMetaFile | FileRecordFlags.HasViewIndex,
-                FileAttributeFlags.None);
+                NtfsFileAttributes.None);
             objIdFile.RemoveStream(objIdFile.GetStream(AttributeType.Data, null).Value);
             objIdFile.CreateIndex("$O", 0, AttributeCollationRule.MultipleUnsignedLongs);
             objIdFile.UpdateRecordInMft();
 
             var reparseFile = File.CreateNew(_context, FileRecordFlags.IsMetaFile | FileRecordFlags.HasViewIndex,
-                FileAttributeFlags.None);
+                NtfsFileAttributes.None);
             reparseFile.CreateIndex("$R", 0, AttributeCollationRule.MultipleUnsignedLongs);
             reparseFile.UpdateRecordInMft();
 
             var quotaFile = File.CreateNew(_context, FileRecordFlags.IsMetaFile | FileRecordFlags.HasViewIndex,
-                FileAttributeFlags.None);
+                NtfsFileAttributes.None);
             Quotas.Initialize(quotaFile);
 
             var extendDir = CreateSystemDirectory(MasterFileTable.ExtendIndex);
@@ -307,7 +307,7 @@ internal class NtfsFormatter
 
         var file = new File(_context, fileRec);
 
-        StandardInformation.InitializeNewFile(file, FileAttributeFlags.Hidden | FileAttributeFlags.System);
+        StandardInformation.InitializeNewFile(file, NtfsFileAttributes.Hidden | NtfsFileAttributes.System);
 
         file.CreateStream(AttributeType.Data, null, firstCluster, numClusters, (uint)bpb.BytesPerCluster);
 
@@ -334,7 +334,7 @@ internal class NtfsFormatter
         var file = new File(_context, fileRec);
 
         StandardInformation.InitializeNewFile(file,
-            FileAttributeFlags.Hidden | FileAttributeFlags.System | FileRecord.ConvertFlags(flags));
+            NtfsFileAttributes.Hidden | NtfsFileAttributes.System | FileRecord.ConvertFlags(flags));
 
         file.CreateStream(AttributeType.Data, null);
 
@@ -351,7 +351,7 @@ internal class NtfsFormatter
 
         var dir = new Directory(_context, fileRec);
 
-        StandardInformation.InitializeNewFile(dir, FileAttributeFlags.Hidden | FileAttributeFlags.System);
+        StandardInformation.InitializeNewFile(dir, NtfsFileAttributes.Hidden | NtfsFileAttributes.System);
 
         dir.CreateIndex("$I30", AttributeType.FileName, AttributeCollationRule.Filename);
 

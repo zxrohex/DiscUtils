@@ -81,9 +81,9 @@ internal class StructuredNtfsAttribute<T> : NtfsAttribute
     {
         Initialize();
         writer.WriteLine($"{indent}{AttributeTypeName} ATTRIBUTE ({(Name == null ? "No Name" : Name)})");
-        _structure.Dump(writer, indent + "  ");
+        _structure.Dump(writer, $"{indent}  ");
 
-        _primaryRecord.Dump(writer, indent + "  ");
+        _primaryRecord.Dump(writer, $"{indent}  ");
     }
 
     private void Initialize()
