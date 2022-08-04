@@ -64,7 +64,7 @@ internal class ChapAuthenticator : Authenticator
                 _state = State.Finished;
                 return true;
             default:
-                throw new InvalidOperationException("Unknown authentication state: " + _state);
+                throw new InvalidOperationException($"Unknown authentication state: {_state}");
         }
     }
 
@@ -80,12 +80,12 @@ internal class ChapAuthenticator : Authenticator
 
                 if (_algorithm != 0x5)
                 {
-                    throw new LoginException("Unexpected CHAP authentication algorithm: " + _algorithm);
+                    throw new LoginException($"Unexpected CHAP authentication algorithm: {_algorithm}");
                 }
 
                 return;
             default:
-                throw new InvalidOperationException("Unknown authentication state: " + _state);
+                throw new InvalidOperationException($"Unknown authentication state: {_state}");
         }
     }
 

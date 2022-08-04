@@ -368,7 +368,7 @@ public sealed class GuidPartitionTable : PartitionTable
         if (!_primaryHeader.ReadFrom(sector, 0) || !ReadEntries(_primaryHeader))
         {
             disk.Position = disk.Length - diskGeometry.BytesPerSector;
-            disk.Read(sector, 0, sector.Length);
+            disk.ReadExact(sector, 0, sector.Length);
             _secondaryHeader = new GptHeader(diskGeometry.BytesPerSector);
             if (!_secondaryHeader.ReadFrom(sector, 0) || !ReadEntries(_secondaryHeader))
             {

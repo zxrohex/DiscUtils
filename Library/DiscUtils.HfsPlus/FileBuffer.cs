@@ -241,8 +241,7 @@ internal sealed class FileBuffer : Buffer
             }
             else
             {
-                throw new IOException("Missing extent from extent overflow file: cnid=" + _cnid + ", blocksSeen=" +
-                                      blocksSeen);
+                throw new IOException($"Missing extent from extent overflow file: cnid={_cnid}, blocksSeen={blocksSeen}");
             }
         }
 

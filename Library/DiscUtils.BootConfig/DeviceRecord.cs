@@ -55,7 +55,7 @@ internal abstract class DeviceRecord
             case 8: // custom:nnnnnn
                 break;
             default:
-                throw new NotImplementedException("Unknown device type: " + type);
+                throw new NotImplementedException($"Unknown device type: {type}");
         }
 
         if (newRecord != null)

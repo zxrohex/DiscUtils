@@ -894,7 +894,7 @@ public class DynamicStream : MappedStream
 
             if (blockBitmapDirty)
             {
-                WriteBlockBitmap(block);
+                await WriteBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false);
             }
 
             numWritten += toWrite;
@@ -1121,7 +1121,7 @@ public class DynamicStream : MappedStream
         var maxCount = Math.Min(Length, start + count) - start;
         if (maxCount < 0)
         {
-            return new StreamExtent[0];
+            return Array.Empty<StreamExtent>();
         }
 
         var parentExtents = _parentStream.GetExtentsInRange(start, maxCount);
@@ -1255,6 +1255,23 @@ public class DynamicStream : MappedStream
         _blockAllocationTable = bat;
     }
 
+    private byte[] _allAllocatedBlockBitmap;
+
+    private byte[] AllAllocatedBlockBitmap
+    {
+        get
+        {
+            if (_allAllocatedBlockBitmap == null)
+            {
+                var newArray = new byte[_blockBitmapSize];
+                newArray.AsSpan().Fill(0xff);
+                _allAllocatedBlockBitmap = newArray;
+            }
+
+            return _allAllocatedBlockBitmap;
+        }
+    }
+
     private bool PopulateBlockBitmap(long block)
     {
         if (_blockBitmaps[block] != null)
@@ -1269,9 +1286,17 @@ public class DynamicStream : MappedStream
             return false;
         }
 
-        // Read in bitmap
-        _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
-        _blockBitmaps[block] = StreamUtilities.ReadExact(_fileStream, _blockBitmapSize);
+        // Read in bitmap, except if we do not actually have a parent
+        if (_parentStream is ZeroStream)
+        {
+            _blockBitmaps[block] = AllAllocatedBlockBitmap;
+        }
+        else
+        {
+            _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
+            _blockBitmaps[block] = StreamUtilities.ReadExact(_fileStream, _blockBitmapSize);
+        }
+
         return true;
     }
 
@@ -1307,6 +1332,7 @@ public class DynamicStream : MappedStream
 
         // Create and write new sector bitmap
         var bitmap = new byte[_blockBitmapSize];
+        //var bitmap = _parentStream is ZeroStream ? AllAllocatedBlockBitmap : new byte[_blockBitmapSize];
         _fileStream.Position = newBlockStart;
         _fileStream.Write(bitmap, 0, _blockBitmapSize);
         _blockBitmaps[block] = bitmap;
@@ -1341,7 +1367,7 @@ public class DynamicStream : MappedStream
         var newBlockStart = _nextBlockStart;
 
         // Create and write new sector bitmap
-        var bitmap = new byte[_blockBitmapSize];
+        var bitmap = _parentStream is ZeroStream ? AllAllocatedBlockBitmap : new byte[_blockBitmapSize];
         _fileStream.Position = newBlockStart;
         await _fileStream.WriteAsync(bitmap.AsMemory(0, _blockBitmapSize), cancellationToken).ConfigureAwait(false);
         _blockBitmaps[block] = bitmap;
@@ -1379,10 +1405,10 @@ public class DynamicStream : MappedStream
         _fileStream.Write(_blockBitmaps[block], 0, _blockBitmapSize);
     }
 
-    private Task WriteBlockBitmapAsync(long block, CancellationToken cancellationToken)
+    private ValueTask WriteBlockBitmapAsync(long block, CancellationToken cancellationToken)
     {
         _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
-        return _fileStream.WriteAsync(_blockBitmaps[block], 0, _blockBitmapSize, cancellationToken);
+        return _fileStream.WriteAsync(_blockBitmaps[block].AsMemory(0, _blockBitmapSize), cancellationToken);
     }
 
     private void CheckDisposed()
@@ -1409,7 +1435,7 @@ public class DynamicStream : MappedStream
         }
     }
 
-    private Task UpdateFooterAsync(CancellationToken cancellationToken)
+    private ValueTask UpdateFooterAsync(CancellationToken cancellationToken)
     {
         if (_newBlocksAllocated)
         {
@@ -1421,9 +1447,9 @@ public class DynamicStream : MappedStream
             }
 
             _fileStream.Position = _nextBlockStart;
-            return _fileStream.WriteAsync(_footerCache, 0, _footerCache.Length, cancellationToken);
+            return _fileStream.WriteAsync(_footerCache, cancellationToken);
         }
 
-        return Task.CompletedTask;
+        return default;
     }
 }

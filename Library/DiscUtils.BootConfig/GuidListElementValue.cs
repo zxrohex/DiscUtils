@@ -46,7 +46,7 @@ internal class GuidListElementValue : ElementValue
         var result = _values[0];
         for (var i = 1; i < _values.Length; ++i)
         {
-            result += "," + _values[i];
+            result += $",{_values[i]}";
         }
 
         return result;

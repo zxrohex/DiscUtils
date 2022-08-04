@@ -107,7 +107,7 @@ internal abstract class Inode : IByteArraySerializable
             InodeType.File => new RegularInode(),
             InodeType.Symlink => new SymlinkInode(),
             InodeType.CharacterDevice or InodeType.BlockDevice => new DeviceInode(),
-            _ => throw new NotImplementedException("Inode type not implemented: " + type),
+            _ => throw new NotImplementedException($"Inode type not implemented: {type}"),
         };
     }
 }

@@ -68,24 +68,23 @@ internal class DynamicDisk : IDiagnosticTraceable
 
     public void Dump(TextWriter writer, string linePrefix)
     {
-        writer.WriteLine(linePrefix + "DISK (" + _header.DiskId + ")");
-        writer.WriteLine(linePrefix + "      Metadata Version: " + ((_header.Version >> 16) & 0xFFFF) + "." +
-                         (_header.Version & 0xFFFF));
-        writer.WriteLine(linePrefix + "             Timestamp: " + _header.Timestamp);
-        writer.WriteLine(linePrefix + "               Disk Id: " + _header.DiskId);
-        writer.WriteLine(linePrefix + "               Host Id: " + _header.HostId);
-        writer.WriteLine(linePrefix + "         Disk Group Id: " + _header.DiskGroupId);
-        writer.WriteLine(linePrefix + "       Disk Group Name: " + _header.DiskGroupName);
-        writer.WriteLine(linePrefix + "            Data Start: " + _header.DataStartLba + " (Sectors)");
-        writer.WriteLine(linePrefix + "             Data Size: " + _header.DataSizeLba + " (Sectors)");
-        writer.WriteLine(linePrefix + "   Configuration Start: " + _header.ConfigurationStartLba + " (Sectors)");
-        writer.WriteLine(linePrefix + "    Configuration Size: " + _header.ConfigurationSizeLba + " (Sectors)");
-        writer.WriteLine(linePrefix + "              TOC Size: " + _header.TocSizeLba + " (Sectors)");
-        writer.WriteLine(linePrefix + "              Next TOC: " + _header.NextTocLba + " (Sectors)");
-        writer.WriteLine(linePrefix + "     Number of Configs: " + _header.NumberOfConfigs);
-        writer.WriteLine(linePrefix + "           Config Size: " + _header.ConfigurationSizeLba + " (Sectors)");
-        writer.WriteLine(linePrefix + "        Number of Logs: " + _header.NumberOfLogs);
-        writer.WriteLine(linePrefix + "              Log Size: " + _header.LogSizeLba + " (Sectors)");
+        writer.WriteLine($"{linePrefix}DISK ({_header.DiskId})");
+        writer.WriteLine($"{linePrefix}      Metadata Version: {(_header.Version >> 16) & 0xFFFF}.{_header.Version & 0xFFFF}");
+        writer.WriteLine($"{linePrefix}             Timestamp: {_header.Timestamp}");
+        writer.WriteLine($"{linePrefix}               Disk Id: {_header.DiskId}");
+        writer.WriteLine($"{linePrefix}               Host Id: {_header.HostId}");
+        writer.WriteLine($"{linePrefix}         Disk Group Id: {_header.DiskGroupId}");
+        writer.WriteLine($"{linePrefix}       Disk Group Name: {_header.DiskGroupName}");
+        writer.WriteLine($"{linePrefix}            Data Start: {_header.DataStartLba} (Sectors)");
+        writer.WriteLine($"{linePrefix}             Data Size: {_header.DataSizeLba} (Sectors)");
+        writer.WriteLine($"{linePrefix}   Configuration Start: {_header.ConfigurationStartLba} (Sectors)");
+        writer.WriteLine($"{linePrefix}    Configuration Size: {_header.ConfigurationSizeLba} (Sectors)");
+        writer.WriteLine($"{linePrefix}              TOC Size: {_header.TocSizeLba} (Sectors)");
+        writer.WriteLine($"{linePrefix}              Next TOC: {_header.NextTocLba} (Sectors)");
+        writer.WriteLine($"{linePrefix}     Number of Configs: {_header.NumberOfConfigs}");
+        writer.WriteLine($"{linePrefix}           Config Size: {_header.ConfigurationSizeLba} (Sectors)");
+        writer.WriteLine($"{linePrefix}        Number of Logs: {_header.NumberOfLogs}");
+        writer.WriteLine($"{linePrefix}              Log Size: {_header.LogSizeLba} (Sectors)");
     }
 
     internal static PrivateHeader GetPrivateHeader(VirtualDisk disk)
@@ -129,7 +128,7 @@ internal class DynamicDisk : IDiagnosticTraceable
         var buffer = new byte[_header.TocSizeLba * 512];
         _disk.Content.Position = _header.ConfigurationStartLba * 512 + 1 * _header.TocSizeLba * 512;
 
-        _disk.Content.Read(buffer, 0, buffer.Length);
+        _disk.Content.ReadExact(buffer, 0, buffer.Length);
         var tocBlock = new TocBlock();
         tocBlock.ReadFrom(buffer);
 

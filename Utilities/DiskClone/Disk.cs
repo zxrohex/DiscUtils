@@ -36,7 +36,7 @@ class Disk : VirtualDisk
 
     public Disk(uint number)
     {
-        _path = @"\\.\PhysicalDrive" + number;
+        _path = $@"\\.\PhysicalDrive{number}";
         _handle = Win32Wrapper.OpenFileHandle(_path);
     }
 

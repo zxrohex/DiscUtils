@@ -40,7 +40,7 @@ internal class Database
         var buffer = ArrayPool<byte>.Shared.Rent(Sizes.Sector);
         try
         {
-            stream.Read(buffer, 0, Sizes.Sector);
+            stream.ReadExact(buffer, 0, Sizes.Sector);
             _vmdb = new DatabaseHeader();
             _vmdb.ReadFrom(buffer);
 

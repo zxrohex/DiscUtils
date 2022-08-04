@@ -66,7 +66,7 @@ internal abstract class BTreeNode : IByteArraySerializable
         {
             BTreeNodeKind.HeaderNode => new BTreeHeaderNode(tree, descriptor),
             BTreeNodeKind.IndexNode or BTreeNodeKind.LeafNode => throw new NotImplementedException("Attempt to read index/leaf node without key and data types"),
-            _ => throw new NotImplementedException("Unrecognized BTree node kind: " + descriptor.Kind),
+            _ => throw new NotImplementedException($"Unrecognized BTree node kind: {descriptor.Kind}"),
         };
     }
 
@@ -81,7 +81,7 @@ internal abstract class BTreeNode : IByteArraySerializable
             BTreeNodeKind.HeaderNode => new BTreeHeaderNode(tree, descriptor),
             BTreeNodeKind.LeafNode => new BTreeLeafNode<TKey>(tree, descriptor),
             BTreeNodeKind.IndexNode => new BTreeIndexNode<TKey>(tree, descriptor),
-            _ => throw new NotImplementedException("Unrecognized BTree node kind: " + descriptor.Kind),
+            _ => throw new NotImplementedException($"Unrecognized BTree node kind: {descriptor.Kind}"),
         };
     }
 

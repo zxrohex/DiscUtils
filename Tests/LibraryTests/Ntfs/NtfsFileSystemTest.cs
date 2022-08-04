@@ -60,7 +60,7 @@ namespace LibraryTests.Ntfs
             var ntfs = FileSystemSource.NtfsFileSystem();
 
             ntfs.CreateDirectory("dir");
-            ntfs.SetReparsePoint("dir", new ReparsePoint(12345, new byte[0]));
+            ntfs.SetReparsePoint("dir", new ReparsePoint(12345, System.Array.Empty<byte>()));
 
             var rp = ntfs.GetReparsePoint("dir");
 
@@ -449,7 +449,7 @@ namespace LibraryTests.Ntfs
             using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
             {
                 stream.Position = stream.Length - largeReadBuffer.Length;
-                stream.Read(largeReadBuffer, 0, largeReadBuffer.Length);
+                stream.ReadExact(largeReadBuffer, 0, largeReadBuffer.Length);
             }
 
             Assert.Equal(largeWriteBuffer, largeReadBuffer);
@@ -498,7 +498,7 @@ namespace LibraryTests.Ntfs
 
                 var readBuffer = new byte[fileSize];
                 s.Position = 0;
-                s.Read(readBuffer, 0, fileSize);
+                s.ReadExact(readBuffer, 0, fileSize);
 
                 for (var i = 64 * 1024; i < (128 + 64) * 1024; ++i)
                 {

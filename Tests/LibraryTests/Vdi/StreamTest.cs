@@ -146,7 +146,7 @@ namespace LibraryTests.Vdi
             using var disk = Disk.InitializeDynamic(stream, Ownership.Dispose, 16 * 1024L * 1024 * 1024);
             var buffer = new byte[100];
             disk.Content.Seek(2 * 1024 * 1024, SeekOrigin.Current);
-            disk.Content.Read(buffer, 0, buffer.Length);
+            disk.Content.ReadExact(buffer, 0, buffer.Length);
 
             for (var i = 0; i < 100; ++i)
             {

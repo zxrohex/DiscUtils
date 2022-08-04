@@ -116,7 +116,7 @@ public sealed class PhysicalVolumeInfo : VolumeInfo
         {
             if (VolumeType == PhysicalVolumeType.GptPartition)
             {
-                return "VPG" + PartitionIdentity.ToString("B");
+                return $"VPG{PartitionIdentity:B}";
             }
 
             var partId = VolumeType switch
@@ -127,7 +127,7 @@ public sealed class PhysicalVolumeInfo : VolumeInfo
                                                  CultureInfo.InvariantCulture),
                 _ => "P*",
             };
-            return "VPD:" + _diskId + ":" + partId;
+            return $"VPD:{_diskId}:{partId}";
         }
     }
 

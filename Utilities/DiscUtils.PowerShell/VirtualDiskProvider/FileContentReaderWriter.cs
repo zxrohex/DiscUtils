@@ -128,7 +128,7 @@ internal sealed class FileContentReaderWriter : IContentWriter, IContentReader
         {
             _provider.WriteError(
                 new ErrorRecord(
-                    new IOException("Failure reading from virtual disk" + e, e),
+                    new IOException($"Failure reading from virtual disk{e}", e),
                     "ReadFailed",
                     ErrorCategory.ReadError,
                     null));

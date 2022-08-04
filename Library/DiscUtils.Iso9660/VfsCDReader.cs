@@ -137,7 +137,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
                     if (svdPos != 0)
                     {
                         data.Position = svdPos;
-                        data.Read(buffer, 0, IsoUtilities.SectorSize);
+                        data.ReadExact(buffer, 0, IsoUtilities.SectorSize);
                         var volDesc = new SupplementaryVolumeDescriptor(buffer);
 
                         Context = new IsoContext { VolumeDescriptor = volDesc, DataStream = _data };
@@ -153,7 +153,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
                     if (pvdPos != 0)
                     {
                         data.Position = pvdPos;
-                        data.Read(buffer, 0, IsoUtilities.SectorSize);
+                        data.ReadExact(buffer, 0, IsoUtilities.SectorSize);
                         var volDesc = new PrimaryVolumeDescriptor(buffer);
 
                         var context = new IsoContext { VolumeDescriptor = volDesc, DataStream = _data };

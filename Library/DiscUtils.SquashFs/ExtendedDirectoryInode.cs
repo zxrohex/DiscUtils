@@ -45,7 +45,7 @@ internal class ExtendedDirectoryInode : Inode, IDirectoryInode
             if (value > uint.MaxValue)
             {
                 throw new ArgumentOutOfRangeException(nameof(value), value,
-                    "File size greater than " + uint.MaxValue);
+                    $"File size greater than {uint.MaxValue}");
             }
 
             _fileSize = (uint)value;

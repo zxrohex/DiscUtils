@@ -142,7 +142,7 @@ public sealed class CommonAce : QualifiedAce
                 }
 
             default:
-                throw new ArgumentException("Unrecognized ACE qualifier: " + qualifier, nameof(qualifier));
+                throw new ArgumentException($"Unrecognized ACE qualifier: {qualifier}", nameof(qualifier));
         }
     }
 }

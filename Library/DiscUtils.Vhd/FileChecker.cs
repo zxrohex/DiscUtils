@@ -69,12 +69,12 @@ public class FileChecker
         }
         catch (AbortException ae)
         {
-            ReportError("File system check aborted: " + ae);
+            ReportError($"File system check aborted: {ae}");
             return false;
         }
         catch (Exception e)
         {
-            ReportError("File system check aborted with exception: " + e);
+            ReportError($"File system check aborted with exception: {e}");
             return false;
         }
 
@@ -132,7 +132,7 @@ public class FileChecker
         {
             if (bat[i] != uint.MaxValue)
             {
-                ReportError("BAT: Padding record '" + i + "' should be 0xFFFFFFFF");
+                ReportError($"BAT: Padding record '{i}' should be 0xFFFFFFFF");
             }
         }
 
@@ -215,7 +215,7 @@ public class FileChecker
             }
             else
             {
-                ReportWarning("DynHeader: Undocumented header found, with cookie '" + hdr.Cookie + "'");
+                ReportWarning($"DynHeader: Undocumented header found, with cookie '{hdr.Cookie}'");
 
                 if (pos + 512 > lastHeaderEnd)
                 {
@@ -254,7 +254,7 @@ public class FileChecker
 
         if ((_dynamicHeader.BlockSize != Sizes.OneMiB * 2) && (_dynamicHeader.BlockSize != Sizes.OneKiB * 512))
         {
-            ReportWarning("DynHeader: Using non-standard block size '" + _dynamicHeader.BlockSize + "'");
+            ReportWarning($"DynHeader: Using non-standard block size '{_dynamicHeader.BlockSize}'");
         }
 
         if (!Utilities.IsPowerOfTwo(_dynamicHeader.BlockSize))
@@ -393,7 +393,7 @@ public class FileChecker
         _levelsDetected |= ReportLevels.Information;
         if ((_reportLevels & ReportLevels.Information) != 0)
         {
-            _report.WriteLine("INFO: " + str, args);
+            _report.WriteLine($"INFO: {str}", args);
         }
     }
 
@@ -402,7 +402,7 @@ public class FileChecker
         _levelsDetected |= ReportLevels.Warnings;
         if ((_reportLevels & ReportLevels.Warnings) != 0)
         {
-            _report.WriteLine("WARNING: " + str, args);
+            _report.WriteLine($"WARNING: {str}", args);
         }
     }
 
@@ -411,7 +411,7 @@ public class FileChecker
         _levelsDetected |= ReportLevels.Errors;
         if ((_reportLevels & ReportLevels.Errors) != 0)
         {
-            _report.WriteLine("ERROR: " + str, args);
+            _report.WriteLine($"ERROR: {str}", args);
         }
     }
 

@@ -56,7 +56,7 @@ namespace LibraryTests
             // Check I/O is synchronous
             var buffer = new byte[200];
             tss.WriteByte(99);
-            altView.Read(buffer, 0, 200);
+            altView.ReadExact(buffer, 0, 200);
             Assert.Equal(99, buffer[100]);
 
             // Check positions are updated correctly

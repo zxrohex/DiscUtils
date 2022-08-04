@@ -434,7 +434,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         }
         catch (ArgumentException)
         {
-            throw new IOException("Invalid path: " + path);
+            throw new IOException($"Invalid path: {path}");
         }
 
         if (parent == null)
@@ -1044,7 +1044,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         }
         else
         {
-            throw new DirectoryNotFoundException("No such directory: " + path);
+            throw new DirectoryNotFoundException($"No such directory: {path}");
         }
     }
 

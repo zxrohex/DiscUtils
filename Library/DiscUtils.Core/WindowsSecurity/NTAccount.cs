@@ -24,7 +24,7 @@ public sealed class NTAccount : IdentityReference
         if (domainName == null)
             Value = accountName;
         else
-            Value = domainName + "\\" + accountName;
+            Value = $@"{domainName}\{accountName}";
     }
 
 
@@ -62,9 +62,9 @@ public sealed class NTAccount : IdentityReference
 
         if (targetType == typeof(SecurityIdentifier))
         {
-            var acct = WellKnownAccount.LookupByName(this.Value);
+            var acct = WellKnownAccount.LookupByName(Value);
             if (acct?.Sid == null)
-                throw new Exception("Cannot map account name: " + this.Value);
+                throw new Exception($"Cannot map account name: {Value}");
 
             return new SecurityIdentifier(acct.Sid);
         }

@@ -473,8 +473,8 @@ public sealed class Geometry
     {
         if (BytesPerSector == 512)
         {
-            return "(" + Cylinders + "/" + HeadsPerCylinder + "/" + SectorsPerTrack + ")";
+            return $"({Cylinders}/{HeadsPerCylinder}/{SectorsPerTrack})";
         }
-        return "(" + Cylinders + "/" + HeadsPerCylinder + "/" + SectorsPerTrack + ":" + BytesPerSector + ")";
+        return $"({Cylinders}/{HeadsPerCylinder}/{SectorsPerTrack}:{BytesPerSector})";
     }
 }

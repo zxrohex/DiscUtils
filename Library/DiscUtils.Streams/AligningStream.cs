@@ -429,7 +429,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         if (startOffset != 0)
         {
             WrappedStream.Position = alignedPos;
-            WrappedStream.Read(_alignmentBuffer, 0, _blockSize);
+            WrappedStream.ReadExact(_alignmentBuffer, 0, _blockSize);
 
             modifyBuffer(_alignmentBuffer, startOffset, 0, Math.Min(count, _blockSize - startOffset));
 
@@ -459,7 +459,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
         }
 
         WrappedStream.Position = alignedPos;
-        WrappedStream.Read(_alignmentBuffer, 0, _blockSize);
+        WrappedStream.ReadExact(_alignmentBuffer, 0, _blockSize);
 
         modifyBuffer(_alignmentBuffer, 0, (int)(alignedPos - _position), (int)Math.Min(count - (alignedPos - _position), unalignedEnd - alignedPos));
 

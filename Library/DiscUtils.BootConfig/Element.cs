@@ -71,7 +71,7 @@ public class Element
     /// </summary>
     public string FriendlyName
     {
-        get { return "{" + IdentifierToName(_appType, _identifier) + "}"; }
+        get { return $"{{{IdentifierToName(_appType, _identifier)}}}"; }
     }
 
     /// <summary>
@@ -442,7 +442,7 @@ public class Element
             ElementFormat.Integer => new IntegerElementValue(_storage.GetBinary(_obj, _identifier)),
             ElementFormat.IntegerList => new IntegerListElementValue(_storage.GetBinary(_obj, _identifier)),
             ElementFormat.String => new StringElementValue(_storage.GetString(_obj, _identifier)),
-            _ => throw new NotImplementedException("Unknown element format: " + Format),
+            _ => throw new NotImplementedException($"Unknown element format: {Format}"),
         };
     }
 
@@ -476,7 +476,7 @@ public class Element
                 break;
 
             default:
-                throw new NotImplementedException("Unknown element format: " + Format);
+                throw new NotImplementedException($"Unknown element format: {Format}");
         }
     }
 }

@@ -122,7 +122,7 @@ public class CommandLineSwitch
             maxLen = Math.Max(result[i].Length, maxLen);
         }
 
-        result[result.Length - 1] = "-" + fullSwitch;
+        result[result.Length - 1] = $"-{fullSwitch}";
         if (param != null)
         {
             result[result.Length - 1] += $" <{param}>";

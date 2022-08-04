@@ -70,8 +70,7 @@ public class TarFile : IDisposable
             if (hdr.FileType == UnixFileType.TarEntryLongLink &&
                 hdr.FileName.Equals("././@LongLink", StringComparison.Ordinal))
             {
-                var buffer = new byte[hdr.FileLength];
-                _fileStream.Read(buffer, 0, buffer.Length);
+                var buffer = _fileStream.ReadExact(checked((int)hdr.FileLength));
                 long_path = TarHeader.ReadNullTerminatedString(buffer).TrimEnd(' ');
                 _fileStream.Position += -(buffer.Length & 511) & 511;
             }

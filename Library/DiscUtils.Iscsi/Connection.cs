@@ -106,7 +106,7 @@ internal sealed class Connection : IDisposable
 
         if (resp.Response != LogoutResponseCode.ClosedSuccessfully)
         {
-            throw new InvalidProtocolException("Target indicated failure during logout: " + resp.Response);
+            throw new InvalidProtocolException($"Target indicated failure during logout: {resp.Response}");
         }
 
         _stream.Dispose();
@@ -403,7 +403,7 @@ internal sealed class Connection : IDisposable
         var authParam = _authenticators[0].Identifier;
         for (var i = 1; i < _authenticators.Length; ++i)
         {
-            authParam += "," + _authenticators[i].Identifier;
+            authParam += $",{_authenticators[i].Identifier}";
         }
 
         parameters.Add(AuthMethodParameter, authParam);
@@ -437,7 +437,7 @@ internal sealed class Connection : IDisposable
 
         if (resp.StatusCode != LoginStatusCode.Success)
         {
-            throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
+            throw new LoginException($"iSCSI Target indicated login failure: {resp.StatusCode}");
         }
 
         if (resp.Continue)
@@ -474,7 +474,7 @@ internal sealed class Connection : IDisposable
 
         if (authenticator == null)
         {
-            throw new LoginException("iSCSI Target specified an unsupported authentication method: " + settings[AuthMethodParameter]);
+            throw new LoginException($"iSCSI Target specified an unsupported authentication method: {settings[AuthMethodParameter]}");
         }
 
         parameters = new TextBuffer();
@@ -514,7 +514,7 @@ internal sealed class Connection : IDisposable
 
             if (resp.StatusCode != LoginStatusCode.Success)
             {
-                throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
+                throw new LoginException($"iSCSI Target indicated login failure: {resp.StatusCode}");
             }
 
             if (resp.TextData != null && resp.TextData.Length != 0)
@@ -585,7 +585,7 @@ internal sealed class Connection : IDisposable
 
         if (resp.StatusCode != LoginStatusCode.Success)
         {
-            throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
+            throw new LoginException($"iSCSI Target indicated login failure: {resp.StatusCode}");
         }
 
         if (resp.Continue)
@@ -638,7 +638,7 @@ internal sealed class Connection : IDisposable
 
             if (resp.StatusCode != LoginStatusCode.Success)
             {
-                throw new LoginException("iSCSI Target indicated login failure: " + resp.StatusCode);
+                throw new LoginException($"iSCSI Target indicated login failure: {resp.StatusCode}");
             }
 
             parameters = new TextBuffer();
@@ -685,7 +685,7 @@ internal sealed class Connection : IDisposable
             var pkt = new RejectPacket();
             pkt.Parse(pdu);
 
-            throw new IscsiException("Target sent reject packet, reason " + pkt.Reason);
+            throw new IscsiException($"Target sent reject packet, reason {pkt.Reason}");
         }
 
         return pdu;
@@ -755,7 +755,7 @@ internal sealed class Connection : IDisposable
             OpCode.ScsiDataIn => new DataInPacket(),
             OpCode.ScsiResponse => new Response(),
             OpCode.TextResponse => new TextResponse(),
-            _ => throw new InvalidProtocolException("Unrecognized response opcode: " + pdu.OpCode),
+            _ => throw new InvalidProtocolException($"Unrecognized response opcode: {pdu.OpCode}"),
         };
         resp.Parse(pdu);
         if (resp.StatusPresent)

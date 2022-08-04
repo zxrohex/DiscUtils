@@ -80,7 +80,7 @@ public sealed class BZip2DecoderStream : ReadOnlyCompatibilityStream
         var blockSize = (int)_bitstream.Read(8) - 0x30;
         if (blockSize < 1 || blockSize > 9)
         {
-            throw new InvalidDataException("Unexpected block size in header: " + blockSize);
+            throw new InvalidDataException($"Unexpected block size in header: {blockSize}");
         }
 
         blockSize *= 100000;

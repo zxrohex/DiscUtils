@@ -148,7 +148,7 @@ namespace LibraryTests.BootConfig
 
             el = obj.GetElement(WellKnownElement.BootMgrDisplayOrder);
 
-            Assert.Equal(testGuid1.ToString("B") + "," + testGuid2.ToString("B"), el.Value.ToString());
+            Assert.Equal($"{testGuid1:B},{testGuid2:B}", el.Value.ToString());
         }
 
         [Fact]

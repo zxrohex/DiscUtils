@@ -3,7 +3,7 @@ using LibraryTests;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
-[assembly: Xunit.TestFramework(nameof(LibraryTests) + "." + nameof(InitalizationClass), "LibraryTests")]
+[assembly: Xunit.TestFramework($"{nameof(LibraryTests)}.{nameof(InitalizationClass)}", "LibraryTests")]
 
 namespace LibraryTests
 {

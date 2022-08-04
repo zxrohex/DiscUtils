@@ -114,7 +114,7 @@ public abstract class VfsDirEntry
             var fileName = FileName;
             if (fileName.IndexOf('.') == -1)
             {
-                return fileName + ".";
+                return $"{fileName}.";
             }
             return fileName;
         }

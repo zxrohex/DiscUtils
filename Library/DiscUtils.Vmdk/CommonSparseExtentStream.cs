@@ -457,7 +457,7 @@ internal abstract class CommonSparseExtentStream : MappedStream
         var maxCount = Math.Min(Length, start + count) - start;
         if (maxCount < 0)
         {
-            return new StreamExtent[0];
+            return Array.Empty<StreamExtent>();
         }
 
         var parentExtents = _parentDiskStream.GetExtentsInRange(_diskOffset + start, maxCount);

@@ -95,6 +95,6 @@ internal sealed class ExtentKey : BTreeKey, IComparable<ExtentKey>
 
     public override string ToString()
     {
-        return "ExtentKey (" + NodeId + " - " + _startBlock + ")";
+        return $"ExtentKey ({NodeId} - {_startBlock})";
     }
 }

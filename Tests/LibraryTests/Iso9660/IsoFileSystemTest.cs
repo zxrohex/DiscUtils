@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using System.Linq;
 using DiscUtils.Iso9660;
@@ -86,7 +87,7 @@ namespace LibraryTests.Iso9660
 
             for (var i = 0; i < 3000; ++i)
             {
-                builder.AddFile("FILE" + i + ".TXT", new byte[0]);
+                builder.AddFile($"FILE{i}.TXT", Array.Empty<byte>());
             }
 
             var reader = new CDReader(builder.Build(), true);
@@ -101,7 +102,7 @@ namespace LibraryTests.Iso9660
             {
                 UseJoliet = true
             };
-            builder.AddFile("FILE.TXT;1", new byte[0]);
+            builder.AddFile("FILE.TXT;1", Array.Empty<byte>());
 
             var ms = new MemoryStream();
             SparseStream.Pump(builder.Build(), ms);

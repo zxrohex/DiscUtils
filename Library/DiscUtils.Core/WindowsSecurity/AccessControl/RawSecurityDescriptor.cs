@@ -42,7 +42,7 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
 
     public RawSecurityDescriptor(ReadOnlySpan<byte> binaryForm)
     {
-        if (binaryForm.IsEmpty || binaryForm.Length < 0x14)
+        if (binaryForm.Length < 0x14)
         {
             throw new ArgumentOutOfRangeException(nameof(binaryForm), binaryForm.Length, "Binary length out of range");
         }

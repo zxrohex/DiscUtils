@@ -64,7 +64,7 @@ namespace LibraryTests.Iso9660
             var sep = Path.DirectorySeparatorChar;
 
             var builder = new CDBuilder();
-            builder.AddFile($"SOMEDIR{sep}CHILDDIR{sep}GCHILDIR{sep}FILE.TXT", new byte[0]);
+            builder.AddFile($"SOMEDIR{sep}CHILDDIR{sep}GCHILDIR{sep}FILE.TXT", Array.Empty<byte>());
             var fs = new CDReader(builder.Build(), false);
 
             var di = fs.GetDirectoryInfo($"SOMEDIR{sep}CHILDDIR");
