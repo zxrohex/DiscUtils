@@ -60,4 +60,6 @@ internal struct AttributeDefinitionRecord
         EndianUtilities.WriteBytesLittleEndian(MinSize, buffer.Slice(0x90));
         EndianUtilities.WriteBytesLittleEndian(MaxSize, buffer.Slice(0x98));
     }
+
+    public override string ToString() => $"{Type}: {Name}";
 }

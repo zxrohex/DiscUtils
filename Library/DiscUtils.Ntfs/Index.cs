@@ -287,8 +287,7 @@ internal class Index : IDisposable
     {
         if (vcn % _root.RawClustersPerIndexRecord != 0)
         {
-            throw new NotSupportedException("Unexpected vcn (not a multiple of clusters-per-index-record): vcn=" +
-                                            vcn + " rcpir=" + _root.RawClustersPerIndexRecord);
+            throw new NotSupportedException($"Unexpected vcn (not a multiple of clusters-per-index-record): vcn={vcn} rcpir={_root.RawClustersPerIndexRecord}");
         }
 
         if (_bpb.BytesPerCluster <= _root.IndexAllocationSize)
@@ -298,8 +297,7 @@ internal class Index : IDisposable
         if (_root.RawClustersPerIndexRecord != 8)
         {
             throw new NotSupportedException(
-                "Unexpected RawClustersPerIndexRecord (multiple index blocks per cluster): " +
-                _root.RawClustersPerIndexRecord);
+                $"Unexpected RawClustersPerIndexRecord (multiple index blocks per cluster): {_root.RawClustersPerIndexRecord}");
         }
 
         return vcn / _root.RawClustersPerIndexRecord * _root.IndexAllocationSize;
@@ -467,17 +465,17 @@ internal class Index : IDisposable
         {
             if ((entry.Flags & IndexEntryFlags.End) != 0)
             {
-                writer.WriteLine(prefix + "      E");
+                writer.WriteLine($"{prefix}      E");
             }
             else
             {
-                writer.WriteLine(prefix + "      " + EntryAsString(entry, _file.BestName, _name));
+                writer.WriteLine($"{prefix}      {EntryAsString(entry, _file.BestName, _name)}");
             }
 
             if ((entry.Flags & IndexEntryFlags.Node) != 0)
             {
-                NodeAsString(writer, prefix + "        ", GetSubBlock(entry).Node,
-                    ":i" + entry.ChildrenVirtualCluster);
+                NodeAsString(writer, $"{prefix}        ", GetSubBlock(entry).Node,
+                    $":i{entry.ChildrenVirtualCluster}");
             }
         }
     }

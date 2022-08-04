@@ -44,28 +44,22 @@ internal class NtfsAttribute : IDiagnosticTraceable
         _extents.Add(new AttributeReference(containingFile, record.AttributeId), _primaryRecord);
     }
 
-    protected string AttributeTypeName
+    protected string AttributeTypeName => _primaryRecord.AttributeType switch
     {
-        get
-        {
-            return _primaryRecord.AttributeType switch
-            {
-                AttributeType.StandardInformation => "STANDARD INFORMATION",
-                AttributeType.FileName => "FILE NAME",
-                AttributeType.SecurityDescriptor => "SECURITY DESCRIPTOR",
-                AttributeType.Data => "DATA",
-                AttributeType.Bitmap => "BITMAP",
-                AttributeType.VolumeName => "VOLUME NAME",
-                AttributeType.VolumeInformation => "VOLUME INFORMATION",
-                AttributeType.IndexRoot => "INDEX ROOT",
-                AttributeType.IndexAllocation => "INDEX ALLOCATION",
-                AttributeType.ObjectId => "OBJECT ID",
-                AttributeType.ReparsePoint => "REPARSE POINT",
-                AttributeType.AttributeList => "ATTRIBUTE LIST",
-                _ => "UNKNOWN",
-            };
-        }
-    }
+        AttributeType.StandardInformation => "STANDARD INFORMATION",
+        AttributeType.FileName => "FILE NAME",
+        AttributeType.SecurityDescriptor => "SECURITY DESCRIPTOR",
+        AttributeType.Data => "DATA",
+        AttributeType.Bitmap => "BITMAP",
+        AttributeType.VolumeName => "VOLUME NAME",
+        AttributeType.VolumeInformation => "VOLUME INFORMATION",
+        AttributeType.IndexRoot => "INDEX ROOT",
+        AttributeType.IndexAllocation => "INDEX ALLOCATION",
+        AttributeType.ObjectId => "OBJECT ID",
+        AttributeType.ReparsePoint => "REPARSE POINT",
+        AttributeType.AttributeList => "ATTRIBUTE LIST",
+        _ => "UNKNOWN",
+    };
 
     public long CompressedDataSize
     {
@@ -365,4 +359,6 @@ internal class NtfsAttribute : IDiagnosticTraceable
     {
         return GetDataBuffer().MapPosition(offset);
     }
+
+    public override string ToString() => $":{Name}:${AttributeTypeName}";
 }

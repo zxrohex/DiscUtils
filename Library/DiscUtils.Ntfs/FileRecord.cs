@@ -316,21 +316,21 @@ internal class FileRecord : FixupRecordBase
 
     internal void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "FILE RECORD (" + ToString() + ")");
-        writer.WriteLine(indent + "              Magic: " + Magic);
-        writer.WriteLine(indent + "  Update Seq Offset: " + UpdateSequenceOffset);
-        writer.WriteLine(indent + "   Update Seq Count: " + UpdateSequenceCount);
-        writer.WriteLine(indent + "  Update Seq Number: " + UpdateSequenceNumber);
-        writer.WriteLine(indent + "   Log File Seq Num: " + LogFileSequenceNumber);
-        writer.WriteLine(indent + "    Sequence Number: " + SequenceNumber);
-        writer.WriteLine(indent + "    Hard Link Count: " + HardLinkCount);
-        writer.WriteLine(indent + "              Flags: " + Flags);
-        writer.WriteLine(indent + "   Record Real Size: " + RealSize);
-        writer.WriteLine(indent + "  Record Alloc Size: " + AllocatedSize);
-        writer.WriteLine(indent + "          Base File: " + BaseFile);
-        writer.WriteLine(indent + "  Next Attribute Id: " + NextAttributeId);
-        writer.WriteLine(indent + "    Attribute Count: " + Attributes.Count);
-        writer.WriteLine(indent + "   Index (Self Ref): " + _index);
+        writer.WriteLine($"{indent}FILE RECORD ({ToString()})");
+        writer.WriteLine($"{indent}              Magic: {Magic}");
+        writer.WriteLine($"{indent}  Update Seq Offset: {UpdateSequenceOffset}");
+        writer.WriteLine($"{indent}   Update Seq Count: {UpdateSequenceCount}");
+        writer.WriteLine($"{indent}  Update Seq Number: {UpdateSequenceNumber}");
+        writer.WriteLine($"{indent}   Log File Seq Num: {LogFileSequenceNumber}");
+        writer.WriteLine($"{indent}    Sequence Number: {SequenceNumber}");
+        writer.WriteLine($"{indent}    Hard Link Count: {HardLinkCount}");
+        writer.WriteLine($"{indent}              Flags: {Flags}");
+        writer.WriteLine($"{indent}   Record Real Size: {RealSize}");
+        writer.WriteLine($"{indent}  Record Alloc Size: {AllocatedSize}");
+        writer.WriteLine($"{indent}          Base File: {BaseFile}");
+        writer.WriteLine($"{indent}  Next Attribute Id: {NextAttributeId}");
+        writer.WriteLine($"{indent}    Attribute Count: {Attributes.Count}");
+        writer.WriteLine($"{indent}   Index (Self Ref): {_index}");
     }
 
     protected override void Read(byte[] buffer, int offset)

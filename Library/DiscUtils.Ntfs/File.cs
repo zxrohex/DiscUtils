@@ -410,7 +410,7 @@ internal class File
     {
         if (_records[0].HardLinkCount != 0)
         {
-            throw new InvalidOperationException("Attempt to delete in-use file: " + ToString());
+            throw new InvalidOperationException($"Attempt to delete in-use file: {ToString()}");
         }
 
         _context.ForgetFile(this);
@@ -591,14 +591,14 @@ internal class File
 
     public virtual void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "FILE (" + ToString() + ")");
-        writer.WriteLine(indent + "  File Number: " + _records[0].MasterFileTableIndex);
+        writer.WriteLine($"{indent}FILE ({ToString()})");
+        writer.WriteLine($"{indent}  File Number: {_records[0].MasterFileTableIndex}");
 
-        _records[0].Dump(writer, indent + "  ");
+        _records[0].Dump(writer, $"{indent}  ");
 
         foreach (var attrRec in _records[0].Attributes)
         {
-            NtfsAttribute.FromRecord(this, MftReference, attrRec).Dump(writer, indent + "  ");
+            NtfsAttribute.FromRecord(this, MftReference, attrRec).Dump(writer, $"{indent}  ");
         }
     }
 
@@ -1363,7 +1363,7 @@ internal class File
 
         public override string ToString()
         {
-            return _file + ".attr[" + _attr.Id + "]";
+            return $"{_file}.attr[{_attr.Id}]";
         }
 
         /// <summary>

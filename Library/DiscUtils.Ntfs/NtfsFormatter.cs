@@ -161,11 +161,11 @@ internal class NtfsFormatter
 
             var attrDefFile = CreateSystemFile(MasterFileTable.AttrDefIndex);
             _context.AttributeDefinitions.WriteTo(attrDefFile);
-            SetSecurityAttribute(attrDefFile, "O:" + localAdminString + "G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)");
+            SetSecurityAttribute(attrDefFile, $"O:{localAdminString}G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)");
             attrDefFile.UpdateRecordInMft();
 
             var bootFile = CreateFixedSystemFile(MasterFileTable.BootIndex, 0, (uint)numBootClusters, false);
-            SetSecurityAttribute(bootFile, "O:" + localAdminString + "G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)");
+            SetSecurityAttribute(bootFile, $"O:{localAdminString}G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)");
             bootFile.UpdateRecordInMft();
 
             var badClusFile = CreateSystemFile(MasterFileTable.BadClusIndex);
@@ -216,8 +216,7 @@ internal class NtfsFormatter
             rootDir.AddEntry(upcaseFile, "$UpCase", FileNameNamespace.Win32AndDos);
             rootDir.AddEntry(extendDir, "$Extend", FileNameNamespace.Win32AndDos);
             SetSecurityAttribute(rootDir,
-                "O:" + localAdminString +
-                "G:BUD:(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICIIO;GA;;;CO)(A;OICI;0x1200a9;;;BU)(A;CI;LC;;;BU)(A;CIIO;DC;;;BU)(A;;0x1200a9;;;WD)");
+                $"O:{localAdminString}G:BUD:(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICIIO;GA;;;CO)(A;OICI;0x1200a9;;;BU)(A;CI;LC;;;BU)(A;CIIO;DC;;;BU)(A;;0x1200a9;;;WD)");
             rootDir.UpdateRecordInMft();
 
             // A number of records are effectively 'reserved'
@@ -234,27 +233,27 @@ internal class NtfsFormatter
         var ntfs = new NtfsFileSystem(stream);
 
         ntfs.SetSecurity(@"$MFT",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
         ntfs.SetSecurity(@"$MFTMirr",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
         ntfs.SetSecurity(@"$LogFile",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
         ntfs.SetSecurity(@"$Bitmap",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
         ntfs.SetSecurity(@"$BadClus",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
         ntfs.SetSecurity(@"$UpCase",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;FR;;;SY)(A;;FR;;;BA)"));
         ntfs.SetSecurity(@"$Secure",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
         ntfs.SetSecurity(@"$Extend",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
         ntfs.SetSecurity(@"$Extend\$Quota",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
         ntfs.SetSecurity(@"$Extend\$ObjId",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
         ntfs.SetSecurity(@"$Extend\$Reparse",
-            new RawSecurityDescriptor("O:" + localAdminString + "G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
+            new RawSecurityDescriptor($"O:{localAdminString}G:BAD:(A;;0x12019f;;;SY)(A;;0x12019f;;;BA)"));
 
         ntfs.CreateDirectory("System Volume Information");
         ntfs.SetAttributes("System Volume Information",
@@ -281,23 +280,21 @@ internal class NtfsFormatter
         rootSecurityStream.SetContent(sd);
     }
 
+    private byte[] _emptyCluster;
+
     private File CreateFixedSystemFile(long mftIndex, long firstCluster, ulong numClusters, bool wipe)
     {
         var bpb = _context.BiosParameterBlock;
 
         if (wipe)
         {
-            var wipeBuffer = bpb.BytesPerCluster <= 1024
-                ? stackalloc byte[bpb.BytesPerCluster]
-                : new byte[bpb.BytesPerCluster];
-
-            wipeBuffer.Clear();
+            _emptyCluster ??= new byte[bpb.BytesPerCluster];
 
             _context.RawStream.Position = firstCluster * bpb.BytesPerCluster;
             
             for (ulong i = 0; i < numClusters; ++i)
             {
-                _context.RawStream.Write(wipeBuffer);
+                _context.RawStream.Write(_emptyCluster, 0, bpb.BytesPerCluster);
             }
         }
 

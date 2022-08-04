@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using DiscUtils.Core.WindowsSecurity.AccessControl;
 using DiscUtils.Internal;
@@ -74,7 +75,7 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "SECURITY DESCRIPTORS");
+        writer.WriteLine($"{indent}SECURITY DESCRIPTORS");
 
         using Stream s = _file.OpenStream(AttributeType.Data, "$SDS", FileAccess.Read);
         var buffer = StreamUtilities.ReadExact(s, (int)s.Length);
@@ -124,22 +125,39 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
         return null;
     }
 
+    private static bool SecurityDescriptorsEqual(SecurityDescriptor securityDescriptor, ReadOnlySpan<byte> bytes)
+    {
+        var storedByteForm = securityDescriptor.Size <= 1024
+            ? stackalloc byte[securityDescriptor.Size]
+            : new byte[securityDescriptor.Size];
+
+        securityDescriptor.WriteTo(storedByteForm);
+
+        if (bytes.SequenceEqual(storedByteForm))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     public uint AddDescriptor(RawSecurityDescriptor newDescriptor)
     {
         // Search to see if this is a known descriptor
         var newDescObj = new SecurityDescriptor(newDescriptor);
         var newHash = newDescObj.CalcHash();
-        var newByteForm = new byte[newDescObj.Size];
+        
+        var newByteForm = newDescObj.Size <= 1024
+            ? stackalloc byte[newDescObj.Size]
+            : new byte[newDescObj.Size];
+
         newDescObj.WriteTo(newByteForm);
 
         foreach (var entry in _hashIndex.FindAll(new HashFinder(newHash)))
         {
             var stored = ReadDescriptor(entry.Value);
 
-            var storedByteForm = new byte[stored.Size];
-            stored.WriteTo(storedByteForm);
-
-            if (Utilities.AreEqual(newByteForm, storedByteForm))
+            if (SecurityDescriptorsEqual(stored, newByteForm))
             {
                 return entry.Value.Id;
             }
@@ -150,7 +168,7 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
         // Write the new descriptor to the end of the existing descriptors
         var record = new SecurityDescriptorRecord
         {
-            SecurityDescriptor = newByteForm,
+            SecurityDescriptor = newByteForm.ToArray(),
             Hash = newHash,
             Id = _nextId
         };
@@ -165,15 +183,18 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
 
         record.OffsetInFile = offset;
 
-        var buffer = new byte[record.Size];
+        var buffer = record.Size <= 1024
+            ? stackalloc byte[record.Size]
+            : new byte[record.Size];
+
         record.WriteTo(buffer);
 
-        using (Stream s = _file.OpenStream(AttributeType.Data, "$SDS", FileAccess.ReadWrite))
+        using (var s = _file.OpenStream(AttributeType.Data, "$SDS", FileAccess.ReadWrite))
         {
             s.Position = _nextSpace;
-            s.Write(buffer, 0, buffer.Length);
+            s.Write(buffer);
             s.Position = BlockSize + _nextSpace;
-            s.Write(buffer, 0, buffer.Length);
+            s.Write(buffer);
         }
 
         // Make the next descriptor land at the end of this one
@@ -219,7 +240,7 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
 
     private SecurityDescriptor ReadDescriptor(IndexData data)
     {
-        using Stream s = _file.OpenStream(AttributeType.Data, "$SDS", FileAccess.Read);
+        using var s = _file.OpenStream(AttributeType.Data, "$SDS", FileAccess.Read);
         s.Position = data.SdsOffset;
         var buffer = StreamUtilities.ReadExact(s, data.SdsLength);
 

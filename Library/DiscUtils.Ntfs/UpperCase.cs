@@ -27,7 +27,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
 
-internal struct UpperCase : IComparer<string>
+internal readonly struct UpperCase : IComparer<string>
 {
     private readonly char[] _table;
 

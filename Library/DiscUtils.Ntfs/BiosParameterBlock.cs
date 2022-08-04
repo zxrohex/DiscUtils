@@ -23,6 +23,8 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 
@@ -200,7 +202,7 @@ internal class BiosParameterBlock
 
     internal static byte EncodeSingleByteSize(int size)
     {
-        if (size < 128)
+        if (size <= 0x80)
         {
             return (byte)size;
         }
@@ -251,10 +253,16 @@ internal class BiosParameterBlock
 
     private static ulong GenSerialNumber()
     {
-        Span<byte> buffer = stackalloc byte[8];
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        Span<byte> buffer = stackalloc byte[sizeof(ulong)];
+        RandomNumberGenerator.Fill(buffer);
+        return MemoryMarshal.Read<ulong>(buffer);
+#else
+        var buffer = new byte[sizeof(ulong)];
         var rng = new Random();
         rng.NextBytes(buffer);
-        return EndianUtilities.ToUInt64LittleEndian(buffer);
+        return BitConverter.ToUInt64(buffer, 0);
+#endif
     }
 
     private byte CodeRecordSize(int size)

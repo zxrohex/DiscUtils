@@ -127,6 +127,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             _context.ReparsePoints = new ReparsePoints(GetFile(GetDirectoryEntry(@"$Extend\$Reparse").Value.Reference));
             _context.Quotas = new Quotas(GetFile(GetDirectoryEntry(@"$Extend\$Quota").Value.Reference));
         }
+
 #if false
         byte[] buffer = new byte[1024];
         for (int i = 0; i < buffer.Length; ++i)
@@ -2044,7 +2045,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 Utilities.GetFileFromPath(destinationName));
             if (destinationDirEntry != null)
             {
-                throw new IOException("A file with this name already exists: " + destinationName);
+                throw new IOException($"A file with this name already exists: {destinationName}");
             }
 
             var file = GetFile(sourceDirEntry.Value.Reference);
@@ -2506,7 +2507,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         }
         catch (ArgumentException)
         {
-            throw new IOException("Invalid path: " + path);
+            throw new IOException($"Invalid path: {path}");
         }
     }
 

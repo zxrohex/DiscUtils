@@ -64,10 +64,13 @@ internal class StructuredNtfsAttribute<T> : NtfsAttribute
 
     public void Save()
     {
-        var buffer = new byte[_structure.Size];
+        var buffer = _structure.Size <= 1024
+            ? stackalloc byte[_structure.Size]
+            : new byte[_structure.Size];
+
         _structure.WriteTo(buffer);
-        using Stream s = Open(FileAccess.Write);
-        s.Write(buffer, 0, buffer.Length);
+        using var s = Open(FileAccess.Write);
+        s.Write(buffer);
         s.SetLength(buffer.Length);
     }
 
