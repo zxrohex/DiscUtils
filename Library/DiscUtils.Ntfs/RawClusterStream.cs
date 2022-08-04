@@ -24,6 +24,8 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 
@@ -156,6 +158,29 @@ internal sealed class RawClusterStream : ClusterStream
         }
     }
 
+    public override async ValueTask ExpandToClustersAsync(long numVirtualClusters, NonResidentAttributeRecord extent, bool allocate, CancellationToken cancellationToken)
+    {
+        var totalVirtualClusters = _cookedRuns.NextVirtualCluster;
+        if (totalVirtualClusters < numVirtualClusters)
+        {
+            var realExtent = extent;
+            if (realExtent == null)
+            {
+                realExtent = _cookedRuns.Last.AttributeExtent;
+            }
+
+            var newRun = new DataRun(0, numVirtualClusters - totalVirtualClusters, true);
+            realExtent.DataRuns.Add(newRun);
+            _cookedRuns.Append(newRun, extent);
+            realExtent.LastVcn = numVirtualClusters - 1;
+        }
+
+        if (allocate)
+        {
+            await AllocateClustersAsync(totalVirtualClusters, (int)(numVirtualClusters - totalVirtualClusters), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     public override void TruncateToClusters(long numVirtualClusters)
     {
         if (numVirtualClusters < _cookedRuns.NextVirtualCluster)
@@ -242,6 +267,74 @@ internal sealed class RawClusterStream : ClusterStream
         return totalAllocated;
     }
 
+    public async ValueTask<int> AllocateClustersAsync(long startVcn, int count, CancellationToken cancellationToken)
+    {
+        if (startVcn + count > _cookedRuns.NextVirtualCluster)
+        {
+            throw new IOException("Attempt to allocate unknown clusters");
+        }
+
+        var totalAllocated = 0;
+        var runIdx = 0;
+
+        var focus = startVcn;
+        while (focus < startVcn + count)
+        {
+            runIdx = _cookedRuns.FindDataRun(focus, runIdx);
+            var run = _cookedRuns[runIdx];
+
+            if (run.IsSparse)
+            {
+                if (focus != run.StartVcn)
+                {
+                    _cookedRuns.SplitRun(runIdx, focus);
+                    runIdx++;
+                    run = _cookedRuns[runIdx];
+                }
+
+                var numClusters = Math.Min(startVcn + count - focus, run.Length);
+                if (numClusters != run.Length)
+                {
+                    _cookedRuns.SplitRun(runIdx, focus + numClusters);
+                    run = _cookedRuns[runIdx];
+                }
+
+                long nextCluster = -1;
+                for (var i = runIdx - 1; i >= 0; --i)
+                {
+                    if (!_cookedRuns[i].IsSparse)
+                    {
+                        nextCluster = _cookedRuns[i].StartLcn + _cookedRuns[i].Length;
+                        break;
+                    }
+                }
+
+                var alloced = await _context.ClusterBitmap.AllocateClustersAsync(numClusters, nextCluster, _isMft,
+                                                          AllocatedClusterCount, cancellationToken).ConfigureAwait(false);
+
+                var runs = new List<DataRun>();
+
+                var lcn = runIdx == 0 ? 0 : _cookedRuns[runIdx - 1].StartLcn;
+                foreach (var allocation in alloced)
+                {
+                    runs.Add(new DataRun(allocation.Offset - lcn, allocation.Count, false));
+                    lcn = allocation.Offset;
+                }
+
+                _cookedRuns.MakeNonSparse(runIdx, runs);
+
+                totalAllocated += (int)numClusters;
+                focus += numClusters;
+            }
+            else
+            {
+                focus = run.StartVcn + run.Length;
+            }
+        }
+
+        return totalAllocated;
+    }
+
     public int ReleaseClusters(long startVcn, int count)
     {
         var runIdx = 0;
@@ -285,6 +378,49 @@ internal sealed class RawClusterStream : ClusterStream
         return totalReleased;
     }
 
+    public async ValueTask<int> ReleaseClustersAsync(long startVcn, int count, CancellationToken cancellationToken)
+    {
+        var runIdx = 0;
+
+        var totalReleased = 0;
+
+        var focus = startVcn;
+        while (focus < startVcn + count)
+        {
+            runIdx = _cookedRuns.FindDataRun(focus, runIdx);
+            var run = _cookedRuns[runIdx];
+
+            if (run.IsSparse)
+            {
+                focus += run.Length;
+            }
+            else
+            {
+                if (focus != run.StartVcn)
+                {
+                    _cookedRuns.SplitRun(runIdx, focus);
+                    runIdx++;
+                    run = _cookedRuns[runIdx];
+                }
+
+                var numClusters = Math.Min(startVcn + count - focus, run.Length);
+                if (numClusters != run.Length)
+                {
+                    _cookedRuns.SplitRun(runIdx, focus + numClusters);
+                    run = _cookedRuns[runIdx];
+                }
+
+                await _context.ClusterBitmap.FreeClustersAsync(new Range<long, long>(run.StartLcn, run.Length), cancellationToken).ConfigureAwait(false);
+                _cookedRuns.MakeSparse(runIdx);
+                totalReleased += (int)run.Length;
+
+                focus += numClusters;
+            }
+        }
+
+        return totalReleased;
+    }
+
     public override void ReadClusters(long startVcn, int count, byte[] buffer, int offset)
     {
         StreamUtilities.AssertBufferParameters(buffer, offset, count * _bytesPerCluster);
@@ -315,7 +451,6 @@ internal sealed class RawClusterStream : ClusterStream
         }
     }
 
-
     public override void ReadClusters(long startVcn, int count, Span<byte> buffer)
     {
         var runIdx = 0;
@@ -338,6 +473,34 @@ internal sealed class RawClusterStream : ClusterStream
                 var lcn = _cookedRuns[runIdx].StartLcn + (focusVcn - run.StartVcn);
                 _fsStream.Position = lcn * _bytesPerCluster;
                 StreamUtilities.ReadExact(_fsStream, buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster));
+            }
+
+            totalRead += toRead;
+        }
+    }
+
+    public override async ValueTask ReadClustersAsync(long startVcn, int count, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var runIdx = 0;
+        var totalRead = 0;
+        while (totalRead < count)
+        {
+            var focusVcn = startVcn + totalRead;
+
+            runIdx = _cookedRuns.FindDataRun(focusVcn, runIdx);
+            var run = _cookedRuns[runIdx];
+
+            var toRead = (int)Math.Min(count - totalRead, run.Length - (focusVcn - run.StartVcn));
+
+            if (run.IsSparse)
+            {
+                buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster).Span.Clear();
+            }
+            else
+            {
+                var lcn = _cookedRuns[runIdx].StartLcn + (focusVcn - run.StartVcn);
+                _fsStream.Position = lcn * _bytesPerCluster;
+                await StreamUtilities.ReadExactAsync(_fsStream, buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster), cancellationToken).ConfigureAwait(false);
             }
 
             totalRead += toRead;
@@ -375,7 +538,6 @@ internal sealed class RawClusterStream : ClusterStream
         return 0;
     }
 
-
     public override int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer)
     {
         var runIdx = 0;
@@ -404,6 +566,33 @@ internal sealed class RawClusterStream : ClusterStream
         return 0;
     }
 
+    public override async ValueTask<int> WriteClustersAsync(long startVcn, int count, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var runIdx = 0;
+        var totalWritten = 0;
+        while (totalWritten < count)
+        {
+            var focusVcn = startVcn + totalWritten;
+
+            runIdx = _cookedRuns.FindDataRun(focusVcn, runIdx);
+            var run = _cookedRuns[runIdx];
+
+            if (run.IsSparse)
+            {
+                throw new NotImplementedException("Writing to sparse datarun");
+            }
+
+            var toWrite = (int)Math.Min(count - totalWritten, run.Length - (focusVcn - run.StartVcn));
+
+            var lcn = _cookedRuns[runIdx].StartLcn + (focusVcn - run.StartVcn);
+            _fsStream.Position = lcn * _bytesPerCluster;
+            await _fsStream.WriteAsync(buffer.Slice(totalWritten * _bytesPerCluster, toWrite * _bytesPerCluster), cancellationToken).ConfigureAwait(false);
+
+            totalWritten += toWrite;
+        }
+
+        return 0;
+    }
 
     public override int ClearClusters(long startVcn, int count)
     {
@@ -420,6 +609,33 @@ internal sealed class RawClusterStream : ClusterStream
                 var toWrite = Math.Min(count - numWritten, 16);
 
                 clustersAllocated += WriteClusters(startVcn + numWritten, toWrite, zeroBuffer, 0);
+
+                numWritten += toWrite;
+            }
+
+            return -clustersAllocated;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(zeroBuffer);
+        }
+    }
+
+    public override async ValueTask<int> ClearClustersAsync(long startVcn, int count, CancellationToken cancellationToken)
+    {
+        var zeroBuffer = ArrayPool<byte>.Shared.Rent(16 * _bytesPerCluster);
+        try
+        {
+            zeroBuffer.AsMemory(0, 16 * _bytesPerCluster).Span.Clear();
+
+            var clustersAllocated = 0;
+
+            var numWritten = 0;
+            while (numWritten < count)
+            {
+                var toWrite = Math.Min(count - numWritten, 16);
+
+                clustersAllocated += await WriteClustersAsync(startVcn + numWritten, toWrite, zeroBuffer, cancellationToken).ConfigureAwait(false);
 
                 numWritten += toWrite;
             }

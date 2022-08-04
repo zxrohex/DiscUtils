@@ -22,6 +22,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
@@ -36,6 +38,8 @@ internal abstract class ClusterStream
 
     public abstract void ExpandToClusters(long numVirtualClusters, NonResidentAttributeRecord extent, bool allocate);
 
+    public abstract ValueTask ExpandToClustersAsync(long numVirtualClusters, NonResidentAttributeRecord extent, bool allocate, CancellationToken cancellationToken);
+
     public abstract void TruncateToClusters(long numVirtualClusters);
 
     public abstract void ReadClusters(long startVcn, int count, byte[] buffer, int offset);
@@ -44,7 +48,13 @@ internal abstract class ClusterStream
 
     public abstract void ReadClusters(long startVcn, int count, Span<byte> buffer);
 
+    public abstract ValueTask ReadClustersAsync(long startVcn, int count, Memory<byte> buffer, CancellationToken cancellationToken);
+
     public abstract int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer);
 
+    public abstract ValueTask<int> WriteClustersAsync(long startVcn, int count, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken);
+
     public abstract int ClearClusters(long startVcn, int count);
+
+    public abstract ValueTask<int> ClearClustersAsync(long startVcn, int count, CancellationToken cancellationToken);
 }

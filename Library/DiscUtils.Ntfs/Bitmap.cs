@@ -23,6 +23,8 @@
 using System;
 using System.Buffers;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
@@ -117,6 +119,51 @@ internal sealed class Bitmap : IDisposable
         }
     }
 
+    public async ValueTask MarkPresentRangeAsync(long index, long count, CancellationToken cancellationToken)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        var firstByte = index / 8;
+        var lastByte = (index + count - 1) / 8;
+
+        if (lastByte >= _bitmap.Length)
+        {
+            _bitmap.Position = MathUtilities.RoundUp(lastByte + 1, 8) - 1;
+            _bitmap.WriteByte(0);
+        }
+
+        var bufferSize = (int)(lastByte - firstByte + 1);
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
+        {
+            Array.Clear(buffer, 0, bufferSize);
+
+            buffer[0] = GetByte(firstByte);
+
+            if (bufferSize != 1)
+            {
+                buffer[bufferSize - 1] = GetByte(lastByte);
+            }
+
+            for (var i = index; i < index + count; ++i)
+            {
+                var byteIdx = i / 8 - firstByte;
+                var mask = (byte)(1 << (byte)(i % 8));
+
+                buffer[byteIdx] |= mask;
+            }
+
+            await SetBytesAsync(firstByte, buffer.AsMemory(0, bufferSize), cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
     public void MarkAbsent(long index)
     {
         var byteIdx = index / 8;
@@ -179,6 +226,52 @@ internal sealed class Bitmap : IDisposable
         }
     }
 
+    internal async ValueTask MarkAbsentRangeAsync(long index, long count, CancellationToken cancellationToken)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        var firstByte = index / 8;
+        var lastByte = (index + count - 1) / 8;
+        if (lastByte >= _bitmap.Length)
+        {
+            _bitmap.Position = MathUtilities.RoundUp(lastByte + 1, 8) - 1;
+            _bitmap.WriteByte(0);
+        }
+
+        var bufferLength = (int)(lastByte - firstByte + 1);
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferLength);
+        try
+        {
+            buffer[0] = GetByte(firstByte);
+            if (bufferLength != 1)
+            {
+                buffer[bufferLength - 1] = GetByte(lastByte);
+            }
+
+            for (var i = index; i < index + count; ++i)
+            {
+                var byteIdx = i / 8 - firstByte;
+                var mask = (byte)(1 << (byte)(i % 8));
+
+                buffer[byteIdx] &= (byte)~mask;
+            }
+
+            await SetBytesAsync(firstByte, buffer.AsMemory(0, bufferLength), cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+
+        if (index < _nextAvailable)
+        {
+            _nextAvailable = index;
+        }
+    }
+
     internal long AllocateFirstAvailable(long minValue)
     {
         var i = Math.Max(minValue, _nextAvailable);
@@ -203,7 +296,7 @@ internal sealed class Bitmap : IDisposable
         return length * 8;
     }
 
-    internal long Size { get { return _bitmap.Length; } }
+    internal long Size => _bitmap.Length;
 
     internal byte GetByte(long index)
     {
@@ -223,7 +316,7 @@ internal sealed class Bitmap : IDisposable
 
         return 0;
     }
-    
+
     internal int GetBytes(long index, byte[] buffer, int offset, int count)
     {
         if (index + count >= _bitmap.Length)
@@ -234,11 +327,20 @@ internal sealed class Bitmap : IDisposable
         return _bitmap.Read(buffer, offset, count);
     }
 
+    internal ValueTask<int> GetBytesAsync(long index, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (index + buffer.Length >= _bitmap.Length)
+            buffer = buffer.Slice(0, (int)(_bitmap.Length - index));
+        if (buffer.IsEmpty)
+            return new(0);
+        _bitmap.Position = index;
+        return _bitmap.ReadAsync(buffer, cancellationToken);
+    }
+
     private void SetByte(long index, byte value)
     {
-        byte[] buffer = { value };
         _bitmap.Position = index;
-        _bitmap.Write(buffer, 0, 1);
+        _bitmap.WriteByte(value);
         _bitmap.Flush();
     }
 
@@ -247,5 +349,12 @@ internal sealed class Bitmap : IDisposable
         _bitmap.Position = index;
         _bitmap.Write(buffer, offset, count);
         _bitmap.Flush();
+    }
+
+    private async ValueTask SetBytesAsync(long index, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        _bitmap.Position = index;
+        await _bitmap.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+        await _bitmap.FlushAsync(cancellationToken);
     }
 }

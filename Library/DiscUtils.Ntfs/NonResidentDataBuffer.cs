@@ -23,8 +23,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
-using Buffer=DiscUtils.Streams.Buffer;
+using Buffer = DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.Ntfs;
 
@@ -203,11 +205,65 @@ internal class NonResidentDataBuffer : Buffer, IMappedBuffer
         return totalToRead;
     }
 
+    public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (!CanRead)
+        {
+            throw new IOException("Attempt to read from file not opened for read");
+        }
+
+        // Limit read to length of attribute
+        var totalToRead = (int)Math.Min(buffer.Length, Capacity - pos);
+        if (totalToRead <= 0)
+        {
+            return 0;
+        }
+
+        var focusPos = pos;
+        while (focusPos < pos + totalToRead)
+        {
+            var vcn = focusPos / _bytesPerCluster;
+            var remaining = pos + totalToRead - focusPos;
+            var clusterOffset = focusPos - vcn * _bytesPerCluster;
+
+            if (vcn * _bytesPerCluster != focusPos || remaining < _bytesPerCluster)
+            {
+                // Unaligned or short read
+                await _activeStream.ReadClustersAsync(vcn, 1, _ioBuffer, cancellationToken).ConfigureAwait(false);
+
+                var toRead = (int)Math.Min(remaining, _bytesPerCluster - clusterOffset);
+
+                _ioBuffer.AsMemory((int)clusterOffset, toRead).CopyTo(buffer.Slice((int)(focusPos - pos)));
+
+                focusPos += toRead;
+            }
+            else
+            {
+                // Aligned, full cluster reads...
+                var fullClusters = (int)(remaining / _bytesPerCluster);
+                await _activeStream.ReadClustersAsync(vcn, fullClusters, buffer.Slice((int)(focusPos - pos)), cancellationToken).ConfigureAwait(false);
+
+                focusPos += fullClusters * _bytesPerCluster;
+            }
+        }
+
+        return totalToRead;
+    }
+
     public override void Write(long pos, ReadOnlySpan<byte> buffer) =>
+        throw new NotSupportedException();
+
+    public override ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken) =>
         throw new NotSupportedException();
 
     public override void SetCapacity(long value)
     {
         throw new NotSupportedException();
+    }
+
+    public virtual ValueTask SetCapacityAsync(long value, CancellationToken cancellationToken)
+    {
+        SetCapacity(value);
+        return default;
     }
 }

@@ -31,9 +31,7 @@ namespace DiscUtils.Streams;
 /// <summary>
 /// Abstract base class for implementations of IBuffer.
 /// </summary>
-public abstract class Buffer :
-    MarshalByRefObject, 
-    IBuffer, IDisposable
+public abstract class Buffer : MarshalByRefObject, IBuffer, IDisposable
 {
     private bool disposedValue;
 

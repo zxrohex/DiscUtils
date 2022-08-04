@@ -22,6 +22,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
@@ -57,6 +59,11 @@ internal sealed class SparseClusterStream : ClusterStream
         _rawStream.ExpandToClusters(CompressionStart(numVirtualClusters), extent, false);
     }
 
+    public override ValueTask ExpandToClustersAsync(long numVirtualClusters, NonResidentAttributeRecord extent, bool allocate, CancellationToken cancellationToken)
+    {
+        return _rawStream.ExpandToClustersAsync(CompressionStart(numVirtualClusters), extent, false, cancellationToken);
+    }
+
     public override void TruncateToClusters(long numVirtualClusters)
     {
         var alignedNum = CompressionStart(numVirtualClusters);
@@ -72,12 +79,15 @@ internal sealed class SparseClusterStream : ClusterStream
         _rawStream.ReadClusters(startVcn, count, buffer, offset);
     }
 
-
     public override void ReadClusters(long startVcn, int count, Span<byte> buffer)
     {
         _rawStream.ReadClusters(startVcn, count, buffer);
     }
 
+    public override ValueTask ReadClustersAsync(long startVcn, int count, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        return _rawStream.ReadClustersAsync(startVcn, count, buffer, cancellationToken);
+    }
 
     public override int WriteClusters(long startVcn, int count, byte[] buffer, int offset)
     {
@@ -87,7 +97,6 @@ internal sealed class SparseClusterStream : ClusterStream
         return clustersAllocated;
     }
 
-
     public override int WriteClusters(long startVcn, int count, ReadOnlySpan<byte> buffer)
     {
         var clustersAllocated = 0;
@@ -96,10 +105,22 @@ internal sealed class SparseClusterStream : ClusterStream
         return clustersAllocated;
     }
 
+    public override async ValueTask<int> WriteClustersAsync(long startVcn, int count, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var clustersAllocated = 0;
+        clustersAllocated += await _rawStream.AllocateClustersAsync(startVcn, count, cancellationToken).ConfigureAwait(false);
+        clustersAllocated += await _rawStream.WriteClustersAsync(startVcn, count, buffer, cancellationToken).ConfigureAwait(false);
+        return clustersAllocated;
+    }
 
     public override int ClearClusters(long startVcn, int count)
     {
         return _rawStream.ReleaseClusters(startVcn, count);
+    }
+
+    public override ValueTask<int> ClearClustersAsync(long startVcn, int count, CancellationToken cancellationToken)
+    {
+        return _rawStream.ReleaseClustersAsync(startVcn, count, cancellationToken);
     }
 
     private long CompressionStart(long vcn)

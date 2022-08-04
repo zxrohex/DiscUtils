@@ -324,7 +324,7 @@ public static class CompatExtensions
         }
     }
 
-    public static ValueTask<int> ReadAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+    public static ValueTask<int> ReadAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         if (stream is CompatibilityStream compatibilityStream)
         {
@@ -379,7 +379,7 @@ public static class CompatExtensions
         }
     }
 
-    public static ValueTask WriteAsync(this Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    public static ValueTask WriteAsync(this Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         if (stream is CompatibilityStream compatibilityStream)
         {

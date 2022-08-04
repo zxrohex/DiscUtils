@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
@@ -92,6 +94,43 @@ internal class NonResidentAttributeBuffer : NonResidentDataBuffer
         else
         {
             _activeStream.ExpandToClusters(newClusterCount, (NonResidentAttributeRecord)_attribute.LastExtent, true);
+
+            PrimaryAttributeRecord.AllocatedLength = _cookedRuns.NextVirtualCluster * _bytesPerCluster;
+        }
+
+        PrimaryAttributeRecord.DataLength = value;
+
+        if (PrimaryAttributeRecord.InitializedDataLength > value)
+        {
+            PrimaryAttributeRecord.InitializedDataLength = value;
+        }
+
+        _cookedRuns.CollapseRuns();
+    }
+
+    public override async ValueTask SetCapacityAsync(long value, CancellationToken cancellationToken)
+    {
+        if (!CanWrite)
+        {
+            throw new IOException("Attempt to change length of file not opened for write");
+        }
+
+        if (value == Capacity)
+        {
+            return;
+        }
+
+        _file.MarkMftRecordDirty();
+
+        var newClusterCount = MathUtilities.Ceil(value, _bytesPerCluster);
+
+        if (value < Capacity)
+        {
+            Truncate(value);
+        }
+        else
+        {
+            await _activeStream.ExpandToClustersAsync(newClusterCount, (NonResidentAttributeRecord)_attribute.LastExtent, true, cancellationToken).ConfigureAwait(false);
 
             PrimaryAttributeRecord.AllocatedLength = _cookedRuns.NextVirtualCluster * _bytesPerCluster;
         }
@@ -258,6 +297,82 @@ internal class NonResidentAttributeBuffer : NonResidentDataBuffer
         _cookedRuns.CollapseRuns();
     }
 
+    public override async ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (!CanWrite)
+        {
+            throw new IOException("Attempt to write to file not opened for write");
+        }
+
+        if (buffer.IsEmpty)
+        {
+            return;
+        }
+
+        if (pos + buffer.Length > Capacity)
+        {
+            await SetCapacityAsync(pos + buffer.Length, cancellationToken).ConfigureAwait(false);
+        }
+
+        // Write zeros from end of current initialized data to the start of the new write
+        if (pos > PrimaryAttributeRecord.InitializedDataLength)
+        {
+            await InitializeDataAsync(pos, cancellationToken).ConfigureAwait(false);
+        }
+
+        var allocatedClusters = 0;
+
+        var focusPos = pos;
+        while (focusPos < pos + buffer.Length)
+        {
+            var vcn = focusPos / _bytesPerCluster;
+            var remaining = pos + buffer.Length - focusPos;
+            var clusterOffset = focusPos - vcn * _bytesPerCluster;
+
+            if (vcn * _bytesPerCluster != focusPos || remaining < _bytesPerCluster)
+            {
+                // Unaligned or short write
+                var toWrite = (int)Math.Min(remaining, _bytesPerCluster - clusterOffset);
+
+                await _activeStream.ReadClustersAsync(vcn, 1, _ioBuffer, cancellationToken).ConfigureAwait(false);
+                buffer.Slice((int)(focusPos - pos), toWrite).CopyTo(_ioBuffer.AsMemory((int)clusterOffset));
+                allocatedClusters += _activeStream.WriteClusters(vcn, 1, _ioBuffer, 0);
+
+                focusPos += toWrite;
+            }
+            else
+            {
+                // Aligned, full cluster writes...
+                var fullClusters = (int)(remaining / _bytesPerCluster);
+                allocatedClusters += await _activeStream.WriteClustersAsync(vcn, fullClusters,
+                    buffer.Slice((int)(focusPos - pos)), cancellationToken).ConfigureAwait(false);
+
+                focusPos += fullClusters * _bytesPerCluster;
+            }
+        }
+
+        if (pos + buffer.Length > PrimaryAttributeRecord.InitializedDataLength)
+        {
+            _file.MarkMftRecordDirty();
+
+            PrimaryAttributeRecord.InitializedDataLength = pos + buffer.Length;
+        }
+
+        if (pos + buffer.Length > PrimaryAttributeRecord.DataLength)
+        {
+            _file.MarkMftRecordDirty();
+
+            PrimaryAttributeRecord.DataLength = pos + buffer.Length;
+        }
+
+        if ((_attribute.Flags & (AttributeFlags.Compressed | AttributeFlags.Sparse)) != 0)
+        {
+            PrimaryAttributeRecord.CompressedDataSize += allocatedClusters * _bytesPerCluster;
+        }
+
+        _cookedRuns.CollapseRuns();
+    }
+
     public override void Clear(long pos, int count)
     {
         if (!CanWrite)
@@ -379,6 +494,47 @@ internal class NonResidentAttributeBuffer : NonResidentDataBuffer
             {
                 var numClusters = (int)(pos / _bytesPerCluster - vcn);
                 clustersAllocated -= _activeStream.ClearClusters(vcn, numClusters);
+
+                initDataLen += numClusters * _bytesPerCluster;
+            }
+        }
+
+        PrimaryAttributeRecord.InitializedDataLength = pos;
+
+        if ((_attribute.Flags & (AttributeFlags.Compressed | AttributeFlags.Sparse)) != 0)
+        {
+            PrimaryAttributeRecord.CompressedDataSize += clustersAllocated * _bytesPerCluster;
+        }
+    }
+
+    private async ValueTask InitializeDataAsync(long pos, CancellationToken cancellationToken)
+    {
+        var initDataLen = PrimaryAttributeRecord.InitializedDataLength;
+        _file.MarkMftRecordDirty();
+
+        var clustersAllocated = 0;
+
+        while (initDataLen < pos)
+        {
+            var vcn = initDataLen / _bytesPerCluster;
+            if (initDataLen % _bytesPerCluster != 0 || pos - initDataLen < _bytesPerCluster)
+            {
+                var clusterOffset = (int)(initDataLen - vcn * _bytesPerCluster);
+                var toClear = (int)Math.Min(_bytesPerCluster - clusterOffset, pos - initDataLen);
+
+                if (_activeStream.IsClusterStored(vcn))
+                {
+                    await _activeStream.ReadClustersAsync(vcn, 1, _ioBuffer, cancellationToken).ConfigureAwait(false);
+                    Array.Clear(_ioBuffer, clusterOffset, toClear);
+                    clustersAllocated += await _activeStream.WriteClustersAsync(vcn, 1, _ioBuffer, cancellationToken).ConfigureAwait(false);
+                }
+
+                initDataLen += toClear;
+            }
+            else
+            {
+                var numClusters = (int)(pos / _bytesPerCluster - vcn);
+                clustersAllocated -= await _activeStream.ClearClustersAsync(vcn, numClusters, cancellationToken).ConfigureAwait(false);
 
                 initDataLen += numClusters * _bytesPerCluster;
             }
