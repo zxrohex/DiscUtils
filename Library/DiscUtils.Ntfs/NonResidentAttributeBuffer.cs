@@ -220,7 +220,7 @@ internal class NonResidentAttributeBuffer : NonResidentDataBuffer
                 var toWrite = (int)Math.Min(remaining, _bytesPerCluster - clusterOffset);
 
                 _activeStream.ReadClusters(vcn, 1, _ioBuffer, 0);
-                buffer.Slice((int)(focusPos - pos), toWrite).CopyTo(_ioBuffer);
+                buffer.Slice((int)(focusPos - pos), toWrite).CopyTo(_ioBuffer.AsSpan((int)clusterOffset));
                 allocatedClusters += _activeStream.WriteClusters(vcn, 1, _ioBuffer, 0);
 
                 focusPos += toWrite;
