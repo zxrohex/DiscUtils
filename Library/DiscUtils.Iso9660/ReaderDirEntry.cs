@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.IO;
 using System.Text;
 using DiscUtils.Internal;
@@ -70,13 +71,22 @@ internal sealed class ReaderDirEntry : VfsDirEntry
             if (clEntry != null)
             {
                 _context.DataStream.Position = clEntry.ChildDirLocation * _context.VolumeDescriptor.LogicalBlockSize;
-                var firstSector = StreamUtilities.ReadExact(_context.DataStream,
-                    _context.VolumeDescriptor.LogicalBlockSize);
 
-                DirectoryRecord.ReadFrom(firstSector, _context.VolumeDescriptor.CharacterEncoding, out _record);
-                if (_record.SystemUseData != null)
+                var firstSector = ArrayPool<byte>.Shared.Rent(_context.VolumeDescriptor.LogicalBlockSize);
+                try
                 {
-                    SuspRecords = new SuspRecords(_context, _record.SystemUseData);
+                    StreamUtilities.ReadExact(_context.DataStream, firstSector, 0,
+                        _context.VolumeDescriptor.LogicalBlockSize);
+
+                    DirectoryRecord.ReadFrom(firstSector, _context.VolumeDescriptor.CharacterEncoding, out _record);
+                    if (_record.SystemUseData != null)
+                    {
+                        SuspRecords = new SuspRecords(_context, _record.SystemUseData);
+                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(firstSector);
                 }
             }
         }

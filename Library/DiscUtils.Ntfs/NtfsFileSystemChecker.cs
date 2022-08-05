@@ -105,9 +105,10 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         };
 
         _context.RawStream.Position = 0;
-        var bytes = StreamUtilities.ReadExact(_context.RawStream, 512);
+        Span<byte> bytes = stackalloc byte[512];
+        StreamUtilities.ReadExact(_context.RawStream, bytes);
 
-        _context.BiosParameterBlock = BiosParameterBlock.FromBytes(bytes, 0);
+        _context.BiosParameterBlock = BiosParameterBlock.FromBytes(bytes);
 
         _context.Mft = new MasterFileTable(_context);
         var mftFile = new File(_context, _context.Mft.GetBootstrapRecord());
@@ -123,9 +124,10 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
     private void DoCheck()
     {
         _context.RawStream.Position = 0;
-        var bytes = StreamUtilities.ReadExact(_context.RawStream, 512);
+        Span<byte> bytes = stackalloc byte[512];
+        StreamUtilities.ReadExact(_context.RawStream, bytes);
 
-        _context.BiosParameterBlock = BiosParameterBlock.FromBytes(bytes, 0);
+        _context.BiosParameterBlock = BiosParameterBlock.FromBytes(bytes);
 
         //-----------------------------------------------------------------------
         // MASTER FILE TABLE
@@ -321,7 +323,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
             indexBitmap = new Bitmap(file.OpenStream(AttributeType.Bitmap, name, FileAccess.Read), long.MaxValue);
         }
 
-        if (!SelfCheckIndexNode(rootBuffer, IndexRoot.HeaderOffset, indexBitmap, root, file.BestName, name))
+        if (!SelfCheckIndexNode(rootBuffer.AsSpan(IndexRoot.HeaderOffset), indexBitmap, root, file.BestName, name))
         {
             ReportError("Index {0} in file {1} (MFT:{2}) has corrupt IndexRoot attribute", name, file.BestName,
                 file.IndexInMft);
@@ -333,12 +335,12 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         }
     }
 
-    private bool SelfCheckIndexNode(byte[] buffer, int offset, Bitmap bitmap, IndexRoot root, string fileName,
+    private bool SelfCheckIndexNode(ReadOnlySpan<byte> buffer, Bitmap bitmap, IndexRoot root, string fileName,
                                     string indexName)
     {
         var ok = true;
 
-        var header = new IndexHeader(buffer, offset);
+        var header = new IndexHeader(buffer);
 
         IndexEntry lastEntry = null;
 
@@ -348,7 +350,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         while (pos < header.TotalSizeOfEntries)
         {
             var entry = new IndexEntry(indexName == "$I30");
-            entry.Read(buffer, offset + pos);
+            entry.Read(buffer.Slice(pos));
             pos += entry.Size;
 
             if ((entry.Flags & IndexEntryFlags.Node) != 0)
@@ -417,9 +419,12 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         var bitmap = new Bitmap(bitmapStream, long.MaxValue);
 
         long index = 0;
+
+        var recordData = new byte[recordLength];
+
         while (mftStream.Position < mftStream.Length)
         {
-            var recordData = StreamUtilities.ReadExact(mftStream, recordLength);
+            StreamUtilities.ReadExact(mftStream, recordData);
 
             var magic = EndianUtilities.BytesToString(recordData, 0, 4);
             if (magic != "FILE")
@@ -497,7 +502,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         try
         {
             Array.Copy(recordData, tempBuffer, recordData.Length);
-            genericRecord.FromBytes(tempBuffer, 0);
+            genericRecord.FromBytes(tempBuffer);
         }
         finally
         {
@@ -511,7 +516,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
             int attrLen;
             try
             {
-                var ar = AttributeRecord.FromBytes(genericRecord.Content, pos, out attrLen);
+                var ar = AttributeRecord.FromBytes(genericRecord.Content.AsSpan(pos), out attrLen);
                 if (attrLen != ar.Size)
                 {
                     ReportError("Attribute size is different to calculated size.  AttrId={0}", ar.AttributeId);
@@ -550,7 +555,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         // Now consider record as a whole
         //
         var record = new FileRecord(bytesPerSector);
-        record.FromBytes(recordData, 0);
+        record.FromBytes(recordData);
 
         var inUse = (record.Flags & FileRecordFlags.InUse) != 0;
         if (inUse != presentInBitmap)

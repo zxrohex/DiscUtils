@@ -27,6 +27,7 @@ using System.IO;
 using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Partitions;
 
@@ -89,9 +90,15 @@ public sealed class BiosPartitionTable : PartitionTable
         get
         {
             _diskData.Position = 0;
-            var rawsig = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
+            
+            var rawsig = _diskGeometry.BytesPerSector <= 1024
+                ? stackalloc byte[_diskGeometry.BytesPerSector]
+                : new byte[_diskGeometry.BytesPerSector];
+            
+            StreamUtilities.ReadExact(_diskData, rawsig);
+            
             Span<byte> guid = stackalloc byte[16];
-            rawsig.AsSpan(0x1B8, 4).CopyTo(guid);
+            rawsig.Slice(0x1B8, 4).CopyTo(guid);
             guid.Slice(4).Clear();
             return EndianUtilities.ToGuidLittleEndian(guid);
         }
@@ -127,7 +134,8 @@ public sealed class BiosPartitionTable : PartitionTable
         if (disk.Length >= Sizes.Sector)
         {
             disk.Position = 0;
-            var bootSector = StreamUtilities.ReadExact(disk, Sizes.Sector);
+            Span<byte> bootSector = stackalloc byte[Sizes.Sector];
+            StreamUtilities.ReadExact(disk, bootSector);
             if (bootSector[510] == 0x55 && bootSector[511] == 0xAA)
             {
                 byte maxHead = 0;
@@ -162,7 +170,8 @@ public sealed class BiosPartitionTable : PartitionTable
         }
 
         disk.Position = 0;
-        var bootSector = StreamUtilities.ReadExact(disk, Sizes.Sector);
+        Span<byte> bootSector = stackalloc byte[Sizes.Sector];
+        StreamUtilities.ReadExact(disk, bootSector);
 
         // Check for the 'bootable sector' marker
         if (bootSector[510] != 0x55 || bootSector[511] != 0xAA)
@@ -230,26 +239,29 @@ public sealed class BiosPartitionTable : PartitionTable
     {
         var data = disk;
 
-        byte[] bootSector;
+        Span<byte> bootSector = diskGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[diskGeometry.BytesPerSector]
+            : new byte[diskGeometry.BytesPerSector];
+
         if (data.Length >= diskGeometry.BytesPerSector)
         {
             data.Position = 0;
-            bootSector = StreamUtilities.ReadExact(data, diskGeometry.BytesPerSector);
+            StreamUtilities.ReadExact(data, bootSector);
+
+            // Wipe all four 16-byte partition table entries
+            bootSector.Slice(0x01BE, 16 * 4).Clear();
         }
         else
         {
-            bootSector = new byte[diskGeometry.BytesPerSector];
+            bootSector.Clear();
         }
-
-        // Wipe all four 16-byte partition table entries
-        Array.Clear(bootSector, 0x01BE, 16 * 4);
 
         // Marker bytes
         bootSector[510] = 0x55;
         bootSector[511] = 0xAA;
 
         data.Position = 0;
-        data.Write(bootSector, 0, bootSector.Length);
+        data.Write(bootSector);
 
         return new BiosPartitionTable(disk, diskGeometry);
     }
@@ -528,9 +540,15 @@ public sealed class BiosPartitionTable : PartitionTable
     public void UpdateBiosGeometry(Geometry geometry)
     {
         _diskData.Position = 0;
-        var bootSector = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
+        
+        var bootSector = _diskGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[_diskGeometry.BytesPerSector]
+            : new byte[_diskGeometry.BytesPerSector];
+        
+        StreamUtilities.ReadExact(_diskData, bootSector);
 
         var records = ReadPrimaryRecords(bootSector);
+        
         for (var i = 0; i < records.Length; ++i)
         {
             var record = records[i];
@@ -569,12 +587,12 @@ public sealed class BiosPartitionTable : PartitionTable
             record.LBALength * _diskGeometry.BytesPerSector);
     }
 
-    private static BiosPartitionRecord[] ReadPrimaryRecords(byte[] bootSector)
+    private static BiosPartitionRecord[] ReadPrimaryRecords(ReadOnlySpan<byte> bootSector)
     {
         var records = new BiosPartitionRecord[4];
         for (var i = 0; i < 4; ++i)
         {
-            records[i] = new BiosPartitionRecord(bootSector, 0x01BE + i * 0x10, 0, i);
+            records[i] = new BiosPartitionRecord(bootSector.Slice(0x01BE + i * 0x10), 0, i);
         }
 
         return records;
@@ -640,7 +658,12 @@ public sealed class BiosPartitionTable : PartitionTable
     private BiosPartitionRecord[] GetPrimaryRecords()
     {
         _diskData.Position = 0;
-        var bootSector = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
+
+        var bootSector = _diskGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[_diskGeometry.BytesPerSector]
+            : new byte[_diskGeometry.BytesPerSector];
+
+        StreamUtilities.ReadExact(_diskData, bootSector);
 
         return ReadPrimaryRecords(bootSector);
     }
@@ -653,10 +676,16 @@ public sealed class BiosPartitionTable : PartitionTable
     private void WriteRecord(int i, BiosPartitionRecord newRecord)
     {
         _diskData.Position = 0;
-        var bootSector = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
-        newRecord.WriteTo(bootSector, 0x01BE + i * 16);
+
+        var bootSector = _diskGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[_diskGeometry.BytesPerSector]
+            : new byte[_diskGeometry.BytesPerSector];
+
+        StreamUtilities.ReadExact(_diskData, bootSector);
+
+        newRecord.WriteTo(bootSector.Slice(0x01BE + i * 16));
         _diskData.Position = 0;
-        _diskData.Write(bootSector, 0, bootSector.Length);
+        _diskData.Write(bootSector);
     }
 
     private int FindCylinderGap(int numCylinders)
@@ -734,7 +763,12 @@ public sealed class BiosPartitionTable : PartitionTable
         _diskGeometry = diskGeometry;
 
         _diskData.Position = 0;
-        var bootSector = StreamUtilities.ReadExact(_diskData, _diskGeometry.BytesPerSector);
+        var bootSector = _diskGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[_diskGeometry.BytesPerSector]
+            : new byte[_diskGeometry.BytesPerSector];
+        
+        StreamUtilities.ReadExact(_diskData, bootSector);
+        
         if (bootSector[510] != 0x55 || bootSector[511] != 0xAA)
         {
             throw new IOException("Invalid boot sector - no magic number 0xAA55");

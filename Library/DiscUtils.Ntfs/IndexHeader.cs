@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Ntfs;
 
@@ -38,22 +39,22 @@ internal class IndexHeader
         AllocatedSizeOfEntries = allocatedSize;
     }
 
-    public IndexHeader(byte[] data, int offset)
+    public IndexHeader(ReadOnlySpan<byte> data)
     {
-        OffsetToFirstEntry = EndianUtilities.ToUInt32LittleEndian(data, offset + 0x00);
-        TotalSizeOfEntries = EndianUtilities.ToUInt32LittleEndian(data, offset + 0x04);
-        AllocatedSizeOfEntries = EndianUtilities.ToUInt32LittleEndian(data, offset + 0x08);
-        HasChildNodes = data[offset + 0x0C];
+        OffsetToFirstEntry = EndianUtilities.ToUInt32LittleEndian(data.Slice(0x00));
+        TotalSizeOfEntries = EndianUtilities.ToUInt32LittleEndian(data.Slice(0x04));
+        AllocatedSizeOfEntries = EndianUtilities.ToUInt32LittleEndian(data.Slice(0x08));
+        HasChildNodes = data[0x0C];
     }
 
-    internal void WriteTo(byte[] buffer, int offset)
+    internal void WriteTo(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(OffsetToFirstEntry, buffer, offset + 0x00);
-        EndianUtilities.WriteBytesLittleEndian(TotalSizeOfEntries, buffer, offset + 0x04);
-        EndianUtilities.WriteBytesLittleEndian(AllocatedSizeOfEntries, buffer, offset + 0x08);
-        buffer[offset + 0x0C] = HasChildNodes;
-        buffer[offset + 0x0D] = 0;
-        buffer[offset + 0x0E] = 0;
-        buffer[offset + 0x0F] = 0;
+        EndianUtilities.WriteBytesLittleEndian(OffsetToFirstEntry, buffer.Slice(0x00));
+        EndianUtilities.WriteBytesLittleEndian(TotalSizeOfEntries, buffer.Slice(0x04));
+        EndianUtilities.WriteBytesLittleEndian(AllocatedSizeOfEntries, buffer.Slice(0x08));
+        buffer[0x0C] = HasChildNodes;
+        buffer[0x0D] = 0;
+        buffer[0x0E] = 0;
+        buffer[0x0F] = 0;
     }
 }

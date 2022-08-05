@@ -46,7 +46,7 @@ public readonly struct StreamExtent : IEquatable<StreamExtent>, IComparable<Stre
     }
 
     /// <summary>
-    /// Gets the start of the extent (in bytes).
+    /// Gets the length of the extent (in bytes).
     /// </summary>
     public long Length { get; }
 

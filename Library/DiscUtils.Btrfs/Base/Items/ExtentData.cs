@@ -149,36 +149,37 @@ internal class ExtentData : BaseItem
             case ExtentDataCompression.None:
                 break;
             case ExtentDataCompression.Zlib:
-            {
-                var zlib = new ZlibStream(stream, CompressionMode.Decompress, false);
-                var sparse = SparseStream.FromStream(zlib, Ownership.Dispose);
-                var length = new LengthWrappingStream(sparse, (long)LogicalSize, Ownership.Dispose);
-                stream = new PositionWrappingStream(length, 0, Ownership.Dispose);
-                break;
-            }
-            case ExtentDataCompression.Lzo:
-            {
-                var buffer = StreamUtilities.ReadExact(stream, sizeof(uint));
-                var totalLength = EndianUtilities.ToUInt32LittleEndian(buffer, 0);
-                long processed = sizeof(uint);
-                var parts = new List<SparseStream>();
-                var remaining = (long)LogicalSize;
-                while (processed < totalLength)
                 {
-                    stream.Position = processed;
-                    StreamUtilities.ReadExact(stream, buffer, 0, sizeof(uint));
-                    var partLength = EndianUtilities.ToUInt32LittleEndian(buffer, 0);
-                    processed += sizeof(uint);
-                    var part = new SubStream(stream, Ownership.Dispose, processed, partLength);
-                    var uncompressed = new SeekableLzoStream(part, CompressionMode.Decompress, false);
-                    uncompressed.SetLength(Math.Min(Sizes.OneKiB*4, remaining));
-                    remaining -= uncompressed.Length;
-                    parts.Add(SparseStream.FromStream(uncompressed, Ownership.Dispose));
-                    processed +=  partLength;
+                    var zlib = new ZlibStream(stream, CompressionMode.Decompress, false);
+                    var sparse = SparseStream.FromStream(zlib, Ownership.Dispose);
+                    var length = new LengthWrappingStream(sparse, (long)LogicalSize, Ownership.Dispose);
+                    stream = new PositionWrappingStream(length, 0, Ownership.Dispose);
+                    break;
                 }
-                stream = new ConcatStream(Ownership.Dispose, parts);
-                break;
-            }
+            case ExtentDataCompression.Lzo:
+                {
+                    Span<byte> buffer = stackalloc byte[sizeof(uint)];
+                    StreamUtilities.ReadExact(stream, buffer);
+                    var totalLength = EndianUtilities.ToUInt32LittleEndian(buffer);
+                    long processed = sizeof(uint);
+                    var parts = new List<SparseStream>();
+                    var remaining = (long)LogicalSize;
+                    while (processed < totalLength)
+                    {
+                        stream.Position = processed;
+                        StreamUtilities.ReadExact(stream, buffer);
+                        var partLength = EndianUtilities.ToUInt32LittleEndian(buffer);
+                        processed += sizeof(uint);
+                        var part = new SubStream(stream, Ownership.Dispose, processed, partLength);
+                        var uncompressed = new SeekableLzoStream(part, CompressionMode.Decompress, false);
+                        uncompressed.SetLength(Math.Min(Sizes.OneKiB * 4, remaining));
+                        remaining -= uncompressed.Length;
+                        parts.Add(SparseStream.FromStream(uncompressed, Ownership.Dispose));
+                        processed += partLength;
+                    }
+                    stream = new ConcatStream(Ownership.Dispose, parts);
+                    break;
+                }
             default:
                 throw new IOException($"Unsupported extent compression ({Compression})");
         }

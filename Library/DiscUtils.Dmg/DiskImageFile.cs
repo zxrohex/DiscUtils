@@ -45,7 +45,9 @@ internal sealed class DiskImageFile : VirtualDiskLayer
         _ownsStream = ownsStream;
 
         stream.Position = stream.Length - _udifHeader.Size;
-        var data = StreamUtilities.ReadExact(stream, _udifHeader.Size);
+        Span<byte> data = stackalloc byte[_udifHeader.Size];
+        
+        StreamUtilities.ReadExact(stream, data);
 
         _udifHeader.ReadFrom(data);
 

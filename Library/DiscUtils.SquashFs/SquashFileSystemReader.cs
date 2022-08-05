@@ -68,8 +68,7 @@ public class SquashFileSystemReader : VfsFileSystemFacade, IUnixFileSystem
             return false;
         }
 
-        var buffer = StreamUtilities.ReadExact(stream, superBlock.Size);
-        superBlock.ReadFrom(buffer);
+        superBlock.ReadFrom(stream);
 
         return superBlock.Magic == SuperBlock.SquashFsMagic;
     }

@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+
 namespace DiscUtils.Ntfs;
 
 public class DataRun
@@ -49,13 +51,13 @@ public class DataRun
         }
     }
 
-    public int Read(byte[] buffer, int offset)
+    public int Read(ReadOnlySpan<byte> buffer)
     {
-        var runOffsetSize = (buffer[offset] >> 4) & 0x0F;
-        var runLengthSize = buffer[offset] & 0x0F;
+        var runOffsetSize = (buffer[0] >> 4) & 0x0F;
+        var runLengthSize = buffer[0] & 0x0F;
 
-        RunLength = ReadVarLong(buffer, offset + 1, runLengthSize);
-        RunOffset = ReadVarLong(buffer, offset + 1 + runLengthSize, runOffsetSize);
+        RunLength = ReadVarLong(buffer.Slice(1, runLengthSize));
+        RunOffset = ReadVarLong(buffer.Slice(1 + runLengthSize, runOffsetSize));
         IsSparse = runOffsetSize == 0;
 
         return 1 + runLengthSize + runOffsetSize;
@@ -63,31 +65,31 @@ public class DataRun
 
     public override string ToString() => $"{RunOffset:+##;-##;0}[+{RunLength}]";
 
-    internal int Write(byte[] buffer, int offset)
+    internal int Write(Span<byte> buffer)
     {
-        var runLengthSize = WriteVarLong(buffer, offset + 1, RunLength);
-        var runOffsetSize = IsSparse ? 0 : WriteVarLong(buffer, offset + 1 + runLengthSize, RunOffset);
+        var runLengthSize = WriteVarLong(buffer.Slice(1), RunLength);
+        var runOffsetSize = IsSparse ? 0 : WriteVarLong(buffer.Slice(1 + runLengthSize), RunOffset);
 
-        buffer[offset] = (byte)((runLengthSize & 0x0F) | ((runOffsetSize << 4) & 0xF0));
+        buffer[0] = (byte)((runLengthSize & 0x0F) | ((runOffsetSize << 4) & 0xF0));
 
         return 1 + runLengthSize + runOffsetSize;
     }
 
-    private static long ReadVarLong(byte[] buffer, int offset, int size)
+    private static long ReadVarLong(ReadOnlySpan<byte> buffer)
     {
         ulong val = 0;
         var signExtend = false;
 
-        for (var i = 0; i < size; ++i)
+        for (var i = 0; i < buffer.Length; ++i)
         {
-            var b = buffer[offset + i];
+            var b = buffer[i];
             val = val | ((ulong)b << (i * 8));
             signExtend = (b & 0x80) != 0;
         }
 
         if (signExtend)
         {
-            for (var i = size; i < 8; ++i)
+            for (var i = buffer.Length; i < 8; ++i)
             {
                 val = val | ((ulong)0xFF << (i * 8));
             }
@@ -96,28 +98,28 @@ public class DataRun
         return (long)val;
     }
 
-    private static int WriteVarLong(byte[] buffer, int offset, long val)
+    private static int WriteVarLong(Span<byte> buffer, long val)
     {
         var isPositive = val >= 0;
 
         var pos = 0;
         do
         {
-            buffer[offset + pos] = (byte)(val & 0xFF);
+            buffer[pos] = (byte)(val & 0xFF);
             val >>= 8;
             pos++;
         } while (val != 0 && val != -1);
 
         // Avoid appearing to have a negative number that is actually positive,
         // record an extra empty byte if needed.
-        if (isPositive && (buffer[offset + pos - 1] & 0x80) != 0)
+        if (isPositive && (buffer[pos - 1] & 0x80) != 0)
         {
-            buffer[offset + pos] = 0;
+            buffer[pos] = 0;
             pos++;
         }
-        else if (!isPositive && (buffer[offset + pos - 1] & 0x80) != 0x80)
+        else if (!isPositive && (buffer[pos - 1] & 0x80) != 0x80)
         {
-            buffer[offset + pos] = 0xFF;
+            buffer[pos] = 0xFF;
             pos++;
         }
 

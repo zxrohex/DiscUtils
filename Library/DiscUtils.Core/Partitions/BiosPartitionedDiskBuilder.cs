@@ -104,12 +104,17 @@ public class BiosPartitionedDiskBuilder : StreamBuilder
         _bootSectors = new SparseMemoryStream();
         _bootSectors.SetLength(_capacity);
 
+        var sector = _biosGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[_biosGeometry.BytesPerSector]
+            : new byte[_biosGeometry.BytesPerSector];
+
         foreach (var extent in new BiosPartitionTable(sourceDisk).GetMetadataDiskExtents())
         {
             sourceDisk.Content.Position = extent.Start;
-            var buffer = StreamUtilities.ReadExact(sourceDisk.Content, (int)extent.Length);
+            var buffer = sector.Slice(0, checked((int)extent.Length));
+            StreamUtilities.ReadExact(sourceDisk.Content, buffer);
             _bootSectors.Position = extent.Start;
-            _bootSectors.Write(buffer, 0, buffer.Length);
+            _bootSectors.Write(buffer);
         }
 
         PartitionTable = new BiosPartitionTable(_bootSectors, _biosGeometry);

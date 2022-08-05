@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
+using System.Buffers;
 using System.IO;
 using DiscUtils.Streams;
 
@@ -59,14 +61,32 @@ internal abstract class FixupRecordBase
         get { return UpdateSequenceCount * 2; }
     }
 
-    public void FromBytes(byte[] buffer, int offset)
+    public void FromStream(Stream stream, int length, bool ignoreMagic = false)
     {
-        FromBytes(buffer, offset, false);
+        if (length <= 1024)
+        {
+            Span<byte> buffer = stackalloc byte[length];
+            stream.ReadExact(buffer);
+            FromBytes(buffer, ignoreMagic);
+        }
+        else
+        {
+            var buffer = ArrayPool<byte>.Shared.Rent(length);
+            try
+            {
+                stream.ReadExact(buffer, 0, length);
+                FromBytes(buffer.AsSpan(0, length), ignoreMagic);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
     }
 
-    public void FromBytes(byte[] buffer, int offset, bool ignoreMagic)
+    public void FromBytes(Span<byte> buffer, bool ignoreMagic = false)
     {
-        var diskMagic = EndianUtilities.BytesToString(buffer, offset + 0x00, 4);
+        var diskMagic = EndianUtilities.BytesToString(buffer.Slice(0x00, 4));
         if (Magic == null)
         {
             Magic = diskMagic;
@@ -84,37 +104,35 @@ internal abstract class FixupRecordBase
             }
         }
 
-        UpdateSequenceOffset = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x04);
-        UpdateSequenceCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x06);
+        UpdateSequenceOffset = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x04));
+        UpdateSequenceCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x06));
 
-        UpdateSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + UpdateSequenceOffset);
+        UpdateSequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(UpdateSequenceOffset));
         _updateSequenceArray = new ushort[UpdateSequenceCount - 1];
         for (var i = 0; i < _updateSequenceArray.Length; ++i)
         {
-            _updateSequenceArray[i] = EndianUtilities.ToUInt16LittleEndian(buffer,
-                offset + UpdateSequenceOffset + 2 * (i + 1));
+            _updateSequenceArray[i] = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(UpdateSequenceOffset + 2 * (i + 1)));
         }
 
-        UnprotectBuffer(buffer, offset);
+        UnprotectBuffer(buffer);
 
-        Read(buffer, offset);
+        Read(buffer);
     }
 
-    public void ToBytes(byte[] buffer, int offset)
+    public void ToBytes(Span<byte> buffer)
     {
-        UpdateSequenceOffset = Write(buffer, offset);
+        UpdateSequenceOffset = Write(buffer);
 
-        ProtectBuffer(buffer, offset);
+        ProtectBuffer(buffer);
 
-        EndianUtilities.StringToBytes(Magic, buffer, offset + 0x00, 4);
-        EndianUtilities.WriteBytesLittleEndian(UpdateSequenceOffset, buffer, offset + 0x04);
-        EndianUtilities.WriteBytesLittleEndian(UpdateSequenceCount, buffer, offset + 0x06);
+        EndianUtilities.StringToBytes(Magic, buffer.Slice(0x00, 4));
+        EndianUtilities.WriteBytesLittleEndian(UpdateSequenceOffset, buffer.Slice(0x04));
+        EndianUtilities.WriteBytesLittleEndian(UpdateSequenceCount, buffer.Slice(0x06));
 
-        EndianUtilities.WriteBytesLittleEndian(UpdateSequenceNumber, buffer, offset + UpdateSequenceOffset);
+        EndianUtilities.WriteBytesLittleEndian(UpdateSequenceNumber, buffer.Slice(UpdateSequenceOffset));
         for (var i = 0; i < _updateSequenceArray.Length; ++i)
         {
-            EndianUtilities.WriteBytesLittleEndian(_updateSequenceArray[i], buffer,
-                offset + UpdateSequenceOffset + 2 * (i + 1));
+            EndianUtilities.WriteBytesLittleEndian(_updateSequenceArray[i], buffer.Slice(UpdateSequenceOffset + 2 * (i + 1)));
         }
     }
 
@@ -127,18 +145,18 @@ internal abstract class FixupRecordBase
         _updateSequenceArray = new ushort[UpdateSequenceCount - 1];
     }
 
-    protected abstract void Read(byte[] buffer, int offset);
+    protected abstract void Read(ReadOnlySpan<byte> buffer);
 
-    protected abstract ushort Write(byte[] buffer, int offset);
+    protected abstract ushort Write(Span<byte> buffer);
 
     protected abstract int CalcSize();
 
-    private void UnprotectBuffer(byte[] buffer, int offset)
+    private void UnprotectBuffer(Span<byte> buffer)
     {
         // First do validation check - make sure the USN matches on all sectors)
         for (var i = 0; i < _updateSequenceArray.Length; ++i)
         {
-            if (UpdateSequenceNumber != EndianUtilities.ToUInt16LittleEndian(buffer, offset + Sizes.Sector * (i + 1) - 2))
+            if (UpdateSequenceNumber != EndianUtilities.ToUInt16LittleEndian(buffer.Slice(Sizes.Sector * (i + 1) - 2)))
             {
                 throw new IOException("Corrupt file system record found");
             }
@@ -147,24 +165,24 @@ internal abstract class FixupRecordBase
         // Now replace the USNs with the actual data from the sequence array
         for (var i = 0; i < _updateSequenceArray.Length; ++i)
         {
-            EndianUtilities.WriteBytesLittleEndian(_updateSequenceArray[i], buffer, offset + Sizes.Sector * (i + 1) - 2);
+            EndianUtilities.WriteBytesLittleEndian(_updateSequenceArray[i], buffer.Slice(Sizes.Sector * (i + 1) - 2));
         }
     }
 
-    private void ProtectBuffer(byte[] buffer, int offset)
+    private void ProtectBuffer(Span<byte> buffer)
     {
         UpdateSequenceNumber++;
 
         // Read in the bytes that are replaced by the USN
         for (var i = 0; i < _updateSequenceArray.Length; ++i)
         {
-            _updateSequenceArray[i] = EndianUtilities.ToUInt16LittleEndian(buffer, offset + Sizes.Sector * (i + 1) - 2);
+            _updateSequenceArray[i] = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(Sizes.Sector * (i + 1) - 2));
         }
 
         // Overwrite the bytes that are replaced with the USN
         for (var i = 0; i < _updateSequenceArray.Length; ++i)
         {
-            EndianUtilities.WriteBytesLittleEndian(UpdateSequenceNumber, buffer, offset + Sizes.Sector * (i + 1) - 2);
+            EndianUtilities.WriteBytesLittleEndian(UpdateSequenceNumber, buffer.Slice(Sizes.Sector * (i + 1) - 2));
         }
     }
 }

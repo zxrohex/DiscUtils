@@ -392,8 +392,9 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         }
 
         stream.Position = 0;
-        var bytes = StreamUtilities.ReadExact(stream, 512);
-        var bpbBytesPerSec = EndianUtilities.ToUInt16LittleEndian(bytes, 11);
+        Span<byte> bytes = stackalloc byte[512];
+        StreamUtilities.ReadExact(stream, bytes);
+        var bpbBytesPerSec = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(11));
         if (bpbBytesPerSec != 512)
         {
             return false;
@@ -405,8 +406,8 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
             return false;
         }
 
-        var bpbTotSec16 = EndianUtilities.ToUInt16LittleEndian(bytes, 19);
-        var bpbTotSec32 = EndianUtilities.ToUInt32LittleEndian(bytes, 32);
+        var bpbTotSec16 = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(19));
+        var bpbTotSec32 = EndianUtilities.ToUInt32LittleEndian(bytes.Slice(32));
 
         if (!((bpbTotSec16 == 0) ^ (bpbTotSec32 == 0)))
         {

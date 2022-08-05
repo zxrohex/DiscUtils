@@ -36,13 +36,13 @@ internal sealed class GenericFixupRecord : FixupRecordBase
 
     public byte[] Content { get; private set; }
 
-    protected override void Read(byte[] buffer, int offset)
+    protected override void Read(ReadOnlySpan<byte> buffer)
     {
         Content = new byte[(UpdateSequenceCount - 1) * _bytesPerSector];
-        Array.Copy(buffer, offset, Content, 0, Content.Length);
+        buffer.Slice(0, Content.Length).CopyTo(Content);
     }
 
-    protected override ushort Write(byte[] buffer, int offset)
+    protected override ushort Write(Span<byte> buffer)
     {
         throw new NotImplementedException();
     }

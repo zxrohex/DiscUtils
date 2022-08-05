@@ -87,7 +87,8 @@ public class DynamicStream : MappedStream
 
         // Detect where next block should go (cope if the footer is missing)
         _fileStream.Position = MathUtilities.RoundDown(_fileStream.Length, Sizes.Sector) - Sizes.Sector;
-        var footerBytes = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+        Span<byte> footerBytes = stackalloc byte[Sizes.Sector];
+        StreamUtilities.ReadExact(_fileStream, footerBytes);
         var footer = Footer.FromBytes(footerBytes);
         _nextBlockStart = _fileStream.Position - (footer.IsValid() ? Sizes.Sector : 0);
     }
@@ -714,6 +715,8 @@ public class DynamicStream : MappedStream
 
         var numWritten = 0;
 
+        Span<byte> sectorBuffer = stackalloc byte[Sizes.Sector];
+
         while (numWritten < count)
         {
             var block = _position / _dynamicHeader.BlockSize;
@@ -742,24 +745,23 @@ public class DynamicStream : MappedStream
                                    _blockBitmapSize;
 
                 // Get the existing sector data (if any), or otherwise the parent's content
-                byte[] sectorBuffer;
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                 {
                     _fileStream.Position = sectorStart;
-                    sectorBuffer = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+                    StreamUtilities.ReadExact(_fileStream, sectorBuffer);
                 }
                 else
                 {
                     _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
-                    sectorBuffer = StreamUtilities.ReadExact(_parentStream, Sizes.Sector);
+                    StreamUtilities.ReadExact(_parentStream, sectorBuffer);
                 }
 
                 // Overlay as much data as we have for this sector
-                Array.Copy(buffer, offset + numWritten, sectorBuffer, offsetInSector, toWrite);
+                buffer.AsSpan(offset + numWritten, toWrite).CopyTo(sectorBuffer.Slice(offsetInSector));
 
                 // Write the sector back
                 _fileStream.Position = sectorStart;
-                _fileStream.Write(sectorBuffer, 0, Sizes.Sector);
+                _fileStream.Write(sectorBuffer);
 
                 // Update the in-memory block bitmap
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
@@ -1029,6 +1031,8 @@ public class DynamicStream : MappedStream
 
         var numWritten = 0;
 
+        Span<byte> sectorBuffer = stackalloc byte[Sizes.Sector];
+
         while (numWritten < buffer.Length)
         {
             var block = _position / _dynamicHeader.BlockSize;
@@ -1057,24 +1061,23 @@ public class DynamicStream : MappedStream
                                    _blockBitmapSize;
 
                 // Get the existing sector data (if any), or otherwise the parent's content
-                byte[] sectorBuffer;
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                 {
                     _fileStream.Position = sectorStart;
-                    sectorBuffer = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+                    StreamUtilities.ReadExact(_fileStream, sectorBuffer);
                 }
                 else
                 {
                     _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
-                    sectorBuffer = StreamUtilities.ReadExact(_parentStream, Sizes.Sector);
+                    StreamUtilities.ReadExact(_parentStream, sectorBuffer);
                 }
 
                 // Overlay as much data as we have for this sector
-                buffer.Slice(numWritten, toWrite).CopyTo(sectorBuffer.AsSpan(offsetInSector));
+                buffer.Slice(numWritten, toWrite).CopyTo(sectorBuffer.Slice(offsetInSector));
 
                 // Write the sector back
                 _fileStream.Position = sectorStart;
-                _fileStream.Write(sectorBuffer, 0, Sizes.Sector);
+                _fileStream.Write(sectorBuffer);
 
                 // Update the in-memory block bitmap
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)

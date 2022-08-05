@@ -370,7 +370,7 @@ internal class NtfsFormatter
             SectorCount, _mftRecordSize, _indexBufferSize);
         bpb.MftCluster = _mftCluster;
         bpb.MftMirrorCluster = _mftMirrorCluster;
-        bpb.ToBytes(bootSectors, 0);
+        bpb.ToBytes(bootSectors);
 
         // Primary goes at the start of the partition
         stream.Position = 0;

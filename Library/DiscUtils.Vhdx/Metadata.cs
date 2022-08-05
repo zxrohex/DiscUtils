@@ -52,7 +52,7 @@ internal sealed class Metadata
         ParentLocator = ReadStruct<ParentLocator>(MetadataTable.ParentLocatorGuid, false);
     }
 
-    private delegate T Reader<T>(byte[] buffer, int offset);
+    private delegate T Reader<T>(ReadOnlySpan<byte> buffer);
 
     private delegate void Writer<T>(T val, byte[] buffer, int offset);
 
@@ -166,8 +166,9 @@ internal sealed class Metadata
         if (Table.Entries.TryGetValue(key, out var entry))
         {
             _regionStream.Position = entry.Offset;
-            var data = StreamUtilities.ReadExact(_regionStream, Marshal.SizeOf<T>());
-            return reader(data, 0);
+            Span<byte> data = stackalloc byte[Marshal.SizeOf<T>()];
+            StreamUtilities.ReadExact(_regionStream, data);
+            return reader(data);
         }
 
         return default(T);

@@ -129,65 +129,65 @@ internal class BiosParameterBlock
         return bpb;
     }
 
-    internal static BiosParameterBlock FromBytes(byte[] bytes, int offset)
+    internal static BiosParameterBlock FromBytes(ReadOnlySpan<byte> bytes)
     {
         var bpb = new BiosParameterBlock
         {
-            OemId = EndianUtilities.BytesToString(bytes, offset + 0x03, 8),
-            BytesPerSector = EndianUtilities.ToUInt16LittleEndian(bytes, offset + 0x0B),
-            TotalSectors16 = EndianUtilities.ToUInt16LittleEndian(bytes, offset + 0x13),
-            TotalSectors32 = EndianUtilities.ToUInt32LittleEndian(bytes, offset + 0x20),
-            SignatureByte = bytes[offset + 0x26],
-            TotalSectors64 = EndianUtilities.ToInt64LittleEndian(bytes, offset + 0x28),
-            MftCluster = EndianUtilities.ToInt64LittleEndian(bytes, offset + 0x30),
-            RawMftRecordSize = bytes[offset + 0x40],
-            SectorsPerCluster = DecodeSingleByteSize(bytes[offset + 0x0D])
+            OemId = EndianUtilities.BytesToString(bytes.Slice(0x03, 8)),
+            BytesPerSector = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(0x0B)),
+            TotalSectors16 = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(0x13)),
+            TotalSectors32 = EndianUtilities.ToUInt32LittleEndian(bytes.Slice(0x20)),
+            SignatureByte = bytes[0x26],
+            TotalSectors64 = EndianUtilities.ToInt64LittleEndian(bytes.Slice(0x28)),
+            MftCluster = EndianUtilities.ToInt64LittleEndian(bytes.Slice(0x30)),
+            RawMftRecordSize = bytes[0x40],
+            SectorsPerCluster = DecodeSingleByteSize(bytes[0x0D])
         };
         if (!bpb.IsValid(long.MaxValue)) return bpb;
 
-        bpb.ReservedSectors = EndianUtilities.ToUInt16LittleEndian(bytes, offset + 0x0E);
-        bpb.NumFats = bytes[offset + 0x10];
-        bpb.FatRootEntriesCount = EndianUtilities.ToUInt16LittleEndian(bytes, offset + 0x11);
-        bpb.Media = bytes[offset + 0x15];
-        bpb.FatSize16 = EndianUtilities.ToUInt16LittleEndian(bytes, offset + 0x16);
-        bpb.SectorsPerTrack = EndianUtilities.ToUInt16LittleEndian(bytes, offset + 0x18);
-        bpb.NumHeads = EndianUtilities.ToUInt16LittleEndian(bytes, offset + 0x1A);
-        bpb.HiddenSectors = EndianUtilities.ToUInt32LittleEndian(bytes, offset + 0x1C);
-        bpb.BiosDriveNumber = bytes[offset + 0x24];
-        bpb.ChkDskFlags = bytes[offset + 0x25];
-        bpb.PaddingByte = bytes[offset + 0x27];
-        bpb.MftMirrorCluster = EndianUtilities.ToInt64LittleEndian(bytes, offset + 0x38);
-        bpb.RawIndexBufferSize = bytes[offset + 0x44];
-        bpb.VolumeSerialNumber = EndianUtilities.ToUInt64LittleEndian(bytes, offset + 0x48);
+        bpb.ReservedSectors = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(0x0E));
+        bpb.NumFats = bytes[0x10];
+        bpb.FatRootEntriesCount = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(0x11));
+        bpb.Media = bytes[0x15];
+        bpb.FatSize16 = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(0x16));
+        bpb.SectorsPerTrack = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(0x18));
+        bpb.NumHeads = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(0x1A));
+        bpb.HiddenSectors = EndianUtilities.ToUInt32LittleEndian(bytes.Slice(0x1C));
+        bpb.BiosDriveNumber = bytes[0x24];
+        bpb.ChkDskFlags = bytes[0x25];
+        bpb.PaddingByte = bytes[0x27];
+        bpb.MftMirrorCluster = EndianUtilities.ToInt64LittleEndian(bytes.Slice(0x38));
+        bpb.RawIndexBufferSize = bytes[0x44];
+        bpb.VolumeSerialNumber = EndianUtilities.ToUInt64LittleEndian(bytes.Slice(0x48));
 
         return bpb;
     }
 
-    internal void ToBytes(byte[] buffer, int offset)
+    internal void ToBytes(Span<byte> buffer)
     {
-        EndianUtilities.StringToBytes(OemId, buffer, offset + 0x03, 8);
-        EndianUtilities.WriteBytesLittleEndian(BytesPerSector, buffer, offset + 0x0B);
-        buffer[offset + 0x0D] = EncodeSingleByteSize(SectorsPerCluster);
-        EndianUtilities.WriteBytesLittleEndian(ReservedSectors, buffer, offset + 0x0E);
-        buffer[offset + 0x10] = NumFats;
-        EndianUtilities.WriteBytesLittleEndian(FatRootEntriesCount, buffer, offset + 0x11);
-        EndianUtilities.WriteBytesLittleEndian(TotalSectors16, buffer, offset + 0x13);
-        buffer[offset + 0x15] = Media;
-        EndianUtilities.WriteBytesLittleEndian(FatSize16, buffer, offset + 0x16);
-        EndianUtilities.WriteBytesLittleEndian(SectorsPerTrack, buffer, offset + 0x18);
-        EndianUtilities.WriteBytesLittleEndian(NumHeads, buffer, offset + 0x1A);
-        EndianUtilities.WriteBytesLittleEndian(HiddenSectors, buffer, offset + 0x1C);
-        EndianUtilities.WriteBytesLittleEndian(TotalSectors32, buffer, offset + 0x20);
-        buffer[offset + 0x24] = BiosDriveNumber;
-        buffer[offset + 0x25] = ChkDskFlags;
-        buffer[offset + 0x26] = SignatureByte;
-        buffer[offset + 0x27] = PaddingByte;
-        EndianUtilities.WriteBytesLittleEndian(TotalSectors64, buffer, offset + 0x28);
-        EndianUtilities.WriteBytesLittleEndian(MftCluster, buffer, offset + 0x30);
-        EndianUtilities.WriteBytesLittleEndian(MftMirrorCluster, buffer, offset + 0x38);
-        buffer[offset + 0x40] = RawMftRecordSize;
-        buffer[offset + 0x44] = RawIndexBufferSize;
-        EndianUtilities.WriteBytesLittleEndian(VolumeSerialNumber, buffer, offset + 0x48);
+        EndianUtilities.StringToBytes(OemId, buffer.Slice(0x03, 8));
+        EndianUtilities.WriteBytesLittleEndian(BytesPerSector, buffer.Slice(0x0B));
+        buffer[0x0D] = EncodeSingleByteSize(SectorsPerCluster);
+        EndianUtilities.WriteBytesLittleEndian(ReservedSectors, buffer.Slice(0x0E));
+        buffer[0x10] = NumFats;
+        EndianUtilities.WriteBytesLittleEndian(FatRootEntriesCount, buffer.Slice(0x11));
+        EndianUtilities.WriteBytesLittleEndian(TotalSectors16, buffer.Slice(0x13));
+        buffer[0x15] = Media;
+        EndianUtilities.WriteBytesLittleEndian(FatSize16, buffer.Slice(0x16));
+        EndianUtilities.WriteBytesLittleEndian(SectorsPerTrack, buffer.Slice(0x18));
+        EndianUtilities.WriteBytesLittleEndian(NumHeads, buffer.Slice(0x1A));
+        EndianUtilities.WriteBytesLittleEndian(HiddenSectors, buffer.Slice(0x1C));
+        EndianUtilities.WriteBytesLittleEndian(TotalSectors32, buffer.Slice(0x20));
+        buffer[0x24] = BiosDriveNumber;
+        buffer[0x25] = ChkDskFlags;
+        buffer[0x26] = SignatureByte;
+        buffer[0x27] = PaddingByte;
+        EndianUtilities.WriteBytesLittleEndian(TotalSectors64, buffer.Slice(0x28));
+        EndianUtilities.WriteBytesLittleEndian(MftCluster, buffer.Slice(0x30));
+        EndianUtilities.WriteBytesLittleEndian(MftMirrorCluster, buffer.Slice(0x38));
+        buffer[0x40] = RawMftRecordSize;
+        buffer[0x44] = RawIndexBufferSize;
+        EndianUtilities.WriteBytesLittleEndian(VolumeSerialNumber, buffer.Slice(0x48));
     }
 
     internal static int DecodeSingleByteSize(byte rawSize)

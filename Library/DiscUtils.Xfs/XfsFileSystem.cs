@@ -26,6 +26,7 @@ using System.IO;
 using DiscUtils.Vfs;
 using DiscUtils.Streams;
 using System.Collections.Generic;
+using System;
 
 /// <summary>
 /// Read-only access to ext file system.
@@ -75,7 +76,8 @@ public sealed class XfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAlloc
         }
 
         stream.Position = 0;
-        var superblockData = StreamUtilities.ReadExact(stream, 264);
+        Span<byte> superblockData = stackalloc byte[264];
+        StreamUtilities.ReadExact(stream, superblockData);
 
         var superblock = new SuperBlock();
         superblock.ReadFrom(superblockData);

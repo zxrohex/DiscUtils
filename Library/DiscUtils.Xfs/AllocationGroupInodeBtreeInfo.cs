@@ -147,8 +147,7 @@ internal class AllocationGroupInodeBtreeInfo : IByteArraySerializable
         {
             RootInodeBtree = new BTreeInodeNode(SbVersion);
         }
-        var buffer = StreamUtilities.ReadExact(data, (int) context.SuperBlock.Blocksize);
-        RootInodeBtree.ReadFrom(buffer);
+        RootInodeBtree.ReadFrom(data, (int) context.SuperBlock.Blocksize);
     }
 
     void IByteArraySerializable.WriteTo(Span<byte> buffer)

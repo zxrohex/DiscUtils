@@ -362,15 +362,19 @@ public sealed class GuidPartitionTable : PartitionTable
         _diskGeometry = diskGeometry;
 
         disk.Position = diskGeometry.BytesPerSector;
-        var sector = StreamUtilities.ReadExact(disk, diskGeometry.BytesPerSector);
+        var sector = diskGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[diskGeometry.BytesPerSector]
+            : new byte[diskGeometry.BytesPerSector];
+        
+        StreamUtilities.ReadExact(disk, sector);
 
         _primaryHeader = new GptHeader(diskGeometry.BytesPerSector);
-        if (!_primaryHeader.ReadFrom(sector, 0) || !ReadEntries(_primaryHeader))
+        if (!_primaryHeader.ReadFrom(sector) || !ReadEntries(_primaryHeader))
         {
             disk.Position = disk.Length - diskGeometry.BytesPerSector;
-            disk.ReadExact(sector, 0, sector.Length);
+            disk.ReadExact(sector);
             _secondaryHeader = new GptHeader(diskGeometry.BytesPerSector);
-            if (!_secondaryHeader.ReadFrom(sector, 0) || !ReadEntries(_secondaryHeader))
+            if (!_secondaryHeader.ReadFrom(sector) || !ReadEntries(_secondaryHeader))
             {
                 throw new IOException("No valid GUID Partition Table found");
             }
@@ -395,8 +399,8 @@ public sealed class GuidPartitionTable : PartitionTable
         {
             _secondaryHeader = new GptHeader(diskGeometry.BytesPerSector);
             disk.Position = disk.Length - diskGeometry.BytesPerSector;
-            disk.Read(sector, 0, sector.Length);
-            if (!_secondaryHeader.ReadFrom(sector, 0) || !ReadEntries(_secondaryHeader))
+            disk.ReadExact(sector);
+            if (!_secondaryHeader.ReadFrom(sector) || !ReadEntries(_secondaryHeader))
             {
                 // Generate from the secondary table from the primary one
                 _secondaryHeader = new GptHeader(_primaryHeader);

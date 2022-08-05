@@ -389,9 +389,17 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
     private ExtentBlock LoadExtentBlock(ExtentIndex idxEntry)
     {
         uint blockSize = _context.SuperBlock.BlockSize;
+        
         _context.RawStream.Position = idxEntry.LeafPhysicalBlock * blockSize;
-        byte[] buffer = StreamUtilities.ReadExact(_context.RawStream, (int)blockSize);
-        ExtentBlock subBlock = EndianUtilities.ToStruct<ExtentBlock>(buffer, 0);
+        
+        var buffer = blockSize <= 1024
+            ? stackalloc byte[(int)blockSize]
+            : new byte[blockSize];
+        
+        StreamUtilities.ReadExact(_context.RawStream, buffer);
+        
+        ExtentBlock subBlock = EndianUtilities.ToStruct<ExtentBlock>(buffer);
+        
         return subBlock;
     }
 }

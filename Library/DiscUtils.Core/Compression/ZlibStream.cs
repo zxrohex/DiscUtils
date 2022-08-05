@@ -55,8 +55,9 @@ public class ZlibStream : CompatibilityStream
         if (mode == CompressionMode.Decompress)
         {
             // We just sanity check against expected header values...
-            var headerBuffer = StreamUtilities.ReadExact(stream, 2);
-            var header = EndianUtilities.ToUInt16BigEndian(headerBuffer, 0);
+            Span<byte> headerBuffer = stackalloc byte[sizeof(ushort)];
+            StreamUtilities.ReadExact(stream, headerBuffer);
+            var header = EndianUtilities.ToUInt16BigEndian(headerBuffer);
 
             if (header % 31 != 0)
             {
@@ -143,8 +144,9 @@ public class ZlibStream : CompatibilityStream
             if (_stream.CanSeek)
             {
                 _stream.Seek(-4, SeekOrigin.End);
-                var footerBuffer = StreamUtilities.ReadExact(_stream, 4);
-                if (EndianUtilities.ToInt32BigEndian(footerBuffer, 0) != _adler32.Value)
+                Span<byte> footerBuffer = stackalloc byte[sizeof(int)];
+                StreamUtilities.ReadExact(_stream, footerBuffer);
+                if (EndianUtilities.ToInt32BigEndian(footerBuffer) != _adler32.Value)
                 {
                     throw new InvalidDataException("Corrupt decompressed data detected");
                 }

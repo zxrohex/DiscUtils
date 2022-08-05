@@ -55,13 +55,13 @@ internal class IndexNode
         Header.TotalSizeOfEntries = (uint)(Header.OffsetToFirstEntry + endEntry.Size);
     }
 
-    public IndexNode(IndexNodeSaveFn store, int storeOverhead, Index index, bool isRoot, byte[] buffer, int offset)
+    public IndexNode(IndexNodeSaveFn store, int storeOverhead, Index index, bool isRoot, ReadOnlySpan<byte> buffer)
     {
         _store = store;
         _storageOverhead = storeOverhead;
         _index = index;
         _isRoot = isRoot;
-        Header = new IndexHeader(buffer, offset + 0);
+        Header = new IndexHeader(buffer);
         TotalSpaceAvailable = Header.AllocatedSizeOfEntries;
 
         _entries = new List<IndexEntry>();
@@ -69,7 +69,7 @@ internal class IndexNode
         while (pos < Header.TotalSizeOfEntries)
         {
             var entry = new IndexEntry(index.IsFileIndex);
-            entry.Read(buffer, offset + pos);
+            entry.Read(buffer.Slice(pos));
             _entries.Add(entry);
 
             if ((entry.Flags & IndexEntryFlags.End) != 0)
@@ -171,7 +171,7 @@ internal class IndexNode
         return false;
     }
 
-    public virtual ushort WriteTo(byte[] buffer, int offset)
+    public virtual ushort WriteTo(Span<byte> buffer)
     {
         var haveSubNodes = false;
         uint totalEntriesSize = 0;
@@ -184,12 +184,12 @@ internal class IndexNode
         Header.OffsetToFirstEntry = (uint)MathUtilities.RoundUp(IndexHeader.Size + _storageOverhead, 8);
         Header.TotalSizeOfEntries = totalEntriesSize + Header.OffsetToFirstEntry;
         Header.HasChildNodes = (byte)(haveSubNodes ? 1 : 0);
-        Header.WriteTo(buffer, offset + 0);
+        Header.WriteTo(buffer);
 
         var pos = (int)Header.OffsetToFirstEntry;
         foreach (var entry in _entries)
         {
-            entry.WriteTo(buffer.AsSpan(offset + pos));
+            entry.WriteTo(buffer.Slice(pos));
             pos += entry.Size;
         }
 

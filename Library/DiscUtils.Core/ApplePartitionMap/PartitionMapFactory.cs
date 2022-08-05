@@ -39,7 +39,8 @@ internal sealed class PartitionMapFactory : PartitionTableFactory
 
         s.Position = 0;
 
-        var initialBytes = StreamUtilities.ReadExact(s, 1024);
+        Span<byte> initialBytes = stackalloc byte[1024];
+        StreamUtilities.ReadExact(s, initialBytes);
 
         var b0 = new BlockZero();
         b0.ReadFrom(initialBytes);
@@ -49,7 +50,7 @@ internal sealed class PartitionMapFactory : PartitionTableFactory
         }
 
         var initialPart = new PartitionMapEntry(s);
-        initialPart.ReadFrom(initialBytes.AsSpan(512));
+        initialPart.ReadFrom(initialBytes.Slice(512));
 
         return initialPart.Signature == 0x504d;
     }

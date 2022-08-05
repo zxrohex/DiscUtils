@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
@@ -493,10 +494,19 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
     {
         context.DataStream.Position = context.VolumeDescriptor.RootDirectory.LocationOfExtent *
                                       context.VolumeDescriptor.LogicalBlockSize;
-        var firstSector = StreamUtilities.ReadExact(context.DataStream, context.VolumeDescriptor.LogicalBlockSize);
+        
+        var firstSector = ArrayPool<byte>.Shared.Rent(context.VolumeDescriptor.LogicalBlockSize);
+        try
+        {
+            StreamUtilities.ReadExact(context.DataStream, firstSector, 0, context.VolumeDescriptor.LogicalBlockSize);
 
-        DirectoryRecord.ReadFrom(firstSector, context.VolumeDescriptor.CharacterEncoding, out var rootSelfRecord);
-        return rootSelfRecord;
+            DirectoryRecord.ReadFrom(firstSector, context.VolumeDescriptor.CharacterEncoding, out var rootSelfRecord);
+            return rootSelfRecord;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(firstSector);
+        }
     }
 
     private BootInitialEntry GetBootInitialEntry()

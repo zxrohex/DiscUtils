@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
@@ -58,7 +59,8 @@ public class HfsPlusFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocati
 
         stream.Position = 1024;
 
-        var headerBuf = StreamUtilities.ReadExact(stream, 512);
+        Span<byte> headerBuf = stackalloc byte[512];
+        StreamUtilities.ReadExact(stream, headerBuf);
         var hdr = new VolumeHeader();
         hdr.ReadFrom(headerBuf);
 

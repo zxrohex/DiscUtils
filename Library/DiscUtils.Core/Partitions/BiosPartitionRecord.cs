@@ -31,20 +31,20 @@ internal class BiosPartitionRecord : IComparable<BiosPartitionRecord>
 
     public BiosPartitionRecord() {}
 
-    public BiosPartitionRecord(byte[] data, int offset, uint lbaOffset, int index)
+    public BiosPartitionRecord(ReadOnlySpan<byte> data, uint lbaOffset, int index)
     {
         _lbaOffset = lbaOffset;
 
-        Status = data[offset];
-        StartHead = data[offset + 1];
-        StartSector = (byte)(data[offset + 2] & 0x3F);
-        StartCylinder = (ushort)(data[offset + 3] | ((data[offset + 2] & 0xC0) << 2));
-        PartitionType = data[offset + 4];
-        EndHead = data[offset + 5];
-        EndSector = (byte)(data[offset + 6] & 0x3F);
-        EndCylinder = (ushort)(data[offset + 7] | ((data[offset + 6] & 0xC0) << 2));
-        LBAStart = EndianUtilities.ToUInt32LittleEndian(data, offset + 8);
-        LBALength = EndianUtilities.ToUInt32LittleEndian(data, offset + 12);
+        Status = data[0];
+        StartHead = data[1];
+        StartSector = (byte)(data[2] & 0x3F);
+        StartCylinder = (ushort)(data[3] | ((data[2] & 0xC0) << 2));
+        PartitionType = data[4];
+        EndHead = data[5];
+        EndSector = (byte)(data[6] & 0x3F);
+        EndCylinder = (ushort)(data[7] | ((data[6] & 0xC0) << 2));
+        LBAStart = EndianUtilities.ToUInt32LittleEndian(data.Slice(8));
+        LBALength = EndianUtilities.ToUInt32LittleEndian(data.Slice(12));
         Index = index;
     }
 
@@ -90,17 +90,17 @@ internal class BiosPartitionRecord : IComparable<BiosPartitionRecord>
         return LBAStartAbsolute.CompareTo(other.LBAStartAbsolute);
     }
 
-    internal void WriteTo(byte[] buffer, int offset)
+    internal void WriteTo(Span<byte> buffer)
     {
-        buffer[offset] = Status;
-        buffer[offset + 1] = StartHead;
-        buffer[offset + 2] = (byte)((StartSector & 0x3F) | ((StartCylinder >> 2) & 0xC0));
-        buffer[offset + 3] = (byte)StartCylinder;
-        buffer[offset + 4] = PartitionType;
-        buffer[offset + 5] = EndHead;
-        buffer[offset + 6] = (byte)((EndSector & 0x3F) | ((EndCylinder >> 2) & 0xC0));
-        buffer[offset + 7] = (byte)EndCylinder;
-        EndianUtilities.WriteBytesLittleEndian(LBAStart, buffer, offset + 8);
-        EndianUtilities.WriteBytesLittleEndian(LBALength, buffer, offset + 12);
+        buffer[0] = Status;
+        buffer[1] = StartHead;
+        buffer[2] = (byte)((StartSector & 0x3F) | ((StartCylinder >> 2) & 0xC0));
+        buffer[3] = (byte)StartCylinder;
+        buffer[4] = PartitionType;
+        buffer[5] = EndHead;
+        buffer[6] = (byte)((EndSector & 0x3F) | ((EndCylinder >> 2) & 0xC0));
+        buffer[7] = (byte)EndCylinder;
+        EndianUtilities.WriteBytesLittleEndian(LBAStart, buffer.Slice(8));
+        EndianUtilities.WriteBytesLittleEndian(LBALength, buffer.Slice(12));
     }
 }

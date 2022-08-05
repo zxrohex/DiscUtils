@@ -185,11 +185,12 @@ internal sealed class RpcTcpTransport : IRpcTransport
     {
         MemoryStream ms = null;
         var lastFragFound = false;
+        Span<byte> header = stackalloc byte[4];
 
         while (!lastFragFound)
         {
-            var header = StreamUtilities.ReadExact(stream, 4);
-            var headerVal = EndianUtilities.ToUInt32BigEndian(header, 0);
+            StreamUtilities.ReadExact(stream, header);
+            var headerVal = EndianUtilities.ToUInt32BigEndian(header);
 
             lastFragFound = (headerVal & 0x80000000) != 0;
             var frag = StreamUtilities.ReadExact(stream, (int)(headerVal & 0x7FFFFFFF));

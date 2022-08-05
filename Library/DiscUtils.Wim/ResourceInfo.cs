@@ -34,13 +34,13 @@ internal class ResourceInfo
     public ushort PartNumber;
     public uint RefCount;
 
-    public void Read(byte[] buffer, int offset)
+    public void Read(ReadOnlySpan<byte> buffer)
     {
         Header = new ShortResourceHeader();
-        Header.Read(buffer, offset);
-        PartNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + ShortResourceHeader.Size);
-        RefCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset + ShortResourceHeader.Size + 2);
+        Header.Read(buffer);
+        PartNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(ShortResourceHeader.Size));
+        RefCount = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(ShortResourceHeader.Size + 2));
         Hash = new byte[20];
-        Array.Copy(buffer, offset + ShortResourceHeader.Size + 6, Hash, 0, 20);
+        buffer.Slice(ShortResourceHeader.Size + 6, 20).CopyTo(Hash);
     }
 }

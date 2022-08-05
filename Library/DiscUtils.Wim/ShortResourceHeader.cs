@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Wim;
 
@@ -33,12 +34,12 @@ internal class ShortResourceHeader
     public ResourceFlags Flags;
     public long OriginalSize;
 
-    public void Read(byte[] buffer, int offset)
+    public void Read(ReadOnlySpan<byte> buffer)
     {
-        CompressedSize = EndianUtilities.ToInt64LittleEndian(buffer, offset);
+        CompressedSize = EndianUtilities.ToInt64LittleEndian(buffer);
         Flags = (ResourceFlags)((CompressedSize >> 56) & 0xFF);
         CompressedSize = CompressedSize & 0x00FFFFFFFFFFFFFF;
-        FileOffset = EndianUtilities.ToInt64LittleEndian(buffer, offset + 8);
-        OriginalSize = EndianUtilities.ToInt64LittleEndian(buffer, offset + 16);
+        FileOffset = EndianUtilities.ToInt64LittleEndian(buffer.Slice(8));
+        OriginalSize = EndianUtilities.ToInt64LittleEndian(buffer.Slice(16));
     }
 }

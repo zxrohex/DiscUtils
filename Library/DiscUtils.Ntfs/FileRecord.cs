@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
@@ -333,21 +334,21 @@ internal class FileRecord : FixupRecordBase
         writer.WriteLine($"{indent}   Index (Self Ref): {_index}");
     }
 
-    protected override void Read(byte[] buffer, int offset)
+    protected override void Read(ReadOnlySpan<byte> buffer)
     {
-        LogFileSequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x08);
-        SequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x10);
-        HardLinkCount = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x12);
-        _firstAttributeOffset = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x14);
-        Flags = (FileRecordFlags)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x16);
-        RealSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x18);
-        AllocatedSize = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x1C);
-        BaseFile = new FileRecordReference(EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x20));
-        NextAttributeId = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x28);
+        LogFileSequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x08));
+        SequenceNumber = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x10));
+        HardLinkCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x12));
+        _firstAttributeOffset = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x14));
+        Flags = (FileRecordFlags)EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x16));
+        RealSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x18));
+        AllocatedSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x1C));
+        BaseFile = new FileRecordReference(EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x20)));
+        NextAttributeId = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x28));
 
         if (UpdateSequenceOffset >= 0x30)
         {
-            _index = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x2C);
+            _index = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x2C));
             _haveIndex = true;
         }
 
@@ -355,7 +356,7 @@ internal class FileRecord : FixupRecordBase
         int focus = _firstAttributeOffset;
         while (true)
         {
-            var attr = AttributeRecord.FromBytes(buffer, offset + focus, out var length);
+            var attr = AttributeRecord.FromBytes(buffer.Slice(focus), out var length);
             if (attr == null)
             {
                 break;
@@ -366,36 +367,36 @@ internal class FileRecord : FixupRecordBase
         }
     }
 
-    protected override ushort Write(byte[] buffer, int offset)
+    protected override ushort Write(Span<byte> buffer)
     {
         var headerEnd = (ushort)(_haveIndex ? 0x30 : 0x2A);
 
         _firstAttributeOffset = (ushort)MathUtilities.RoundUp(headerEnd + UpdateSequenceSize, 0x08);
         RealSize = (uint)CalcSize();
 
-        EndianUtilities.WriteBytesLittleEndian(LogFileSequenceNumber, buffer, offset + 0x08);
-        EndianUtilities.WriteBytesLittleEndian(SequenceNumber, buffer, offset + 0x10);
-        EndianUtilities.WriteBytesLittleEndian(HardLinkCount, buffer, offset + 0x12);
-        EndianUtilities.WriteBytesLittleEndian(_firstAttributeOffset, buffer, offset + 0x14);
-        EndianUtilities.WriteBytesLittleEndian((ushort)Flags, buffer, offset + 0x16);
-        EndianUtilities.WriteBytesLittleEndian(RealSize, buffer, offset + 0x18);
-        EndianUtilities.WriteBytesLittleEndian(AllocatedSize, buffer, offset + 0x1C);
-        EndianUtilities.WriteBytesLittleEndian(BaseFile.Value, buffer, offset + 0x20);
-        EndianUtilities.WriteBytesLittleEndian(NextAttributeId, buffer, offset + 0x28);
+        EndianUtilities.WriteBytesLittleEndian(LogFileSequenceNumber, buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian(SequenceNumber, buffer.Slice(0x10));
+        EndianUtilities.WriteBytesLittleEndian(HardLinkCount, buffer.Slice(0x12));
+        EndianUtilities.WriteBytesLittleEndian(_firstAttributeOffset, buffer.Slice(0x14));
+        EndianUtilities.WriteBytesLittleEndian((ushort)Flags, buffer.Slice(0x16));
+        EndianUtilities.WriteBytesLittleEndian(RealSize, buffer.Slice(0x18));
+        EndianUtilities.WriteBytesLittleEndian(AllocatedSize, buffer.Slice(0x1C));
+        EndianUtilities.WriteBytesLittleEndian(BaseFile.Value, buffer.Slice(0x20));
+        EndianUtilities.WriteBytesLittleEndian(NextAttributeId, buffer.Slice(0x28));
 
         if (_haveIndex)
         {
-            EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer, offset + 0x2A); // Alignment field
-            EndianUtilities.WriteBytesLittleEndian(_index, buffer, offset + 0x2C);
+            EndianUtilities.WriteBytesLittleEndian((ushort)0, buffer.Slice(0x2A)); // Alignment field
+            EndianUtilities.WriteBytesLittleEndian(_index, buffer.Slice(0x2C));
         }
 
         int pos = _firstAttributeOffset;
         foreach (var attr in Attributes)
         {
-            pos += attr.Write(buffer, offset + pos);
+            pos += attr.Write(buffer.Slice(pos));
         }
 
-        EndianUtilities.WriteBytesLittleEndian(uint.MaxValue, buffer, offset + pos);
+        EndianUtilities.WriteBytesLittleEndian(uint.MaxValue, buffer.Slice(pos));
 
         return headerEnd;
     }

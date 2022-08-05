@@ -42,16 +42,18 @@ internal class PhysicalVolume
     public PhysicalVolume(PhysicalVolumeLabel physicalVolumeLabel, Stream content)
     {
         PhysicalVolumeLabel = physicalVolumeLabel;
-        PvHeader = new PvHeader();
         content.Position = (long) (physicalVolumeLabel.Sector * SECTOR_SIZE);
-        var buffer = StreamUtilities.ReadExact(content, SECTOR_SIZE);
-        PvHeader.ReadFrom(buffer, (int) physicalVolumeLabel.Offset);
+        Span<byte> buffer = stackalloc byte[SECTOR_SIZE];
+        StreamUtilities.ReadExact(content, buffer);
+        PvHeader = new PvHeader();
+        PvHeader.ReadFrom(buffer.Slice((int)physicalVolumeLabel.Offset));
         if (PvHeader.MetadataDiskAreas.Any())
         {
             var area = PvHeader.MetadataDiskAreas[0];
             var metadata = new VolumeGroupMetadata();
             content.Position = (long) area.Offset;
-            buffer = StreamUtilities.ReadExact(content, (int) area.Length);
+            buffer = stackalloc byte[(int)area.Length];
+            StreamUtilities.ReadExact(content, buffer);
             metadata.ReadFrom(buffer);
             VgMetadata = metadata;
         }

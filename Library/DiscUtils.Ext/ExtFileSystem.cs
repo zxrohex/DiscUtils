@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
@@ -67,7 +68,8 @@ public sealed class ExtFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAlloc
         }
 
         stream.Position = 1024;
-        var superblockData = StreamUtilities.ReadExact(stream, 1024);
+        Span<byte> superblockData = stackalloc byte[1024];
+        StreamUtilities.ReadExact(stream, superblockData);
 
         var superblock = new SuperBlock();
         superblock.ReadFrom(superblockData);

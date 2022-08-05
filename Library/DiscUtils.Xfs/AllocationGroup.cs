@@ -25,6 +25,7 @@
 namespace DiscUtils.Xfs;
 
 using DiscUtils.Streams;
+using System;
 using System.IO;
 
 internal class AllocationGroup
@@ -49,7 +50,8 @@ internal class AllocationGroup
         var superblock = context.SuperBlock;
         FreeBlockInfo = new AllocationGroupFreeBlockInfo(superblock);
         data.Position = offset + superblock.SectorSize;
-        var agfData = StreamUtilities.ReadExact(data, FreeBlockInfo.Size); 
+        Span<byte> agfData = stackalloc byte[FreeBlockInfo.Size];
+        StreamUtilities.ReadExact(data, agfData); 
         FreeBlockInfo.ReadFrom(agfData);
         if (FreeBlockInfo.Magic != AllocationGroupFreeBlockInfo.AgfMagic)
         {
@@ -58,7 +60,8 @@ internal class AllocationGroup
 
         InodeBtreeInfo = new AllocationGroupInodeBtreeInfo(superblock);
         data.Position = offset + superblock.SectorSize * 2;
-        var agiData = StreamUtilities.ReadExact(data, InodeBtreeInfo.Size);
+        Span<byte> agiData = stackalloc byte[InodeBtreeInfo.Size];
+        StreamUtilities.ReadExact(data, agiData);
 
         InodeBtreeInfo.ReadFrom(agiData);
         if (InodeBtreeInfo.Magic != AllocationGroupInodeBtreeInfo.AgiMagic)
@@ -80,7 +83,6 @@ internal class AllocationGroup
     {
         var offset = Offset + ((long)inode.AgBlock*Context.SuperBlock.Blocksize) + ((long)inode.BlockOffset * Context.SuperBlock.InodeSize);
         Context.RawStream.Position = offset;
-        var data = StreamUtilities.ReadExact(Context.RawStream, (int) Context.SuperBlock.InodeSize);
-        inode.ReadFrom(data);
+        inode.ReadFrom(Context.RawStream, (int)Context.SuperBlock.InodeSize);
     }
 }

@@ -152,7 +152,9 @@ internal class DynamicHeader
 
     internal static DynamicHeader FromStream(Stream stream)
     {
-        return FromBytes(StreamUtilities.ReadExact(stream, 1024));
+        Span<byte> buffer = stackalloc byte[1024];
+        StreamUtilities.ReadExact(stream, buffer);
+        return FromBytes(buffer);
     }
 
     private uint CalculateChecksum()

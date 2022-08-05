@@ -106,35 +106,35 @@ internal sealed class IndexEntry
         }
     }
 
-    public void Read(byte[] buffer, int offset)
+    public void Read(ReadOnlySpan<byte> buffer)
     {
-        var dataOffset = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x00);
-        var dataLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x02);
-        var length = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x08);
-        var keyLength = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x0A);
-        _flags = (IndexEntryFlags)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x0C);
+        var dataOffset = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x00));
+        var dataLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x02));
+        var length = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x08));
+        var keyLength = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x0A));
+        _flags = (IndexEntryFlags)EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x0C));
 
         if ((_flags & IndexEntryFlags.End) == 0)
         {
             _keyBuffer = new byte[keyLength];
-            Array.Copy(buffer, offset + 0x10, _keyBuffer, 0, keyLength);
+            buffer.Slice(0x10, keyLength).CopyTo(_keyBuffer);
 
             if (IsFileIndexEntry)
             {
                 // Special case, for file indexes, the MFT ref is held where the data offset & length go
                 _dataBuffer = new byte[8];
-                Array.Copy(buffer, offset + 0x00, _dataBuffer, 0, 8);
+                buffer.Slice(0x00, 8).CopyTo(_dataBuffer);
             }
             else
             {
                 _dataBuffer = new byte[dataLength];
-                Array.Copy(buffer, offset + 0x10 + keyLength, _dataBuffer, 0, dataLength);
+                buffer.Slice(0x10 + keyLength, dataLength).CopyTo(_dataBuffer);
             }
         }
 
         if ((_flags & IndexEntryFlags.Node) != 0)
         {
-            _vcn = EndianUtilities.ToInt64LittleEndian(buffer, offset + length - 8);
+            _vcn = EndianUtilities.ToInt64LittleEndian(buffer.Slice(length - 8));
         }
     }
 

@@ -103,7 +103,7 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
     /// First MFT Index available for 'normal' files.
     /// </summary>
     private const uint FirstAvailableMftIndex = 24;
-    private static readonly int FILE_MAGIC = BitConverter.ToInt32(Encoding.ASCII.GetBytes("FILE"), 0);
+    private static readonly int FILE_MAGIC = EndianUtilities.ToInt32LittleEndian(Encoding.ASCII.GetBytes("FILE"), 0);
 
     private Bitmap _bitmap;
     private int _bytesPerSector;
@@ -142,13 +142,13 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
             {
                 var recordData = StreamUtilities.ReadExact(mftStream, RecordSize);
 
-                if (BitConverter.ToInt32(recordData, 0) != FILE_MAGIC)
+                if (EndianUtilities.ToInt32LittleEndian(recordData, 0) != FILE_MAGIC)
                 {
                     continue;
                 }
 
                 var record = new FileRecord(_bytesPerSector);
-                record.FromBytes(recordData, 0);
+                record.FromBytes(recordData);
                 record.LoadedIndex = index;
 
                 yield return record;
@@ -196,9 +196,8 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
     public FileRecord GetBootstrapRecord()
     {
         _recordStream.Position = 0;
-        var mftSelfRecordData = StreamUtilities.ReadExact(_recordStream, RecordSize);
         var mftSelfRecord = new FileRecord(_bytesPerSector);
-        mftSelfRecord.FromBytes(mftSelfRecordData, 0);
+        mftSelfRecord.FromStream(_recordStream, RecordSize);
         _recordCache[MftIndex] = mftSelfRecord;
         return mftSelfRecord;
     }
@@ -258,7 +257,7 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
         var buffer = ArrayPool<byte>.Shared.Rent(RecordSize);
         try
         {
-            fileRec.ToBytes(buffer, 0);
+            fileRec.ToBytes(buffer);
             _recordStream.Position = 0;
             _recordStream.Write(buffer, 0, RecordSize);
             _recordStream.Flush();
@@ -377,10 +376,9 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
             if ((index + 1) * RecordSize <= _recordStream.Length)
             {
                 _recordStream.Position = index * RecordSize;
-                var recordBuffer = StreamUtilities.ReadExact(_recordStream, RecordSize);
 
                 result = new FileRecord(_bytesPerSector);
-                result.FromBytes(recordBuffer, 0, ignoreMagic);
+                result.FromStream(_recordStream, RecordSize, ignoreMagic);
                 result.LoadedIndex = (uint)index;
             }
             else
@@ -406,7 +404,7 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
         var buffer = ArrayPool<byte>.Shared.Rent(RecordSize);
         try
         {
-            record.ToBytes(buffer, 0);
+            record.ToBytes(buffer);
 
             _recordStream.Position = record.MasterFileTableIndex * RecordSize;
             _recordStream.Write(buffer, 0, RecordSize);

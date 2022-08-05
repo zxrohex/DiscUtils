@@ -138,7 +138,8 @@ public class RegistryHive : IDisposable
         _fileStream.Position = 0;
         _ownsStream = ownership;
 
-        var buffer = StreamUtilities.ReadExact(_fileStream, HiveHeader.HeaderSize);
+        Span<byte> buffer = stackalloc byte[HiveHeader.HeaderSize];
+        StreamUtilities.ReadExact(_fileStream, buffer);
 
         _header = new();
         var headerSize = _header.ReadFrom(buffer, throwOnInvalidData: false);
@@ -240,7 +241,7 @@ public class RegistryHive : IDisposable
                 _header.Sequence1 = _header.Sequence2 = lastSequenceNumber + 1;
                 _header.WriteTo(buffer);
                 _fileStream.Position = 0;
-                _fileStream.Write(buffer, 0, buffer.Length);
+                _fileStream.Write(buffer);
                 _fileStream.Position = 0;
             }
             else if (_fileStream.CanWrite)
@@ -263,7 +264,7 @@ public class RegistryHive : IDisposable
         while (pos < _header.Length)
         {
             _fileStream.Position = BinStart + pos;
-            StreamUtilities.ReadExact(_fileStream, buffer, 0, BinHeader.HeaderSize);
+            StreamUtilities.ReadExact(_fileStream, buffer.Slice(0, BinHeader.HeaderSize));
             var header = new BinHeader();
             header.ReadFrom(buffer);
             _bins.Add(header);

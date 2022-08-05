@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Vmdk;
 
@@ -50,27 +51,27 @@ internal class HostedSparseExtentHeader : CommonSparseExtentHeader
         DoubleEndLineChar2 = (byte)'\n';
     }
 
-    public static HostedSparseExtentHeader Read(byte[] buffer, int offset)
+    public static HostedSparseExtentHeader Read(ReadOnlySpan<byte> buffer)
     {
         var hdr = new HostedSparseExtentHeader
         {
-            MagicNumber = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0),
-            Version = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 4),
-            Flags = (HostedSparseExtentFlags)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8),
-            Capacity = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x0C),
-            GrainSize = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x14),
-            DescriptorOffset = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x1C),
-            DescriptorSize = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x24),
-            NumGTEsPerGT = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x2C),
-            RgdOffset = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x30),
-            GdOffset = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x38),
-            Overhead = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0x40),
-            UncleanShutdown = buffer[offset + 0x48],
-            SingleEndLineChar = buffer[offset + 0x49],
-            NonEndLineChar = buffer[offset + 0x4A],
-            DoubleEndLineChar1 = buffer[offset + 0x4B],
-            DoubleEndLineChar2 = buffer[offset + 0x4C],
-            CompressAlgorithm = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x4D)
+            MagicNumber = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0)),
+            Version = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(4)),
+            Flags = (HostedSparseExtentFlags)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(8)),
+            Capacity = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x0C)),
+            GrainSize = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x14)),
+            DescriptorOffset = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x1C)),
+            DescriptorSize = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x24)),
+            NumGTEsPerGT = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x2C)),
+            RgdOffset = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x30)),
+            GdOffset = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x38)),
+            Overhead = EndianUtilities.ToInt64LittleEndian(buffer.Slice(0x40)),
+            UncleanShutdown = buffer[0x48],
+            SingleEndLineChar = buffer[0x49],
+            NonEndLineChar = buffer[0x4A],
+            DoubleEndLineChar1 = buffer[0x4B],
+            DoubleEndLineChar2 = buffer[0x4C],
+            CompressAlgorithm = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x4D))
         };
 
         return hdr;

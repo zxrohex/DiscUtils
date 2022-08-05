@@ -983,7 +983,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
         else
         {
             // This is a sparse disk extent, hopefully with embedded descriptor...
-            var hdr = HostedSparseExtentHeader.Read(header, 0);
+            var hdr = HostedSparseExtentHeader.Read(header);
             if (hdr.DescriptorOffset != 0)
             {
                 Stream descriptorStream = new SubStream(s, hdr.DescriptorOffset * Sizes.Sector,

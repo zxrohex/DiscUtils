@@ -45,13 +45,14 @@ public sealed class PartitionMap : PartitionTable
         _stream = stream;
 
         stream.Position = 0;
-        var initialBytes = StreamUtilities.ReadExact(stream, 1024);
+        Span<byte> initialBytes = stackalloc byte[1024];
+        StreamUtilities.ReadExact(stream, initialBytes);
 
         var b0 = new BlockZero();
         b0.ReadFrom(initialBytes);
 
         var initialPart = new PartitionMapEntry(_stream);
-        initialPart.ReadFrom(initialBytes.AsSpan(512));
+        initialPart.ReadFrom(initialBytes.Slice(512));
 
         var partTableData = StreamUtilities.ReadExact(stream, (int)(initialPart.MapEntries - 1) * 512);
 

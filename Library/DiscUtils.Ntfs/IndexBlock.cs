@@ -50,8 +50,17 @@ internal class IndexBlock : FixupRecordBase
         var stream = index.AllocationStream;
         _streamPosition = index.IndexBlockVcnToPosition(parentEntry.ChildrenVirtualCluster);
         stream.Position = _streamPosition;
-        var buffer = StreamUtilities.ReadExact(stream, (int)index.IndexBufferSize);
-        FromBytes(buffer, 0);
+        var buffer = ArrayPool<byte>.Shared.Rent((int)index.IndexBufferSize);
+        try
+        {
+            var span = buffer.AsSpan(0, (int)index.IndexBufferSize);
+            StreamUtilities.ReadExact(stream, span);
+            FromBytes(span);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     private IndexBlock(Index index, bool isRoot, long vcn, BiosParameterBlock bpb)
@@ -83,7 +92,7 @@ internal class IndexBlock : FixupRecordBase
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         try
         {
-            ToBytes(buffer, 0);
+            ToBytes(buffer);
 
             var stream = _index.AllocationStream;
             stream.Position = _streamPosition;
@@ -96,19 +105,19 @@ internal class IndexBlock : FixupRecordBase
         }
     }
 
-    protected override void Read(byte[] buffer, int offset)
+    protected override void Read(ReadOnlySpan<byte> buffer)
     {
         // Skip FixupRecord fields...
-        _logSequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x08);
-        _indexBlockVcn = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x10);
-        Node = new IndexNode(WriteToDisk, UpdateSequenceSize, _index, _isRoot, buffer, offset + FieldSize);
+        _logSequenceNumber = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x08));
+        _indexBlockVcn = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x10));
+        Node = new IndexNode(WriteToDisk, UpdateSequenceSize, _index, _isRoot, buffer.Slice(FieldSize));
     }
 
-    protected override ushort Write(byte[] buffer, int offset)
+    protected override ushort Write(Span<byte> buffer)
     {
-        EndianUtilities.WriteBytesLittleEndian(_logSequenceNumber, buffer, offset + 0x08);
-        EndianUtilities.WriteBytesLittleEndian(_indexBlockVcn, buffer, offset + 0x10);
-        return (ushort)(FieldSize + Node.WriteTo(buffer, offset + FieldSize));
+        EndianUtilities.WriteBytesLittleEndian(_logSequenceNumber, buffer.Slice(0x08));
+        EndianUtilities.WriteBytesLittleEndian(_indexBlockVcn, buffer.Slice(0x10));
+        return (ushort)(FieldSize + Node.WriteTo(buffer.Slice(FieldSize)));
     }
 
     protected override int CalcSize()

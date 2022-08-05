@@ -50,7 +50,8 @@ internal sealed class Bin
         _streamPos = stream.Position;
 
         stream.Position = _streamPos;
-        var buffer = StreamUtilities.ReadExact(stream, 0x20);
+        Span<byte> buffer = stackalloc byte[0x20];
+        StreamUtilities.ReadExact(stream, buffer);
         _header = new BinHeader();
         _header.ReadFrom(buffer);
 

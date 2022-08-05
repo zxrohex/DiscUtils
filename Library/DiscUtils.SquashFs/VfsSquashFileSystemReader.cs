@@ -52,8 +52,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
 
         // Read superblock
         stream.Position = 0;
-        var buffer = StreamUtilities.ReadExact(stream, _context.SuperBlock.Size);
-        _context.SuperBlock.ReadFrom(buffer);
+        _context.SuperBlock.ReadFrom(stream, _context.SuperBlock.Size);
 
         if (_context.SuperBlock.Magic != SuperBlock.SquashFsMagic)
         {
@@ -268,9 +267,10 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
         var stream = _context.RawStream;
         stream.Position = pos;
 
-        var buffer = StreamUtilities.ReadExact(stream, 2);
+        Span<byte> buffer = stackalloc byte[2];
+        StreamUtilities.ReadExact(stream, buffer);
 
-        int readLen = EndianUtilities.ToUInt16LittleEndian(buffer, 0);
+        int readLen = EndianUtilities.ToUInt16LittleEndian(buffer);
         var isCompressed = (readLen & 0x8000) == 0;
         readLen &= 0x7FFF;
         if (readLen == 0)

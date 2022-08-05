@@ -541,9 +541,107 @@ public static class StreamUtilities
         where T : IByteArraySerializable, new()
     {
         var result = new T();
-        var buffer = ReadExact(stream, result.Size);
-        result.ReadFrom(buffer);
+        var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
+        try
+        {
+            ReadExact(stream, buffer, 0, result.Size);
+            result.ReadFrom(buffer);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
         return result;
+    }
+
+    /// <summary>
+    /// Reads a structure from a stream into an existing instance.
+    /// </summary>
+    /// <typeparam name="T">The type of the structure.</typeparam>
+    /// <param name="result">Existing instance</param>
+    /// <param name="stream">The stream to read.</param>
+    /// <returns>The structure.</returns>
+    public static void ReadFrom<T>(this T result, Stream stream)
+        where T : class, IByteArraySerializable
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
+        try
+        {
+            ReadExact(stream, buffer, 0, result.Size);
+            result.ReadFrom(buffer);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    /// <summary>
+    /// Reads a structure from a stream into an existing instance.
+    /// </summary>
+    /// <typeparam name="T">The type of the structure.</typeparam>
+    /// <param name="result">Existing instance</param>
+    /// <param name="stream">The stream to read.</param>
+    /// <param name="length">Number of bytes to read from stream</param>
+    /// <returns>The structure.</returns>
+    public static void ReadFrom<T>(this T result, Stream stream, int length)
+        where T : class, IByteArraySerializable
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(length);
+        try
+        {
+            ReadExact(stream, buffer, 0, length);
+            result.ReadFrom(buffer);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    /// <summary>
+    /// Reads a structure from a stream into an existing instance.
+    /// </summary>
+    /// <typeparam name="T">The type of the structure.</typeparam>
+    /// <param name="result">Existing instance</param>
+    /// <param name="stream">The stream to read.</param>
+    /// <returns>The structure.</returns>
+    public static void ReadFrom<T>(this ref T result, Stream stream)
+        where T : struct, IByteArraySerializable
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
+        try
+        {
+            ReadExact(stream, buffer, 0, result.Size);
+            result.ReadFrom(buffer);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    /// <summary>
+    /// Reads a structure from a stream into an existing instance.
+    /// </summary>
+    /// <typeparam name="T">The type of the structure.</typeparam>
+    /// <param name="result">Existing instance</param>
+    /// <param name="stream">The stream to read.</param>
+    /// <param name="length">Number of bytes to read from stream</param>
+    /// <returns>The structure.</returns>
+    public static void ReadFrom<T>(this ref T result, Stream stream, int length)
+        where T : struct, IByteArraySerializable
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(length);
+        try
+        {
+            ReadExact(stream, buffer, 0, length);
+            result.ReadFrom(buffer);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     /// <summary>
@@ -556,10 +654,18 @@ public static class StreamUtilities
     public static T ReadStruct<T>(this Stream stream, int length)
         where T : IByteArraySerializable, new()
     {
-        var result = new T();
-        var buffer = ReadExact(stream, length);
-        result.ReadFrom(buffer);
-        return result;
+        var buffer = ArrayPool<byte>.Shared.Rent(length);
+        try
+        {
+            ReadExact(stream, buffer, 0, length);
+            var result = new T();
+            result.ReadFrom(buffer);
+            return result;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     /// <summary>

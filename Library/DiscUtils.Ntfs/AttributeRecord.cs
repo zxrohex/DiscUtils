@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -101,18 +102,18 @@ internal abstract class AttributeRecord : IComparable<AttributeRecord>
         return _attributeId - other._attributeId;
     }
 
-    public static AttributeRecord FromBytes(byte[] buffer, int offset, out int length)
+    public static AttributeRecord FromBytes(ReadOnlySpan<byte> buffer, out int length)
     {
-        if (EndianUtilities.ToUInt32LittleEndian(buffer, offset) == 0xFFFFFFFF)
+        if (EndianUtilities.ToUInt32LittleEndian(buffer) == 0xFFFFFFFF)
         {
             length = 0;
             return null;
         }
-        if (buffer[offset + 0x08] != 0x00)
+        if (buffer[0x08] != 0x00)
         {
-            return new NonResidentAttributeRecord(buffer, offset, out length);
+            return new NonResidentAttributeRecord(buffer, out length);
         }
-        return new ResidentAttributeRecord(buffer, offset, out length);
+        return new ResidentAttributeRecord(buffer, out length);
     }
 
     public static int CompareStartVcns(AttributeRecord x, AttributeRecord y)
@@ -134,7 +135,7 @@ internal abstract class AttributeRecord : IComparable<AttributeRecord>
 
     public abstract IBuffer GetReadOnlyDataBuffer(INtfsContext context);
 
-    public abstract int Write(byte[] buffer, int offset);
+    public abstract int Write(Span<byte> buffer);
 
     public virtual void Dump(TextWriter writer, string indent)
     {
@@ -146,16 +147,16 @@ internal abstract class AttributeRecord : IComparable<AttributeRecord>
         writer.WriteLine($"{indent}     AttributeId: {_attributeId}");
     }
 
-    protected virtual void Read(byte[] buffer, int offset, out int length)
+    protected virtual void Read(ReadOnlySpan<byte> buffer, out int length)
     {
-        _type = (AttributeType)EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x00);
-        length = EndianUtilities.ToInt32LittleEndian(buffer, offset + 0x04);
+        _type = (AttributeType)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x00));
+        length = EndianUtilities.ToInt32LittleEndian(buffer.Slice(0x04));
 
-        _nonResidentFlag = buffer[offset + 0x08];
-        var nameLength = buffer[offset + 0x09];
-        var nameOffset = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x0A);
-        _flags = (AttributeFlags)EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x0C);
-        _attributeId = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x0E);
+        _nonResidentFlag = buffer[0x08];
+        var nameLength = buffer[0x09];
+        var nameOffset = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x0A));
+        _flags = (AttributeFlags)EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x0C));
+        _attributeId = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x0E));
 
         if (nameLength != 0x00)
         {
@@ -164,7 +165,7 @@ internal abstract class AttributeRecord : IComparable<AttributeRecord>
                 throw new IOException("Corrupt attribute, name outside of attribute");
             }
 
-            _name = Encoding.Unicode.GetString(buffer, offset + nameOffset, nameLength * 2);
+            _name = Encoding.Unicode.GetString(buffer.Slice(nameOffset, nameLength * 2));
         }
     }
 }

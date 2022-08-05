@@ -354,7 +354,8 @@ public class FileChecker
     private void CheckFooter()
     {
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
-        var sector = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+        Span<byte> sector = stackalloc byte[Sizes.Sector];
+        StreamUtilities.ReadExact(_fileStream, sector);
 
         _footer = Footer.FromBytes(sector);
         if (!_footer.IsValid())
@@ -366,7 +367,8 @@ public class FileChecker
     private void CheckHeader()
     {
         _fileStream.Position = 0;
-        var headerSector = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+        Span<byte> headerSector = stackalloc byte[Sizes.Sector];
+        StreamUtilities.ReadExact(_fileStream, headerSector);
 
         var header = Footer.FromBytes(headerSector);
         if (!header.IsValid())
@@ -375,9 +377,10 @@ public class FileChecker
         }
 
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
-        var footerSector = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+        Span<byte> footerSector = stackalloc byte[Sizes.Sector];
+        StreamUtilities.ReadExact(_fileStream, footerSector);
 
-        if (!Utilities.AreEqual(footerSector, headerSector))
+        if (!footerSector.SequenceEqual(headerSector))
         {
             ReportError("Header and footer are different");
         }

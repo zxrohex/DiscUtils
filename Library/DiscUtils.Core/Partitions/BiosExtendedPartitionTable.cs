@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
@@ -42,10 +43,12 @@ internal class BiosExtendedPartitionTable
     public IEnumerable<BiosPartitionRecord> GetPartitions()
     {
         var partPos = _firstSector;
+        var sector = new byte[_diskGeometry.BytesPerSector];
+
         while (partPos != 0)
         {
             _disk.Position = partPos * _diskGeometry.BytesPerSector;
-            var sector = StreamUtilities.ReadExact(_disk, _diskGeometry.BytesPerSector);
+            StreamUtilities.ReadExact(_disk, sector);
             if (sector[510] != 0x55 || sector[511] != 0xAA)
             {
                 throw new IOException("Invalid extended partition sector");
@@ -54,7 +57,7 @@ internal class BiosExtendedPartitionTable
             uint nextPartPos = 0;
             for (var offset = 0x1BE; offset <= 0x1EE; offset += 0x10)
             {
-                var thisPart = new BiosPartitionRecord(sector, offset, partPos, -1);
+                var thisPart = new BiosPartitionRecord(sector.AsSpan(offset), partPos, -1);
 
                 if (thisPart.StartCylinder != 0 || thisPart.StartHead != 0 || thisPart.StartSector != 0 || 
                     (thisPart.LBAStart != 0 && thisPart.LBALength != 0))
@@ -81,12 +84,14 @@ internal class BiosExtendedPartitionTable
     public IEnumerable<StreamExtent> GetMetadataDiskExtents()
     {
         var partPos = _firstSector;
+        var sector = new byte[_diskGeometry.BytesPerSector];
+
         while (partPos != 0)
         {
             yield return new StreamExtent((long)partPos * _diskGeometry.BytesPerSector, _diskGeometry.BytesPerSector);
 
             _disk.Position = (long)partPos * _diskGeometry.BytesPerSector;
-            var sector = StreamUtilities.ReadExact(_disk, _diskGeometry.BytesPerSector);
+            StreamUtilities.ReadExact(_disk, sector);
             if (sector[510] != 0x55 || sector[511] != 0xAA)
             {
                 throw new IOException("Invalid extended partition sector");
@@ -95,7 +100,7 @@ internal class BiosExtendedPartitionTable
             uint nextPartPos = 0;
             for (var offset = 0x1BE; offset <= 0x1EE; offset += 0x10)
             {
-                var thisPart = new BiosPartitionRecord(sector, offset, partPos, -1);
+                var thisPart = new BiosPartitionRecord(sector.AsSpan(offset), partPos, -1);
 
                 if (thisPart.StartCylinder != 0 || thisPart.StartHead != 0 || thisPart.StartSector != 0)
                 {

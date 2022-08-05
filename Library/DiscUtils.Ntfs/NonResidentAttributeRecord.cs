@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -42,9 +43,9 @@ internal sealed class NonResidentAttributeRecord : AttributeRecord
 
     private ulong _startingVCN;
 
-    public NonResidentAttributeRecord(byte[] buffer, int offset, out int length)
+    public NonResidentAttributeRecord(ReadOnlySpan<byte> buffer, out int length)
     {
-        Read(buffer, offset, out length);
+        Read(buffer, out length);
     }
 
     public NonResidentAttributeRecord(AttributeType type, string name, ushort id, AttributeFlags flags,
@@ -233,7 +234,7 @@ internal sealed class NonResidentAttributeRecord : AttributeRecord
 
     public override CookedDataRuns GetCookedDataRuns() => new CookedDataRuns(DataRuns, this);
 
-    public override int Write(byte[] buffer, int offset)
+    public override int Write(Span<byte> buffer)
     {
         ushort headerLength = 0x40;
         if ((Flags & (AttributeFlags.Compressed | AttributeFlags.Sparse)) != 0)
@@ -254,38 +255,38 @@ internal sealed class NonResidentAttributeRecord : AttributeRecord
         var dataLen = 0;
         foreach (var run in DataRuns)
         {
-            dataLen += run.Write(buffer, offset + dataOffset + dataLen);
+            dataLen += run.Write(buffer.Slice(dataOffset + dataLen));
         }
 
-        buffer[offset + dataOffset + dataLen] = 0; // NULL terminator
+        buffer[dataOffset + dataLen] = 0; // NULL terminator
         dataLen++;
 
         var length = MathUtilities.RoundUp(dataOffset + dataLen, 8);
 
-        EndianUtilities.WriteBytesLittleEndian((uint)_type, buffer, offset + 0x00);
-        EndianUtilities.WriteBytesLittleEndian(length, buffer, offset + 0x04);
-        buffer[offset + 0x08] = _nonResidentFlag;
-        buffer[offset + 0x09] = nameLength;
-        EndianUtilities.WriteBytesLittleEndian(nameOffset, buffer, offset + 0x0A);
-        EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer, offset + 0x0C);
-        EndianUtilities.WriteBytesLittleEndian(_attributeId, buffer, offset + 0x0E);
+        EndianUtilities.WriteBytesLittleEndian((uint)_type, buffer.Slice(0x00));
+        EndianUtilities.WriteBytesLittleEndian(length, buffer.Slice(0x04));
+        buffer[0x08] = _nonResidentFlag;
+        buffer[0x09] = nameLength;
+        EndianUtilities.WriteBytesLittleEndian(nameOffset, buffer.Slice(0x0A));
+        EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer.Slice(0x0C));
+        EndianUtilities.WriteBytesLittleEndian(_attributeId, buffer.Slice(0x0E));
 
-        EndianUtilities.WriteBytesLittleEndian(_startingVCN, buffer, offset + 0x10);
-        EndianUtilities.WriteBytesLittleEndian(_lastVCN, buffer, offset + 0x18);
-        EndianUtilities.WriteBytesLittleEndian(dataOffset, buffer, offset + 0x20);
-        EndianUtilities.WriteBytesLittleEndian(_compressionUnitSize, buffer, offset + 0x22);
-        EndianUtilities.WriteBytesLittleEndian((uint)0, buffer, offset + 0x24); // Padding
-        EndianUtilities.WriteBytesLittleEndian(_dataAllocatedSize, buffer, offset + 0x28);
-        EndianUtilities.WriteBytesLittleEndian(_dataRealSize, buffer, offset + 0x30);
-        EndianUtilities.WriteBytesLittleEndian(_initializedDataSize, buffer, offset + 0x38);
+        EndianUtilities.WriteBytesLittleEndian(_startingVCN, buffer.Slice(0x10));
+        EndianUtilities.WriteBytesLittleEndian(_lastVCN, buffer.Slice(0x18));
+        EndianUtilities.WriteBytesLittleEndian(dataOffset, buffer.Slice(0x20));
+        EndianUtilities.WriteBytesLittleEndian(_compressionUnitSize, buffer.Slice(0x22));
+        EndianUtilities.WriteBytesLittleEndian((uint)0, buffer.Slice(0x24)); // Padding
+        EndianUtilities.WriteBytesLittleEndian(_dataAllocatedSize, buffer.Slice(0x28));
+        EndianUtilities.WriteBytesLittleEndian(_dataRealSize, buffer.Slice(0x30));
+        EndianUtilities.WriteBytesLittleEndian(_initializedDataSize, buffer.Slice(0x38));
         if ((Flags & (AttributeFlags.Compressed | AttributeFlags.Sparse)) != 0)
         {
-            EndianUtilities.WriteBytesLittleEndian(_compressedSize, buffer, offset + 0x40);
+            EndianUtilities.WriteBytesLittleEndian(_compressedSize, buffer.Slice(0x40));
         }
 
         if (Name != null)
         {
-            Array.Copy(Encoding.Unicode.GetBytes(Name), 0, buffer, offset + nameOffset, nameLength * 2);
+            Encoding.Unicode.GetBytes(Name.AsSpan(), buffer.Slice(nameOffset, nameLength * 2));
         }
 
         return length;
@@ -340,43 +341,43 @@ internal sealed class NonResidentAttributeRecord : AttributeRecord
     public override void Dump(TextWriter writer, string indent)
     {
         base.Dump(writer, indent);
-        writer.WriteLine(indent + "     Starting VCN: " + _startingVCN);
-        writer.WriteLine(indent + "         Last VCN: " + _lastVCN);
-        writer.WriteLine(indent + "   Comp Unit Size: " + _compressionUnitSize);
-        writer.WriteLine(indent + "   Allocated Size: " + _dataAllocatedSize);
-        writer.WriteLine(indent + "        Real Size: " + _dataRealSize);
-        writer.WriteLine(indent + "   Init Data Size: " + _initializedDataSize);
+        writer.WriteLine($"{indent}     Starting VCN: {_startingVCN}");
+        writer.WriteLine($"{indent}         Last VCN: {_lastVCN}");
+        writer.WriteLine($"{indent}   Comp Unit Size: {_compressionUnitSize}");
+        writer.WriteLine($"{indent}   Allocated Size: {_dataAllocatedSize}");
+        writer.WriteLine($"{indent}        Real Size: {_dataRealSize}");
+        writer.WriteLine($"{indent}   Init Data Size: {_initializedDataSize}");
         if ((Flags & (AttributeFlags.Compressed | AttributeFlags.Sparse)) != 0)
         {
-            writer.WriteLine(indent + "  Compressed Size: " + _compressedSize);
+            writer.WriteLine($"{indent}  Compressed Size: {_compressedSize}");
         }
 
         var runStr = string.Empty;
 
         foreach (var run in DataRuns)
         {
-            runStr += " " + run;
+            runStr += $" {run}";
         }
 
-        writer.WriteLine(indent + "        Data Runs:" + runStr);
+        writer.WriteLine($"{indent}        Data Runs:{runStr}");
     }
 
-    protected override void Read(byte[] buffer, int offset, out int length)
+    protected override void Read(ReadOnlySpan<byte> buffer, out int length)
     {
         DataRuns = null;
 
-        base.Read(buffer, offset, out length);
+        base.Read(buffer, out length);
 
-        _startingVCN = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x10);
-        _lastVCN = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x18);
-        _dataRunsOffset = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x20);
-        _compressionUnitSize = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x22);
-        _dataAllocatedSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x28);
-        _dataRealSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x30);
-        _initializedDataSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x38);
+        _startingVCN = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x10));
+        _lastVCN = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x18));
+        _dataRunsOffset = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x20));
+        _compressionUnitSize = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x22));
+        _dataAllocatedSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x28));
+        _dataRealSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x30));
+        _initializedDataSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x38));
         if ((Flags & (AttributeFlags.Compressed | AttributeFlags.Sparse)) != 0 && _dataRunsOffset > 0x40)
         {
-            _compressedSize = EndianUtilities.ToUInt64LittleEndian(buffer, offset + 0x40);
+            _compressedSize = EndianUtilities.ToUInt64LittleEndian(buffer.Slice(0x40));
         }
 
         DataRuns = new List<DataRun>();
@@ -384,7 +385,7 @@ internal sealed class NonResidentAttributeRecord : AttributeRecord
         while (pos < length)
         {
             var run = new DataRun();
-            var len = run.Read(buffer, offset + pos);
+            var len = run.Read(buffer.Slice(pos));
 
             // Length 1 means there was only a header byte (i.e. terminator)
             if (len == 1)

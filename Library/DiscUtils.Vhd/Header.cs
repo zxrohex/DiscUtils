@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using DiscUtils.Streams;
 
@@ -32,15 +33,17 @@ internal class Header
 
     public static Header FromStream(Stream stream)
     {
-        return FromBytes(StreamUtilities.ReadExact(stream, 16), 0);
+        Span<byte> data = stackalloc byte[16];
+        StreamUtilities.ReadExact(stream, data);
+        return FromBytes(data);
     }
 
-    public static Header FromBytes(byte[] data, int offset)
+    public static Header FromBytes(ReadOnlySpan<byte> data)
     {
         var result = new Header
         {
-            Cookie = EndianUtilities.BytesToString(data, offset, 8),
-            DataOffset = EndianUtilities.ToInt64BigEndian(data, offset + 8)
+            Cookie = EndianUtilities.BytesToString(data.Slice(0, 8)),
+            DataOffset = EndianUtilities.ToInt64BigEndian(data.Slice(8))
         };
         return result;
     }

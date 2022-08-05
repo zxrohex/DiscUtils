@@ -26,6 +26,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 using Buffer = DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.Ntfs;
@@ -35,9 +36,9 @@ internal sealed class ResidentAttributeRecord : AttributeRecord
     private byte _indexedFlag;
     private SparseMemoryBuffer _memoryBuffer;
 
-    public ResidentAttributeRecord(byte[] buffer, int offset, out int length)
+    public ResidentAttributeRecord(ReadOnlySpan<byte> buffer, out int length)
     {
-        Read(buffer, offset, out length);
+        Read(buffer, out length);
     }
 
     public ResidentAttributeRecord(AttributeType type, string name, ushort id, bool indexed, AttributeFlags flags)
@@ -121,7 +122,7 @@ internal sealed class ResidentAttributeRecord : AttributeRecord
         return Enumerable.Empty<Range<long, long>>();
     }
 
-    public override int Write(byte[] buffer, int offset)
+    public override int Write(Span<byte> buffer)
     {
         byte nameLength = 0;
         ushort nameOffset = 0;
@@ -134,24 +135,24 @@ internal sealed class ResidentAttributeRecord : AttributeRecord
         var dataOffset = (ushort)MathUtilities.RoundUp(0x18 + nameLength * 2, 8);
         var length = (int)MathUtilities.RoundUp(dataOffset + _memoryBuffer.Capacity, 8);
 
-        EndianUtilities.WriteBytesLittleEndian((uint)_type, buffer, offset + 0x00);
-        EndianUtilities.WriteBytesLittleEndian(length, buffer, offset + 0x04);
-        buffer[offset + 0x08] = _nonResidentFlag;
-        buffer[offset + 0x09] = nameLength;
-        EndianUtilities.WriteBytesLittleEndian(nameOffset, buffer, offset + 0x0A);
-        EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer, offset + 0x0C);
-        EndianUtilities.WriteBytesLittleEndian(_attributeId, buffer, offset + 0x0E);
-        EndianUtilities.WriteBytesLittleEndian((int)_memoryBuffer.Capacity, buffer, offset + 0x10);
-        EndianUtilities.WriteBytesLittleEndian(dataOffset, buffer, offset + 0x14);
-        buffer[offset + 0x16] = _indexedFlag;
-        buffer[offset + 0x17] = 0; // Padding
+        EndianUtilities.WriteBytesLittleEndian((uint)_type, buffer.Slice(0x00));
+        EndianUtilities.WriteBytesLittleEndian(length, buffer.Slice(0x04));
+        buffer[0x08] = _nonResidentFlag;
+        buffer[0x09] = nameLength;
+        EndianUtilities.WriteBytesLittleEndian(nameOffset, buffer.Slice(0x0A));
+        EndianUtilities.WriteBytesLittleEndian((ushort)_flags, buffer.Slice(0x0C));
+        EndianUtilities.WriteBytesLittleEndian(_attributeId, buffer.Slice(0x0E));
+        EndianUtilities.WriteBytesLittleEndian((int)_memoryBuffer.Capacity, buffer.Slice(0x10));
+        EndianUtilities.WriteBytesLittleEndian(dataOffset, buffer.Slice(0x14));
+        buffer[0x16] = _indexedFlag;
+        buffer[0x17] = 0; // Padding
 
         if (Name != null)
         {
-            Array.Copy(Encoding.Unicode.GetBytes(Name), 0, buffer, offset + nameOffset, nameLength * 2);
+            Encoding.Unicode.GetBytes(Name.AsSpan(), buffer.Slice(nameOffset, nameLength * 2));
         }
 
-        _memoryBuffer.Read(0, buffer, offset + dataOffset, (int)_memoryBuffer.Capacity);
+        _memoryBuffer.Read(0, buffer.Slice(dataOffset, (int)_memoryBuffer.Capacity));
 
         return length;
     }
@@ -159,17 +160,17 @@ internal sealed class ResidentAttributeRecord : AttributeRecord
     public override void Dump(TextWriter writer, string indent)
     {
         base.Dump(writer, indent);
-        writer.WriteLine(indent + "     Data Length: " + DataLength);
-        writer.WriteLine(indent + "         Indexed: " + _indexedFlag);
+        writer.WriteLine($"{indent}     Data Length: {DataLength}");
+        writer.WriteLine($"{indent}         Indexed: {_indexedFlag}");
     }
 
-    protected override void Read(byte[] buffer, int offset, out int length)
+    protected override void Read(ReadOnlySpan<byte> buffer, out int length)
     {
-        base.Read(buffer, offset, out length);
+        base.Read(buffer, out length);
 
-        var dataLength = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 0x10);
-        var dataOffset = EndianUtilities.ToUInt16LittleEndian(buffer, offset + 0x14);
-        _indexedFlag = buffer[offset + 0x16];
+        var dataLength = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(0x10));
+        var dataOffset = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(0x14));
+        _indexedFlag = buffer[0x16];
 
         if (dataOffset + dataLength > length)
         {
@@ -177,6 +178,6 @@ internal sealed class ResidentAttributeRecord : AttributeRecord
         }
 
         _memoryBuffer = new SparseMemoryBuffer(1024);
-        _memoryBuffer.Write(0, buffer, offset + dataOffset, (int)dataLength);
+        _memoryBuffer.Write(0, buffer.Slice(dataOffset, (int)dataLength));
     }
 }

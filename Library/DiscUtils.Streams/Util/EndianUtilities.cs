@@ -22,6 +22,7 @@
 
 using System;
 using System.Buffers;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -205,6 +206,13 @@ public static class EndianUtilities
                       | ((buffer[1] << 8) & 0x0000FF00U) | ((buffer[0] << 0) & 0x000000FFU));
     }
 
+    public static uint ReadUInt32LittleEndian(Stream stream)
+    {
+        Span<byte> buffer = stackalloc byte[sizeof(uint)];
+        stream.ReadExact(buffer);
+        return ToUInt32LittleEndian(buffer);
+    }
+
     public static ulong ToUInt64LittleEndian(byte[] buffer, int offset)
     {
         return ((ulong)ToUInt32LittleEndian(buffer, offset + 4) << 32) | ToUInt32LittleEndian(buffer, offset + 0);
@@ -233,6 +241,13 @@ public static class EndianUtilities
     public static int ToInt32LittleEndian(ReadOnlySpan<byte> buffer)
     {
         return (int)ToUInt32LittleEndian(buffer);
+    }
+
+    public static int ReadInt32LittleEndian(Stream stream)
+    {
+        Span<byte> buffer = stackalloc byte[sizeof(int)];
+        stream.ReadExact(buffer);
+        return ToInt32LittleEndian(buffer);
     }
 
     public static long ToInt64LittleEndian(byte[] buffer, int offset)

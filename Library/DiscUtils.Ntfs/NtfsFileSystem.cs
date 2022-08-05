@@ -74,9 +74,10 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         _fileCache = new ObjectCache<long, File>();
 
         stream.Position = 0;
-        var bytes = StreamUtilities.ReadExact(stream, 512);
+        Span<byte> bytes = stackalloc byte[512];
+        StreamUtilities.ReadExact(stream, bytes);
 
-        _context.BiosParameterBlock = BiosParameterBlock.FromBytes(bytes, 0);
+        _context.BiosParameterBlock = BiosParameterBlock.FromBytes(bytes);
         if (!_context.BiosParameterBlock.IsValid(stream.Length))
         {
             throw new InvalidFileSystemException("BIOS Parameter Block is invalid for an NTFS file system");
@@ -1328,9 +1329,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             {
                 // If there's an existing reparse point, unhook it.
                 using Stream contentStream = stream.Value.Open(FileAccess.Read);
-                var oldRpBuffer = StreamUtilities.ReadExact(contentStream, (int)contentStream.Length);
-                var rp = new ReparsePointRecord();
-                rp.ReadFrom(oldRpBuffer, 0);
+                var rp = StreamUtilities.ReadStruct<ReparsePointRecord>(contentStream, (int)contentStream.Length);
                 _context.ReparsePoints.Remove(rp.Tag, dirEntry.Value.Reference);
             }
             else
@@ -1397,11 +1396,9 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
             var stream = file.GetStream(AttributeType.ReparsePoint, null);
             if (stream != null)
             {
-                var rp = new ReparsePointRecord();
 
                 using Stream contentStream = stream.Value.Open(FileAccess.Read);
-                var buffer = StreamUtilities.ReadExact(contentStream, (int)contentStream.Length);
-                rp.ReadFrom(buffer);
+                var rp = StreamUtilities.ReadStruct<ReparsePointRecord>(contentStream, (int)contentStream.Length);
                 return new ReparsePoint((int)rp.Tag, rp.Content);
             }
         }
@@ -1828,8 +1825,9 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         }
 
         stream.Position = 0;
-        var bytes = StreamUtilities.ReadExact(stream, 512);
-        var bpb = BiosParameterBlock.FromBytes(bytes, 0);
+        Span<byte> bytes = stackalloc byte[512];
+        StreamUtilities.ReadExact(stream, bytes);
+        var bpb = BiosParameterBlock.FromBytes(bytes);
 
         return bpb.IsValid(stream.Length);
     }
@@ -2107,12 +2105,13 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         _context.BiosParameterBlock.NumHeads = (ushort)geometry.HeadsPerCylinder;
 
         _context.RawStream.Position = 0;
-        var bpbSector = StreamUtilities.ReadExact(_context.RawStream, 512);
+        Span<byte> bpbSector = stackalloc byte[512];
+        StreamUtilities.ReadExact(_context.RawStream, bpbSector);
 
-        _context.BiosParameterBlock.ToBytes(bpbSector, 0);
+        _context.BiosParameterBlock.ToBytes(bpbSector);
 
         _context.RawStream.Position = 0;
-        _context.RawStream.Write(bpbSector, 0, bpbSector.Length);
+        _context.RawStream.Write(bpbSector);
     }
 
     internal DirectoryEntry? GetDirectoryEntry(string path)
@@ -2367,8 +2366,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
 
             using (Stream contentStream = stream.Value.Open(FileAccess.Read))
             {
-                var buffer = StreamUtilities.ReadExact(contentStream, (int)contentStream.Length);
-                rp.ReadFrom(buffer);
+                rp.ReadFrom(contentStream, (int)contentStream.Length);
             }
 
             file.RemoveStream(stream.Value);

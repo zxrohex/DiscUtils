@@ -80,9 +80,7 @@ internal class BTreeInodeNode : BtreeHeader
             var data = ag.Context.RawStream;
 
             data.Position = ((long)Pointer[i] * ag.Context.SuperBlock.Blocksize) + ag.Offset;
-            var buffer = StreamUtilities.ReadExact(data, (int)ag.Context.SuperBlock.Blocksize);
-
-            child.ReadFrom(buffer);
+            child.ReadFrom(data, (int)ag.Context.SuperBlock.Blocksize);
             child.LoadBtree(ag);
             Children.Add(Keys[i], child);
         }

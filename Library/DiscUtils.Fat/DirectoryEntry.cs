@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
@@ -46,19 +47,42 @@ internal class DirectoryEntry
     {
         _options = options;
         _fatVariant = fatVariant;
-        var buffer = StreamUtilities.ReadExact(stream, 32);
 
-        // LFN entry
-        if ((buffer[0] & 0xc0) == 0x40 && buffer[11] == 0x0f)
+        var bufferLength = 32;
+
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferLength);
+
+        try
         {
-            var lfn_entries = buffer[0] & 0x3F;
+            StreamUtilities.ReadExact(stream, buffer, 0, bufferLength);
 
-            Array.Resize(ref buffer, 32 * (lfn_entries + 1));
+            // LFN entry
+            if ((buffer[0] & 0xc0) == 0x40 && buffer[11] == 0x0f)
+            {
+                var lfn_entries = buffer[0] & 0x3F;
 
-            StreamUtilities.ReadExact(stream, buffer, 32, 32 * lfn_entries);
+                bufferLength += 32 * lfn_entries;
+
+                if (buffer.Length < bufferLength)
+                {
+                    var new_buffer = ArrayPool<byte>.Shared.Rent(bufferLength);
+                    System.Buffer.BlockCopy(buffer, 0, new_buffer, 0, 32);
+                    ArrayPool<byte>.Shared.Return(buffer);
+                    buffer = new_buffer;
+                }
+
+                StreamUtilities.ReadExact(stream, buffer, 32, 32 * lfn_entries);
+            }
+
+            Load(buffer, 0, bufferLength);
         }
-
-        Load(buffer, 0, buffer.Length);
+        finally
+        {
+            if (buffer != null)
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
     }
 
     internal DirectoryEntry(FatFileSystemOptions options, FileName name, FatAttributes attrs, FatType fatVariant)

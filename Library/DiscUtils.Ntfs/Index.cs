@@ -57,7 +57,7 @@ internal class Index : IDisposable
         using (Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Read))
         {
             var buffer = StreamUtilities.ReadExact(s, (int)s.Length);
-            _rootNode = new IndexNode(WriteRootNodeToDisk, 0, this, true, buffer, IndexRoot.HeaderOffset);
+            _rootNode = new IndexNode(WriteRootNodeToDisk, 0, this, true, buffer.AsSpan(IndexRoot.HeaderOffset));
 
             // Give the attribute some room to breathe, so long as it doesn't squeeze others out
             // BROKEN, BROKEN, BROKEN - how to figure this out?  Query at the point of adding entries to the root node?
@@ -446,7 +446,7 @@ internal class Index : IDisposable
         try
         {
             _root.WriteTo(buffer);
-            _rootNode.WriteTo(buffer, _root.Size);
+            _rootNode.WriteTo(buffer.AsSpan(_root.Size));
             using Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Write);
             s.Position = 0;
             s.Write(buffer, 0, bufferSize);

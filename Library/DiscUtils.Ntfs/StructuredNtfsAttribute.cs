@@ -26,7 +26,7 @@ using DiscUtils.Streams;
 namespace DiscUtils.Ntfs;
 
 internal class StructuredNtfsAttribute<T> : NtfsAttribute
-    where T : IByteArraySerializable, IDiagnosticTraceable, new()
+    where T : class, IByteArraySerializable, IDiagnosticTraceable, new()
 {
     private bool _hasContent;
     private bool _initialized;
@@ -93,13 +93,9 @@ internal class StructuredNtfsAttribute<T> : NtfsAttribute
     {
         if (!_initialized)
         {
-            using (Stream s = Open(FileAccess.Read))
-            {
-                var buffer = StreamUtilities.ReadExact(s, (int)Length);
-                _structure.ReadFrom(buffer);
-                _hasContent = s.Length != 0;
-            }
-
+            using var s = Open(FileAccess.Read);
+            _structure.ReadFrom(s, (int)Length);
+            _hasContent = s.Length != 0;
             _initialized = true;
         }
     }

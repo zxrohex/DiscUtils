@@ -20,8 +20,10 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Vdi;
 
@@ -45,31 +47,32 @@ internal class PreHeaderRecord
         return result;
     }
 
-    public int Read(byte[] buffer, int offset)
+    public int Read(ReadOnlySpan<byte> buffer)
     {
-        FileInfo = EndianUtilities.BytesToString(buffer, offset + 0, 64).TrimEnd('\0');
-        Signature = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 64);
-        Version = new FileVersion(EndianUtilities.ToUInt32LittleEndian(buffer, offset + 68));
+        FileInfo = EndianUtilities.BytesToString(buffer.Slice(0, 64)).TrimEnd('\0');
+        Signature = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(64));
+        Version = new FileVersion(EndianUtilities.ToUInt32LittleEndian(buffer.Slice(68)));
         return Size;
     }
 
     public void Read(Stream s)
     {
-        var buffer = StreamUtilities.ReadExact(s, 72);
-        Read(buffer, 0);
+        Span<byte> buffer = stackalloc byte[Size];
+        StreamUtilities.ReadExact(s, buffer);
+        Read(buffer);
     }
 
     public void Write(Stream s)
     {
-        var buffer = new byte[Size];
-        Write(buffer, 0);
-        s.Write(buffer, 0, buffer.Length);
+        Span<byte> buffer = stackalloc byte[Size];
+        Write(buffer);
+        s.Write(buffer);
     }
 
-    public void Write(byte[] buffer, int offset)
+    public void Write(Span<byte> buffer)
     {
-        EndianUtilities.StringToBytes(FileInfo, buffer, offset + 0, 64);
-        EndianUtilities.WriteBytesLittleEndian(Signature, buffer, offset + 64);
-        EndianUtilities.WriteBytesLittleEndian(Version.Value, buffer, offset + 68);
+        EndianUtilities.StringToBytes(FileInfo, buffer.Slice(0, 64));
+        EndianUtilities.WriteBytesLittleEndian(Signature, buffer.Slice(64));
+        EndianUtilities.WriteBytesLittleEndian(Version.Value, buffer.Slice(68));
     }
 }

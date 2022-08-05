@@ -75,21 +75,21 @@ internal class GptHeader
         Array.Copy(toCopy.Buffer, Buffer, Buffer.Length);
     }
 
-    public bool ReadFrom(byte[] buffer, int offset)
+    public bool ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        Signature = EndianUtilities.BytesToString(buffer, offset + 0, 8);
-        Version = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 8);
-        HeaderSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 12);
-        Crc = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 16);
-        HeaderLba = EndianUtilities.ToInt64LittleEndian(buffer, offset + 24);
-        AlternateHeaderLba = EndianUtilities.ToInt64LittleEndian(buffer, offset + 32);
-        FirstUsable = EndianUtilities.ToInt64LittleEndian(buffer, offset + 40);
-        LastUsable = EndianUtilities.ToInt64LittleEndian(buffer, offset + 48);
-        DiskGuid = EndianUtilities.ToGuidLittleEndian(buffer, offset + 56);
-        PartitionEntriesLba = EndianUtilities.ToInt64LittleEndian(buffer, offset + 72);
-        PartitionEntryCount = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 80);
-        PartitionEntrySize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 84);
-        EntriesCrc = EndianUtilities.ToUInt32LittleEndian(buffer, offset + 88);
+        Signature = EndianUtilities.BytesToString(buffer.Slice(0, 8));
+        Version = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(8));
+        HeaderSize = EndianUtilities.ToInt32LittleEndian(buffer.Slice(12));
+        Crc = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(16));
+        HeaderLba = EndianUtilities.ToInt64LittleEndian(buffer.Slice(24));
+        AlternateHeaderLba = EndianUtilities.ToInt64LittleEndian(buffer.Slice(32));
+        FirstUsable = EndianUtilities.ToInt64LittleEndian(buffer.Slice(40));
+        LastUsable = EndianUtilities.ToInt64LittleEndian(buffer.Slice(48));
+        DiskGuid = EndianUtilities.ToGuidLittleEndian(buffer.Slice(56));
+        PartitionEntriesLba = EndianUtilities.ToInt64LittleEndian(buffer.Slice(72));
+        PartitionEntryCount = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(80));
+        PartitionEntrySize = EndianUtilities.ToInt32LittleEndian(buffer.Slice(84));
+        EntriesCrc = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(88));
 
         // Reject obviously invalid data
         if (Signature != GptSignature || HeaderSize <= 0)
@@ -100,9 +100,9 @@ internal class GptHeader
         // In case the header has new fields unknown to us, store the entire header
         // as a byte array
         Buffer = new byte[HeaderSize];
-        Array.Copy(buffer, offset, Buffer, 0, HeaderSize);
+        buffer.Slice(0, HeaderSize).CopyTo(Buffer);
 
-        return Crc == CalcCrc(buffer, offset, HeaderSize);
+        return Crc == CalcCrc(Buffer, 0, HeaderSize);
     }
 
     public void WriteTo(Span<byte> buffer)

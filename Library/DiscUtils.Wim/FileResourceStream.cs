@@ -68,9 +68,11 @@ internal class FileResourceStream : SparseStream.ReadOnlySparseStream
 
         _chunkOffsets = new long[numChunks];
         _chunkLength = new long[numChunks];
+        Span<byte> buffer = stackalloc byte[4];
         for (var i = 1; i < numChunks; ++i)
         {
-            _chunkOffsets[i] = EndianUtilities.ToUInt32LittleEndian(StreamUtilities.ReadExact(_baseStream, 4), 0);
+            StreamUtilities.ReadExact(_baseStream, buffer);
+            _chunkOffsets[i] = EndianUtilities.ToUInt32LittleEndian(buffer);
             _chunkLength[i - 1] = _chunkOffsets[i] - _chunkOffsets[i - 1];
         }
 

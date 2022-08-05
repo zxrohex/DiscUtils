@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.IO;
 using DiscUtils.Streams;
 
@@ -75,7 +76,7 @@ internal class ProtocolDataUnit
         var rem = 4 - numRead % 4;
         if (rem != 4)
         {
-            StreamUtilities.ReadExact(stream, rem);
+            StreamUtilities.ReadExact(stream, stackalloc byte[rem]);
         }
 
         return new ProtocolDataUnit(headerData, contentData);
@@ -83,7 +84,8 @@ internal class ProtocolDataUnit
 
     private static uint ReadDigest(Stream stream)
     {
-        var data = StreamUtilities.ReadExact(stream, 4);
-        return EndianUtilities.ToUInt32BigEndian(data, 0);
+        Span<byte> data = stackalloc byte[4];
+        StreamUtilities.ReadExact(stream, data);
+        return EndianUtilities.ToUInt32BigEndian(data);
     }
 }

@@ -76,8 +76,7 @@ internal class BTreeExtentNode : BTreeExtentHeader
             }
             var data = context.RawStream;
             data.Position = Extent.GetOffset(context, Pointer[i]);
-            var buffer = StreamUtilities.ReadExact(data, (int)context.SuperBlock.Blocksize);
-            child.ReadFrom(buffer);
+            child.ReadFrom(data, (int)context.SuperBlock.Blocksize);
             if (child.Magic != BtreeMagic)
             {
                 throw new IOException("invalid btree directory magic");

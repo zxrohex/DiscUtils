@@ -94,8 +94,7 @@ internal class BTreeExtentRoot : IByteArraySerializable
             }
             var data = context.RawStream;
             data.Position = Extent.GetOffset(context, Pointer[i]);
-            var buffer = StreamUtilities.ReadExact(data, (int)context.SuperBlock.Blocksize);
-            child.ReadFrom(buffer);
+            child.ReadFrom(data, (int)context.SuperBlock.Blocksize);
             if (context.SuperBlock.SbVersion < 5 && child.Magic != BTreeExtentHeader.BtreeMagic ||
                 context.SuperBlock.SbVersion == 5 && child.Magic != BTreeExtentHeaderV5.BtreeMagicV5)
             {

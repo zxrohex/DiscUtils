@@ -48,14 +48,15 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         _ownsParentDiskStream = ownsParentDiskStream;
 
         file.Position = 0;
-        var headerSector = StreamUtilities.ReadExact(file, Sizes.Sector);
-        _hostedHeader = HostedSparseExtentHeader.Read(headerSector, 0);
+        Span<byte> headerSector = stackalloc byte[Sizes.Sector];
+        StreamUtilities.ReadExact(file, headerSector);
+        _hostedHeader = HostedSparseExtentHeader.Read(headerSector);
         if (_hostedHeader.GdOffset == -1)
         {
             // Fall back to secondary copy that (should) be at the end of the stream, just before the end-of-stream sector marker
             file.Position = file.Length - Sizes.OneKiB;
-            headerSector = StreamUtilities.ReadExact(file, Sizes.Sector);
-            _hostedHeader = HostedSparseExtentHeader.Read(headerSector, 0);
+            StreamUtilities.ReadExact(file, headerSector);
+            _hostedHeader = HostedSparseExtentHeader.Read(headerSector);
 
             if (_hostedHeader.MagicNumber != HostedSparseExtentHeader.VmdkMagicNumber)
             {

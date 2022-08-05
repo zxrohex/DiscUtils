@@ -45,9 +45,7 @@ public class WimFile
     {
         _fileStream = stream;
 
-        var buffer = StreamUtilities.ReadExact(stream, 512);
-        _fileHeader = new FileHeader();
-        _fileHeader.Read(buffer, 0);
+        _fileHeader = StreamUtilities.ReadStruct<FileHeader>(stream, 512);
 
         if (!_fileHeader.IsValid())
         {
@@ -125,13 +123,14 @@ public class WimFile
         using (Stream s = OpenResourceStream(_fileHeader.OffsetTableHeader))
         {
             long numRead = 0;
+            Span<byte> resBuffer = stackalloc byte[ResourceInfo.Size];
             while (numRead < s.Length)
             {
-                var resBuffer = StreamUtilities.ReadExact(s, ResourceInfo.Size);
+                StreamUtilities.ReadExact(s, resBuffer);
                 numRead += ResourceInfo.Size;
 
                 var info = new ResourceInfo();
-                info.Read(resBuffer, 0);
+                info.Read(resBuffer);
 
                 if ((info.Header.Flags & ResourceFlags.MetaData) != 0)
                 {
@@ -186,13 +185,14 @@ public class WimFile
         _resources = new Dictionary<uint, List<ResourceInfo>>();
         using Stream s = OpenResourceStream(_fileHeader.OffsetTableHeader);
         long numRead = 0;
+        Span<byte> resBuffer = stackalloc byte[ResourceInfo.Size];
         while (numRead < s.Length)
         {
-            var resBuffer = StreamUtilities.ReadExact(s, ResourceInfo.Size);
+            StreamUtilities.ReadExact(s, resBuffer);
             numRead += ResourceInfo.Size;
 
             var info = new ResourceInfo();
-            info.Read(resBuffer, 0);
+            info.Read(resBuffer);
 
             var hashHash = EndianUtilities.ToUInt32LittleEndian(info.Hash, 0);
 

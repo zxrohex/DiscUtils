@@ -653,7 +653,8 @@ public sealed class DiskImageFile : VirtualDiskLayer
     private void ReadFooter(bool fallbackToFront)
     {
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
-        var sector = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+        Span<byte> sector = stackalloc byte[Sizes.Sector];
+        StreamUtilities.ReadExact(_fileStream, sector);
 
         _footer = Footer.FromBytes(sector);
 
@@ -665,7 +666,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
             }
 
             _fileStream.Position = 0;
-            StreamUtilities.ReadExact(_fileStream, sector, 0, Sizes.Sector);
+            StreamUtilities.ReadExact(_fileStream, sector);
 
             _footer = Footer.FromBytes(sector);
             if (!_footer.IsValid())
