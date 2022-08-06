@@ -160,46 +160,6 @@ internal class DiskStream : SparseStream.ReadOnlySparseStream
         return numRead;
     }
 
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (_position == _length)
-        {
-            return 0;
-        }
-
-        if (_position > _length)
-        {
-            throw new IOException("Attempt to read beyond end of stream");
-        }
-
-        var chunk = CorrectChunkIndex((int)(_position / Sizes.OneMiB));
-
-        if (_currentChunkIndex != chunk || _currentChunkData == null)
-        {
-            if (_currentChunkData != null)
-            {
-                _currentChunkData.Dispose();
-                _currentChunkData = null;
-            }
-
-            if (!_archive.TryOpenFile(string.Format(CultureInfo.InvariantCulture, @"{0}/{1:D8}", _dir, chunk), out _currentChunkData))
-            {
-                _currentChunkData = new ZeroStream(Sizes.OneMiB);
-            }
-
-            _currentChunkIndex = chunk;
-        }
-
-        var chunkOffset = _position % Sizes.OneMiB;
-        var toRead = Math.Min((int)Math.Min(Sizes.OneMiB - chunkOffset, _length - _position), count);
-
-        _currentChunkData.Position = chunkOffset;
-
-        var numRead = await _currentChunkData.ReadAsync(buffer.AsMemory(offset, toRead), cancellationToken).ConfigureAwait(false);
-        _position += numRead;
-        return numRead;
-    }
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (_position == _length)

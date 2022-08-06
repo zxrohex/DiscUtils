@@ -541,10 +541,68 @@ public static class StreamUtilities
         where T : IByteArraySerializable, new()
     {
         var result = new T();
+
+        if (result.Size <= 1024)
+        {
+            Span<byte> buffer = stackalloc byte[result.Size];
+            ReadExact(stream, buffer);
+            result.ReadFrom(buffer);
+        }
+        else
+        {
+            var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
+            try
+            {
+                ReadExact(stream, buffer, 0, result.Size);
+                result.ReadFrom(buffer);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Reads a structure from a stream.
+    /// </summary>
+    /// <typeparam name="T">The type of the structure.</typeparam>
+    /// <param name="stream">The stream to read.</param>
+    /// <returns>The structure.</returns>
+    public static async ValueTask<T> ReadStructAsync<T>(this Stream stream, CancellationToken cancellationToken)
+        where T : IByteArraySerializable, new()
+    {
+        var result = new T();
         var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
         try
         {
-            ReadExact(stream, buffer, 0, result.Size);
+            await ReadExactAsync(stream, buffer.AsMemory(0, result.Size), cancellationToken).ConfigureAwait(false);
+            result.ReadFrom(buffer);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Reads a structure from a stream.
+    /// </summary>
+    /// <typeparam name="T">The type of the structure.</typeparam>
+    /// <param name="stream">The stream to read.</param>
+    /// <param name="length">Number of bytes to read</param>
+    /// <returns>The structure.</returns>
+    public static async ValueTask<T> ReadStructAsync<T>(this Stream stream, int length, CancellationToken cancellationToken)
+        where T : IByteArraySerializable, new()
+    {
+        var result = new T();
+        var buffer = ArrayPool<byte>.Shared.Rent(length);
+        try
+        {
+            await ReadExactAsync(stream, buffer.AsMemory(0, length), cancellationToken).ConfigureAwait(false);
             result.ReadFrom(buffer);
         }
         finally
@@ -564,15 +622,24 @@ public static class StreamUtilities
     public static void ReadFrom<T>(this T result, Stream stream)
         where T : class, IByteArraySerializable
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
-        try
+        if (result.Size <= 1024)
         {
-            ReadExact(stream, buffer, 0, result.Size);
+            Span<byte> buffer = stackalloc byte[result.Size];
+            ReadExact(stream, buffer);
             result.ReadFrom(buffer);
         }
-        finally
+        else
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
+            try
+            {
+                ReadExact(stream, buffer, 0, result.Size);
+                result.ReadFrom(buffer);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
     }
 
@@ -587,15 +654,24 @@ public static class StreamUtilities
     public static void ReadFrom<T>(this T result, Stream stream, int length)
         where T : class, IByteArraySerializable
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(length);
-        try
+        if (length <= 1024)
         {
-            ReadExact(stream, buffer, 0, length);
+            Span<byte> buffer = stackalloc byte[length];
+            ReadExact(stream, buffer);
             result.ReadFrom(buffer);
         }
-        finally
+        else
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            var buffer = ArrayPool<byte>.Shared.Rent(length);
+            try
+            {
+                ReadExact(stream, buffer, 0, length);
+                result.ReadFrom(buffer);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
     }
 
@@ -609,15 +685,24 @@ public static class StreamUtilities
     public static void ReadFrom<T>(this ref T result, Stream stream)
         where T : struct, IByteArraySerializable
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
-        try
+        if (result.Size <= 1024)
         {
-            ReadExact(stream, buffer, 0, result.Size);
+            Span<byte> buffer = stackalloc byte[result.Size];
+            ReadExact(stream, buffer);
             result.ReadFrom(buffer);
         }
-        finally
+        else
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
+            try
+            {
+                ReadExact(stream, buffer, 0, result.Size);
+                result.ReadFrom(buffer);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
     }
 
@@ -632,15 +717,24 @@ public static class StreamUtilities
     public static void ReadFrom<T>(this ref T result, Stream stream, int length)
         where T : struct, IByteArraySerializable
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(length);
-        try
+        if (length <= 1024)
         {
-            ReadExact(stream, buffer, 0, length);
+            Span<byte> buffer = stackalloc byte[length];
+            ReadExact(stream, buffer);
             result.ReadFrom(buffer);
         }
-        finally
+        else
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            var buffer = ArrayPool<byte>.Shared.Rent(length);
+            try
+            {
+                ReadExact(stream, buffer, 0, length);
+                result.ReadFrom(buffer);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
     }
 
@@ -654,17 +748,28 @@ public static class StreamUtilities
     public static T ReadStruct<T>(this Stream stream, int length)
         where T : IByteArraySerializable, new()
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(length);
-        try
+        if (length <= 1024)
         {
-            ReadExact(stream, buffer, 0, length);
+            Span<byte> buffer = stackalloc byte[length];
+            ReadExact(stream, buffer);
             var result = new T();
             result.ReadFrom(buffer);
             return result;
         }
-        finally
+        else
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            var buffer = ArrayPool<byte>.Shared.Rent(length);
+            try
+            {
+                ReadExact(stream, buffer, 0, length);
+                var result = new T();
+                result.ReadFrom(buffer);
+                return result;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
     }
 
@@ -677,15 +782,24 @@ public static class StreamUtilities
     public static void WriteStruct<T>(this Stream stream, T obj)
         where T : IByteArraySerializable
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(obj.Size);
-        try
+        if (obj.Size <= 1024)
         {
+            Span<byte> buffer = stackalloc byte[obj.Size];
             obj.WriteTo(buffer);
-            stream.Write(buffer, 0, buffer.Length);
+            stream.Write(buffer);
         }
-        finally
+        else
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            var buffer = ArrayPool<byte>.Shared.Rent(obj.Size);
+            try
+            {
+                obj.WriteTo(buffer);
+                stream.Write(buffer, 0, buffer.Length);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
     }
 

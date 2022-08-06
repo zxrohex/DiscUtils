@@ -282,13 +282,6 @@ internal sealed class OnDemandVirtualDisk : VirtualDisk
             disk.Content.Write(buffer);
         }
 
-        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            using var disk = OpenDisk();
-            disk.Content.Position = _position;
-            await disk.Content.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
-        }
-
         public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
         {
             using var disk = OpenDisk();

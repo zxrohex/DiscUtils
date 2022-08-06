@@ -138,9 +138,10 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
         {
             using Stream mftStream = _self.OpenStream(AttributeType.Data, null, FileAccess.Read);
             uint index = 0;
+            var recordData = new byte[RecordSize];
             while (mftStream.Position < mftStream.Length)
             {
-                var recordData = StreamUtilities.ReadExact(mftStream, RecordSize);
+                StreamUtilities.ReadExact(mftStream, recordData);
 
                 if (EndianUtilities.ToInt32LittleEndian(recordData, 0) != FILE_MAGIC)
                 {

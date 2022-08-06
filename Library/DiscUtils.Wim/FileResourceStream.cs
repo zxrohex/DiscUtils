@@ -145,42 +145,6 @@ internal class FileResourceStream : SparseStream.ReadOnlySparseStream
         return totalRead;
     }
 
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (_position >= Length)
-        {
-            return 0;
-        }
-
-        var maxToRead = (int)Math.Min(Length - _position, count);
-
-        var totalRead = 0;
-        while (totalRead < maxToRead)
-        {
-            var chunk = (int)(_position / _chunkSize);
-            var chunkOffset = (int)(_position % _chunkSize);
-            var numToRead = Math.Min(maxToRead - totalRead, _chunkSize - chunkOffset);
-
-            if (_currentChunk != chunk)
-            {
-                _currentChunkStream = OpenChunkStream(chunk);
-                _currentChunk = chunk;
-            }
-
-            _currentChunkStream.Position = chunkOffset;
-            var numRead = await _currentChunkStream.ReadAsync(buffer.AsMemory(offset + totalRead, numToRead), cancellationToken).ConfigureAwait(false);
-            if (numRead == 0)
-            {
-                return totalRead;
-            }
-
-            _position += numRead;
-            totalRead += numRead;
-        }
-
-        return totalRead;
-    }
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (_position >= Length)

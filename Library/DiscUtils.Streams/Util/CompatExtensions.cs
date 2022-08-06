@@ -12,8 +12,26 @@ namespace DiscUtils.Streams.Compatibility;
 
 public abstract class CompatibilityStream : Stream
 {
-    public abstract override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken);
-    public abstract override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken);
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (buffer == null)
+        {
+            throw new ArgumentNullException(nameof(buffer));
+        }
+
+        return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+    }
+
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (buffer == null)
+        {
+            throw new ArgumentNullException(nameof(buffer));
+        }
+
+        return WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+    }
+
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public abstract override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default);
     public abstract override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default);
@@ -25,6 +43,30 @@ public abstract class CompatibilityStream : Stream
     public abstract int Read(Span<byte> buffer);
     public abstract void Write(ReadOnlySpan<byte> buffer);
 #endif
+
+    public override int ReadByte()
+    {
+        Span<byte> b = stackalloc byte[1];
+        if (Read(b) != 1)
+        {
+            return -1;
+        }
+        return b[0];
+    }
+
+    public override void WriteByte(byte value) =>
+        Write(stackalloc byte[] { value });
+
+    public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+        ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+
+    public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
+
+    public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
+        WriteAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
+
+    public override void EndWrite(IAsyncResult asyncResult) => ((Task)asyncResult).Wait();
+
 }
 
 public abstract class ReadOnlyCompatibilityStream : CompatibilityStream

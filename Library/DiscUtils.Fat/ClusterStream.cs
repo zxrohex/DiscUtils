@@ -112,6 +112,9 @@ internal class ClusterStream : CompatibilityStream
 
     public override void Flush() { }
 
+    public override Task FlushAsync(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
     public override int Read(byte[] buffer, int offset, int count)
         => Read(buffer.AsSpan(offset, count));
 
@@ -171,11 +174,61 @@ internal class ClusterStream : CompatibilityStream
         return numRead;
     }
 
-    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        => Task.FromResult(Read(buffer, offset, count));
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (!CanRead)
+        {
+            throw new IOException("Attempt to read from file not opened for read");
+        }
 
-    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-        => new(Read(buffer.Span));
+        if (_position > _length)
+        {
+            throw new IOException("Attempt to read beyond end of file");
+        }
+
+        var target = buffer.Length;
+        if (_length - _position < buffer.Length)
+        {
+            target = (int)(_length - _position);
+        }
+
+        if (!await TryLoadCurrentClusterAsync(cancellationToken).ConfigureAwait(false))
+        {
+            if ((_position == _length || _position == DetectLength()) && !_atEOF)
+            {
+                _atEOF = true;
+                return 0;
+            }
+            throw new IOException("Attempt to read beyond known clusters");
+        }
+
+        var numRead = 0;
+        while (numRead < target)
+        {
+            var clusterOffset = (int)(_position % _reader.ClusterSize);
+            var toCopy = Math.Min(_reader.ClusterSize - clusterOffset, target - numRead);
+            _clusterBuffer.AsMemory(clusterOffset, toCopy).CopyTo(buffer.Slice(numRead));
+
+            // Remember how many we've read in total
+            numRead += toCopy;
+
+            // Increment the position
+            _position += toCopy;
+
+            // Abort if we've hit the end of the file
+            if (!await TryLoadCurrentClusterAsync(cancellationToken).ConfigureAwait(false))
+            {
+                break;
+            }
+        }
+
+        if (numRead == 0)
+        {
+            _atEOF = true;
+        }
+
+        return numRead;
+    }
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -244,18 +297,6 @@ internal class ClusterStream : CompatibilityStream
     public override void Write(byte[] buffer, int offset, int count)
         => Write(buffer.AsSpan(offset, count));
 
-    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        Write(buffer.AsSpan(offset, count));
-        return Task.CompletedTask;
-    }
-
-    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-    {
-        Write(buffer.Span);
-        return new();
-    }
-
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         var bytesRemaining = buffer.Length;
@@ -296,6 +337,46 @@ internal class ClusterStream : CompatibilityStream
         _atEOF = false;
     }
 
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var bytesRemaining = buffer.Length;
+
+        if (!CanWrite)
+        {
+            throw new IOException("Attempting to write to file not opened for writing");
+        }
+
+        // TODO: Free space check...
+        try
+        {
+            while (bytesRemaining > 0)
+            {
+                // Extend the stream until it encompasses _position
+                uint cluster;
+                while (!TryGetClusterByPosition(_position, out cluster))
+                {
+                    cluster = ExtendChain();
+                    await _reader.WipeClusterAsync(cluster, cancellationToken).ConfigureAwait(false);
+                }
+
+                // Fill this cluster with as much data as we can (WriteToCluster preserves existing cluster
+                // data, if necessary)
+                var numWritten = await WriteToClusterAsync(cluster, (int)(_position % _reader.ClusterSize), buffer.Slice(0, bytesRemaining), cancellationToken).ConfigureAwait(false);
+                buffer = buffer.Slice(numWritten);
+                bytesRemaining -= numWritten;
+                _position += numWritten;
+            }
+
+            _length = (uint)Math.Max(_length, _position);
+        }
+        finally
+        {
+            _fat.Flush();
+        }
+
+        _atEOF = false;
+    }
+
     /// <summary>
     /// Writes up to the next cluster boundary, making sure to preserve existing data in the cluster
     /// that falls outside of the updated range.
@@ -303,8 +384,6 @@ internal class ClusterStream : CompatibilityStream
     /// <param name="cluster">The cluster to write to.</param>
     /// <param name="pos">The file position of the write (within the cluster).</param>
     /// <param name="buffer">The buffer with the new data.</param>
-    /// <param name="offset">Offset into buffer of the first byte to write.</param>
-    /// <param name="count">The maximum number of bytes to write.</param>
     /// <returns>The number of bytes written - either count, or the number that fit up to
     /// the cluster boundary.</returns>
     private int WriteToCluster(uint cluster, int pos, ReadOnlySpan<byte> buffer)
@@ -326,6 +405,38 @@ internal class ClusterStream : CompatibilityStream
         buffer.Slice(0, copyLength).CopyTo(_clusterBuffer.AsSpan(pos));
 
         WriteCurrentCluster();
+
+        return copyLength;
+    }
+
+    /// <summary>
+    /// Writes up to the next cluster boundary, making sure to preserve existing data in the cluster
+    /// that falls outside of the updated range.
+    /// </summary>
+    /// <param name="cluster">The cluster to write to.</param>
+    /// <param name="pos">The file position of the write (within the cluster).</param>
+    /// <param name="buffer">The buffer with the new data.</param>
+    /// <returns>The number of bytes written - either count, or the number that fit up to
+    /// the cluster boundary.</returns>
+    private async ValueTask<int> WriteToClusterAsync(uint cluster, int pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    {
+        if (pos == 0 && buffer.Length >= _reader.ClusterSize)
+        {
+            _currentCluster = cluster;
+            buffer.Slice(0, _reader.ClusterSize).CopyTo(_clusterBuffer);
+
+            await WriteCurrentClusterAsync(cancellationToken).ConfigureAwait(false);
+
+            return _reader.ClusterSize;
+        }
+
+        // Partial cluster, so need to read existing cluster data first
+        await LoadClusterAsync(cluster, cancellationToken).ConfigureAwait(false);
+
+        var copyLength = Math.Min(buffer.Length, _reader.ClusterSize - pos % _reader.ClusterSize);
+        buffer.Slice(0, copyLength).CopyTo(_clusterBuffer.AsMemory(pos));
+
+        await WriteCurrentClusterAsync(cancellationToken).ConfigureAwait(false);
 
         return copyLength;
     }
@@ -378,6 +489,11 @@ internal class ClusterStream : CompatibilityStream
         return TryLoadClusterByPosition(_position);
     }
 
+    private ValueTask<bool> TryLoadCurrentClusterAsync(CancellationToken cancellationToken)
+    {
+        return TryLoadClusterByPositionAsync(_position, cancellationToken);
+    }
+
     private bool TryLoadClusterByPosition(long pos)
     {
         if (!TryGetClusterByPosition(pos, out var cluster))
@@ -395,6 +511,23 @@ internal class ClusterStream : CompatibilityStream
         return true;
     }
 
+    private async ValueTask<bool> TryLoadClusterByPositionAsync(long pos, CancellationToken cancellationToken)
+    {
+        if (!TryGetClusterByPosition(pos, out var cluster))
+        {
+            return false;
+        }
+
+        // Read the cluster, it's different to the one currently loaded
+        if (cluster != _currentCluster)
+        {
+            await _reader.ReadClusterAsync(cluster, _clusterBuffer, cancellationToken).ConfigureAwait(false);
+            _currentCluster = cluster;
+        }
+
+        return true;
+    }
+
     private void LoadCluster(uint cluster)
     {
         // Read the cluster, it's different to the one currently loaded
@@ -405,9 +538,24 @@ internal class ClusterStream : CompatibilityStream
         }
     }
 
+    private async ValueTask LoadClusterAsync(uint cluster, CancellationToken cancellationToken)
+    {
+        // Read the cluster, it's different to the one currently loaded
+        if (cluster != _currentCluster)
+        {
+            await _reader.ReadClusterAsync(cluster, _clusterBuffer, cancellationToken).ConfigureAwait(false);
+            _currentCluster = cluster;
+        }
+    }
+
     private void WriteCurrentCluster()
     {
         _reader.WriteCluster(_currentCluster, _clusterBuffer, 0);
+    }
+
+    private ValueTask WriteCurrentClusterAsync(CancellationToken cancellationToken)
+    {
+        return _reader.WriteClusterAsync(_currentCluster, _clusterBuffer, cancellationToken);
     }
 
     private bool TryGetClusterByPosition(long pos, out uint cluster)

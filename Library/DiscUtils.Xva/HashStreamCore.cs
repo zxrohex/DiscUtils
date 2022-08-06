@@ -91,21 +91,6 @@ internal class HashStreamCore : CompatibilityStream
         return numRead;
     }
 
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (Position != _hashPos)
-        {
-            throw new InvalidOperationException("Reads must be contiguous");
-        }
-
-        int numRead = await _wrapped.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
-
-        _hashAlg.AppendData(buffer, offset, numRead);
-        _hashPos += numRead;
-
-        return numRead;
-    }
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (Position != _hashPos)

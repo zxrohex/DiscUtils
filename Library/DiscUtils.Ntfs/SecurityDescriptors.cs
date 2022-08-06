@@ -77,15 +77,20 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
     {
         writer.WriteLine($"{indent}SECURITY DESCRIPTORS");
 
-        using Stream s = _file.OpenStream(AttributeType.Data, "$SDS", FileAccess.Read);
-        var buffer = StreamUtilities.ReadExact(s, (int)s.Length);
+        using var s = _file.OpenStream(AttributeType.Data, "$SDS", FileAccess.Read);
+        
+        var buffer = s.Length <= 1024
+            ? stackalloc byte[(int)s.Length]
+            : new byte[s.Length];
+
+        StreamUtilities.ReadExact(s, buffer);
 
         foreach (var entry in _idIndex.Entries)
         {
             var pos = (int)entry.Value.SdsOffset;
 
             var rec = new SecurityDescriptorRecord();
-            if (!rec.Read(buffer.AsSpan(pos)))
+            if (!rec.Read(buffer.Slice(pos)))
             {
                 break;
             }
@@ -241,11 +246,10 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
     private SecurityDescriptor ReadDescriptor(IndexData data)
     {
         using var s = _file.OpenStream(AttributeType.Data, "$SDS", FileAccess.Read);
-        s.Position = data.SdsOffset;
-        var buffer = StreamUtilities.ReadExact(s, data.SdsLength);
 
-        var record = new SecurityDescriptorRecord();
-        record.Read(buffer);
+        s.Position = data.SdsOffset;
+
+        var record = StreamUtilities.ReadStruct<SecurityDescriptorRecord>(s, data.SdsLength);
 
         return new SecurityDescriptor(new RawSecurityDescriptor(record.SecurityDescriptor, 0));
     }

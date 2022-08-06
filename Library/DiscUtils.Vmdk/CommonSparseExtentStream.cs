@@ -228,68 +228,6 @@ internal abstract class CommonSparseExtentStream : MappedStream
         return totalRead;
     }
 
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        CheckDisposed();
-
-        if (_position > Length)
-        {
-            _atEof = true;
-            throw new IOException("Attempt to read beyond end of stream");
-        }
-
-        if (_position == Length)
-        {
-            if (_atEof)
-            {
-                throw new IOException("Attempt to read beyond end of stream");
-            }
-            _atEof = true;
-            return 0;
-        }
-
-        var maxToRead = (int)Math.Min(count, Length - _position);
-        var totalRead = 0;
-        int numRead;
-
-        do
-        {
-            var grainTable = (int)(_position / _gtCoverage);
-            var grainTableOffset = (int)(_position - grainTable * _gtCoverage);
-            if (!LoadGrainTable(grainTable))
-            {
-                // Read from parent stream, to at most the end of grain table's coverage
-                _parentDiskStream.Position = _position + _diskOffset;
-                numRead = await _parentDiskStream.ReadAsync(buffer.AsMemory(offset + totalRead, (int)Math.Min(maxToRead - totalRead, _gtCoverage - grainTableOffset)), cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                var grainSize = (int)(_header.GrainSize * Sizes.Sector);
-                var grain = grainTableOffset / grainSize;
-                var grainOffset = grainTableOffset - grain * grainSize;
-
-                var numToRead = Math.Min(maxToRead - totalRead, grainSize - grainOffset);
-
-                if (GetGrainTableEntry(grain) == 0)
-                {
-                    _parentDiskStream.Position = _position + _diskOffset;
-                    numRead = await _parentDiskStream.ReadAsync(buffer.AsMemory(offset + totalRead, numToRead), cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    var bufferOffset = offset + totalRead;
-                    var grainStart = (long)GetGrainTableEntry(grain) * Sizes.Sector;
-                    numRead = await ReadGrainAsync(buffer, bufferOffset, grainStart, grainOffset, numToRead, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            _position += numRead;
-            totalRead += numRead;
-        } while (numRead != 0 && totalRead < maxToRead);
-
-        return totalRead;
-    }
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -318,7 +256,7 @@ internal abstract class CommonSparseExtentStream : MappedStream
         {
             var grainTable = (int)(_position / _gtCoverage);
             var grainTableOffset = (int)(_position - grainTable * _gtCoverage);
-            if (!LoadGrainTable(grainTable))
+            if (!await LoadGrainTableAsync(grainTable, cancellationToken).ConfigureAwait(false))
             {
                 // Read from parent stream, to at most the end of grain table's coverage
                 _parentDiskStream.Position = _position + _diskOffset;
@@ -548,12 +486,6 @@ internal abstract class CommonSparseExtentStream : MappedStream
     {
         _fileStream.Position = grainStart + grainOffset;
         return _fileStream.Read(buffer, bufferOffset, numToRead);
-    }
-
-    protected virtual Task<int> ReadGrainAsync(byte[] buffer, int bufferOffset, long grainStart, int grainOffset, int numToRead, CancellationToken cancellationToken)
-    {
-        _fileStream.Position = grainStart + grainOffset;
-        return _fileStream.ReadAsync(buffer, bufferOffset, numToRead, cancellationToken);
     }
 
     protected virtual ValueTask<int> ReadGrainAsync(Memory<byte> buffer, long grainStart, int grainOffset, CancellationToken cancellationToken)

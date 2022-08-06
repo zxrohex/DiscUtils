@@ -34,6 +34,7 @@ internal readonly struct UpperCase : IComparer<string>
     public UpperCase(File file)
     {
         using var s = file.OpenStream(AttributeType.Data, null, FileAccess.Read);
+
         _table = new char[s.Length / 2];
 
         var buffer = StreamUtilities.ReadExact(s, (int)s.Length);

@@ -46,18 +46,6 @@ public sealed class CircularStream : WrappingStream
     }
 
 
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        WrapPosition();
-
-        var read = await base.ReadAsync(buffer.AsMemory(offset, (int)Math.Min(Length - Position, count)), cancellationToken).ConfigureAwait(false);
-
-        WrapPosition();
-
-        return read;
-    }
-
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         WrapPosition();
@@ -90,23 +78,6 @@ public sealed class CircularStream : WrappingStream
             var toWrite = (int)Math.Min(count - totalWritten, Length - Position);
 
             base.Write(buffer, offset + totalWritten, toWrite);
-
-            WrapPosition();
-
-            totalWritten += toWrite;
-        }
-    }
-
-    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        WrapPosition();
-
-        var totalWritten = 0;
-        while (totalWritten < count)
-        {
-            var toWrite = (int)Math.Min(count - totalWritten, Length - Position);
-
-            await base.WriteAsync(buffer.AsMemory(offset + totalWritten, toWrite), cancellationToken).ConfigureAwait(false);
 
             WrapPosition();
 

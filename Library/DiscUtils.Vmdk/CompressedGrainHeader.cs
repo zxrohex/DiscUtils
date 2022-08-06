@@ -21,19 +21,25 @@
 //
 
 using DiscUtils.Streams;
+using System;
 
 namespace DiscUtils.Vmdk;
 
-internal class CompressedGrainHeader
+internal class CompressedGrainHeader : IByteArraySerializable
 {
     public const int Size = 12;
     public int DataSize;
 
     public long LogicalBlockAddress;
 
-    public void Read(byte[] buffer, int offset)
+    int IByteArraySerializable.Size => Size;
+
+    public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        LogicalBlockAddress = EndianUtilities.ToInt64LittleEndian(buffer, offset + 0);
-        DataSize = EndianUtilities.ToInt32LittleEndian(buffer, offset + 8);
+        LogicalBlockAddress = EndianUtilities.ToInt64LittleEndian(buffer);
+        DataSize = EndianUtilities.ToInt32LittleEndian(buffer.Slice(8));
+        return Size;
     }
+
+    void IByteArraySerializable.WriteTo(Span<byte> buffer) => throw new NotImplementedException();
 }

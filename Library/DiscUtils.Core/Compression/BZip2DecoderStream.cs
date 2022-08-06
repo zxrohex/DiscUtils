@@ -213,21 +213,6 @@ public sealed class BZip2DecoderStream : ReadOnlyCompatibilityStream
         return numRead;
     }
 
-    public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
-        ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
-
-    public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
-
-    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (buffer == null)
-        {
-            throw new ArgumentNullException(nameof(buffer));
-        }
-
-        return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
-    }
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         if (_eof || buffer.IsEmpty)

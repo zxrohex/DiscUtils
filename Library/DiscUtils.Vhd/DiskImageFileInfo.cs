@@ -143,7 +143,7 @@ public class DiskImageFileInfo
     /// <summary>
     /// Gets the stored paths to the parent file (for differencing disks).
     /// </summary>
-    public IEnumerable<string> DynamicParentLocators
+    public List<string> DynamicParentLocators
     {
         get
         {

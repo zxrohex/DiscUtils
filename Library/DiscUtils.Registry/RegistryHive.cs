@@ -550,10 +550,11 @@ public class RegistryHive : IDisposable
         _header.Sequence1++;
         _header.Sequence2++;
         _fileStream.Position = 0;
-        var hiveHeader = StreamUtilities.ReadExact(_fileStream, _header.Size);
-        _header.WriteTo(hiveHeader, 0);
+        Span<byte> hiveHeader = stackalloc byte[_header.Size];
+        StreamUtilities.ReadExact(_fileStream, hiveHeader);
+        _header.WriteTo(hiveHeader);
         _fileStream.Position = 0;
-        _fileStream.Write(hiveHeader, 0, hiveHeader.Length);
+        _fileStream.Write(hiveHeader);
 
         // Make sure the file is initialized to desired position
         _fileStream.Position = BinStart + _header.Length - 1;

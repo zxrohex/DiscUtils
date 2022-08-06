@@ -151,20 +151,6 @@ internal sealed class NtfsFileStream : SparseStream
         }
     }
 
-
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        AssertOpen();
-        StreamUtilities.AssertBufferParameters(buffer, offset, count);
-
-        using (NtfsTransaction.Begin())
-        {
-            return await _baseStream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-
-
     public override int Read(Span<byte> buffer)
     {
         AssertOpen();

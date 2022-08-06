@@ -66,7 +66,7 @@ public sealed class SdiFile : IDisposable
 
         _sections = new List<SectionRecord>();
         var pos = 0;
-        while (EndianUtilities.ToUInt64LittleEndian(toc, pos) != 0)
+        while (BitConverter.ToUInt64(toc, pos) != 0)
         {
             var record = new SectionRecord();
             record.ReadFrom(toc.AsSpan(pos));

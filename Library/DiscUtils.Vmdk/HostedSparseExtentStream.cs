@@ -129,48 +129,6 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         _atEof = _position == Length;
     }
 
-    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        CheckDisposed();
-
-        if (!CanWrite)
-        {
-            throw new InvalidOperationException("Cannot write to this stream");
-        }
-
-        if (_position + count > Length)
-        {
-            throw new IOException("Attempt to write beyond end of stream");
-        }
-
-        var totalWritten = 0;
-        while (totalWritten < count)
-        {
-            var grainTable = (int)(_position / _gtCoverage);
-            var grainTableOffset = (int)(_position - grainTable * _gtCoverage);
-
-            await LoadGrainTableAsync(grainTable, cancellationToken).ConfigureAwait(false);
-
-            var grainSize = (int)(_header.GrainSize * Sizes.Sector);
-            var grain = grainTableOffset / grainSize;
-            var grainOffset = grainTableOffset - grain * grainSize;
-
-            if (GetGrainTableEntry(grain) == 0)
-            {
-                await AllocateGrainAsync(grainTable, grain, cancellationToken).ConfigureAwait(false);
-            }
-
-            var numToWrite = Math.Min(count - totalWritten, grainSize - grainOffset);
-            _fileStream.Position = (long)GetGrainTableEntry(grain) * Sizes.Sector + grainOffset;
-            await _fileStream.WriteAsync(buffer.AsMemory(offset + totalWritten, numToWrite), cancellationToken).ConfigureAwait(false);
-
-            _position += numToWrite;
-            totalWritten += numToWrite;
-        }
-
-        _atEof = _position == Length;
-    }
-
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         CheckDisposed();
@@ -252,11 +210,9 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         {
             _fileStream.Position = grainStart;
 
-            var readBuffer = StreamUtilities.ReadExact(_fileStream, CompressedGrainHeader.Size);
-            var hdr = new CompressedGrainHeader();
-            hdr.Read(readBuffer, 0);
+            var hdr = StreamUtilities.ReadStruct<CompressedGrainHeader>(_fileStream);
 
-            readBuffer = StreamUtilities.ReadExact(_fileStream, hdr.DataSize);
+            var readBuffer = StreamUtilities.ReadExact(_fileStream, hdr.DataSize);
 
             // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
             // check against expected header values...
@@ -277,7 +233,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
                 throw new NotSupportedException("ZLib compression using preset dictionary");
             }
 
-            Stream readStream = new MemoryStream(readBuffer, 2, hdr.DataSize - 2, false);
+            var readStream = new MemoryStream(readBuffer, 2, hdr.DataSize - 2, false);
             var deflateStream = new DeflateStream(readStream, CompressionMode.Decompress);
 
             // Need to skip some bytes, but DefaultStream doesn't support seeking...
@@ -288,59 +244,15 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         return base.ReadGrain(buffer, bufferOffset, grainStart, grainOffset, numToRead);
     }
 
-    protected override async Task<int> ReadGrainAsync(byte[] buffer, int bufferOffset, long grainStart, int grainOffset, int numToRead, CancellationToken cancellationToken)
-    {
-        if ((_hostedHeader.Flags & HostedSparseExtentFlags.CompressedGrains) != 0)
-        {
-            _fileStream.Position = grainStart;
-
-            var readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, CompressedGrainHeader.Size, cancellationToken).ConfigureAwait(false);
-            var hdr = new CompressedGrainHeader();
-            hdr.Read(readBuffer, 0);
-
-            readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, hdr.DataSize, cancellationToken).ConfigureAwait(false);
-
-            // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
-            // check against expected header values...
-            var header = EndianUtilities.ToUInt16BigEndian(readBuffer, 0);
-
-            if (header % 31 != 0)
-            {
-                throw new IOException("Invalid ZLib header found");
-            }
-
-            if ((header & 0x0F00) != 8 << 8)
-            {
-                throw new NotSupportedException("ZLib compression not using DEFLATE algorithm");
-            }
-
-            if ((header & 0x0020) != 0)
-            {
-                throw new NotSupportedException("ZLib compression using preset dictionary");
-            }
-
-            Stream readStream = new MemoryStream(readBuffer, 2, hdr.DataSize - 2, false);
-            var deflateStream = new DeflateStream(readStream, CompressionMode.Decompress);
-
-            // Need to skip some bytes, but DefaultStream doesn't support seeking...
-            await StreamUtilities.ReadExactAsync(deflateStream, grainOffset, cancellationToken).ConfigureAwait(false);
-
-            return await deflateStream.ReadAsync(buffer.AsMemory(bufferOffset, numToRead), cancellationToken).ConfigureAwait(false);
-        }
-        return await base.ReadGrainAsync(buffer, bufferOffset, grainStart, grainOffset, numToRead, cancellationToken).ConfigureAwait(false);
-    }
-
     protected override async ValueTask<int> ReadGrainAsync(Memory<byte> buffer, long grainStart, int grainOffset, CancellationToken cancellationToken)
     {
         if ((_hostedHeader.Flags & HostedSparseExtentFlags.CompressedGrains) != 0)
         {
             _fileStream.Position = grainStart;
 
-            var readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, CompressedGrainHeader.Size, cancellationToken).ConfigureAwait(false);
-            var hdr = new CompressedGrainHeader();
-            hdr.Read(readBuffer, 0);
+            var hdr = await StreamUtilities.ReadStructAsync<CompressedGrainHeader>(_fileStream, cancellationToken).ConfigureAwait(false);
 
-            readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, hdr.DataSize, cancellationToken).ConfigureAwait(false);
+            var readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, hdr.DataSize, cancellationToken).ConfigureAwait(false);
 
             // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
             // check against expected header values...
@@ -378,11 +290,9 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         {
             _fileStream.Position = grainStart;
 
-            var readBuffer = StreamUtilities.ReadExact(_fileStream, CompressedGrainHeader.Size);
-            var hdr = new CompressedGrainHeader();
-            hdr.Read(readBuffer, 0);
+            var hdr = StreamUtilities.ReadStruct<CompressedGrainHeader>(_fileStream);
 
-            readBuffer = StreamUtilities.ReadExact(_fileStream, hdr.DataSize);
+            var readBuffer = StreamUtilities.ReadExact(_fileStream, hdr.DataSize);
 
             // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
             // check against expected header values...
@@ -420,9 +330,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
         {
             _fileStream.Position = grainStart;
 
-            var readBuffer = StreamUtilities.ReadExact(_fileStream, CompressedGrainHeader.Size);
-            var hdr = new CompressedGrainHeader();
-            hdr.Read(readBuffer, 0);
+            var hdr = StreamUtilities.ReadStruct<CompressedGrainHeader>(_fileStream);
 
             return new StreamExtent(grainStart + grainOffset, CompressedGrainHeader.Size + hdr.DataSize);
         }

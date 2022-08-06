@@ -90,21 +90,6 @@ internal class ExtentStream : ReadOnlyCompatibilityStream
         return numRead;
     }
 
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (_position > _dataLength)
-        {
-            return 0;
-        }
-
-        var toRead = (int)Math.Min((uint)count, _dataLength - _position);
-
-        _isoStream.Position = _position + _startBlock * (long)IsoUtilities.SectorSize;
-        var numRead = await _isoStream.ReadAsync(buffer.AsMemory(offset, toRead), cancellationToken).ConfigureAwait(false);
-        _position += numRead;
-        return numRead;
-    }
-
     public override int Read(Span<byte> buffer)
     {
         if (_position > _dataLength)

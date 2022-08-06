@@ -164,27 +164,6 @@ public class ConcatStream : SparseStream
         return totalRead;
     }
 
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        CheckDisposed();
-
-        var totalRead = 0;
-        int numRead;
-        do
-        {
-            var activeStream = GetActiveStream(out var activeStreamStartPos);
-
-            _streams[activeStream].Position = _position - activeStreamStartPos;
-
-            numRead = await _streams[activeStream].ReadAsync(buffer.AsMemory(offset + totalRead, count - totalRead), cancellationToken).ConfigureAwait(false);
-
-            totalRead += numRead;
-            _position += numRead;
-        } while (numRead != 0);
-
-        return totalRead;
-    }
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -293,39 +272,6 @@ public class ConcatStream : SparseStream
             }
 
             _streams[streamIdx].Write(buffer, offset + totalWritten, numToWrite);
-
-            totalWritten += numToWrite;
-            _position += numToWrite;
-        }
-    }
-
-    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        CheckDisposed();
-
-        var totalWritten = 0;
-        while (totalWritten != count)
-        {
-            // Offset of the stream = streamOffset
-            var streamIdx = GetActiveStream(out var streamOffset);
-
-            // Offset within the stream = streamPos
-            var streamPos = _position - streamOffset;
-            _streams[streamIdx].Position = streamPos;
-
-            // Write (limited to the stream's length), except for final stream - that may be
-            // extendable
-            int numToWrite;
-            if (streamIdx == _streams.Count - 1)
-            {
-                numToWrite = count - totalWritten;
-            }
-            else
-            {
-                numToWrite = (int)Math.Min(count - totalWritten, _streams[streamIdx].Length - streamPos);
-            }
-
-            await _streams[streamIdx].WriteAsync(buffer.AsMemory(offset + totalWritten, numToWrite), cancellationToken).ConfigureAwait(false);
 
             totalWritten += numToWrite;
             _position += numToWrite;

@@ -143,39 +143,6 @@ public class StripedStream : SparseStream
         return totalRead;
     }
 
-
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (!CanRead)
-        {
-            throw new InvalidOperationException("Attempt to read to non-readable stream");
-        }
-
-        var maxToRead = (int)Math.Min(_length - _position, count);
-
-        var totalRead = 0;
-        while (totalRead < maxToRead)
-        {
-            var stripe = _position / _stripeSize;
-            var stripeOffset = _position % _stripeSize;
-            var stripeToRead = (int)Math.Min(maxToRead - totalRead, _stripeSize - stripeOffset);
-
-            var streamIdx = (int)(stripe % _wrapped.Count);
-            var streamStripe = stripe / _wrapped.Count;
-
-            Stream targetStream = _wrapped[streamIdx];
-            targetStream.Position = streamStripe * _stripeSize + stripeOffset;
-
-            var numRead = await targetStream.ReadAsync(buffer.AsMemory(offset + totalRead, stripeToRead), cancellationToken).ConfigureAwait(false);
-            _position += numRead;
-            totalRead += numRead;
-        }
-
-        return totalRead;
-    }
-
-
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (!CanRead)
@@ -295,40 +262,6 @@ public class StripedStream : SparseStream
             totalWritten += stripeToWrite;
         }
     }
-
-
-    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (!CanWrite)
-        {
-            throw new InvalidOperationException("Attempt to write to read-only stream");
-        }
-
-        if (_position + count > _length)
-        {
-            throw new IOException("Attempt to write beyond end of stream");
-        }
-
-        var totalWritten = 0;
-        while (totalWritten < count)
-        {
-            var stripe = _position / _stripeSize;
-            var stripeOffset = _position % _stripeSize;
-            var stripeToWrite = (int)Math.Min(count - totalWritten, _stripeSize - stripeOffset);
-
-            var streamIdx = (int)(stripe % _wrapped.Count);
-            var streamStripe = stripe / _wrapped.Count;
-
-            Stream targetStream = _wrapped[streamIdx];
-            targetStream.Position = streamStripe * _stripeSize + stripeOffset;
-            await targetStream.WriteAsync(buffer.AsMemory(offset + totalWritten, stripeToWrite), cancellationToken).ConfigureAwait(false);
-
-            _position += stripeToWrite;
-            totalWritten += stripeToWrite;
-        }
-    }
-
-
 
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {

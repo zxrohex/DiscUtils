@@ -437,33 +437,6 @@ public sealed class TracingStream : CompatibilityStream
         }
     }
 
-    /// <summary>
-    /// Writes data to the stream at the current location.
-    /// </summary>
-    /// <param name="buffer">The data to write</param>
-    /// <param name="offset">The first byte to write from buffer</param>
-    /// <param name="count">The number of bytes to write</param>
-    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        var position = _wrapped.Position;
-        try
-        {
-            await _wrapped.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
-            if (_active && _traceWrites)
-            {
-                CreateAndAddRecord("WRITE", position, count);
-            }
-        }
-        catch (Exception e)
-        {
-            if (_active && _traceWrites)
-            {
-                CreateAndAddRecord("WRITE", position, count, e);
-            }
-            throw;
-        }
-    }
-
     private StreamTraceRecord CreateAndAddRecord(string activity, long position, long count)
     {
         return CreateAndAddRecord(activity, position, count, 0, null);

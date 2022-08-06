@@ -143,27 +143,6 @@ public class SubStream : MappedStream
         return numRead;
     }
 
-
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        if (count < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count), "Attempt to read negative bytes");
-        }
-
-        if (_position > _length)
-        {
-            return 0;
-        }
-
-        _parent.Position = _first + _position;
-        var numRead = await _parent.ReadAsync(buffer.AsMemory(offset, (int)Math.Min(count, Math.Min(_length - _position, int.MaxValue))), cancellationToken).ConfigureAwait(false);
-        _position += numRead;
-        return numRead;
-    }
-
-
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (_position > _length)

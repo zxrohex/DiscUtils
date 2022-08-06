@@ -360,108 +360,6 @@ public class DynamicStream : MappedStream
         return numRead;
     }
 
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        CheckDisposed();
-
-        if (_atEof || _position > _length)
-        {
-            _atEof = true;
-            throw new IOException("Attempt to read beyond end of file");
-        }
-
-        if (_position == _length)
-        {
-            _atEof = true;
-            return 0;
-        }
-
-        var maxToRead = (int)Math.Min(count, _length - _position);
-        var numRead = 0;
-
-        while (numRead < maxToRead)
-        {
-            var block = _position / _dynamicHeader.BlockSize;
-            var offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
-
-            if (await PopulateBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false))
-            {
-                var sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
-                var offsetInSector = (int)(offsetInBlock % Sizes.Sector);
-                var toRead = (int)Math.Min(maxToRead - numRead, _dynamicHeader.BlockSize - offsetInBlock);
-                var blockBitmap = _parentStream is ZeroStream ? AllAllocatedBlockBitmap : _blockBitmaps[block];
-
-                // 512 - offsetInSector);
-
-                if (offsetInSector != 0 || toRead < Sizes.Sector)
-                {
-                    var mask = (byte)(1 << (7 - sectorInBlock % 8));
-                    if ((blockBitmap[sectorInBlock / 8] & mask) != 0)
-                    {
-                        _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
-                                               Sizes.Sector + _blockBitmapSize + offsetInSector;
-                        await StreamUtilities.ReadExactAsync(_fileStream, buffer.AsMemory(offset + numRead, toRead), cancellationToken).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        _parentStream.Position = _position;
-                        await StreamUtilities.ReadExactAsync(_parentStream, buffer.AsMemory(offset + numRead, toRead), cancellationToken).ConfigureAwait(false);
-                    }
-
-                    numRead += toRead;
-                    _position += toRead;
-                }
-                else
-                {
-                    // Processing at least one whole sector, read as many as possible
-                    var toReadSectors = toRead / Sizes.Sector;
-
-                    var mask = (byte)(1 << (7 - sectorInBlock % 8));
-                    var readFromParent = (blockBitmap[sectorInBlock / 8] & mask) == 0;
-
-                    var numSectors = 1;
-                    while (numSectors < toReadSectors)
-                    {
-                        mask = (byte)(1 << (7 - (sectorInBlock + numSectors) % 8));
-                        if ((blockBitmap[(sectorInBlock + numSectors) / 8] & mask) == 0 != readFromParent)
-                        {
-                            break;
-                        }
-
-                        ++numSectors;
-                    }
-
-                    toRead = numSectors * Sizes.Sector;
-
-                    if (readFromParent)
-                    {
-                        _parentStream.Position = _position;
-                        await StreamUtilities.ReadExactAsync(_parentStream, buffer.AsMemory(offset + numRead, toRead), cancellationToken).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
-                                               Sizes.Sector + _blockBitmapSize;
-                        await StreamUtilities.ReadExactAsync(_fileStream, buffer.AsMemory(offset + numRead, toRead), cancellationToken).ConfigureAwait(false);
-                    }
-
-                    numRead += toRead;
-                    _position += toRead;
-                }
-            }
-            else
-            {
-                var toRead = Math.Min(maxToRead - numRead, (int)(_dynamicHeader.BlockSize - offsetInBlock));
-                _parentStream.Position = _position;
-                await StreamUtilities.ReadExactAsync(_parentStream, buffer.AsMemory(offset + numRead, toRead), cancellationToken).ConfigureAwait(false);
-                numRead += toRead;
-                _position += toRead;
-            }
-        }
-
-        return numRead;
-    }
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -805,111 +703,6 @@ public class DynamicStream : MappedStream
         _atEof = false;
     }
 
-    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        CheckDisposed();
-
-        if (!CanWrite)
-        {
-            throw new IOException("Attempt to write to read-only stream");
-        }
-
-        if (_position + count > _length)
-        {
-            throw new IOException("Attempt to write beyond end of the stream");
-        }
-
-        var numWritten = 0;
-
-        while (numWritten < count)
-        {
-            var block = _position / _dynamicHeader.BlockSize;
-            var offsetInBlock = (uint)(_position % _dynamicHeader.BlockSize);
-
-            if (!await PopulateBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false))
-            {
-                await AllocateBlockAsync(block, cancellationToken);
-            }
-
-            var sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
-            var offsetInSector = (int)(offsetInBlock % Sizes.Sector);
-            var toWrite = (int)Math.Min(count - numWritten, _dynamicHeader.BlockSize - offsetInBlock);
-
-            var blockBitmapDirty = false;
-
-            // Need to read - we're not handling a full sector
-            if (offsetInSector != 0 || toWrite < Sizes.Sector)
-            {
-                // Reduce the write to just the end of the current sector
-                toWrite = Math.Min(count - numWritten, Sizes.Sector - offsetInSector);
-
-                var sectorMask = (byte)(1 << (7 - sectorInBlock % 8));
-
-                var sectorStart = (_blockAllocationTable[block] + sectorInBlock) * Sizes.Sector +
-                                   _blockBitmapSize;
-
-                // Get the existing sector data (if any), or otherwise the parent's content
-                byte[] sectorBuffer;
-                if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
-                {
-                    _fileStream.Position = sectorStart;
-                    sectorBuffer = await StreamUtilities.ReadExactAsync(_fileStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
-                    sectorBuffer = await StreamUtilities.ReadExactAsync(_parentStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
-                }
-
-                // Overlay as much data as we have for this sector
-                Array.Copy(buffer, offset + numWritten, sectorBuffer, offsetInSector, toWrite);
-
-                // Write the sector back
-                _fileStream.Position = sectorStart;
-                await _fileStream.WriteAsync(sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
-
-                // Update the in-memory block bitmap
-                if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
-                {
-                    _blockBitmaps[block][sectorInBlock / 8] |= sectorMask;
-                    blockBitmapDirty = true;
-                }
-            }
-            else
-            {
-                // Processing at least one whole sector, just write (after making sure to trim any partial sectors from the end)...
-                toWrite = toWrite / Sizes.Sector * Sizes.Sector;
-
-                _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) * Sizes.Sector +
-                                       _blockBitmapSize;
-                await _fileStream.WriteAsync(buffer.AsMemory(offset + numWritten, toWrite), cancellationToken).ConfigureAwait(false);
-
-                // Update all of the bits in the block bitmap
-                for (var i = offset; i < offset + toWrite; i += Sizes.Sector)
-                {
-                    var sectorMask = (byte)(1 << (7 - sectorInBlock % 8));
-                    if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)
-                    {
-                        _blockBitmaps[block][sectorInBlock / 8] |= sectorMask;
-                        blockBitmapDirty = true;
-                    }
-
-                    sectorInBlock++;
-                }
-            }
-
-            if (blockBitmapDirty)
-            {
-                await WriteBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false);
-            }
-
-            numWritten += toWrite;
-            _position += toWrite;
-        }
-
-        _atEof = false;
-    }
-
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -933,7 +726,7 @@ public class DynamicStream : MappedStream
 
             if (!await PopulateBlockBitmapAsync(block, cancellationToken).ConfigureAwait(false))
             {
-                await AllocateBlockAsync(block, cancellationToken);
+                await AllocateBlockAsync(block, cancellationToken).ConfigureAwait(false);
             }
 
             var sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
@@ -954,24 +747,31 @@ public class DynamicStream : MappedStream
                                    _blockBitmapSize;
 
                 // Get the existing sector data (if any), or otherwise the parent's content
-                byte[] sectorBuffer;
-                if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
+                var sectorBuffer = ArrayPool<byte>.Shared.Rent(Sizes.Sector);
+                try
                 {
+                    if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
+                    {
+                        _fileStream.Position = sectorStart;
+                        await StreamUtilities.ReadExactAsync(_fileStream, sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
+                        await StreamUtilities.ReadExactAsync(_parentStream, sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
+                    }
+
+                    // Overlay as much data as we have for this sector
+                    buffer.Slice(numWritten, toWrite).CopyTo(sectorBuffer.AsMemory(offsetInSector));
+
+                    // Write the sector back
                     _fileStream.Position = sectorStart;
-                    sectorBuffer = await StreamUtilities.ReadExactAsync(_fileStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                    await _fileStream.WriteAsync(sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
                 }
-                else
+                finally
                 {
-                    _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
-                    sectorBuffer = await StreamUtilities.ReadExactAsync(_parentStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                    ArrayPool<byte>.Shared.Return(sectorBuffer);
                 }
-
-                // Overlay as much data as we have for this sector
-                buffer.Slice(numWritten, toWrite).CopyTo(sectorBuffer.AsMemory(offsetInSector));
-
-                // Write the sector back
-                _fileStream.Position = sectorStart;
-                await _fileStream.WriteAsync(sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
 
                 // Update the in-memory block bitmap
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) == 0)

@@ -143,57 +143,14 @@ public abstract class SparseStream : CompatibilityStream
         return StreamExtent.Intersect(Extents, new StreamExtent(start, count));
     }
 
-
-    public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
-        ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
-
-    public override int EndRead(IAsyncResult asyncResult) => ((Task<int>)asyncResult).Result;
-
-    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-        Task.FromResult(Read(buffer, offset, count));
-
-    public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
-        WriteAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);
-
-    public override void EndWrite(IAsyncResult asyncResult) => ((Task)asyncResult).Wait();
-
-    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        Write(buffer, offset, count);
-#if NET461_OR_GREATER || NETSTANDARD || NETCOREAPP
-        return Task.CompletedTask;
-#else
-        return Task.FromResult(0);
-#endif
-    }
-
-
-
-    public override int ReadByte()
-    {
-        Span<byte> b = stackalloc byte[1];
-        if (Read(b) != 1)
-        {
-            return -1;
-        }
-        return b[0];
-    }
-
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
         new(Read(buffer.Span));
-
-    public override void WriteByte(byte value)
-    {
-        ReadOnlySpan<byte> b = stackalloc byte[1] { value };
-        Write(b);
-    }
 
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         Write(buffer.Span);
-        return new();
+        return default;
     }
-
 
     public abstract class ReadOnlySparseStream : SparseStream
     {

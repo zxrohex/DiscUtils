@@ -243,8 +243,7 @@ internal class FileBuffer : Buffer, IFileBuffer
                     if (_inode.IndirectBlock != 0)
                     {
                         _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
-                        var indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
-                        physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                        physicalBlock = await EndianUtilities.ReadUInt32LittleEndianAsync(_context.RawStream, cancellationToken).ConfigureAwait(false);
                     }
                 }
                 else
@@ -256,15 +255,13 @@ internal class FileBuffer : Buffer, IFileBuffer
                         {
                             _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
                                                           logicalBlock / (blockSize / 4) * 4;
-                            var indirectData = await StreamUtilities.ReadExactAsync(_context.RawStream, 4, cancellationToken).ConfigureAwait(false);
-                            var indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                            var indirectBlock = await EndianUtilities.ReadUInt32LittleEndianAsync(_context.RawStream, cancellationToken).ConfigureAwait(false);
 
                             if (indirectBlock != 0)
                             {
                                 _context.RawStream.Position = indirectBlock * (long)blockSize +
                                                               logicalBlock % (blockSize / 4) * 4;
-                                await StreamUtilities.ReadExactAsync(_context.RawStream, indirectData.AsMemory(0, 4), cancellationToken).ConfigureAwait(false);
-                                physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData, 0);
+                                physicalBlock = await EndianUtilities.ReadUInt32LittleEndianAsync(_context.RawStream, cancellationToken).ConfigureAwait(false);
                             }
                         }
                     }

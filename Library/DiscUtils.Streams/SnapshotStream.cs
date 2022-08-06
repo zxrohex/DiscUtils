@@ -316,70 +316,6 @@ public sealed class SnapshotStream : SparseStream
     /// Reads data from the stream.
     /// </summary>
     /// <param name="buffer">The buffer to fill.</param>
-    /// <param name="offset">The buffer offset to start from.</param>
-    /// <param name="count">The number of bytes to read.</param>
-    /// <returns>The number of bytes read.</returns>
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        int numRead;
-
-        if (_diffStream == null)
-        {
-            _baseStream.Position = _position;
-            numRead = await _baseStream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            if (_position > _diffStream.Length)
-            {
-                throw new IOException("Attempt to read beyond end of file");
-            }
-
-            var toRead = (int)Math.Min(count, _diffStream.Length - _position);
-
-            // If the read is within the base stream's range, then touch it first to get the
-            // (potentially) stale data.
-            if (_position < _baseStream.Length)
-            {
-                var baseToRead = (int)Math.Min(toRead, _baseStream.Length - _position);
-                _baseStream.Position = _position;
-
-                var totalBaseRead = 0;
-                while (totalBaseRead < baseToRead)
-                {
-                    totalBaseRead += await _baseStream.ReadAsync(buffer.AsMemory(offset + totalBaseRead, baseToRead - totalBaseRead), cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            // Now overlay any data from the overlay stream (if any)
-            var overlayExtents = StreamExtent.Intersect(_diffExtents,
-                new StreamExtent(_position, toRead));
-            foreach (var extent in overlayExtents)
-            {
-                _diffStream.Position = extent.Start;
-                var overlayNumRead = 0;
-                while (overlayNumRead < extent.Length)
-                {
-                    overlayNumRead += await _diffStream.ReadAsync(buffer.AsMemory((int)(offset + (extent.Start - _position) + overlayNumRead), (int)(extent.Length - overlayNumRead)), cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            numRead = toRead;
-        }
-
-        _position += numRead;
-
-        return numRead;
-    }
-
-
-
-    /// <summary>
-    /// Reads data from the stream.
-    /// </summary>
-    /// <param name="buffer">The buffer to fill.</param>
-    /// <param name="offset">The buffer offset to start from.</param>
-    /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes read.</returns>
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -576,38 +512,6 @@ public sealed class SnapshotStream : SparseStream
             _position += count;
         }
     }
-
-
-    /// <summary>
-    /// Writes data to the stream at the current location.
-    /// </summary>
-    /// <param name="buffer">The data to write.</param>
-    /// <param name="offset">The first byte to write from buffer.</param>
-    /// <param name="count">The number of bytes to write.</param>
-    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        CheckFrozen();
-
-        if (_diffStream != null)
-        {
-            _diffStream.Position = _position;
-            await _diffStream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
-
-            // Beware of Linq's delayed model - force execution now by placing into a list.
-            // Without this, large execution chains can build up (v. slow) and potential for stack overflow.
-            _diffExtents =
-                new List<StreamExtent>(StreamExtent.Union(_diffExtents, new StreamExtent(_position, count)));
-
-            _position += count;
-        }
-        else
-        {
-            _baseStream.Position = _position;
-            await _baseStream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
-            _position += count;
-        }
-    }
-
 
 
     /// <summary>

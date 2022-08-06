@@ -56,8 +56,9 @@ internal class Index : IDisposable
 
         using (Stream s = _file.OpenStream(AttributeType.IndexRoot, _name, FileAccess.Read))
         {
-            var buffer = StreamUtilities.ReadExact(s, (int)s.Length);
-            _rootNode = new IndexNode(WriteRootNodeToDisk, 0, this, true, buffer.AsSpan(IndexRoot.HeaderOffset));
+            var buffer = s.Length <= 1024 ? stackalloc byte[(int)s.Length] : new byte[s.Length];
+            StreamUtilities.ReadExact(s, buffer);
+            _rootNode = new IndexNode(WriteRootNodeToDisk, 0, this, true, buffer.Slice(IndexRoot.HeaderOffset));
 
             // Give the attribute some room to breathe, so long as it doesn't squeeze others out
             // BROKEN, BROKEN, BROKEN - how to figure this out?  Query at the point of adding entries to the root node?

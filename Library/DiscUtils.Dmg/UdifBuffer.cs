@@ -448,7 +448,7 @@ internal class UdifBuffer : Buffer
                 break;
 
             default:
-                throw new NotImplementedException("Unrecognized run type " + run.Type);
+                throw new NotImplementedException($"Unrecognized run type {run.Type}");
         }
 
         _activeRun = run;
@@ -492,7 +492,7 @@ internal class UdifBuffer : Buffer
 
             case RunType.LzfseCompressed:
                 _stream.Position = run.CompOffset;
-                var lzfseCompressed = StreamUtilities.ReadExact(_stream, (int)run.CompLength);
+                var lzfseCompressed = await StreamUtilities.ReadExactAsync(_stream, (int)run.CompLength, cancellationToken).ConfigureAwait(false);
                 if (Lzfse.LzfseCompressor.Decompress(lzfseCompressed, _decompBuffer) != toCopy)
                 {
                     throw new InvalidDataException("Run too short when decompressed");
@@ -505,7 +505,7 @@ internal class UdifBuffer : Buffer
                 break;
 
             default:
-                throw new NotImplementedException("Unrecognized run type " + run.Type);
+                throw new NotImplementedException($"Unrecognized run type {run.Type}");
         }
 
         _activeRun = run;

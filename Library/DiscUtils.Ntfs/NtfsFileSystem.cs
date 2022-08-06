@@ -1157,7 +1157,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The boot code, or <c>null</c> if not available.</returns>
     public override byte[] ReadBootCode()
     {
-        using Stream s = OpenFile(@"\$Boot", FileMode.Open);
+        using var s = OpenFile(@"\$Boot", FileMode.Open);
         return StreamUtilities.ReadExact(s, (int)s.Length);
     }
 
