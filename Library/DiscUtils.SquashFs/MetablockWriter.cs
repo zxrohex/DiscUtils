@@ -64,7 +64,7 @@ internal sealed class MetablockWriter : IDisposable
         while (totalStored < count)
         {
             var toCopy = Math.Min(_currentBlock.Length - _currentOffset, count - totalStored);
-            Array.Copy(buffer, offset + totalStored, _currentBlock, _currentOffset, toCopy);
+            System.Buffer.BlockCopy(buffer, offset + totalStored, _currentBlock, _currentOffset, toCopy);
             _currentOffset += toCopy;
             totalStored += toCopy;
 

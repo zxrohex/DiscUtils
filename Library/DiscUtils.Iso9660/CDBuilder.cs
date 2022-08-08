@@ -223,7 +223,7 @@ public sealed class CDBuilder : StreamBuilder, IFileSystemBuilder
     {
         if (!source.CanSeek)
         {
-            throw new ArgumentException("source doesn't support seeking", "source");
+            throw new ArgumentException("source doesn't support seeking", nameof(source));
         }
 
         CheckDirectoryForFilePath(name, out var nameElements, out var dir);

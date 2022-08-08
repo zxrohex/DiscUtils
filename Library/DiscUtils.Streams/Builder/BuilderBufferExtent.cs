@@ -41,7 +41,7 @@ public class BuilderBufferExtent : BuilderExtent
         _buffer = buffer;
     }
 
-    public override void Dispose() {}
+    protected override void Dispose(bool disposing) {}
 
     public override void PrepareForRead()
     {
@@ -55,7 +55,7 @@ public class BuilderBufferExtent : BuilderExtent
     {
         var startOffset = (int)(diskOffset - Start);
         var numBytes = (int)Math.Min(Length - startOffset, count);
-        Array.Copy(_buffer, startOffset, block, offset, numBytes);
+        System.Buffer.BlockCopy(_buffer, startOffset, block, offset, numBytes);
         return numBytes;
     }
 
@@ -64,7 +64,7 @@ public class BuilderBufferExtent : BuilderExtent
     {
         var startOffset = (int)(diskOffset - Start);
         var numBytes = (int)Math.Min(Length - startOffset, count);
-        Array.Copy(_buffer, startOffset, block, offset, numBytes);
+        System.Buffer.BlockCopy(_buffer, startOffset, block, offset, numBytes);
         return Task.FromResult(numBytes);
     }
 

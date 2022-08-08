@@ -65,7 +65,7 @@ internal sealed class FragmentWriter
         }
 
         offset = (uint)_currentOffset;
-        Array.Copy(_context.IoBuffer, 0, _currentBlock, _currentOffset, length);
+        System.Buffer.BlockCopy(_context.IoBuffer, 0, _currentBlock, _currentOffset, length);
         _currentOffset += length;
 
         ++FragmentCount;

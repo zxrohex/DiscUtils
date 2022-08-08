@@ -329,7 +329,7 @@ public sealed class Disk : VirtualDisk
     /// <returns>An object that accesses the stream as a VHD file.</returns>
     public static Disk InitializeFixed(Stream stream, Ownership ownsStream, long capacity)
     {
-        return InitializeFixed(stream, ownsStream, capacity, null);
+        return InitializeFixed(stream, ownsStream, capacity, default);
     }
 
     /// <summary>
@@ -354,7 +354,7 @@ public sealed class Disk : VirtualDisk
     /// <returns>An object that accesses the stream as a VHD file.</returns>
     public static Disk InitializeDynamic(Stream stream, Ownership ownsStream, long capacity)
     {
-        return InitializeDynamic(stream, ownsStream, capacity, null);
+        return InitializeDynamic(stream, ownsStream, capacity, default(Geometry));
     }
 
     /// <summary>

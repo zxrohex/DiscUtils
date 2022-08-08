@@ -25,6 +25,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using DiscUtils.Internal;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Fat;
 
@@ -33,13 +34,13 @@ internal sealed class FileName : IEquatable<FileName>
     private const byte SpaceByte = 0x20;
 
     public static readonly FileName SelfEntryName =
-        new FileName(new byte[] { 0x2E, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 });
+        new FileName(stackalloc byte[] { 0x2E, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 });
 
     public static readonly FileName ParentEntryName =
-        new FileName(new byte[] { 0x2E, 0x2E, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 });
+        new FileName(stackalloc byte[] { 0x2E, 0x2E, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 });
 
     public static readonly FileName Null =
-        new FileName(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
+        new FileName(stackalloc byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
 
     private static readonly byte[] InvalidBytes = { 0x22, 0x2A, 0x2B, 0x2C, 0x2E, 0x2F, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x5B, 0x5C, 0x5D, 0x7C };
 
@@ -317,7 +318,8 @@ internal sealed class FileName : IEquatable<FileName>
         _raw.AsSpan(0, 11).CopyTo(data);
     }
 
-    public override bool Equals(object other) => other is FileName otherName && Equals(this, otherName);
+    public override bool Equals(object other)
+        => other is FileName otherName && Equals(this, otherName);
 
     public override int GetHashCode()
     {
@@ -326,14 +328,14 @@ internal sealed class FileName : IEquatable<FileName>
             return _lfn.GetHashCode();
         }
 
-        var val = 0x1A8D3C4E;
+        var val = new HashCode();
 
         for (var i = 0; i < 11; ++i)
         {
-            val = (val << 2) ^ _raw[i];
+            val.Add(_raw[i]);
         }
 
-        return val;
+        return val.ToHashCode();
     }
 
     private static int CompareRawNames(FileName a, FileName b)

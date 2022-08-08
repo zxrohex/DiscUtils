@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Nfs;
 
@@ -788,7 +789,7 @@ public class NfsFileSystem : DiscFileSystem
 
             if ((isDir && dirs) || (!isDir && files))
             {
-                var searchName = de.Name.IndexOf('.') == -1 ? de.Name + "." : de.Name;
+                var searchName = !de.Name.Contains('.') ? $"{de.Name}." : de.Name;
 
                 if (filter is null || filter(searchName))
                 {

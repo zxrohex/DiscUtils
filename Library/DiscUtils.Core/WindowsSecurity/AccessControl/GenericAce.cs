@@ -1,3 +1,4 @@
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Globalization;
 using System.Text;
@@ -100,9 +101,9 @@ public abstract class GenericAce
 
     public GenericAce Copy()
     {
-        var buffer = new byte[BinaryLength];
-        GetBinaryForm(buffer, 0);
-        return CreateFromBinaryForm(buffer, 0);
+        Span<byte> buffer = stackalloc byte[BinaryLength];
+        GetBinaryForm(buffer);
+        return CreateFromBinaryForm(buffer);
     }
 
     public static GenericAce CreateFromBinaryForm(byte[] binaryForm, int offset) =>
@@ -171,27 +172,27 @@ public abstract class GenericAce
 
     public sealed override int GetHashCode()
     {
-        var buffer = new byte[BinaryLength];
-        GetBinaryForm(buffer, 0);
+        Span<byte> buffer = stackalloc byte[BinaryLength];
 
-        var code = 0;
+        GetBinaryForm(buffer);
+
+        var code = new HashCode();
         for (var i = 0; i < buffer.Length; ++i)
         {
-            code = (code << 3) | ((code >> 29) & 0x7);
-            code ^= ((int)buffer[i]) & 0xff;
+            code.Add(buffer[i]);
         }
 
-        return code;
+        return code.ToHashCode();
     }
 
-    public static bool operator ==(GenericAce left, GenericAce right)
+    public static bool Equals(GenericAce left, GenericAce right)
     {
-        if (((object)left) == null)
+        if (ReferenceEquals(left, null))
         {
-            return ((object)right) == null;
+            return ReferenceEquals(right, null);
         }
 
-        if (((object)right) == null)
+        if (ReferenceEquals(right, null))
         {
             return false;
         }
@@ -203,56 +204,18 @@ public abstract class GenericAce
             return false;
         }
 
-        var leftBuffer = new byte[leftLen];
-        var rightBuffer = new byte[rightLen];
-        left.GetBinaryForm(leftBuffer, 0);
-        right.GetBinaryForm(rightBuffer, 0);
+        Span<byte> leftBuffer = stackalloc byte[leftLen];
+        Span<byte> rightBuffer = stackalloc byte[rightLen];
 
-        for (var i = 0; i < leftLen; ++i)
-        {
-            if (leftBuffer[i] != rightBuffer[i])
-            {
-                return false;
-            }
-        }
+        left.GetBinaryForm(leftBuffer);
+        right.GetBinaryForm(rightBuffer);
 
-        return true;
+        return leftBuffer.SequenceEqual(rightBuffer);
     }
 
-    public static bool operator !=(GenericAce left, GenericAce right)
-    {
-        if (((object)left) == null)
-        {
-            return ((object)right) != null;
-        }
+    public static bool operator ==(GenericAce left, GenericAce right) => Equals(left, right);
 
-        if (((object)right) == null)
-        {
-            return true;
-        }
-
-        var leftLen = left.BinaryLength;
-        var rightLen = right.BinaryLength;
-        if (leftLen != rightLen)
-        {
-            return true;
-        }
-
-        var leftBuffer = new byte[leftLen];
-        var rightBuffer = new byte[rightLen];
-        left.GetBinaryForm(leftBuffer, 0);
-        right.GetBinaryForm(rightBuffer, 0);
-
-        for (var i = 0; i < leftLen; ++i)
-        {
-            if (leftBuffer[i] != rightBuffer[i])
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    public static bool operator !=(GenericAce left, GenericAce right) => !Equals(left, right);
 
     internal abstract string GetSddlForm();
 

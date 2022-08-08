@@ -94,6 +94,6 @@ internal sealed class MetadataEntryKey : IEquatable<MetadataEntryKey>
 
     public override string ToString()
     {
-        return _itemId + (IsUser ? " - User" : " - System");
+        return $"{_itemId}{(IsUser ? " - User" : " - System")}";
     }
 }

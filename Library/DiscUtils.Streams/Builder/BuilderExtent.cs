@@ -48,8 +48,6 @@ public abstract class BuilderExtent : IDisposable
         get { yield return new StreamExtent(Start, Length); }
     }
 
-    public abstract void Dispose();
-
     public abstract void PrepareForRead();
 
     public abstract int Read(long diskOffset, byte[] block, int offset, int count);
@@ -65,4 +63,20 @@ public abstract class BuilderExtent : IDisposable
         new(Read(diskOffset, block.Span));
 
     public abstract void DisposeReadState();
+
+    protected abstract void Dispose(bool disposing);
+
+    // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+    ~BuilderExtent()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: false);
+    }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
 }

@@ -20,18 +20,21 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
+using System;
+
 namespace DiscUtils;
 
 /// <summary>
-/// Class whose instances represent a CHS (Cylinder, Head, Sector) address on a disk.
+/// Struct that represents a CHS (Cylinder, Head, Sector) address on a disk.
 /// </summary>
-/// <remarks>Instances of this class are immutable.</remarks>
-public sealed class ChsAddress
+/// <remarks>Instances of this struct are immutable.</remarks>
+public readonly struct ChsAddress : IEquatable<ChsAddress>
 {
     /// <summary>
     /// The address of the first sector on any disk.
     /// </summary>
-    public static readonly ChsAddress First = new ChsAddress(0, 0, 1);
+    public static ChsAddress First { get; } = new ChsAddress(0, 0, 1);
 
     /// <summary>
     /// Initializes a new instance of the ChsAddress class.
@@ -66,30 +69,27 @@ public sealed class ChsAddress
     /// </summary>
     /// <param name="obj">The object to test against.</param>
     /// <returns><c>true</c> if the <paramref name="obj"/> is equivalent, else <c>false</c>.</returns>
+    public bool Equals(ChsAddress other)
+        => Cylinder == other.Cylinder && Head == other.Head && Sector == other.Sector;
+
     public override bool Equals(object obj)
-    {
-        if (obj == null || obj.GetType() != GetType())
-        {
-            return false;
-        }
+        => obj is ChsAddress other && Equals(other);
 
-        var other = (ChsAddress)obj;
+    public static bool operator ==(ChsAddress a, ChsAddress b) => a.Equals(b);
 
-        return Cylinder == other.Cylinder && Head == other.Head && Sector == other.Sector;
-    }
+    public static bool operator !=(ChsAddress a, ChsAddress b) => !a.Equals(b);
 
     /// <summary>
     /// Calculates the hash code for this object.
     /// </summary>
     /// <returns>The hash code.</returns>
     public override int GetHashCode()
-    {
-        return Cylinder.GetHashCode() ^ Head.GetHashCode() ^ Sector.GetHashCode();
-    }
+        => HashCode.Combine(Cylinder, Head, Sector);
 
     /// <summary>
     /// Gets a string representation of this object, in the form (C/H/S).
     /// </summary>
     /// <returns>The string representation.</returns>
-    public override string ToString() => $"({Cylinder}/{Head}/{Sector})";
+    public override string ToString()
+        => $"({Cylinder}/{Head}/{Sector})";
 }

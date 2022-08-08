@@ -138,7 +138,7 @@ internal class NonResidentDataBuffer : Buffer, IMappedBuffer
 
                 var toRead = (int)Math.Min(remaining, _bytesPerCluster - clusterOffset);
 
-                Array.Copy(_ioBuffer, (int)clusterOffset, buffer, (int)(offset + (focusPos - pos)), toRead);
+                System.Buffer.BlockCopy(_ioBuffer, (int)clusterOffset, buffer, (int)(offset + (focusPos - pos)), toRead);
 
                 focusPos += toRead;
             }

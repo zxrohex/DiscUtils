@@ -25,6 +25,7 @@ using System.IO;
 using System.Text;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Wim;
 
@@ -49,7 +50,7 @@ internal class DirectoryEntry
     {
         get
         {
-            if (FileName.IndexOf('.') == -1)
+            if (!FileName.Contains('.'))
             {
                 return $"{FileName}.";
             }

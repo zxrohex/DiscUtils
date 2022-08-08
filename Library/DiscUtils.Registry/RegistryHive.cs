@@ -40,6 +40,7 @@ public class RegistryHive : IDisposable
     private readonly List<BinHeader> _bins;
 
     private Stream _fileStream;
+
     private readonly HiveHeader _header;
     private readonly Ownership _ownsStream;
 
@@ -284,11 +285,15 @@ public class RegistryHive : IDisposable
     /// <summary>
     /// Disposes of this instance, freeing any underlying stream (if any).
     /// </summary>
-    public void Dispose()
+    public void Dispose(bool disposing)
     {
         if (_fileStream is not null && _ownsStream == Ownership.Dispose)
         {
-            _fileStream.Dispose();
+            if (disposing)
+            {
+                _fileStream.Dispose();
+            }
+
             _fileStream = null;
         }
     }
@@ -562,5 +567,19 @@ public class RegistryHive : IDisposable
 
         _bins.Add(newBinHeader);
         return newBinHeader;
+    }
+
+    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+    ~RegistryHive()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: false);
+    }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }

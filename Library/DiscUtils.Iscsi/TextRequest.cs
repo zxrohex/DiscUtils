@@ -64,7 +64,7 @@ internal class TextRequest
         EndianUtilities.WriteBytesBigEndian(_targetTransferTag, buffer, 20);
         EndianUtilities.WriteBytesBigEndian(_commandSequenceNumber, buffer, 24);
         EndianUtilities.WriteBytesBigEndian(_expectedStatusSequenceNumber, buffer, 28);
-        Array.Copy(data, offset, buffer, 48, count);
+        System.Buffer.BlockCopy(data, offset, buffer, 48, count);
         return buffer;
     }
 }

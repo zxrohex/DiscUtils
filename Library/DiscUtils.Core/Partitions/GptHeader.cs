@@ -72,7 +72,7 @@ internal class GptHeader
         EntriesCrc = toCopy.EntriesCrc;
 
         Buffer = new byte[toCopy.Buffer.Length];
-        Array.Copy(toCopy.Buffer, Buffer, Buffer.Length);
+        System.Buffer.BlockCopy(toCopy.Buffer, 0, Buffer, 0, Buffer.Length);
     }
 
     public bool ReadFrom(ReadOnlySpan<byte> buffer)

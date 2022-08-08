@@ -24,6 +24,7 @@ using System;
 using System.IO;
 using DiscUtils.Partitions;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Raw;
 
@@ -39,7 +40,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// </summary>
     /// <param name="stream">The stream to interpret.</param>
     public DiskImageFile(Stream stream)
-        : this(stream, Ownership.None, null) {}
+        : this(stream, Ownership.None) {}
 
     /// <summary>
     /// Initializes a new instance of the DiskImageFile class.
@@ -47,7 +48,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <param name="stream">The stream to interpret.</param>
     /// <param name="ownsStream">Indicates if the new instance should control the lifetime of the stream.</param>
     /// <param name="geometry">The emulated geometry of the disk.</param>
-    public DiskImageFile(Stream stream, Ownership ownsStream, Geometry geometry)
+    public DiskImageFile(Stream stream, Ownership ownsStream, Geometry geometry = default)
     {
         Content = stream as SparseStream;
         _ownsContent = ownsStream;
@@ -58,7 +59,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
             _ownsContent = Ownership.Dispose;
         }
 
-        Geometry = geometry ?? DetectGeometry(Content);
+        Geometry = geometry != default ? geometry : DetectGeometry(Content);
     }
 
     public override long Capacity
@@ -110,13 +111,15 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <param name="capacity">The desired capacity of the new disk.</param>
     /// <param name="geometry">The geometry of the new disk.</param>
     /// <returns>An object that accesses the stream as a raw disk image.</returns>
-    public static DiskImageFile Initialize(Stream stream, Ownership ownsStream, long capacity, Geometry geometry)
+    public static DiskImageFile Initialize(Stream stream, Ownership ownsStream, long capacity, Geometry geometry = default)
     {
         stream.SetLength(MathUtilities.RoundUp(capacity, Sizes.Sector));
 
         // Wipe any pre-existing master boot record / BPB
         stream.Position = 0;
-        stream.Write(new byte[Sizes.Sector], 0, Sizes.Sector);
+        Span<byte> buffer = stackalloc byte[Sizes.Sector];
+        buffer.Clear();
+        stream.Write(buffer);
         stream.Position = 0;
 
         return new DiskImageFile(stream, ownsStream, geometry);
@@ -131,7 +134,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <returns>An object that accesses the stream as a disk.</returns>
     public static DiskImageFile Initialize(Stream stream, Ownership ownsStream, FloppyDiskType type)
     {
-        return Initialize(stream, ownsStream, FloppyCapacity(type), null);
+        return Initialize(stream, ownsStream, FloppyCapacity(type));
     }
 
     /// <summary>

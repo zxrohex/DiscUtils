@@ -86,11 +86,15 @@ internal sealed class VmfsSparseExtentBuilder : StreamBuilder
             _buffer = new byte[Length];
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
             if (_streamView != null)
             {
-                _streamView.Dispose();
+                if (disposing)
+                {
+                    _streamView.Dispose();
+                }
+
                 _streamView = null;
             }
         }
@@ -151,11 +155,15 @@ internal sealed class VmfsSparseExtentBuilder : StreamBuilder
             _header = header;
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
             if (_content != null && _contentOwnership == Ownership.Dispose)
             {
-                _content.Dispose();
+                if (disposing)
+                {
+                    _content.Dispose();
+                }
+
                 _content = null;
             }
 

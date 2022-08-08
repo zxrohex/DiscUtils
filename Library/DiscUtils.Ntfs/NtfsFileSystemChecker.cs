@@ -501,7 +501,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         var tempBuffer = ArrayPool<byte>.Shared.Rent(recordData.Length);
         try
         {
-            Array.Copy(recordData, tempBuffer, recordData.Length);
+            System.Buffer.BlockCopy(recordData, 0, tempBuffer, 0, recordData.Length);
             genericRecord.FromBytes(tempBuffer);
         }
         finally

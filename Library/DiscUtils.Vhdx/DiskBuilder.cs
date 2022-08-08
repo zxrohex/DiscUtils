@@ -225,7 +225,7 @@ public sealed class DiskBuilder : DiskImageBuilder
             _chunkRatio = chunkRatio;
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
             _batData = null;
         }
@@ -259,7 +259,7 @@ public sealed class DiskBuilder : DiskImageBuilder
             var start = (int)Math.Min(diskOffset - Start, _batData.Length);
             var numRead = Math.Min(count, _batData.Length - start);
 
-            Array.Copy(_batData, start, block, offset, numRead);
+            System.Buffer.BlockCopy(_batData, start, block, offset, numRead);
 
             return numRead;
         }

@@ -26,14 +26,14 @@ namespace DiscUtils.Udf;
 
 internal class Type1Partition : LogicalPartition
 {
-    private Type1PartitionMap _partitionMap;
+    //private readonly Type1PartitionMap _partitionMap;
     private readonly PhysicalPartition _physical;
 
     public Type1Partition(UdfContext context, LogicalVolumeDescriptor volumeDescriptor,
                           Type1PartitionMap partitionMap)
         : base(context, volumeDescriptor)
     {
-        _partitionMap = partitionMap;
+        //_partitionMap = partitionMap;
         _physical = context.PhysicalPartitions[partitionMap.PartitionNumber];
     }
 

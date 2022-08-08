@@ -49,7 +49,7 @@ internal abstract class DataBlockTransform
                 try
                 {
                     var outCount = DoProcess(input, inputOffset, inputCount, tempBuffer, 0);
-                    Array.Copy(tempBuffer, 0, output, outputOffset, outCount);
+                    Buffer.BlockCopy(tempBuffer, 0, output, outputOffset, outCount);
 
                     return outCount;
                 }

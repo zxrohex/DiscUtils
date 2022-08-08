@@ -248,7 +248,7 @@ public sealed class BlockCacheStream : SparseStream
             {
                 var bytesToRead = Math.Min(count - totalBytesRead, block.Available - offsetInNextBlock);
 
-                Array.Copy(block.Data, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToRead);
+                System.Buffer.BlockCopy(block.Data, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToRead);
                 offsetInNextBlock = 0;
                 totalBytesRead += bytesToRead;
                 _position += bytesToRead;
@@ -285,7 +285,7 @@ public sealed class BlockCacheStream : SparseStream
                 {
                     var copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
                     block = _cache.GetBlock(firstBlock + blocksRead + i);
-                    Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
+                    System.Buffer.BlockCopy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
                     block.Available = copyBytes;
 
                     if (copyBytes < blockSize)
@@ -298,7 +298,7 @@ public sealed class BlockCacheStream : SparseStream
 
                 // Propogate the data onto the caller
                 var bytesToCopy = Math.Min(count - totalBytesRead, bytesRead - offsetInNextBlock);
-                Array.Copy(_readBuffer, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToCopy);
+                System.Buffer.BlockCopy(_readBuffer, offsetInNextBlock, buffer, offset + totalBytesRead, bytesToCopy);
                 totalBytesRead += bytesToCopy;
                 _position += bytesToCopy;
                 offsetInNextBlock = 0;
@@ -422,7 +422,7 @@ public sealed class BlockCacheStream : SparseStream
                 {
                     var copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
                     block = _cache.GetBlock(firstBlock + blocksRead + i);
-                    Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
+                    System.Buffer.BlockCopy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
                     block.Available = copyBytes;
 
                     if (copyBytes < blockSize)
@@ -559,7 +559,7 @@ public sealed class BlockCacheStream : SparseStream
                 {
                     var copyBytes = Math.Min(blockSize, bytesRead - i * blockSize);
                     block = _cache.GetBlock(firstBlock + blocksRead + i);
-                    Array.Copy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
+                    System.Buffer.BlockCopy(_readBuffer, i * blockSize, block.Data, 0, copyBytes);
                     block.Available = copyBytes;
 
                     if (copyBytes < blockSize)
@@ -690,7 +690,7 @@ public sealed class BlockCacheStream : SparseStream
 
             if (_cache.TryGetBlock(firstBlock + i, out var block))
             {
-                Array.Copy(buffer, bufferPos, block.Data, offsetInNextBlock, bytesThisBlock);
+                System.Buffer.BlockCopy(buffer, bufferPos, block.Data, offsetInNextBlock, bytesThisBlock);
                 block.Available = Math.Max(block.Available, offsetInNextBlock + bytesThisBlock);
             }
 

@@ -28,16 +28,16 @@ public abstract class VirtualFileSystemDirectoryEntry
     public abstract long FileId { get; }
 
     internal VirtualFileSystemDirectoryEntry(VirtualFileSystem fileSystem) =>
-        FileSystem = fileSystem ?? throw new ArgumentNullException(nameof(FileSystem));
+        FileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
 
     internal VirtualFileSystemDirectoryEntry(VirtualFileSystemDirectory parent, string name)
     {
         Parent = parent ?? throw new ArgumentNullException(nameof(parent));
-        FileSystem = parent.FileSystem ?? throw new ArgumentException(nameof(parent), "FileSystem property is null");
+        FileSystem = parent.FileSystem ?? throw new ArgumentException("FileSystem property is null", nameof(parent));
 
         if (string.IsNullOrEmpty(name))
         {
-            throw new ArgumentException(nameof(name), "File names cannot be null or empty");
+            throw new ArgumentException("File names cannot be null or empty", nameof(name));
         }
 
         parent.AddEntry(name, this);

@@ -31,8 +31,6 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Xva;
 
-using DiskRecord = Tuple<string, SparseStream, Ownership>;
-
 /// <summary>
 /// A class that can be used to create Xen Virtual Appliance (XVA) files.
 /// </summary>
@@ -42,14 +40,14 @@ using DiskRecord = Tuple<string, SparseStream, Ownership>;
 /// making them easy to import into XenServer.</remarks>
 public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
 {
-    private readonly List<DiskRecord> _disks;
+    private readonly List<(string label, SparseStream content, Ownership ownsContent)> _disks;
 
     /// <summary>
     /// Initializes a new instance of the VirtualMachineBuilder class.
     /// </summary>
     public VirtualMachineBuilder()
     {
-        _disks = new List<DiskRecord>();
+        _disks = new();
         DisplayName = "VM";
     }
 
@@ -65,9 +63,9 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
     {
         foreach (var r in _disks)
         {
-            if (r.Item3 == Ownership.Dispose)
+            if (r.ownsContent == Ownership.Dispose)
             {
-                r.Item2.Dispose();
+                r.content.Dispose();
             }
         }
     }
@@ -80,7 +78,7 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
     /// <param name="ownsContent">Indicates if ownership of content is transfered.</param>
     public void AddDisk(string label, SparseStream content, Ownership ownsContent)
     {
-        _disks.Add(new DiskRecord(label, content, ownsContent));
+        _disks.Add((label, content, ownsContent));
     }
 
     /// <summary>
@@ -91,7 +89,7 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
     /// <param name="ownsContent">Indicates if ownership of content is transfered.</param>
     public void AddDisk(string label, Stream content, Ownership ownsContent)
     {
-        _disks.Add(new DiskRecord(label, SparseStream.FromStream(content, ownsContent), Ownership.Dispose));
+        _disks.Add((label, SparseStream.FromStream(content, ownsContent), Ownership.Dispose));
     }
 
     /// <summary>
@@ -109,7 +107,7 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
         var diskIdx = 0;
         foreach (var diskRec in _disks)
         {
-            var diskStream = diskRec.Item2;
+            var diskStream = diskRec.content;
             var extents = new List<StreamExtent>(diskStream.Extents);
 
             var lastChunkAdded = -1;
@@ -216,12 +214,12 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
         var vmId = id++;
 
         // Establish per-disk info
-        var vbdGuids = new Guid[_disks.Count];
-        var vbdIds = new int[_disks.Count];
-        var vdiGuids = new Guid[_disks.Count];
+        Span<Guid> vbdGuids = stackalloc Guid[_disks.Count];
+        Span<int> vbdIds = stackalloc int[_disks.Count];
+        Span<Guid> vdiGuids = stackalloc Guid[_disks.Count];
         var vdiNames = new string[_disks.Count];
         var vdiIds = new int[_disks.Count];
-        var vdiSizes = new long[_disks.Count];
+        Span<long> vdiSizes = stackalloc long[_disks.Count];
 
         var diskIdx = 0;
         foreach (var disk in _disks)
@@ -230,8 +228,8 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
             vbdIds[diskIdx] = id++;
             vdiGuids[diskIdx] = Guid.NewGuid();
             vdiIds[diskIdx] = id++;
-            vdiNames[diskIdx] = disk.Item1;
-            vdiSizes[diskIdx] = MathUtilities.RoundUp(disk.Item2.Length, Sizes.OneMiB);
+            vdiNames[diskIdx] = disk.label;
+            vdiSizes[diskIdx] = MathUtilities.RoundUp(disk.content.Length, Sizes.OneMiB);
             diskIdx++;
         }
 
@@ -243,22 +241,22 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
         var vbdRefs = string.Empty;
         for (var i = 0; i < _disks.Count; ++i)
         {
-            vbdRefs += string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_ref, "Ref:" + vbdIds[i]);
+            vbdRefs += string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_ref, $"Ref:{vbdIds[i]}");
         }
 
         var vdiRefs = string.Empty;
         for (var i = 0; i < _disks.Count; ++i)
         {
-            vdiRefs += string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_ref, "Ref:" + vdiIds[i]);
+            vdiRefs += string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_ref, $"Ref:{vdiIds[i]}");
         }
 
         var objectsString = new StringBuilder();
 
-        objectsString.Append(string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_vm, "Ref:" + vmId, vmGuid, vmName, vbdRefs));
+        objectsString.Append(string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_vm, $"Ref:{vmId}", vmGuid, vmName, vbdRefs));
 
         for (var i = 0; i < _disks.Count; ++i)
         {
-            objectsString.Append(string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_vbd, "Ref:" + vbdIds[i], vbdGuids[i], "Ref:" + vmId, "Ref:" + vdiIds[i], i));
+            objectsString.Append(string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_vbd, $"Ref:{vbdIds[i]}", vbdGuids[i], $"Ref:{vmId}", $"Ref:{vdiIds[i]}", i));
         }
 
         for (var i = 0; i < _disks.Count; ++i)
@@ -267,15 +265,15 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
                 string.Format(
                     CultureInfo.InvariantCulture,
                     StaticStrings.XVA_ova_vdi,
-                    "Ref:" + vdiIds[i],
+                    $"Ref:{vdiIds[i]}",
                     vdiGuids[i],
                     vdiNames[i],
-                    "Ref:" + srId,
-                    "Ref:" + vbdIds[i],
+                    $"Ref:{srId}",
+                    $"Ref:{vbdIds[i]}",
                     vdiSizes[i]));
         }
 
-        objectsString.Append(string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_sr, "Ref:" + srId, srGuid, srName, vdiRefs));
+        objectsString.Append(string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_sr, $"Ref:{srId}", srGuid, srName, vdiRefs));
 
         diskIds = vdiIds;
         return string.Format(CultureInfo.InvariantCulture, StaticStrings.XVA_ova_base, objectsString.ToString());

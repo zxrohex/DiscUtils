@@ -22,14 +22,15 @@
 
 using System;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils;
 
 /// <summary>
-/// Class whose instances represent disk geometries.
+/// Struct that represent disk geometries.
 /// </summary>
-/// <remarks>Instances of this class are immutable.</remarks>
-public sealed class Geometry
+/// <remarks>Instances of this struct are immutable.</remarks>
+public readonly struct Geometry : IEquatable<Geometry>
 {
     /// <summary>
     /// Initializes a new instance of the Geometry class.  The default 512 bytes per sector is assumed.
@@ -223,7 +224,7 @@ public sealed class Geometry
     /// <remarks>This method returns the LBA-Assisted geometry if the given geometry isn't BIOS-safe.</remarks>
     public static Geometry MakeBiosSafe(Geometry geometry, long capacity)
     {
-        if (geometry == null)
+        if (geometry == default)
         {
             return LbaAssistedBiosGeometry(capacity, Sizes.Sector);
         }
@@ -440,41 +441,37 @@ public sealed class Geometry
     /// <summary>
     /// Determines if this object is equivalent to another.
     /// </summary>
-    /// <param name="obj">The object to test against.</param>
+    /// <param name="other">The object to test against.</param>
     /// <returns><c>true</c> if the <paramref name="obj"/> is equivalent, else <c>false</c>.</returns>
-    public override bool Equals(object obj)
+    public bool Equals(Geometry other)
     {
-        if (obj == null || obj.GetType() != GetType())
-        {
-            return false;
-        }
-
-        var other = (Geometry)obj;
-
         return Cylinders == other.Cylinders && HeadsPerCylinder == other.HeadsPerCylinder
                && SectorsPerTrack == other.SectorsPerTrack && BytesPerSector == other.BytesPerSector;
     }
+
+    /// <summary>
+    /// Determines if this object is equivalent to another.
+    /// </summary>
+    /// <param name="other">The object to test against.</param>
+    /// <returns><c>true</c> if the <paramref name="obj"/> is equivalent, else <c>false</c>.</returns>
+    public override bool Equals(object obj) => obj is Geometry other && Equals(other);
+
+    public static bool operator ==(Geometry a, Geometry b) => a.Equals(b);
+
+    public static bool operator !=(Geometry a, Geometry b) => !a.Equals(b);
 
     /// <summary>
     /// Calculates the hash code for this object.
     /// </summary>
     /// <returns>The hash code.</returns>
     public override int GetHashCode()
-    {
-        return Cylinders.GetHashCode() ^ HeadsPerCylinder.GetHashCode()
-               ^ SectorsPerTrack.GetHashCode() ^ BytesPerSector.GetHashCode();
-    }
+        => HashCode.Combine(Cylinders, HeadsPerCylinder, SectorsPerTrack, BytesPerSector);
 
     /// <summary>
     /// Gets a string representation of this object, in the form (C/H/S).
     /// </summary>
     /// <returns>The string representation.</returns>
-    public override string ToString()
-    {
-        if (BytesPerSector == 512)
-        {
-            return $"({Cylinders}/{HeadsPerCylinder}/{SectorsPerTrack})";
-        }
-        return $"({Cylinders}/{HeadsPerCylinder}/{SectorsPerTrack}:{BytesPerSector})";
-    }
+    public override string ToString() => BytesPerSector == 512
+        ? $"({Cylinders}/{HeadsPerCylinder}/{SectorsPerTrack})"
+        : $"({Cylinders}/{HeadsPerCylinder}/{SectorsPerTrack}:{BytesPerSector})";
 }

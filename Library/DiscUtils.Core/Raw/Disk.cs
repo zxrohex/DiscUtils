@@ -42,7 +42,7 @@ public sealed class Disk : VirtualDisk
     /// <param name="stream">The stream to read.</param>
     /// <param name="ownsStream">Indicates if the new instance should control the lifetime of the stream.</param>
     public Disk(Stream stream, Ownership ownsStream)
-        : this(stream, ownsStream, null) {}
+        : this(stream, ownsStream, default) {}
 
     /// <summary>
     /// Initializes a new instance of the Disk class.
@@ -71,7 +71,7 @@ public sealed class Disk : VirtualDisk
     {
         var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
         var locator = new LocalFileLocator(string.Empty);
-        _file = new DiskImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose, null);
+        _file = new DiskImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose, default);
     }
 
     /// <summary>
@@ -150,7 +150,7 @@ public sealed class Disk : VirtualDisk
     /// <returns>An object that accesses the stream as a disk.</returns>
     public static Disk Initialize(Stream stream, Ownership ownsStream, long capacity)
     {
-        return Initialize(stream, ownsStream, capacity, null);
+        return Initialize(stream, ownsStream, capacity, default);
     }
 
     /// <summary>

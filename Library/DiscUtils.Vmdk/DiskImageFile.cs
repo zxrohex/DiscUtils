@@ -550,10 +550,10 @@ public sealed class DiskImageFile : VirtualDiskLayer
             throw new ArgumentException("Capacity must be greater than zero", nameof(parameters));
         }
 
-        var geometry = parameters.Geometry ?? DefaultGeometry(parameters.Capacity);
+        var geometry = parameters.Geometry != default ? parameters.Geometry : DefaultGeometry(parameters.Capacity);
 
         Geometry biosGeometry;
-        if (parameters.BiosGeometry != null)
+        if (parameters.BiosGeometry != default)
         {
             biosGeometry = parameters.BiosGeometry;
         }

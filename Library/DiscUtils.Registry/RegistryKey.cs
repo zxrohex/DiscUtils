@@ -659,18 +659,12 @@ public sealed class RegistryKey
         return null;
     }
 
-#if NETSTANDARD || NETCOREAPP || NET46_OR_GREATER
-    private static readonly byte[] EmptyByteArray = Array.Empty<byte>();
-#else
-    private static readonly byte[] EmptyByteArray = new byte[0];
-#endif
-
     private RegistryValue AddRegistryValue(string name)
     {
         var valueList = _hive.RawCellData(_cell.ValueListIndex, _cell.NumValues * 4);
         if (valueList == null)
         {
-            valueList = EmptyByteArray;
+            valueList = Array.Empty<byte>();
         }
 
         var insertIdx = 0;
@@ -692,9 +686,9 @@ public sealed class RegistryKey
 
         // Update the value list, re-allocating if necessary
         var newValueList = new byte[_cell.NumValues * 4 + 4];
-        Array.Copy(valueList, 0, newValueList, 0, insertIdx * 4);
+        System.Buffer.BlockCopy(valueList, 0, newValueList, 0, insertIdx * 4);
         EndianUtilities.WriteBytesLittleEndian(valueCell.Index, newValueList, insertIdx * 4);
-        Array.Copy(valueList, insertIdx * 4, newValueList, insertIdx * 4 + 4, (_cell.NumValues - insertIdx) * 4);
+        System.Buffer.BlockCopy(valueList, insertIdx * 4, newValueList, insertIdx * 4 + 4, (_cell.NumValues - insertIdx) * 4);
         if (_cell.ValueListIndex == -1 ||
             !_hive.WriteRawCellData(_cell.ValueListIndex, newValueList, 0, newValueList.Length))
         {

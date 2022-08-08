@@ -153,7 +153,7 @@ internal sealed class Bin
         var index = cellIndex - _header.FileOffset;
         var len = Math.Abs(EndianUtilities.ToInt32LittleEndian(_buffer, index));
         var result = new byte[Math.Min(len - 4, maxBytes)];
-        Array.Copy(_buffer, index + 4, result, 0, result.Length);
+        System.Buffer.BlockCopy(_buffer, index + 4, result, 0, result.Length);
         return result;
     }
 
@@ -168,7 +168,7 @@ internal sealed class Bin
             return false;
         }
 
-        Array.Copy(data, offset, _buffer, index + 4, count);
+        System.Buffer.BlockCopy(data, offset, _buffer, index + 4, count);
 
         _fileStream.Position = _streamPos + index;
         _fileStream.Write(_buffer, index, newSize);

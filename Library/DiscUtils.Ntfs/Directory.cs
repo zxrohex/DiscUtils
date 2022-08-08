@@ -224,8 +224,11 @@ internal class Directory : File
         do
         {
             var suffix = $"~{i}";
-            candidate = baseName.Substring(0, Math.Min(8 - suffix.Length, baseName.Length)) + suffix +
-                        (ext.Length > 0 ? $".{ext}" : string.Empty);
+#if NET6_0_OR_GREATER
+            candidate = $"{baseName.AsSpan(0, Math.Min(8 - suffix.Length, baseName.Length))}{suffix}{(ext.Length > 0 ? $".{ext}" : string.Empty)}";
+#else
+            candidate = $"{baseName.Substring(0, Math.Min(8 - suffix.Length, baseName.Length))}{suffix}{(ext.Length > 0 ? $".{ext}" : string.Empty)}";
+#endif
             i++;
         } while (GetEntryByName(candidate) != null);
 

@@ -141,7 +141,7 @@ public sealed class SparseMemoryBuffer : Buffer
             }
             else
             {
-                Array.Copy(chunkBuffer, chunkOffset, buffer, offset, numToRead);
+                System.Buffer.BlockCopy(chunkBuffer, chunkOffset, buffer, offset, numToRead);
             }
 
             totalRead += numToRead;
@@ -209,7 +209,7 @@ public sealed class SparseMemoryBuffer : Buffer
                 _buffers[chunk] = chunkBuffer;
             }
 
-            Array.Copy(buffer, offset, chunkBuffer, chunkOffset, numToWrite);
+            System.Buffer.BlockCopy(buffer, offset, chunkBuffer, chunkOffset, numToWrite);
 
             offset += numToWrite;
             count -= numToWrite;

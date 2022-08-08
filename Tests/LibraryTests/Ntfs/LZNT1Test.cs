@@ -94,7 +94,7 @@ namespace LibraryTests.Ntfs
             var compressor = (BlockCompressor)instance;
 
             var inData = new byte[128 * 1024];
-            Array.Copy(_uncompressedData, 0, inData, 32 * 1024, 64 * 1024);
+            Buffer.BlockCopy(_uncompressedData, 0, inData, 32 * 1024, 64 * 1024);
 
             var compressedLength = 16 * 4096;
             var compressedData = new byte[compressedLength];
@@ -151,7 +151,7 @@ namespace LibraryTests.Ntfs
             var numDuDecompressed = compressor.Decompress(compressedData.AsSpan(0, compressedLength), duDecompressed);
 
             var rightSizedDuDecompressed = new byte[numDuDecompressed];
-            Array.Copy(duDecompressed, rightSizedDuDecompressed, numDuDecompressed);
+            Buffer.BlockCopy(duDecompressed, 0, rightSizedDuDecompressed, 0, numDuDecompressed);
 
             // Note: Due to bug in Windows LZNT1, we compare against native decompression, not the original data, since
             // Windows LZNT1 corrupts data on decompression when block size != 4096.
@@ -165,7 +165,7 @@ namespace LibraryTests.Ntfs
             var compressor = (BlockCompressor)instance;
 
             var uncompressed1K = new byte[1024];
-            Array.Copy(_uncompressedData, uncompressed1K, 1024);
+            Buffer.BlockCopy(_uncompressedData, 0, uncompressed1K, 0, 1024);
 
             var compressedLength = 1024;
             var compressedData = new byte[compressedLength];
@@ -233,7 +233,7 @@ namespace LibraryTests.Ntfs
             var compressed = NativeCompress(_uncompressedData, 0, _uncompressedData.Length, 4096);
 
             var inData = new byte[128 * 1024];
-            Array.Copy(compressed, 0, inData, 32 * 1024, compressed.Length);
+            Buffer.BlockCopy(compressed, 0, inData, 32 * 1024, compressed.Length);
 
 
             // Double-check, make sure native code round-trips
@@ -262,7 +262,7 @@ namespace LibraryTests.Ntfs
             Assert.Equal(numDecompressed, _uncompressedData.Length);
 
             var decompressed = new byte[_uncompressedData.Length];
-            Array.Copy(outData, 32 * 1024, decompressed, 0, _uncompressedData.Length);
+            Buffer.BlockCopy(outData, 32 * 1024, decompressed, 0, _uncompressedData.Length);
             Assert.Equal(_uncompressedData, decompressed);
         }
 
@@ -297,11 +297,13 @@ namespace LibraryTests.Ntfs
 
                 compressedBuffer = Marshal.AllocHGlobal(length);
 
-                RtlGetCompressionWorkSpaceSize(2, out var bufferWorkspaceSize, out var fragmentWorkspaceSize);
+                var ntStatus = RtlGetCompressionWorkSpaceSize(2, out var bufferWorkspaceSize, out var fragmentWorkspaceSize);
+
+                Assert.Equal(0, ntStatus);
 
                 workspaceBuffer = Marshal.AllocHGlobal((int)bufferWorkspaceSize);
 
-                var ntStatus = RtlCompressBuffer(2, uncompressedBuffer, (uint)length, compressedBuffer, (uint)length, (uint)chunkSize, out var compressedSize, workspaceBuffer);
+                ntStatus = RtlCompressBuffer(2, uncompressedBuffer, (uint)length, compressedBuffer, (uint)length, (uint)chunkSize, out var compressedSize, workspaceBuffer);
                 Assert.Equal(0, ntStatus);
 
                 var result = new byte[compressedSize];

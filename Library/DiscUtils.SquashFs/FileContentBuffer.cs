@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using DiscUtils.Streams;
 
 namespace DiscUtils.SquashFs;
@@ -48,13 +49,17 @@ internal class FileContentBuffer : Streams.Buffer
             ++numBlocks;
         }
 
-        var lengthData = new byte[numBlocks * 4];
-        context.InodeReader.Read(lengthData, 0, lengthData.Length);
-
         _blockLengths = new int[numBlocks];
-        for (var i = 0; i < numBlocks; ++i)
+
+        var lengthData = MemoryMarshal.AsBytes(_blockLengths.AsSpan());
+        context.InodeReader.Read(lengthData);
+
+        if (!BitConverter.IsLittleEndian)
         {
-            _blockLengths[i] = EndianUtilities.ToInt32LittleEndian(lengthData, i * 4);
+            for (var i = 0; i < numBlocks; ++i)
+            {
+                _blockLengths[i] = EndianUtilities.ToInt32LittleEndian(lengthData.Slice(i * 4, 4));
+            }
         }
     }
 
@@ -115,7 +120,7 @@ internal class FileContentBuffer : Streams.Buffer
             var block = _context.ReadBlock(currentBlockDiskStart, _blockLengths[currentBlock]);
 
             var toCopy = Math.Min(block.Available - blockOffset, totalToRead - totalRead);
-            Array.Copy(block.Data, blockOffset, buffer, offset + totalRead, toCopy);
+            System.Buffer.BlockCopy(block.Data, blockOffset, buffer, offset + totalRead, toCopy);
             totalRead += toCopy;
             currentPos += toCopy;
         }
@@ -212,7 +217,7 @@ internal class FileContentBuffer : Streams.Buffer
         }
 
         var toCopy = (int)Math.Min(frag.Available - (_inode.FragmentOffset + pos), count);
-        Array.Copy(frag.Data, (int)(_inode.FragmentOffset + pos), buffer, offset, toCopy);
+        System.Buffer.BlockCopy(frag.Data, (int)(_inode.FragmentOffset + pos), buffer, offset, toCopy);
         return toCopy;
     }
 

@@ -78,7 +78,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
             var read = WrappedStream.Read(tempBuffer, 0, (int)(endPos - startPos));
             var available = Math.Min(count, read - startOffset);
 
-            Array.Copy(tempBuffer, startOffset, buffer, offset, available);
+            System.Buffer.BlockCopy(tempBuffer, startOffset, buffer, offset, available);
 
             _position += available;
             return available;
@@ -197,7 +197,7 @@ public sealed class AligningStream : WrappingMappedStream<SparseStream>
     {
         DoOperation(
             (s, opOffset, opCount) => { s.Write(buffer, offset + opOffset, opCount); },
-            (tempBuffer, tempOffset, opOffset, opCount) => { Array.Copy(buffer, offset + opOffset, tempBuffer, tempOffset, opCount); },
+            (tempBuffer, tempOffset, opOffset, opCount) => { System.Buffer.BlockCopy(buffer, offset + opOffset, tempBuffer, tempOffset, opCount); },
             count);
     }
 

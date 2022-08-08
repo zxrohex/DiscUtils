@@ -47,11 +47,11 @@ internal sealed class PacketWriter
             var labelBytes = Encoding.UTF8.GetBytes(label);
             if (labelBytes.Length > 63)
             {
-                throw new ArgumentException($"Invalid DNS label - more than 63 octets '{label}' in '{name}'", "name");
+                throw new ArgumentException($"Invalid DNS label - more than 63 octets '{label}' in '{name}'", nameof(name));
             }
 
             _data[_pos++] = (byte)labelBytes.Length;
-            Array.Copy(labelBytes, 0, _data, _pos, labelBytes.Length);
+            System.Buffer.BlockCopy(labelBytes, 0, _data, _pos, labelBytes.Length);
             _pos += labelBytes.Length;
         }
 
@@ -67,7 +67,7 @@ internal sealed class PacketWriter
     public byte[] GetBytes()
     {
         var result = new byte[_pos];
-        Array.Copy(_data, 0, result, 0, _pos);
+        System.Buffer.BlockCopy(_data, 0, result, 0, _pos);
         return result;
     }
 }

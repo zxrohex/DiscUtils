@@ -45,11 +45,13 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 
-namespace DiscUtils.Nfs;
+namespace DiscUtils.Streams.Compatibility;
+
+#if NETFRAMEWORK && !NET461_OR_GREATER
 
 // xxHash32 is used for the hash code.
 // https://github.com/Cyan4973/xxHash
-internal struct HashCode
+public struct HashCode
 {
     private static readonly uint s_seed = GenerateGlobalSeed();
 
@@ -419,3 +421,5 @@ internal struct HashCode
     public override bool Equals(object obj) => throw new NotSupportedException();
 #pragma warning restore 0809
 }
+
+#endif

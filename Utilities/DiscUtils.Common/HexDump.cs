@@ -51,7 +51,7 @@ public static class HexDump
     public static void Generate(byte[] data, int offset, int count, TextWriter output)
     {
         var tempBuffer = new byte[count];
-        Array.Copy(data, offset, tempBuffer, 0, count);
+        System.Buffer.BlockCopy(data, offset, tempBuffer, 0, count);
         Generate(SparseStream.FromStream(new MemoryStream(tempBuffer, false), Ownership.None), output);
     }
 

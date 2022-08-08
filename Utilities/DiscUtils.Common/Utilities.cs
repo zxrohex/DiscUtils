@@ -99,17 +99,29 @@ public static class Utilities
             var unitChar = size[size.Length - 2];
 
             // suffix is 'B', indicating bytes
-            if (Char.IsDigit(unitChar))
+            if (char.IsDigit(unitChar))
             {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+                return long.TryParse(size.AsSpan(0, size.Length - 1), out value);
+#else
                 return long.TryParse(size.Substring(0, size.Length - 1), out value);
+#endif
             }
 
             // suffix is KB, MB or GB
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            if (!long.TryParse(size.AsSpan(0, size.Length - 2), out var quantity))
+            {
+                value = 0;
+                return false;
+            }
+#else
             if (!long.TryParse(size.Substring(0, size.Length - 2), out var quantity))
             {
                 value = 0;
                 return false;
             }
+#endif
 
             switch (unitChar)
             {

@@ -393,7 +393,7 @@ public class BuiltStream : SparseStream
         public SearchExtent(long pos)
             : base(pos, 1) {}
 
-        public override void Dispose() {}
+        protected override void Dispose(bool disposing) {}
 
         public override void PrepareForRead()
         {

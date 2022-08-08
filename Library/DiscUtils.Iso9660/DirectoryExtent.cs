@@ -44,7 +44,7 @@ internal class DirectoryExtent : BuilderExtent
         _enc = enc;
     }
 
-    public override void Dispose() {}
+    protected override void Dispose(bool disposing) {}
 
     public override void PrepareForRead()
     {
@@ -58,7 +58,7 @@ internal class DirectoryExtent : BuilderExtent
 
         var numRead = (int)Math.Min(count, _readCache.Length - relPos);
 
-        Array.Copy(_readCache, (int)relPos, buffer, offset, numRead);
+        System.Buffer.BlockCopy(_readCache, (int)relPos, buffer, offset, numRead);
 
         return numRead;
     }

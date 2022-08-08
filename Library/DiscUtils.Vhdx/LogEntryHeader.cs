@@ -29,7 +29,7 @@ internal sealed class LogEntryHeader : IByteArraySerializable
 {
     public const uint LogEntrySignature = 0x65676F6C;
 
-    private byte[] _data;
+    //private byte[] _data;
     public uint Checksum;
     public uint DescriptorCount;
     public uint EntryLength;
@@ -54,7 +54,7 @@ internal sealed class LogEntryHeader : IByteArraySerializable
 
     public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        _data = buffer.Slice(0, Size).ToArray();
+        //_data = buffer.Slice(0, Size).ToArray();
 
         Signature = EndianUtilities.ToUInt32LittleEndian(buffer);
         Checksum = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(4));

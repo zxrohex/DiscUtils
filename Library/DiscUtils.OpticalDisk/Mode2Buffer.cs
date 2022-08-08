@@ -80,7 +80,7 @@ internal class Mode2Buffer : Streams.Buffer
             StreamUtilities.ReadExact(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
 
             var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
-            Array.Copy(_iobuffer, 24 + sectorOffset, buffer, offset + totalRead, bytesToCopy);
+            System.Buffer.BlockCopy(_iobuffer, 24 + sectorOffset, buffer, offset + totalRead, bytesToCopy);
             totalRead += bytesToCopy;
         }
 

@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 
@@ -471,5 +472,5 @@ public readonly struct StreamExtent : IEquatable<StreamExtent>, IComparable<Stre
     /// Gets a hash code for this extent.
     /// </summary>
     /// <returns>The extent's hash code.</returns>
-    public override int GetHashCode() => Start.GetHashCode() ^ Length.GetHashCode();
+    public override int GetHashCode() => HashCode.Combine(Start, Length);
 }

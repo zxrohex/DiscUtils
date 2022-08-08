@@ -47,11 +47,15 @@ public class BuilderSparseStreamExtent : BuilderExtent
         get { return StreamExtent.Offset(_stream.Extents, Start); }
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
         if (_stream != null && _ownership == Ownership.Dispose)
         {
-            _stream.Dispose();
+            if (disposing)
+            {
+                _stream.Dispose();
+            }
+
             _stream = null;
         }
     }

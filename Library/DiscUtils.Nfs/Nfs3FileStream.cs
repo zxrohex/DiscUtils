@@ -86,7 +86,7 @@ internal sealed class Nfs3FileStream : SparseStream
 
         var toCopy = Math.Min(count, readResult.Count);
 
-        Array.Copy(readResult.Data, 0, buffer, offset, toCopy);
+        System.Buffer.BlockCopy(readResult.Data, 0, buffer, offset, toCopy);
 
         if (readResult.Eof)
         {

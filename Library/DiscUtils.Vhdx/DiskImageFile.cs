@@ -289,7 +289,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <returns>An object that accesses the stream as a VHDX file.</returns>
     public static DiskImageFile InitializeFixed(Stream stream, Ownership ownsStream, long capacity)
     {
-        return InitializeFixed(stream, ownsStream, capacity, null);
+        return InitializeFixed(stream, ownsStream, capacity, default(Geometry));
     }
 
     /// <summary>

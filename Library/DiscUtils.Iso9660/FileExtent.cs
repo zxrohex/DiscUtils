@@ -42,7 +42,7 @@ internal class FileExtent : BuilderExtent
         _fileInfo = fileInfo;
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
         if (_readStream != null)
         {

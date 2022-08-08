@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 
@@ -66,7 +67,7 @@ public readonly struct Range<TOffset, TCount> : IEquatable<Range<TOffset, TCount
 
     public override bool Equals(object obj) => obj is Range<TOffset, TCount> other && Equals(other);
 
-    public override int GetHashCode() => Offset.GetHashCode() ^ Count.GetHashCode();
+    public override int GetHashCode() => HashCode.Combine(Offset, Count);
 
     public static bool operator ==(Range<TOffset, TCount> a, Range<TOffset, TCount> b) => a.Equals(b);
 

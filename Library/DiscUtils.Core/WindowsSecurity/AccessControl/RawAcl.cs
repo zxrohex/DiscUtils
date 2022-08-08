@@ -164,7 +164,7 @@ public sealed class RawAcl : GenericAcl
         {
             if ((sdFlags & ControlFlags.DiscretionaryAclProtected) != 0)
             {
-                result.Append("P");
+                result.Append('P');
             }
 
             if ((sdFlags & ControlFlags.DiscretionaryAclAutoInheritRequired) != 0)
@@ -181,7 +181,7 @@ public sealed class RawAcl : GenericAcl
         {
             if ((sdFlags & ControlFlags.SystemAclProtected) != 0)
             {
-                result.Append("P");
+                result.Append('P');
             }
 
             if ((sdFlags & ControlFlags.SystemAclAutoInheritRequired) != 0)

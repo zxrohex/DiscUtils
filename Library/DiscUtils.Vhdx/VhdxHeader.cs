@@ -46,7 +46,7 @@ internal sealed class VhdxHeader : IByteArraySerializable
 
     public VhdxHeader(VhdxHeader header)
     {
-        Array.Copy(header._data, _data, 4096);
+        System.Buffer.BlockCopy(header._data, 0, _data, 0, 4096);
 
         Signature = header.Signature;
         Checksum = header.Checksum;
@@ -70,7 +70,7 @@ internal sealed class VhdxHeader : IByteArraySerializable
             }
 
             var checkData = new byte[4096];
-            Array.Copy(_data, checkData, 4096);
+            System.Buffer.BlockCopy(_data, 0, checkData, 0, 4096);
             EndianUtilities.WriteBytesLittleEndian((uint)0, checkData, 4);
             return Checksum == Crc32LittleEndian.Compute(Crc32Algorithm.Castagnoli, checkData, 0, 4096);
         }

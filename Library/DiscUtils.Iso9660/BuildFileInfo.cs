@@ -25,6 +25,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using DiscUtils.Internal;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Iso9660;
 
@@ -186,4 +187,10 @@ public sealed class BuildFileInfo : BuildDirectoryMember, IEquatable<BuildFileIn
         Equals(other._contentStream) ||
         Equals(other._contentPath) ||
         Equals(other._contentData);
+
+    public override bool Equals(object obj)
+        => obj is BuildFileInfo other && Equals(other) && base.Equals(other);
+
+    public override int GetHashCode()
+        => HashCode.Combine(base.GetHashCode(), _contentStream, _contentPath, _contentData);
 }

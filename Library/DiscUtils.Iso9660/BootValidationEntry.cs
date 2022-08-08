@@ -42,7 +42,7 @@ internal class BootValidationEntry
     public BootValidationEntry(byte[] src, int offset)
     {
         _data = new byte[32];
-        Array.Copy(src, offset, _data, 0, 32);
+        System.Buffer.BlockCopy(src, offset, _data, 0, 32);
 
         HeaderId = _data[0];
         PlatformId = _data[1];

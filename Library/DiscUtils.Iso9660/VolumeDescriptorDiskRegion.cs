@@ -32,7 +32,7 @@ internal abstract class VolumeDescriptorDiskRegion : BuilderExtent
     public VolumeDescriptorDiskRegion(long start)
         : base(start, IsoUtilities.SectorSize) {}
 
-    public override void Dispose() {}
+    protected override void Dispose(bool disposing) {}
 
     public override void PrepareForRead()
     {
@@ -45,7 +45,7 @@ internal abstract class VolumeDescriptorDiskRegion : BuilderExtent
 
         var numRead = (int)Math.Min(count, _readCache.Length - relPos);
 
-        Array.Copy(_readCache, (int)relPos, buffer, offset, numRead);
+        System.Buffer.BlockCopy(_readCache, (int)relPos, buffer, offset, numRead);
 
         return numRead;
     }

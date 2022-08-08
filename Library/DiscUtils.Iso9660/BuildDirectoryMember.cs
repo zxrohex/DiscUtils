@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using DiscUtils.Streams.Compatibility;
 using System.Text;
 
 namespace DiscUtils.Iso9660;
@@ -82,9 +83,22 @@ public abstract class BuildDirectoryMember
     internal abstract long GetDataSize(Encoding enc);
 
     internal uint GetDirectoryRecordSize(Encoding enc)
-    {
-        return DirectoryRecord.CalcLength(PickName(null, enc), enc);
-    }
+        => DirectoryRecord.CalcLength(PickName(null, enc), enc);
+
+    public override string ToString()
+        => Name ?? base.ToString();
+
+    public override int GetHashCode()
+        => HashCode.Combine(ShortName, ReferenceEquals(Parent, this) ? null : Parent);
+
+    public override bool Equals(object obj)
+        => obj is BuildDirectoryMember other && Equals(other);
+
+    public bool Equals(BuildDirectoryMember other) =>
+        StringComparer.OrdinalIgnoreCase.Equals(Name, other?.Name) &&
+        StringComparer.OrdinalIgnoreCase.Equals(ShortName, other?.ShortName) &&
+        CreationTime == other?.CreationTime &&
+        ReferenceEquals(Parent, other?.Parent);
 
     private class DirectorySortedComparison : Comparer<BuildDirectoryMember>
     {

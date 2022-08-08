@@ -23,6 +23,7 @@
 using System;
 using System.IO;
 using DiscUtils.Internal;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils;
 
@@ -216,9 +217,8 @@ public class DiscFileSystemInfo
     /// </summary>
     /// <returns>The hash code.</returns>
     public override int GetHashCode()
-    {
-        return Path.GetHashCode() ^ FileSystem.GetHashCode();
-    }
+        => HashCode.Combine(Path, FileSystem);
 
-    public override string ToString() => FullName;
+    public override string ToString()
+        => FullName;
 }

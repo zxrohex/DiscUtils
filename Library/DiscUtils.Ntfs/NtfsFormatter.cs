@@ -363,7 +363,7 @@ internal class NtfsFormatter
 
         if (BootCode != null)
         {
-            Array.Copy(BootCode, 0, bootSectors, 0, BootCode.Length);
+            System.Buffer.BlockCopy(BootCode, 0, bootSectors, 0, BootCode.Length);
         }
 
         var bpb = BiosParameterBlock.Initialized(DiskGeometry, _clusterSize, (uint)FirstSector,

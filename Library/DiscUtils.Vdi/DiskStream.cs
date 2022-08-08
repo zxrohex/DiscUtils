@@ -402,7 +402,7 @@ internal class DiskStream : SparseStream
                         }
 
                         // Copy actual data into temporary buffer, then this is a full block write.
-                        Array.Copy(buffer, offset + numWritten, writeBuffer, offsetInBlock, toWrite);
+                        System.Buffer.BlockCopy(buffer, offset + numWritten, writeBuffer, offsetInBlock, toWrite);
                         writeBufferOffset = 0;
                     }
 

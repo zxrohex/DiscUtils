@@ -96,7 +96,7 @@ internal class DescriptorFile
                     int.Parse(sectorsStr, CultureInfo.InvariantCulture));
             }
 
-            return null;
+            return default;
         }
 
         set
@@ -139,7 +139,7 @@ internal class DescriptorFile
                     int.Parse(sectorsStr, CultureInfo.InvariantCulture));
             }
 
-            return null;
+            return default;
         }
 
         set
@@ -190,14 +190,14 @@ internal class DescriptorFile
             content.Append($"{_header[i].ToString(false)}\n");
         }
 
-        content.Append("\n");
+        content.Append('\n');
         content.Append("# Extent description\n");
         for (var i = 0; i < Extents.Count; ++i)
         {
             content.Append($"{Extents[i]}\n");
         }
 
-        content.Append("\n");
+        content.Append('\n');
         content.Append("# The Disk Data Base\n");
         content.Append("#DDB\n");
         for (var i = 0; i < _diskDataBase.Count; ++i)

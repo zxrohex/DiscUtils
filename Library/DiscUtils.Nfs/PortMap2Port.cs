@@ -20,6 +20,9 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
+using System;
+
 namespace DiscUtils.Nfs;
 
 public class PortMap2Port : IRpcObject
@@ -55,8 +58,5 @@ public class PortMap2Port : IRpcObject
         return other.Port == Port;
     }
 
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Port);
-    }
+    public override int GetHashCode() => Port.GetHashCode();
 }

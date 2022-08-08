@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -56,10 +57,17 @@ internal sealed class RegionTable : IByteArraySerializable
                 return false;
             }
 
-            var checkData = new byte[FixedSize];
-            Array.Copy(_data, checkData, FixedSize);
-            EndianUtilities.WriteBytesLittleEndian((uint)0, checkData, 4);
-            return Checksum == Crc32LittleEndian.Compute(Crc32Algorithm.Castagnoli, checkData, 0, FixedSize);
+            var checkData = ArrayPool<byte>.Shared.Rent(FixedSize);
+            try
+            {
+                System.Buffer.BlockCopy(_data, 0, checkData, 0, FixedSize);
+                EndianUtilities.WriteBytesLittleEndian((uint)0, checkData, 4);
+                return Checksum == Crc32LittleEndian.Compute(Crc32Algorithm.Castagnoli, checkData, 0, FixedSize);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(checkData);
+            }
         }
     }
 

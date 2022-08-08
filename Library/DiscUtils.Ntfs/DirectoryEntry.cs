@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
+
 namespace DiscUtils.Ntfs;
 
 internal struct DirectoryEntry
@@ -47,7 +49,7 @@ internal struct DirectoryEntry
         get
         {
             var fileName = Details.FileName;
-            if (fileName.IndexOf('.') == -1)
+            if (!fileName.Contains('.'))
             {
                 return $"{fileName}.";
             }

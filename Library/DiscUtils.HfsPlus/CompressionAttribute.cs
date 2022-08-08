@@ -28,15 +28,13 @@ namespace DiscUtils.HfsPlus;
 
 internal class CompressionAttribute
 {
-    #pragma warning disable CS0169 // Unused fields.
-    private byte _attrData1;
-    private byte _attrData2;
+    //private byte _attrData1;
+    //private byte _attrData2;
     private uint _compressionMagic;
-    private uint _recordType;
-    private uint _reserved1;
-    private uint _reserved2;
-    private uint _reserved3;
-    #pragma warning restore CS0169
+    //private uint _recordType;
+    //private uint _reserved1;
+    //private uint _reserved2;
+    //private uint _reserved3;
 
     public uint AttrSize { get; private set; }
 
@@ -56,14 +54,14 @@ internal class CompressionAttribute
 
     public int ReadFrom(ReadOnlySpan<byte> buffer)
     {
-        _recordType = EndianUtilities.ToUInt32BigEndian(buffer);
-        _reserved1 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
-        _reserved1 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
+        //_recordType = EndianUtilities.ToUInt32BigEndian(buffer);
+        //_reserved1 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(4));
+        //_reserved1 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
         AttrSize = EndianUtilities.ToUInt32BigEndian(buffer.Slice(12));
         _compressionMagic = EndianUtilities.ToUInt32BigEndian(buffer.Slice(16));
         CompressionType = (FileCompressionType)EndianUtilities.ToUInt32LittleEndian(buffer.Slice(20));
         UncompressedSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(24));
-        _reserved3 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(28));
+        //_reserved3 = EndianUtilities.ToUInt32BigEndian(buffer.Slice(28));
 
         return Size;
     }

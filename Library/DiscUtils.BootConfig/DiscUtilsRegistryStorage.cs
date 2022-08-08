@@ -32,7 +32,7 @@ internal class DiscUtilsRegistryStorage : BaseStorage
     private const string ElementsPathTemplate = @"Objects\{0}\Elements";
     private const string ElementPathTemplate = @"Objects\{0}\Elements\{1:X8}";
     private const string ObjectTypePathTemplate = @"Objects\{0}\Description";
-    private const string ObjectsPath = @"Objects";
+    //private const string ObjectsPath = @"Objects";
 
     private readonly RegistryKey _rootKey;
 

@@ -39,7 +39,7 @@ public class BuilderBytesExtent : BuilderExtent
     protected BuilderBytesExtent(long start, long length)
         : base(start, length) {}
 
-    public override void Dispose() {}
+    protected override void Dispose(bool disposing) {}
 
     public override void PrepareForRead() {}
 
@@ -48,7 +48,7 @@ public class BuilderBytesExtent : BuilderExtent
         var start = (int)Math.Min(diskOffset - Start, _data.Length);
         var numRead = Math.Min(count, _data.Length - start);
 
-        Array.Copy(_data, start, block, offset, numRead);
+        System.Buffer.BlockCopy(_data, start, block, offset, numRead);
 
         return numRead;
     }
@@ -58,7 +58,7 @@ public class BuilderBytesExtent : BuilderExtent
         var start = (int)Math.Min(diskOffset - Start, _data.Length);
         var numRead = Math.Min(count, _data.Length - start);
 
-        Array.Copy(_data, start, block, offset, numRead);
+        System.Buffer.BlockCopy(_data, start, block, offset, numRead);
 
         return Task.FromResult(numRead);
     }

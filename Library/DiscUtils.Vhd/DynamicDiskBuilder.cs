@@ -108,11 +108,15 @@ internal sealed class DynamicDiskBuilder : StreamBuilder
             }
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
             if (_dataStream != null)
             {
-                _dataStream.Dispose();
+                if (disposing)
+                {
+                    _dataStream.Dispose();
+                }
+
                 _dataStream = null;
             }
         }
@@ -175,17 +179,25 @@ internal sealed class DynamicDiskBuilder : StreamBuilder
             _ownership = ownership;
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
             if (_content != null && _ownership == Ownership.Dispose)
             {
-                _content.Dispose();
+                if (disposing)
+                {
+                    _content.Dispose();
+                }
+
                 _content = null;
             }
 
             if (_bitmapStream != null)
             {
-                _bitmapStream.Dispose();
+                if (disposing)
+                {
+                    _bitmapStream.Dispose();
+                }
+
                 _bitmapStream = null;
             }
         }

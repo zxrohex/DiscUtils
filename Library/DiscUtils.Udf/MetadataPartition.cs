@@ -29,13 +29,13 @@ namespace DiscUtils.Udf;
 internal class MetadataPartition : LogicalPartition
 {
     private readonly File _metadataFile;
-    private MetadataPartitionMap _partitionMap;
+    //private readonly MetadataPartitionMap _partitionMap;
 
     public MetadataPartition(UdfContext context, LogicalVolumeDescriptor volumeDescriptor,
                              MetadataPartitionMap partitionMap)
         : base(context, volumeDescriptor)
     {
-        _partitionMap = partitionMap;
+        //_partitionMap = partitionMap;
 
         var physical = context.PhysicalPartitions[partitionMap.PartitionNumber];
         var fileEntryPos = partitionMap.MetadataFileLocation * (long)volumeDescriptor.LogicalBlockSize;

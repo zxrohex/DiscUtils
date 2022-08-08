@@ -74,7 +74,7 @@ internal class FileContentBuffer : Streams.Buffer
             }
 
             var toCopy = (int)Math.Min(srcBuffer.Length - pos, count);
-            Array.Copy(srcBuffer, (int)pos, buffer, offset, toCopy);
+            System.Buffer.BlockCopy(srcBuffer, (int)pos, buffer, offset, toCopy);
             return toCopy;
         }
         return ReadFromExtents(pos, buffer, offset, count);

@@ -22,6 +22,7 @@
 
 namespace DiscUtils.Nfs;
 
+using DiscUtils.Streams.Compatibility;
 using System;
 
 public sealed class Nfs3FileSystemStat
@@ -151,7 +152,5 @@ public sealed class Nfs3FileSystemStat
     }
 
     public override int GetHashCode()
-    {
-        return HashCode.Combine(TotalSizeBytes, FreeSpaceBytes, AvailableFreeSpaceBytes, FileSlotCount, FreeFileSlotCount, AvailableFreeFileSlotCount, Invariant);
-    }
+        => HashCode.Combine(TotalSizeBytes, FreeSpaceBytes, AvailableFreeSpaceBytes, FileSlotCount, FreeFileSlotCount, AvailableFreeFileSlotCount, Invariant);
 }

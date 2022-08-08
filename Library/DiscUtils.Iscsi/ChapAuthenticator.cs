@@ -134,7 +134,7 @@ internal class ChapAuthenticator : Authenticator
         {
             toHash[0] = _identifier;
             Encoding.ASCII.GetBytes(_password, 0, _password.Length, toHash, 1);
-            Array.Copy(_challenge, 0, toHash, _password.Length + 1, _challenge.Length);
+            Buffer.BlockCopy(_challenge, 0, toHash, _password.Length + 1, _challenge.Length);
 
             var hash = CalcMD5Hash(toHash, 0, toHashLength);
 

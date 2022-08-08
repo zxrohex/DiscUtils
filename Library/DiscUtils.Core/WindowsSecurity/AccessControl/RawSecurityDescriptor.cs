@@ -1,3 +1,4 @@
+using DiscUtils.Streams;
 using System;
 
 namespace DiscUtils.Core.WindowsSecurity.AccessControl;
@@ -53,12 +54,12 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
         }
 
         ResourceManagerControl = binaryForm[0x01];
-        _controlFlags = (ControlFlags)ReadUShort(binaryForm.Slice(0x02));
+        _controlFlags = (ControlFlags)EndianUtilities.ToUInt16LittleEndian(binaryForm.Slice(0x02));
 
-        var ownerPos = ReadInt(binaryForm.Slice(0x04));
-        var groupPos = ReadInt(binaryForm.Slice(0x08));
-        var saclPos = ReadInt(binaryForm.Slice(0x0C));
-        var daclPos = ReadInt(binaryForm.Slice(0x10));
+        var ownerPos = EndianUtilities.ToInt32LittleEndian(binaryForm.Slice(0x04));
+        var groupPos = EndianUtilities.ToInt32LittleEndian(binaryForm.Slice(0x08));
+        var saclPos = EndianUtilities.ToInt32LittleEndian(binaryForm.Slice(0x0C));
+        var daclPos = EndianUtilities.ToInt32LittleEndian(binaryForm.Slice(0x10));
 
         if (ownerPos != 0)
         {
@@ -93,13 +94,13 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
         var sd = new RawSecurityDescriptor
         {
             ResourceManagerControl = binaryForm[0x01],
-            _controlFlags = (ControlFlags)ReadUShort(binaryForm.Slice(0x02))
+            _controlFlags = (ControlFlags)EndianUtilities.ToUInt16LittleEndian(binaryForm.Slice(0x02))
         };
 
-        var ownerPos = ReadInt(binaryForm.Slice(0x04));
-        var groupPos = ReadInt(binaryForm.Slice(0x08));
-        var saclPos = ReadInt(binaryForm.Slice(0x0C));
-        var daclPos = ReadInt(binaryForm.Slice(0x10));
+        var ownerPos = EndianUtilities.ToInt32LittleEndian(binaryForm.Slice(0x04));
+        var groupPos = EndianUtilities.ToInt32LittleEndian(binaryForm.Slice(0x08));
+        var saclPos = EndianUtilities.ToInt32LittleEndian(binaryForm.Slice(0x0C));
+        var daclPos = EndianUtilities.ToInt32LittleEndian(binaryForm.Slice(0x10));
 
         if (ownerPos != 0)
         {
@@ -202,32 +203,4 @@ public class RawSecurityDescriptor : GenericSecurityDescriptor
     }
 
     public void SetFlags(ControlFlags flags) => _controlFlags = flags | ControlFlags.SelfRelative;
-
-    private static ushort ReadUShort(byte[] buffer, int offset)
-    {
-        return (ushort)((((int)buffer[offset + 0]) << 0)
-                        | (((int)buffer[offset + 1]) << 8));
-    }
-
-    private static int ReadInt(byte[] buffer, int offset)
-    {
-        return (((int)buffer[offset + 0]) << 0)
-               | (((int)buffer[offset + 1]) << 8)
-               | (((int)buffer[offset + 2]) << 16)
-               | (((int)buffer[offset + 3]) << 24);
-    }
-
-    private static ushort ReadUShort(ReadOnlySpan<byte> buffer)
-    {
-        return (ushort)((((int)buffer[0]) << 0)
-                        | (((int)buffer[1]) << 8));
-    }
-
-    private static int ReadInt(ReadOnlySpan<byte> buffer)
-    {
-        return (((int)buffer[0]) << 0)
-               | (((int)buffer[1]) << 8)
-               | (((int)buffer[2]) << 16)
-               | (((int)buffer[3]) << 24);
-    }
 }

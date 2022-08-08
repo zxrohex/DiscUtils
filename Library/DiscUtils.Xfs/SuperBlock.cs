@@ -442,7 +442,7 @@ internal class SuperBlock : IByteArraySerializable
     {
         var len = AgBlocks;
         uint level;
-        var limits = new uint[] {xfs_rmapbt_maxrecs(false), xfs_rmapbt_maxrecs(true)};
+        Span<uint> limits = stackalloc uint[] {xfs_rmapbt_maxrecs(false), xfs_rmapbt_maxrecs(true)};
         ulong maxblocks = (len + limits[0] - 1) / limits[0];
         for (level = 1; maxblocks > 1; level++)
             maxblocks = (maxblocks + limits[1] - 1) / limits[1];

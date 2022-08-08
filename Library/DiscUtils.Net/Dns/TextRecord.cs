@@ -66,7 +66,7 @@ public sealed class TextRecord : ResourceRecord
         if (i < value.Length)
         {
             var data = new byte[value.Length - (i + 1)];
-            Array.Copy(value, i + 1, data, 0, data.Length);
+            Buffer.BlockCopy(value, i + 1, data, 0, data.Length);
             Values[Encoding.ASCII.GetString(value, 0, i)] = data;
         }
         else

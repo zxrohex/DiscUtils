@@ -27,9 +27,9 @@ namespace DiscUtils.SquashFs;
 
 internal class ExtendedDirectoryInode : Inode, IDirectoryInode
 {
-    private uint _extendedAttributes;
+    //private uint _extendedAttributes;
     private uint _fileSize;
-    private ushort _indexCount;
+    //private ushort _indexCount;
 
     public override int Size
     {
@@ -66,9 +66,9 @@ internal class ExtendedDirectoryInode : Inode, IDirectoryInode
         _fileSize = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(20));
         StartBlock = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(24));
         ParentInode = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(28));
-        _indexCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(32));
+        //_indexCount = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(32));
         Offset = EndianUtilities.ToUInt16LittleEndian(buffer.Slice(34));
-        _extendedAttributes = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(36));
+        //_extendedAttributes = EndianUtilities.ToUInt32LittleEndian(buffer.Slice(36));
 
         return 40;
     }

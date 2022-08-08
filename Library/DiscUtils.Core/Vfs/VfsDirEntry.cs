@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.IO;
 
@@ -112,7 +113,7 @@ public abstract class VfsDirEntry
         get
         {
             var fileName = FileName;
-            if (fileName.IndexOf('.') == -1)
+            if (!fileName.Contains('.'))
             {
                 return $"{fileName}.";
             }

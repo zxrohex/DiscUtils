@@ -129,7 +129,7 @@ internal sealed class LogEntry
             var logEntryBuffer = ArrayPool<byte>.Shared.Rent(checked((int)header.EntryLength));
             try
             {
-                Array.Copy(sectorBuffer, logEntryBuffer, LogSectorSize);
+                System.Buffer.BlockCopy(sectorBuffer, 0, logEntryBuffer, 0, LogSectorSize);
 
                 StreamUtilities.ReadExact(logStream, logEntryBuffer, LogSectorSize, checked((int)(header.EntryLength - LogSectorSize)));
 

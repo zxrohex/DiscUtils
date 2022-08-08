@@ -21,6 +21,9 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
+using System;
+
 namespace DiscUtils.Nfs;
 
 public class RpcAcceptedReplyHeader

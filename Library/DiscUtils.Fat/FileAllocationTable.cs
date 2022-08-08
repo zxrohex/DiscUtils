@@ -21,6 +21,8 @@
 //
 
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Fat;
@@ -43,7 +45,7 @@ internal class FileAllocationTable
         _buffer = new FatBuffer(type, StreamUtilities.ReadExact(_stream, (int)(fatSize * Sizes.Sector)));
     }
 
-    internal bool IsFree(uint val)
+    internal static bool IsFree(uint val)
     {
         return FatBuffer.IsFree(val);
     }
@@ -83,6 +85,16 @@ internal class FileAllocationTable
         for (var i = 0; i < _numFats; ++i)
         {
             _buffer.WriteDirtyRegions(_stream, _firstFatSector * Sizes.Sector + _buffer.Size * i);
+        }
+
+        _buffer.ClearDirtyRegions();
+    }
+
+    internal async ValueTask FlushAsync(CancellationToken cancellationToken)
+    {
+        for (var i = 0; i < _numFats; ++i)
+        {
+            await _buffer.WriteDirtyRegionsAsync(_stream, _firstFatSector * Sizes.Sector + _buffer.Size * i, cancellationToken).ConfigureAwait(false);
         }
 
         _buffer.ClearDirtyRegions();

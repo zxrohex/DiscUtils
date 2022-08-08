@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 
 namespace DiscUtils.Nfs;
@@ -101,16 +102,17 @@ public sealed class Nfs3FileHandle : IEquatable<Nfs3FileHandle>, IComparable<Nfs
 
     public override int GetHashCode()
     {
-        var value = 0;
+        var value = new HashCode();
+
         if (Value != null)
         {
             for (var i = 0; i < Value.Length; ++i)
             {
-                value = (value << 1) ^ Value[i];
+                value.Add(Value[i]);
             }
         }
 
-        return value;
+        return value.ToHashCode();
     }
 
     internal void Write(XdrDataWriter writer)

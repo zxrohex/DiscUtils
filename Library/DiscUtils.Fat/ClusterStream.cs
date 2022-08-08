@@ -371,7 +371,7 @@ internal class ClusterStream : CompatibilityStream
         }
         finally
         {
-            _fat.Flush();
+            await _fat.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
 
         _atEOF = false;

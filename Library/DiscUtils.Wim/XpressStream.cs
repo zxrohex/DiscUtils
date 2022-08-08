@@ -81,7 +81,7 @@ internal class XpressStream : ReadOnlyCompatibilityStream
         }
 
         var numToRead = (int)Math.Min(count, _buffer.Length - _position);
-        Array.Copy(_buffer, (int)_position, buffer, offset, numToRead);
+        System.Buffer.BlockCopy(_buffer, (int)_position, buffer, offset, numToRead);
         _position += numToRead;
         return numToRead;
     }
@@ -95,7 +95,7 @@ internal class XpressStream : ReadOnlyCompatibilityStream
         }
 
         var numToRead = (int)Math.Min(count, _buffer.Length - _position);
-        Array.Copy(_buffer, (int)_position, buffer, offset, numToRead);
+        System.Buffer.BlockCopy(_buffer, (int)_position, buffer, offset, numToRead);
         _position += numToRead;
         return Task.FromResult(numToRead);
     }

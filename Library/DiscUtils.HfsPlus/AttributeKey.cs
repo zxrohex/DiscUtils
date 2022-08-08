@@ -28,8 +28,8 @@ namespace DiscUtils.HfsPlus;
 internal class AttributeKey : BTreeKey
 {
     private ushort _keyLength;
-    private ushort _pad;
-    private uint _startBlock;
+    //private ushort _pad;
+    //private uint _startBlock;
 
     public AttributeKey() {}
 
@@ -51,9 +51,9 @@ internal class AttributeKey : BTreeKey
     public override int ReadFrom(ReadOnlySpan<byte> buffer)
     {
         _keyLength = EndianUtilities.ToUInt16BigEndian(buffer);
-        _pad = EndianUtilities.ToUInt16BigEndian(buffer.Slice(2));
+        //_pad = EndianUtilities.ToUInt16BigEndian(buffer.Slice(2));
         FileId = new CatalogNodeId(EndianUtilities.ToUInt32BigEndian(buffer.Slice(4)));
-        _startBlock = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
+        //_startBlock = EndianUtilities.ToUInt32BigEndian(buffer.Slice(8));
         Name = HfsPlusUtilities.ReadUniStr255(buffer.Slice(12));
 
         return _keyLength + 2;

@@ -31,7 +31,7 @@ namespace DiscUtils.Iscsi;
 /// Create an instance and configure it, before communicating with the Target.</remarks>
 public class Initiator
 {
-    private const int DefaultPort = 3260;
+    //private const int DefaultPort = 3260;
     private string _password;
 
     private string _userName;

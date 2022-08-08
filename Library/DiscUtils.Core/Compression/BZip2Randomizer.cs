@@ -95,7 +95,7 @@ internal class BZip2Randomizer : DataBlockTransform
     {
         if (input != output || inputOffset != outputOffset)
         {
-            Array.Copy(input, inputOffset, output, outputOffset, inputCount);
+            Buffer.BlockCopy(input, inputOffset, output, outputOffset, inputCount);
         }
 
         var randIndex = 1;

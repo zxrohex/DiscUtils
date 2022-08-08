@@ -9,4 +9,8 @@
     <ProjectReference Include="..\DiscUtils.Core\DiscUtils.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework.CompareTo(`net461`))' &gt;= 0">
+    <PackageReference Include="Microsoft.Bcl.HashCode" Version="*" />
+  </ItemGroup>
+
 </Project>

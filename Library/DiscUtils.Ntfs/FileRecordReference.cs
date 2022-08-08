@@ -25,7 +25,7 @@ using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
 
-internal struct FileRecordReference : IByteArraySerializable, IComparable<FileRecordReference>
+internal struct FileRecordReference : IByteArraySerializable, IComparable<FileRecordReference>, IEquatable<FileRecordReference>
 {
     public FileRecordReference(ulong val)
     {
@@ -81,36 +81,18 @@ internal struct FileRecordReference : IByteArraySerializable, IComparable<FileRe
         EndianUtilities.WriteBytesLittleEndian(Value, buffer);
     }
 
-    public override bool Equals(object obj)
-    {
-        if (obj is FileRecordReference record)
-        {
-            return Value == record.Value;
-        }
+    public bool Equals(FileRecordReference other)
+        => Value.Equals(other.Value);
 
-        return false;
-    }
+    public override bool Equals(object obj)
+        => obj is FileRecordReference record && Value == record.Value;
 
     public override int GetHashCode()
-    {
-        return Value.GetHashCode();
-    }
+        => Value.GetHashCode();
 
     public int CompareTo(FileRecordReference other)
-    {
-        if (Value < other.Value)
-        {
-            return -1;
-        }
-        if (Value > other.Value)
-        {
-            return 1;
-        }
-        return 0;
-    }
+        => Value.CompareTo(other.Value);
 
     public override string ToString()
-    {
-        return $"MFT:{MftIndex} (ver: {SequenceNumber})";
-    }
+        => $"MFT:{MftIndex} (ver: {SequenceNumber})";
 }

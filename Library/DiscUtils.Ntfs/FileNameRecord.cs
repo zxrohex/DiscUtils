@@ -23,6 +23,7 @@
 using System;
 using System.IO;
 using System.Text;
+using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 
@@ -127,6 +128,11 @@ internal class FileNameRecord : IByteArraySerializable, IDiagnosticTraceable, IE
         writer.WriteLine($"{indent}          Namespace: {FileNameNamespace}");
         writer.WriteLine($"{indent}          File Name: {FileName}");
     }
+
+    public override bool Equals(object obj) => obj is FileInfo fileInfo && Equals(fileInfo);
+
+    public override int GetHashCode()
+        => HashCode.Combine(ParentDirectory, FileNameNamespace, FileName);
 
     public bool Equals(FileNameRecord other)
     {

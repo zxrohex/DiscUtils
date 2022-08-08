@@ -100,7 +100,7 @@ internal class UdifBuffer : Buffer
                 case RunType.ZlibCompressed:
                 case RunType.BZlibCompressed:
                 case RunType.LzfseCompressed:
-                    Array.Copy(_decompBuffer, bufferOffset, buffer, offset + totalCopied, toCopy);
+                    System.Buffer.BlockCopy(_decompBuffer, bufferOffset, buffer, offset + totalCopied, toCopy);
                     break;
 
                 default:
@@ -279,7 +279,7 @@ internal class UdifBuffer : Buffer
             {
                 // Data Run
                 var chunkSize = (focusByte & 0x7F) + 1;
-                Array.Copy(inputBuffer, inputOffset + consumed + 1, outputBuffer, outputOffset + written, chunkSize);
+                System.Buffer.BlockCopy(inputBuffer, inputOffset + consumed + 1, outputBuffer, outputOffset + written, chunkSize);
 
                 consumed += chunkSize + 1;
                 written += chunkSize;

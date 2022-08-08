@@ -1758,7 +1758,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         var formatter = new NtfsFormatter
         {
             Label = label,
-            DiskGeometry = volume.BiosGeometry ?? Geometry.Null,
+            DiskGeometry = volume.BiosGeometry != default ? volume.BiosGeometry : Geometry.Null,
             FirstSector = volume.PhysicalStartSector,
             SectorCount = volume.Length / Sizes.Sector
         };
@@ -1780,7 +1780,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         var formatter = new NtfsFormatter
         {
             Label = label,
-            DiskGeometry = volume.BiosGeometry ?? Geometry.Null,
+            DiskGeometry = volume.BiosGeometry != default ? volume.BiosGeometry : Geometry.Null,
             FirstSector = volume.PhysicalStartSector,
             SectorCount = volume.Length / Sizes.Sector,
             BootCode = bootCode
@@ -1803,7 +1803,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         var formatter = new NtfsFormatter
         {
             Label = label,
-            DiskGeometry = volume.BiosGeometry ?? Geometry.Null,
+            DiskGeometry = volume.BiosGeometry != default ? volume.BiosGeometry : Geometry.Null,
             FirstSector = volume.PhysicalStartSector,
             SectorCount = volume.Length / Sizes.Sector,
             BootCode = options.BootCode,
@@ -2125,19 +2125,22 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <param name="disposing">Whether called from Dispose or from a finalizer.</param>
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (_context != null && _context.Mft != null)
         {
-            if (_context != null && _context.Mft != null)
+            if (disposing)
             {
                 _context.Mft.Dispose();
-                _context.Mft = null;
             }
+            _context.Mft = null;
+        }
 
-            if (_context.Options.Compressor is IDisposable disposableCompressor)
+        if (_context.Options.Compressor is IDisposable disposableCompressor)
+        {
+            if (disposing)
             {
                 disposableCompressor.Dispose();
-                _context.Options.Compressor = null;
             }
+            _context.Options.Compressor = null;
         }
 
         base.Dispose(disposing);

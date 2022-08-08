@@ -24,6 +24,7 @@ using System;
 using System.Buffers;
 using System.IO;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -133,6 +134,31 @@ internal abstract class FixupRecordBase
         for (var i = 0; i < _updateSequenceArray.Length; ++i)
         {
             EndianUtilities.WriteBytesLittleEndian(_updateSequenceArray[i], buffer.Slice(UpdateSequenceOffset + 2 * (i + 1)));
+        }
+    }
+
+    public void ToStream(Stream stream, int length)
+    {
+        if (length <= 1024)
+        {
+            Span<byte> buffer = stackalloc byte[length];
+            buffer.Clear();
+            ToBytes(buffer);
+            stream.Write(buffer);
+        }
+        else
+        {
+            var buffer = ArrayPool<byte>.Shared.Rent(length);
+            try
+            {
+                Array.Clear(buffer, 0, length);
+                ToBytes(buffer);
+                stream.Write(buffer, 0, length);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
     }
 

@@ -33,7 +33,7 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     public static bool TryParse(byte[] binaryForm, int offset, out SecurityIdentifier securityIdentifier) =>
         TryParse(binaryForm.AsSpan(offset), out securityIdentifier);
 
-    bool TryCreateFromBinaryForm(byte[] binaryForm, int offset) =>
+    public bool TryCreateFromBinaryForm(byte[] binaryForm, int offset) =>
         TryCreateFromBinaryForm(binaryForm.AsSpan(offset));
 
     public SecurityIdentifier(ReadOnlySpan<byte> binaryForm)
@@ -123,10 +123,10 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
             }
 
             // Domain is first four sub-authorities
-            var temp = new byte[8 + (4 * 4)];
-            Array.Copy(buffer, 0, temp, 0, temp.Length);
+            Span<byte> temp = stackalloc byte[8 + (4 * 4)];
+            buffer.AsSpan(0, temp.Length).CopyTo(temp);
             temp[1] = 4;
-            return new SecurityIdentifier(temp, 0);
+            return new SecurityIdentifier(temp);
         }
     }
 

@@ -43,11 +43,15 @@ public class BuilderStreamExtent : BuilderExtent
         _ownership = ownership;
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
         if (_source != null && _ownership == Ownership.Dispose)
         {
-            _source.Dispose();
+            if (disposing)
+            {
+                _source.Dispose();
+            }
+
             _source = null;
         }
     }

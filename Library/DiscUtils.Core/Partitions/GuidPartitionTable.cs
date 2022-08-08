@@ -27,6 +27,7 @@ using System.IO;
 using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Partitions;
 
@@ -140,10 +141,13 @@ public sealed class GuidPartitionTable : PartitionTable
         header.EntriesCrc = CalcEntriesCrc(entriesBuffer);
 
         // Write the primary header
-        var headerBuffer = new byte[diskGeometry.BytesPerSector];
+        var headerBuffer = diskGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[diskGeometry.BytesPerSector]
+            : new byte[diskGeometry.BytesPerSector];
+
         header.WriteTo(headerBuffer);
         disk.Position = header.HeaderLba * diskGeometry.BytesPerSector;
-        disk.Write(headerBuffer, 0, headerBuffer.Length);
+        disk.Write(headerBuffer);
 
         // Calc alternate header
         header.HeaderLba = header.AlternateHeaderLba;
@@ -153,7 +157,7 @@ public sealed class GuidPartitionTable : PartitionTable
         // Write the alternate header
         header.WriteTo(headerBuffer);
         disk.Position = header.HeaderLba * diskGeometry.BytesPerSector;
-        disk.Write(headerBuffer, 0, headerBuffer.Length);
+        disk.Write(headerBuffer);
 
         return new GuidPartitionTable(disk, diskGeometry);
     }
@@ -542,11 +546,14 @@ public sealed class GuidPartitionTable : PartitionTable
 
     private void WritePrimaryHeader()
     {
-        var buffer = new byte[_diskGeometry.BytesPerSector];
+        var buffer = _diskGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[_diskGeometry.BytesPerSector]
+            : new byte[_diskGeometry.BytesPerSector];
+
         _primaryHeader.EntriesCrc = CalcEntriesCrc(_entryBuffer);
         _primaryHeader.WriteTo(buffer);
         _diskData.Position = _diskGeometry.BytesPerSector;
-        _diskData.Write(buffer, 0, buffer.Length);
+        _diskData.Write(buffer);
 
         _diskData.Position = 2 * _diskGeometry.BytesPerSector;
         _diskData.Write(_entryBuffer, 0, _entryBuffer.Length);
@@ -554,11 +561,14 @@ public sealed class GuidPartitionTable : PartitionTable
 
     private void WriteSecondaryHeader()
     {
-        var buffer = new byte[_diskGeometry.BytesPerSector];
+        var buffer = _diskGeometry.BytesPerSector <= 1024
+            ? stackalloc byte[_diskGeometry.BytesPerSector]
+            : new byte[_diskGeometry.BytesPerSector];
+
         _secondaryHeader.EntriesCrc = CalcEntriesCrc(_entryBuffer);
         _secondaryHeader.WriteTo(buffer);
         _diskData.Position = _diskData.Length - _diskGeometry.BytesPerSector;
-        _diskData.Write(buffer, 0, buffer.Length);
+        _diskData.Write(buffer);
 
         _diskData.Position = _secondaryHeader.PartitionEntriesLba * _diskGeometry.BytesPerSector;
         _diskData.Write(_entryBuffer, 0, _entryBuffer.Length);

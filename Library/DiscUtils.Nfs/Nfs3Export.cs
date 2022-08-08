@@ -20,6 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
+using System;
 using System.Collections.Generic;
 
 namespace DiscUtils.Nfs;

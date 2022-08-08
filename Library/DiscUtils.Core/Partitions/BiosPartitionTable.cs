@@ -239,7 +239,7 @@ public sealed class BiosPartitionTable : PartitionTable
     {
         var data = disk;
 
-        Span<byte> bootSector = diskGeometry.BytesPerSector <= 1024
+        var bootSector = diskGeometry.BytesPerSector <= 1024
             ? stackalloc byte[diskGeometry.BytesPerSector]
             : new byte[diskGeometry.BytesPerSector];
 

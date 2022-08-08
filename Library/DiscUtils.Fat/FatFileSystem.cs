@@ -1853,7 +1853,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
             for (uint i = 2; i < Fat.NumEntries; i++)
             {
                 var fatValue = Fat.GetNext(i);
-                if (!Fat.IsFree(fatValue))
+                if (!FileAllocationTable.IsFree(fatValue))
                 {
                     usedCluster++;
                 }

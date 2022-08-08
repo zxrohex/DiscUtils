@@ -52,7 +52,7 @@ internal static class NativeMethods
 
 
     [DllImport("vssapi.dll")]
-    internal static extern int VssFreeSnapshotProperties(IntPtr pProperties);
+    internal static extern void VssFreeSnapshotProperties(IntPtr pProperties);
     #endregion
 
     #region KERNEL32.DLL methods

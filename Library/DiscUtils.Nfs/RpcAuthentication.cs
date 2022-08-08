@@ -21,6 +21,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
+using System;
 using System.IO;
 
 namespace DiscUtils.Nfs;

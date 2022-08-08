@@ -118,8 +118,15 @@ public sealed class Disk : VirtualDisk
     {
         get
         {
-            var result = _files[_files.Count - 1].Item1 is DiskImageFile file ? file.BiosGeometry : null;
-            return result ?? Geometry.MakeBiosSafe(_files[_files.Count - 1].Item1.Geometry, Capacity);
+            var result = _files[_files.Count - 1].Item1 is DiskImageFile file
+                ? file.BiosGeometry
+                : default;
+            
+            result = result != default
+                ? result
+                : Geometry.MakeBiosSafe(_files[_files.Count - 1].Item1.Geometry, Capacity);
+
+            return result;
         }
     }
 
@@ -259,7 +266,7 @@ public sealed class Disk : VirtualDisk
     /// <returns>The newly created disk image.</returns>
     public static Disk Initialize(string path, long capacity, DiskCreateType type)
     {
-        return Initialize(path, capacity, null, type);
+        return Initialize(path, capacity, default, type);
     }
 
     /// <summary>
@@ -298,7 +305,7 @@ public sealed class Disk : VirtualDisk
     /// <returns>The newly created disk image.</returns>
     public static Disk Initialize(string path, long capacity, DiskCreateType type, DiskAdapterType adapterType)
     {
-        return Initialize(path, capacity, null, type, adapterType);
+        return Initialize(path, capacity, default, type, adapterType);
     }
 
     /// <summary>

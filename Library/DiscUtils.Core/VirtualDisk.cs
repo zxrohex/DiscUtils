@@ -545,7 +545,7 @@ public abstract class VirtualDisk :
         }
         else if (data.Length > Sizes.Sector)
         {
-            throw new ArgumentException("The Master Boot Record must be 512 bytes in length", "data");
+            throw new ArgumentException("The Master Boot Record must be 512 bytes in length", nameof(data));
         }
 
         var oldPos = Content.Position;

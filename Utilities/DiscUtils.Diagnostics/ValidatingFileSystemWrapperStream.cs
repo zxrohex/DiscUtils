@@ -202,7 +202,7 @@ internal sealed class ValidatingFileSystemWrapperStream<Tfs, Tc> : SparseStream
 
         var numRead = _fileSystem.PerformActivity(fn);
 
-        Array.Copy(tempBuffer, buffer, numRead);
+        System.Buffer.BlockCopy(tempBuffer, 0, buffer, 0, numRead);
 
         _shadowPosition += numRead;
 
@@ -263,7 +263,7 @@ internal sealed class ValidatingFileSystemWrapperStream<Tfs, Tc> : SparseStream
 
         // Take a copy of the buffer - otherwise who knows what we're messing with.
         var tempBuffer = new byte[buffer.Length];
-        Array.Copy(buffer, tempBuffer, buffer.Length);
+        System.Buffer.BlockCopy(buffer, 0, tempBuffer, 0, buffer.Length);
 
         Activity<Tfs, object> fn = delegate(Tfs fs, Dictionary<string, object> context)
         {

@@ -244,7 +244,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <returns>An object that accesses the stream as a VHD file.</returns>
     public static DiskImageFile InitializeFixed(Stream stream, Ownership ownsStream, long capacity)
     {
-        return InitializeFixed(stream, ownsStream, capacity, null);
+        return InitializeFixed(stream, ownsStream, capacity, default(Geometry));
     }
 
     /// <summary>
@@ -271,7 +271,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <returns>An object that accesses the stream as a VHD file.</returns>
     public static DiskImageFile InitializeDynamic(Stream stream, Ownership ownsStream, long capacity)
     {
-        return InitializeDynamic(stream, ownsStream, capacity, null, DynamicHeader.DefaultBlockSize);
+        return InitializeDynamic(stream, ownsStream, capacity, default(Geometry), DynamicHeader.DefaultBlockSize);
     }
 
     /// <summary>
@@ -298,7 +298,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <returns>An object that accesses the stream as a VHD file.</returns>
     public static DiskImageFile InitializeDynamic(Stream stream, Ownership ownsStream, long capacity, long blockSize)
     {
-        return InitializeDynamic(stream, ownsStream, capacity, null, blockSize);
+        return InitializeDynamic(stream, ownsStream, capacity, default(Geometry), blockSize);
     }
 
     /// <summary>
@@ -486,7 +486,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
 
     private static void InitializeFixedInternal(Stream stream, long capacity, Geometry geometry)
     {
-        if (geometry == null)
+        if (geometry == default)
         {
             geometry = Geometry.FromCapacity(capacity);
         }
@@ -510,7 +510,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
             throw new ArgumentOutOfRangeException(nameof(blockSize), "Must be in the range 0 to uint.MaxValue");
         }
 
-        if (geometry == null)
+        if (geometry == default)
         {
             geometry = Geometry.FromCapacity(capacity);
         }

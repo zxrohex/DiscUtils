@@ -300,7 +300,7 @@ namespace LibraryTests
             return new MemoryStream(buffer, writable);
         }
 
-        private void AssertSequenced(byte[] buffer, int seqOffset)
+        private static void AssertSequenced(byte[] buffer, int seqOffset)
         {
             AssertSequenced(buffer, 0, buffer.Length, seqOffset);
         }

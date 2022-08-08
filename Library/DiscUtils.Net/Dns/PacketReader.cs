@@ -51,7 +51,7 @@ internal sealed class PacketReader
             {
                 case 0x00:
                     sb.Append(Encoding.UTF8.GetString(_data, readPos + 1, len));
-                    sb.Append(".");
+                    sb.Append('.');
                     readPos += 1 + len;
                     if (!hasIndirected)
                     {
@@ -107,7 +107,7 @@ internal sealed class PacketReader
     public byte[] ReadBytes(int count)
     {
         var result = new byte[count];
-        Array.Copy(_data, Position, result, 0, count);
+        System.Buffer.BlockCopy(_data, Position, result, 0, count);
         Position += count;
         return result;
     }

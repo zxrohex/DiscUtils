@@ -24,7 +24,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Fat;
 
@@ -243,6 +246,15 @@ internal class FatBuffer
         {
             stream.Position = position + val * DirtyRegionSize;
             stream.Write(_buffer, (int)(val * DirtyRegionSize), (int)DirtyRegionSize);
+        }
+    }
+
+    internal async ValueTask WriteDirtyRegionsAsync(Stream stream, long position, CancellationToken cancellationToken)
+    {
+        foreach (var val in _dirtySectors.Values)
+        {
+            stream.Position = position + val * DirtyRegionSize;
+            await stream.WriteAsync(_buffer.AsMemory((int)(val * DirtyRegionSize), (int)DirtyRegionSize), cancellationToken).ConfigureAwait(false);
         }
     }
 

@@ -104,7 +104,7 @@ internal sealed class CompressedClusterStream : ClusterStream
             var cacheOffset = (int)(focusVcn - _cacheBufferVcn);
             var toCopy = Math.Min(_attr.CompressionUnitSize - cacheOffset, count - totalRead);
 
-            Array.Copy(_cacheBuffer, cacheOffset * _bytesPerCluster, buffer, offset + totalRead * _bytesPerCluster,
+            System.Buffer.BlockCopy(_cacheBuffer, cacheOffset * _bytesPerCluster, buffer, offset + totalRead * _bytesPerCluster,
                 toCopy * _bytesPerCluster);
 
             totalRead += toCopy;
@@ -186,7 +186,7 @@ internal sealed class CompressedClusterStream : ClusterStream
                 var cacheOffset = (int)(focusVcn - _cacheBufferVcn);
                 var toCopy = Math.Min(count - totalWritten, _attr.CompressionUnitSize - cacheOffset);
 
-                Array.Copy(buffer, offset + totalWritten * _bytesPerCluster, _cacheBuffer,
+                System.Buffer.BlockCopy(buffer, offset + totalWritten * _bytesPerCluster, _cacheBuffer,
                     cacheOffset * _bytesPerCluster, toCopy * _bytesPerCluster);
 
                 totalAllocated += CompressAndWriteClusters(_cacheBufferVcn, _attr.CompressionUnitSize, _cacheBuffer);

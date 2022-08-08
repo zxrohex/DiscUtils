@@ -74,12 +74,6 @@ public class TarFileBuilder : StreamBuilder
 
     public int FileCount => _files.Count;
 
-#if NETSTANDARD || NETCOREAPP || NET46_OR_GREATER
-    private static readonly byte[] EmptyByteArray = Array.Empty<byte>();
-#else
-    private static readonly byte[] EmptyByteArray = new byte[0];
-#endif
-
     /// <summary>
     /// Add a directory to the tar archive.
     /// </summary>
@@ -91,7 +85,7 @@ public class TarFileBuilder : StreamBuilder
             name += "/";
         }
 
-        AddFile(name, EmptyByteArray);
+        AddFile(name, Array.Empty<byte>());
     }
 
     /// <summary>
@@ -110,7 +104,7 @@ public class TarFileBuilder : StreamBuilder
             name += "/";
         }
 
-        AddFile(name, EmptyByteArray, ownerId, groupId, fileMode, modificationTime);
+        AddFile(name, Array.Empty<byte>(), ownerId, groupId, fileMode, modificationTime);
     }
 
     /// <summary>

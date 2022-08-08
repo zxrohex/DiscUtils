@@ -255,18 +255,9 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
         _bitmap.MarkPresentRange(0, 1);
 
         // Write the MFT's own record to itself
-        var buffer = ArrayPool<byte>.Shared.Rent(RecordSize);
-        try
-        {
-            fileRec.ToBytes(buffer);
-            _recordStream.Position = 0;
-            _recordStream.Write(buffer, 0, RecordSize);
-            _recordStream.Flush();
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
+        _recordStream.Position = 0;
+        fileRec.ToStream(_recordStream, RecordSize);
+        _recordStream.Flush();
 
         return _self;
     }
@@ -402,44 +393,34 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
             throw new IOException("Attempting to write over-sized MFT record");
         }
 
-        var buffer = ArrayPool<byte>.Shared.Rent(RecordSize);
-        try
+        _recordStream.Position = record.MasterFileTableIndex * RecordSize;
+        record.ToStream(_recordStream, RecordSize);
+        _recordStream.Flush();
+
+        // We may have modified our own meta-data by extending the data stream, so
+        // make sure our records are up-to-date.
+        if (_self.MftRecordIsDirty)
         {
-            record.ToBytes(buffer);
-
-            _recordStream.Position = record.MasterFileTableIndex * RecordSize;
-            _recordStream.Write(buffer, 0, RecordSize);
-            _recordStream.Flush();
-
-            // We may have modified our own meta-data by extending the data stream, so
-            // make sure our records are up-to-date.
-            if (_self.MftRecordIsDirty)
+            var dirEntry = _self.DirectoryEntry;
+            if (dirEntry != null)
             {
-                var dirEntry = _self.DirectoryEntry;
-                if (dirEntry != null)
-                {
-                    dirEntry.Value.UpdateFrom(_self);
-                }
-
-                _self.UpdateRecordInMft();
+                dirEntry.Value.UpdateFrom(_self);
             }
 
-            // Need to update Mirror.  OpenRaw is OK because this is short duration, and we don't
-            // extend or otherwise modify any meta-data, just the content of the Data stream.
-            if (record.MasterFileTableIndex < 4 && _self.Context.GetFileByIndex != null)
-            {
-                var mftMirror = _self.Context.GetFileByIndex(MftMirrorIndex);
-                if (mftMirror != null)
-                {
-                    using Stream s = mftMirror.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite);
-                    s.Position = record.MasterFileTableIndex * RecordSize;
-                    s.Write(buffer, 0, RecordSize);
-                }
-            }
+            _self.UpdateRecordInMft();
         }
-        finally
+
+        // Need to update Mirror.  OpenRaw is OK because this is short duration, and we don't
+        // extend or otherwise modify any meta-data, just the content of the Data stream.
+        if (record.MasterFileTableIndex < 4 && _self.Context.GetFileByIndex != null)
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            var mftMirror = _self.Context.GetFileByIndex(MftMirrorIndex);
+            if (mftMirror != null)
+            {
+                using var s = mftMirror.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite);
+                s.Position = record.MasterFileTableIndex * RecordSize;
+                record.ToStream(s, RecordSize);
+            }
         }
     }
 

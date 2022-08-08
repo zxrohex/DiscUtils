@@ -551,7 +551,7 @@ public static class EndianUtilities
     public static byte[] ToByteArray(byte[] buffer, int offset, int length)
     {
         var result = new byte[length];
-        Array.Copy(buffer, offset, result, 0, length);
+        System.Buffer.BlockCopy(buffer, offset, result, 0, length);
         return result;
     }
 
@@ -585,12 +585,14 @@ public static class EndianUtilities
     public static ReadOnlySpan<byte> StringToLittleEndianUnicodeBytesToString(ReadOnlySpan<char> chars)
     {
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-        var byteCount = Encoding.Unicode.GetByteCount(chars);
-        var bytes = new byte[byteCount];
-        return bytes.AsSpan(0, Encoding.Unicode.GetBytes(chars, bytes));
-#else
-        return MemoryMarshal.AsBytes(chars);
+        if (!BitConverter.IsLittleEndian)
+        {
+            var byteCount = Encoding.Unicode.GetByteCount(chars);
+            var bytes = new byte[byteCount];
+            return bytes.AsSpan(0, Encoding.Unicode.GetBytes(chars, bytes));
+        }
 #endif
+        return MemoryMarshal.AsBytes(chars);
     }
 
     /// <summary>

@@ -51,22 +51,22 @@ internal class PartitionRecord : DeviceRecord
 
             if (PartitionType == 1)
             {
-                Array.Copy(DiskIdentity, 0, data, offset + 0x28, 4);
-                Array.Copy(PartitionIdentity, 0, data, offset + 0x10, 8);
+                System.Buffer.BlockCopy(DiskIdentity, 0, data, offset + 0x28, 4);
+                System.Buffer.BlockCopy(PartitionIdentity, 0, data, offset + 0x10, 8);
             }
             else if (PartitionType == 0)
             {
-                Array.Copy(DiskIdentity, 0, data, offset + 0x28, 16);
-                Array.Copy(PartitionIdentity, 0, data, offset + 0x10, 16);
+                System.Buffer.BlockCopy(DiskIdentity, 0, data, offset + 0x28, 16);
+                System.Buffer.BlockCopy(PartitionIdentity, 0, data, offset + 0x10, 16);
             }
             else
             {
-                throw new NotImplementedException("Unknown partition type: " + PartitionType);
+                throw new NotImplementedException($"Unknown partition type: {PartitionType}");
             }
         }
         else
         {
-            throw new NotImplementedException("Unknown device type: " + Type);
+            throw new NotImplementedException($"Unknown device type: {Type}");
         }
     }
 
@@ -109,17 +109,17 @@ internal class PartitionRecord : DeviceRecord
             {
                 // BIOS disk
                 DiskIdentity = new byte[4];
-                Array.Copy(data, offset + 0x28, DiskIdentity, 0, 4);
+                System.Buffer.BlockCopy(data, offset + 0x28, DiskIdentity, 0, 4);
                 PartitionIdentity = new byte[8];
-                Array.Copy(data, offset + 0x10, PartitionIdentity, 0, 8);
+                System.Buffer.BlockCopy(data, offset + 0x10, PartitionIdentity, 0, 8);
             }
             else if (PartitionType == 0)
             {
                 // GPT disk
                 DiskIdentity = new byte[16];
-                Array.Copy(data, offset + 0x28, DiskIdentity, 0, 16);
+                System.Buffer.BlockCopy(data, offset + 0x28, DiskIdentity, 0, 16);
                 PartitionIdentity = new byte[16];
-                Array.Copy(data, offset + 0x10, PartitionIdentity, 0, 16);
+                System.Buffer.BlockCopy(data, offset + 0x10, PartitionIdentity, 0, 16);
             }
             else
             {

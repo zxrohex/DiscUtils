@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 
 namespace DiscUtils.Ntfs;
@@ -27,9 +28,9 @@ namespace DiscUtils.Ntfs;
 /// <summary>
 /// Fully-qualified reference to an attribute.
 /// </summary>
-internal struct AttributeReference : IComparable<AttributeReference>, IEquatable<AttributeReference>
+internal readonly struct AttributeReference : IComparable<AttributeReference>, IEquatable<AttributeReference>
 {
-    private FileRecordReference _fileReference;
+    private readonly FileRecordReference _fileReference;
 
     /// <summary>
     /// Initializes a new instance of the AttributeReference class.
@@ -83,9 +84,7 @@ internal struct AttributeReference : IComparable<AttributeReference>, IEquatable
     /// <param name="other">The attribute reference to compare.</param>
     /// <returns><c>true</c> if the references are equivalent.</returns>
     public bool Equals(AttributeReference other)
-    {
-        return CompareTo(other) == 0;
-    }
+        => _fileReference.Equals(other._fileReference) && AttributeId.Equals(other.AttributeId);
 
     #endregion
 
@@ -94,9 +93,7 @@ internal struct AttributeReference : IComparable<AttributeReference>, IEquatable
     /// </summary>
     /// <returns>String representing the attribute.</returns>
     public override string ToString()
-    {
-        return $"{_fileReference}.attr[{AttributeId}]";
-    }
+        => $"{_fileReference}.attr[{AttributeId}]";
 
     /// <summary>
     /// Indicates if this reference is equivalent to another object.
@@ -104,22 +101,16 @@ internal struct AttributeReference : IComparable<AttributeReference>, IEquatable
     /// <param name="obj">The object to compare.</param>
     /// <returns><c>true</c> if obj is an equivalent attribute reference.</returns>
     public override bool Equals(object obj)
-    {
-        var objAsAttrRef = obj as AttributeReference?;
-        if (objAsAttrRef == null)
-        {
-            return false;
-        }
+        => obj is AttributeReference other && Equals(other);
 
-        return Equals(objAsAttrRef.Value);
-    }
+    public static bool operator ==(AttributeReference a, AttributeReference b) => a.Equals(b);
+
+    public static bool operator !=(AttributeReference a, AttributeReference b) => !a.Equals(b);
 
     /// <summary>
     /// Gets the hash code for this reference.
     /// </summary>
     /// <returns>The hash code.</returns>
     public override int GetHashCode()
-    {
-        return _fileReference.GetHashCode() ^ AttributeId.GetHashCode();
-    }
+        => HashCode.Combine(_fileReference, AttributeId);
 }

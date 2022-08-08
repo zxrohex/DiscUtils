@@ -308,7 +308,7 @@ public sealed class Disk : VirtualDisk
     /// <returns>An object that accesses the stream as a VHDX file.</returns>
     public static Disk InitializeFixed(Stream stream, Ownership ownsStream, long capacity)
     {
-        return InitializeFixed(stream, ownsStream, capacity, null);
+        return InitializeFixed(stream, ownsStream, capacity, default(Geometry));
     }
 
     /// <summary>
