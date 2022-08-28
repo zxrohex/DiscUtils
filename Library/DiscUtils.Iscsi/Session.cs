@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -173,7 +174,7 @@ public sealed class Session : IDisposable
 
         var resp = Send<ScsiInquiryStandardResponse>(cmd, default, ScsiInquiryCommand.InitialResponseDataLength);
 
-        var targetInfo = new TargetInfo(TargetName, new List<TargetAddress>(_addresses).ToArray());
+        var targetInfo = new TargetInfo(TargetName, _addresses.ToArray());
         return new LunInfo(targetInfo, lun, resp.DeviceType, resp.Removable, resp.VendorId, resp.ProductId, resp.ProductRevision);
     }
 

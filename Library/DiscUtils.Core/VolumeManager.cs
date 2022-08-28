@@ -21,9 +21,11 @@
 //
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using DiscUtils.Internal;
 using DiscUtils.Partitions;
@@ -43,7 +45,7 @@ namespace DiscUtils;
 public sealed class VolumeManager
     : MarshalByRefObject
 {
-    private static List<LogicalVolumeFactory> s_logicalVolumeFactories;
+    private static ConcurrentBag<LogicalVolumeFactory> s_logicalVolumeFactories;
     private readonly List<VirtualDisk> _disks;
     private bool _needScan;
 
@@ -81,15 +83,22 @@ public sealed class VolumeManager
         AddDisk(initialDiskContent);
     }
 
-    private static List<LogicalVolumeFactory> LogicalVolumeFactories
+    private static readonly object _syncObj = new();
+
+    private static ConcurrentBag<LogicalVolumeFactory> LogicalVolumeFactories
     {
         get
         {
             if (s_logicalVolumeFactories == null)
             {
-                var factories = new List<LogicalVolumeFactory>();
-                factories.AddRange(GetLogicalVolumeFactories(_coreAssembly));
-                s_logicalVolumeFactories = factories;
+                lock (_syncObj)
+                {
+                    if (s_logicalVolumeFactories == null)
+                    {
+                        var factories = new ConcurrentBag<LogicalVolumeFactory>(GetLogicalVolumeFactories(_coreAssembly));
+                        s_logicalVolumeFactories = factories;
+                    }
+                }
             }
 
             return s_logicalVolumeFactories;
@@ -113,8 +122,15 @@ public sealed class VolumeManager
     /// <param name="assembly">The assembly to inspect</param>
     public static void RegisterLogicalVolumeFactory(Assembly assembly)
     {
-        if (assembly == _coreAssembly) return;
-        LogicalVolumeFactories.AddRange(GetLogicalVolumeFactories(assembly));
+        if (assembly == _coreAssembly)
+        {
+            return;
+        }
+
+        foreach (var factory in GetLogicalVolumeFactories(assembly))
+        {
+            LogicalVolumeFactories.Add(factory);
+        }
     }
 
     /// <summary>
@@ -178,7 +194,7 @@ public sealed class VolumeManager
             Scan();
         }
 
-        return new List<PhysicalVolumeInfo>(_physicalVolumes.Values).ToArray();
+        return _physicalVolumes.Values.ToArray();
     }
 
     /// <summary>
@@ -192,7 +208,7 @@ public sealed class VolumeManager
             Scan();
         }
 
-        return new List<LogicalVolumeInfo>(_logicalVolumes.Values).ToArray();
+        return _logicalVolumes.Values.ToArray();
     }
 
     /// <summary>
@@ -258,6 +274,7 @@ public sealed class VolumeManager
         foreach (var pvi in physicalVols)
         {
             var handled = false;
+
             foreach (var volFactory in LogicalVolumeFactories)
             {
                 if (volFactory.HandlesPhysicalVolume(pvi))

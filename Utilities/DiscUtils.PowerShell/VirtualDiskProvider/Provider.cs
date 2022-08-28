@@ -610,7 +610,7 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
                 pathElems.RemoveAt(0);
             }
 
-            var fsPath = string.Join(Internal.Utilities.DirectorySeparatorString, pathElems.ToArray());
+            var fsPath = string.Join(Internal.Utilities.DirectorySeparatorString, pathElems);
             if (fs.DirectoryExists(fsPath))
             {
                 return fs.GetDirectoryInfo(fsPath);

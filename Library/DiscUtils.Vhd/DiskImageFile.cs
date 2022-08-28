@@ -22,7 +22,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Text;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -370,7 +372,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     [Obsolete("Use GetParentLocations() by preference")]
     public string[] GetParentLocations(string basePath)
     {
-        return GetParentLocations(new LocalFileLocator(basePath));
+        return GetParentLocations(new LocalFileLocator(basePath)).ToArray();
     }
 
     internal static DiskImageFile InitializeFixed(FileLocator locator, string path, long capacity, Geometry geometry)
@@ -601,7 +603,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// </summary>
     /// <param name="fileLocator">The file locator to use.</param>
     /// <returns>Array of candidate file locations.</returns>
-    private string[] GetParentLocations(FileLocator fileLocator)
+    private ReadOnlyCollection<string> GetParentLocations(FileLocator fileLocator)
     {
         if (!NeedsParent)
         {
@@ -647,7 +649,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
             paths.Add(fileLocator.ResolveRelativePath(_dynamicHeader.ParentUnicodeName));
         }
 
-        return paths.ToArray();
+        return paths.AsReadOnly();
     }
 
     private void ReadFooter(bool fallbackToFront)
