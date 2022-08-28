@@ -30,7 +30,7 @@ namespace DiscUtils;
 /// Struct that represent disk geometries.
 /// </summary>
 /// <remarks>Instances of this struct are immutable.</remarks>
-public readonly struct Geometry : IEquatable<Geometry>
+public sealed class Geometry : IEquatable<Geometry>
 {
     /// <summary>
     /// Initializes a new instance of the Geometry class.  The default 512 bytes per sector is assumed.
@@ -224,7 +224,7 @@ public readonly struct Geometry : IEquatable<Geometry>
     /// <remarks>This method returns the LBA-Assisted geometry if the given geometry isn't BIOS-safe.</remarks>
     public static Geometry MakeBiosSafe(Geometry geometry, long capacity)
     {
-        if (geometry == default)
+        if (geometry == null)
         {
             return LbaAssistedBiosGeometry(capacity, Sizes.Sector);
         }
@@ -445,8 +445,14 @@ public readonly struct Geometry : IEquatable<Geometry>
     /// <returns><c>true</c> if the <paramref name="obj"/> is equivalent, else <c>false</c>.</returns>
     public bool Equals(Geometry other)
     {
-        return Cylinders == other.Cylinders && HeadsPerCylinder == other.HeadsPerCylinder
-               && SectorsPerTrack == other.SectorsPerTrack && BytesPerSector == other.BytesPerSector;
+        return !ReferenceEquals(other, null) &&
+            Cylinders == other.Cylinders && HeadsPerCylinder == other.HeadsPerCylinder &&
+            SectorsPerTrack == other.SectorsPerTrack && BytesPerSector == other.BytesPerSector;
+    }
+
+    public static bool Equals(Geometry a, Geometry b)
+    {
+        return ReferenceEquals(a, b) || (!ReferenceEquals(a, null) && a.Equals(b));
     }
 
     /// <summary>
@@ -456,9 +462,9 @@ public readonly struct Geometry : IEquatable<Geometry>
     /// <returns><c>true</c> if the <paramref name="obj"/> is equivalent, else <c>false</c>.</returns>
     public override bool Equals(object obj) => obj is Geometry other && Equals(other);
 
-    public static bool operator ==(Geometry a, Geometry b) => a.Equals(b);
+    public static bool operator ==(Geometry a, Geometry b) => Equals(a, b);
 
-    public static bool operator !=(Geometry a, Geometry b) => !a.Equals(b);
+    public static bool operator !=(Geometry a, Geometry b) => !Equals(a, b);
 
     /// <summary>
     /// Calculates the hash code for this object.

@@ -27,7 +27,9 @@ internal class WellKnownAccount
         foreach (var acct in accounts)
         {
             if (acct.Sid == s)
+            {
                 return acct;
+            }
         }
 
         return null;
@@ -38,7 +40,9 @@ internal class WellKnownAccount
         foreach (var acct in accounts)
         {
             if (acct.Name == s)
+            {
                 return acct;
+            }
         }
 
         return null;
@@ -49,7 +53,9 @@ internal class WellKnownAccount
         foreach (var acct in accounts)
         {
             if (acct.SddlForm == s)
+            {
                 return acct;
+            }
         }
 
         return null;
@@ -60,7 +66,9 @@ internal class WellKnownAccount
         foreach (var acct in accounts)
         {
             if (acct.SddlForm.AsSpan().Equals(s, StringComparison.Ordinal))
+            {
                 return acct;
+            }
         }
 
         return null;

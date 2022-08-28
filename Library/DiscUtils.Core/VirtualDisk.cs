@@ -84,7 +84,7 @@ public abstract class VirtualDisk :
     /// </summary>
     public virtual Geometry BiosGeometry
     {
-        get { return Geometry.MakeBiosSafe(Geometry, Capacity); }
+        get { return DiscUtils.Geometry.MakeBiosSafe(Geometry, Capacity); }
     }
 
     /// <summary>

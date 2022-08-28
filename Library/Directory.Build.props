@@ -14,7 +14,7 @@
     <Authors>Olof Lagerkvist</Authors>
 	<PackageOutputPath>$(LocalNuGetPath)</PackageOutputPath>
 	<OutputPath>..\$(Configuration)</OutputPath>
-    <FileVersion>1.0.8</FileVersion>
+    <FileVersion>1.0.9</FileVersion>
     <PackageVersion>$(FileVersion)</PackageVersion>
   </PropertyGroup>
 

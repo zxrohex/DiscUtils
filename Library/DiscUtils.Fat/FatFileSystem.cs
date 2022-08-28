@@ -1949,7 +1949,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         return FormatPartition(
             partitionStream,
             label,
-            disk.Geometry,
+            disk.Geometry ?? disk.BiosGeometry,
             (int)disk.Partitions[partitionIndex].FirstSector,
             (int)(1 + disk.Partitions[partitionIndex].LastSector - disk.Partitions[partitionIndex].FirstSector),
             0);

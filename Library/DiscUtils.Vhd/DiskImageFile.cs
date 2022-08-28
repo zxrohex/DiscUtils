@@ -486,9 +486,9 @@ public sealed class DiskImageFile : VirtualDiskLayer
 
     private static void InitializeFixedInternal(Stream stream, long capacity, Geometry geometry)
     {
-        if (geometry == default)
+        if (geometry == null)
         {
-            geometry = Geometry.FromCapacity(capacity);
+            geometry = DiscUtils.Geometry.FromCapacity(capacity);
         }
 
         var footer = new Footer(geometry, capacity, FileType.Fixed);
@@ -510,9 +510,9 @@ public sealed class DiskImageFile : VirtualDiskLayer
             throw new ArgumentOutOfRangeException(nameof(blockSize), "Must be in the range 0 to uint.MaxValue");
         }
 
-        if (geometry == default)
+        if (geometry == null)
         {
-            geometry = Geometry.FromCapacity(capacity);
+            geometry = DiscUtils.Geometry.FromCapacity(capacity);
         }
 
         var footer = new Footer(geometry, capacity, FileType.Dynamic)
