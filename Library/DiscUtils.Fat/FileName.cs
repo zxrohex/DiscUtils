@@ -91,14 +91,21 @@ internal sealed class FileName : IEquatable<FileName>
 
     public FileName(string name, Encoding encoding)
     {
-        if (name is null || name.Length > 255)
+        if (name is null)
+        {
+            throw new ArgumentNullException(nameof(name));
+        }
+
+        if (name.Length > 255)
         {
             throw new IOException($"Too long name: '{name}'");
         }
 
         _raw = new byte[11];
 
-        var bytes = encoding.GetBytes(name.ToUpperInvariant());
+        Span<byte> bytes = stackalloc byte[encoding.GetByteCount(name)];
+        
+        encoding.GetBytes(name.AsSpan(), bytes);
 
         if (bytes.Length == 0)
         {
@@ -108,15 +115,51 @@ internal sealed class FileName : IEquatable<FileName>
         var nameIdx = 0;
         var rawIdx = 0;
 
-        while (nameIdx < bytes.Length && bytes[nameIdx] != '.' && rawIdx < _raw.Length)
+        var extensionPosition = bytes.LastIndexOf((byte)'.');
+
+        // If not dot, or last dot is at the beginning, the name
+        // is considered to have no extension
+        if (extensionPosition <= 0)
         {
-            var b = bytes[nameIdx++];
+            extensionPosition = bytes.Length;
+        }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        Span<char> buffer = stackalloc char[4];
+#endif
+
+        for (; nameIdx < extensionPosition && rawIdx < 8;nameIdx++)
+        {
+            var b = bytes[nameIdx];
+
+            if (b == '.')
+            {
+                continue;
+            }
+
+            if (b == '?')
+            {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+                ((int)name[nameIdx]).TryFormat(buffer, out var hexLength, format: "X");
+#else
+                var buffer = ((int)name[nameIdx]).ToString("X");
+                var hexLength = buffer.Length;
+#endif
+
+                for (var i = 0; i < hexLength && rawIdx < 8; i++)
+                {
+                    _raw[rawIdx++] = (byte)buffer[i];
+                }
+
+                continue;
+            }
+
             if (b < 0x20 || Contains(InvalidBytes, b))
             {
                 throw new ArgumentException($"Invalid character in file name '{(char)b}'", nameof(name));
             }
 
-            _raw[rawIdx++] = b;
+            _raw[rawIdx++] = (byte)char.ToUpperInvariant((char)b);
         }
 
         if (rawIdx > 8)
@@ -139,9 +182,27 @@ internal sealed class FileName : IEquatable<FileName>
             ++nameIdx;
         }
 
-        while (nameIdx < bytes.Length && rawIdx < _raw.Length)
+        for (; nameIdx < bytes.Length && rawIdx < _raw.Length; nameIdx++)
         {
-            var b = bytes[nameIdx++];
+            var b = bytes[nameIdx];
+
+            if (b == '?')
+            {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+                ((int)name[nameIdx]).TryFormat(buffer, out var hexLength, format: "X");
+#else
+                var buffer = ((int)name[nameIdx]).ToString("X");
+                var hexLength = buffer.Length;
+#endif
+
+                for (var i = 0; i < hexLength && rawIdx < _raw.Length; i++)
+                {
+                    _raw[rawIdx++] = (byte)buffer[i];
+                }
+
+                continue;
+            }
+
             if (b < 0x20 || Contains(InvalidBytes, b))
             {
                 throw new ArgumentException($"Invalid character in file extension '{(char)b}'", nameof(name));
