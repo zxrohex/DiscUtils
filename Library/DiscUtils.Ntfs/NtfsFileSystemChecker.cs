@@ -502,7 +502,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         try
         {
             System.Buffer.BlockCopy(recordData, 0, tempBuffer, 0, recordData.Length);
-            genericRecord.FromBytes(tempBuffer);
+            genericRecord.FromBytes(tempBuffer.AsSpan(0, recordData.Length));
         }
         finally
         {

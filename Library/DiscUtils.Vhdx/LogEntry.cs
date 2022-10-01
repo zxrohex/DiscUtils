@@ -118,7 +118,7 @@ internal sealed class LogEntry
             }
 
             var header = new LogEntryHeader();
-            header.ReadFrom(sectorBuffer, 0);
+            header.ReadFrom(sectorBuffer.AsSpan(0, LogSectorSize));
 
             if (!header.IsValid || header.EntryLength > logStream.Length)
             {

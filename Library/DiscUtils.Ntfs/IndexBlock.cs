@@ -96,7 +96,7 @@ internal class IndexBlock : FixupRecordBase
 
             var stream = _index.AllocationStream;
             stream.Position = _streamPosition;
-            stream.Write(buffer, 0, buffer.Length);
+            stream.Write(buffer, 0, bufferSize);
             stream.Flush();
         }
         finally

@@ -554,7 +554,7 @@ public static class StreamUtilities
             try
             {
                 ReadExact(stream, buffer, 0, result.Size);
-                result.ReadFrom(buffer);
+                result.ReadFrom(buffer.AsSpan(0, result.Size));
             }
             finally
             {
@@ -578,8 +578,9 @@ public static class StreamUtilities
         var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
         try
         {
-            await ReadExactAsync(stream, buffer.AsMemory(0, result.Size), cancellationToken).ConfigureAwait(false);
-            result.ReadFrom(buffer);
+            var mem = buffer.AsMemory(0, result.Size);
+            await ReadExactAsync(stream, mem, cancellationToken).ConfigureAwait(false);
+            result.ReadFrom(mem.Span);
         }
         finally
         {
@@ -602,8 +603,9 @@ public static class StreamUtilities
         var buffer = ArrayPool<byte>.Shared.Rent(length);
         try
         {
-            await ReadExactAsync(stream, buffer.AsMemory(0, length), cancellationToken).ConfigureAwait(false);
-            result.ReadFrom(buffer);
+            var mem = buffer.AsMemory(0, length);
+            await ReadExactAsync(stream, mem, cancellationToken).ConfigureAwait(false);
+            result.ReadFrom(mem.Span);
         }
         finally
         {
@@ -634,7 +636,7 @@ public static class StreamUtilities
             try
             {
                 ReadExact(stream, buffer, 0, result.Size);
-                result.ReadFrom(buffer);
+                result.ReadFrom(buffer.AsSpan(0, result.Size));
             }
             finally
             {
@@ -666,7 +668,7 @@ public static class StreamUtilities
             try
             {
                 ReadExact(stream, buffer, 0, length);
-                result.ReadFrom(buffer);
+                result.ReadFrom(buffer.AsSpan(0, length));
             }
             finally
             {
@@ -697,7 +699,7 @@ public static class StreamUtilities
             try
             {
                 ReadExact(stream, buffer, 0, result.Size);
-                result.ReadFrom(buffer);
+                result.ReadFrom(buffer.AsSpan(0, result.Size));
             }
             finally
             {
@@ -729,7 +731,7 @@ public static class StreamUtilities
             try
             {
                 ReadExact(stream, buffer, 0, length);
-                result.ReadFrom(buffer);
+                result.ReadFrom(buffer.AsSpan(0, length));
             }
             finally
             {
@@ -763,7 +765,7 @@ public static class StreamUtilities
             {
                 ReadExact(stream, buffer, 0, length);
                 var result = new T();
-                result.ReadFrom(buffer);
+                result.ReadFrom(buffer.AsSpan(0, length));
                 return result;
             }
             finally
@@ -793,8 +795,9 @@ public static class StreamUtilities
             var buffer = ArrayPool<byte>.Shared.Rent(obj.Size);
             try
             {
-                obj.WriteTo(buffer);
-                stream.Write(buffer, 0, buffer.Length);
+                var span = buffer.AsSpan(0, obj.Size);
+                obj.WriteTo(span);
+                stream.Write(buffer, 0, span.Length);
             }
             finally
             {

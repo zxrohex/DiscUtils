@@ -202,7 +202,7 @@ internal class DiskStream : SparseStream
                 var blockBuffer = ArrayPool<byte>.Shared.Rent(_blockSize);
                 try
                 {
-                    var numRead = _session.Read(_lun, block, 1, blockBuffer);
+                    var numRead = _session.Read(_lun, block, 1, blockBuffer.AsSpan(0, _blockSize));
 
                     if (numRead != _blockSize)
                     {
@@ -266,7 +266,7 @@ internal class DiskStream : SparseStream
                 var blockBuffer = ArrayPool<byte>.Shared.Rent(_blockSize);
                 try
                 {
-                    var numRead = await _session.ReadAsync(_lun, block, 1, blockBuffer, cancellationToken).ConfigureAwait(false);
+                    var numRead = await _session.ReadAsync(_lun, block, 1, blockBuffer.AsMemory(0, _blockSize), cancellationToken).ConfigureAwait(false);
 
                     if (numRead != _blockSize)
                     {

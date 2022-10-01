@@ -88,7 +88,7 @@ internal abstract class Inode : IByteArraySerializable
                 throw new IOException("Unable to read whole Inode");
             }
 
-            inode.ReadFrom(inodeData);
+            inode.ReadFrom(inodeData.AsSpan(0, inode.Size));
         }
         finally
         {
