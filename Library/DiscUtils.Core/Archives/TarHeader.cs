@@ -209,8 +209,8 @@ public sealed class TarHeader
     //    return result;
     //}
 
-    private static ReadOnlySpan<char> LongToOctal(long value, int length) =>
-        Convert.ToString(value, 8).PadLeft(length, '0').AsSpan();
+    private static string LongToOctal(long value, int length) =>
+        Convert.ToString(value, 8).PadLeft(length, '0');
     //{
     //    string result = string.Empty;
 

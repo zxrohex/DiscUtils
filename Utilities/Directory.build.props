@@ -10,7 +10,7 @@
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)../SigningKey.snk</AssemblyOriginatorKeyFile>
 	<OutputPath>..\$(Configuration)</OutputPath>
-    <FileVersion>1.0.9</FileVersion>
+    <FileVersion>1.0.10</FileVersion>
     <PackageVersion>$(FileVersion)</PackageVersion>
   </PropertyGroup>
 

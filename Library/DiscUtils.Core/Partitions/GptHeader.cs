@@ -133,7 +133,8 @@ internal class GptHeader
         buffer.Slice(0, HeaderSize).CopyTo(Buffer);
     }
 
-    internal static uint CalcCrc(byte[] buffer, int offset, int count) => CalcCrc(buffer.AsSpan(offset, count));
+    internal static uint CalcCrc(byte[] buffer, int offset, int count)
+        => CalcCrc(buffer.AsSpan(offset, count));
 
     internal static uint CalcCrc(ReadOnlySpan<byte> buffer)
     {
