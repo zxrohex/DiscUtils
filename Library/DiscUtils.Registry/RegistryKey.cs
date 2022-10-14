@@ -649,7 +649,8 @@ public sealed class RegistryKey
             {
                 var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList, i * 4);
                 var cell = _hive.GetCell<ValueCell>(valueIndex);
-                if (string.Compare(cell.Name, name, StringComparison.OrdinalIgnoreCase) == 0)
+                if (cell is not null &&
+                    string.Compare(cell.Name, name, StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     return new RegistryValue(_hive, cell);
                 }
