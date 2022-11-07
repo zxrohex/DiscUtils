@@ -497,10 +497,15 @@ public class RegistryHive : IDisposable
 
     private BinHeader? FindBin(int index)
     {
+        if (index < 0)
+        {
+            return null;
+        }
+
         var bin = _bins
-            .TakeWhile(x => x.FileOffset <= index)
-            .Select(x => new BinHeader?(x))
-            .FirstOrDefault(x => x.Value.FileOffset + x.Value.BinSize > index);
+            .TakeWhile(bin => bin.FileOffset <= index)
+            .Select(bin => new BinHeader?(bin))
+            .FirstOrDefault(bin => bin.Value.FileOffset + bin.Value.BinSize >= index);
 
         return bin;
     }
