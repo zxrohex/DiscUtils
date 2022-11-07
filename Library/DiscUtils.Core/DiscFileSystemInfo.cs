@@ -208,8 +208,8 @@ public class DiscFileSystemInfo
             return false;
         }
 
-        return string.Compare(Path, asInfo.Path, StringComparison.Ordinal) == 0 &&
-               Equals(FileSystem, asInfo.FileSystem);
+        return Path == asInfo.Path &&
+            Equals(FileSystem, asInfo.FileSystem);
     }
 
     /// <summary>

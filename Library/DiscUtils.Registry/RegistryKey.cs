@@ -403,7 +403,7 @@ public sealed class RegistryKey
             {
                 var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList, i * 4);
                 var valueCell = _hive.GetCell<ValueCell>(valueIndex);
-                if (string.Compare(valueCell.Name, name, StringComparison.OrdinalIgnoreCase) == 0)
+                if (string.Equals(valueCell.Name, name, StringComparison.OrdinalIgnoreCase))
                 {
                     foundValue = true;
                     _hive.FreeCell(valueIndex);
@@ -650,7 +650,7 @@ public sealed class RegistryKey
                 var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList, i * 4);
                 var cell = _hive.GetCell<ValueCell>(valueIndex);
                 if (cell is not null &&
-                    string.Compare(cell.Name, name, StringComparison.OrdinalIgnoreCase) == 0)
+                    string.Equals(cell.Name, name, StringComparison.OrdinalIgnoreCase))
                 {
                     return new RegistryValue(_hive, cell);
                 }

@@ -267,7 +267,7 @@ public sealed class ServiceDiscoveryClient : IDisposable
 
         foreach (var record in records)
         {
-            if (record.RecordType == recordType && string.Compare(fullName, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
+            if (record.RecordType == recordType && string.Equals(fullName, record.Name, StringComparison.OrdinalIgnoreCase))
             {
                 yield return record;
             }

@@ -370,7 +370,7 @@ public sealed class Provider : NavigationCmdletProvider, IDynamicPropertyCmdletP
             }
         }
 
-        if(string.Compare(propertyName, DefaultValueName, StringComparison.OrdinalIgnoreCase) == 0)
+        if(string.Equals(propertyName, DefaultValueName, StringComparison.OrdinalIgnoreCase))
         {
             propertyName = "";
         }
@@ -395,7 +395,7 @@ public sealed class Provider : NavigationCmdletProvider, IDynamicPropertyCmdletP
                 path));
         }
 
-        if (string.Compare(propertyName, DefaultValueName, StringComparison.OrdinalIgnoreCase) == 0)
+        if (string.Equals(propertyName, DefaultValueName, StringComparison.OrdinalIgnoreCase))
         {
             propertyName = "";
         }
@@ -502,7 +502,7 @@ public sealed class Provider : NavigationCmdletProvider, IDynamicPropertyCmdletP
                     return true;
                 }
             }
-            else if (string.Compare(filter, valueName, StringComparison.OrdinalIgnoreCase) == 0)
+            else if (string.Equals(filter, valueName, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }

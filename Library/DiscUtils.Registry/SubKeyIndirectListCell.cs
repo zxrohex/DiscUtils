@@ -224,7 +224,7 @@ internal sealed class SubKeyIndirectListCell : ListCell
             for (var i = 0; i < CellIndexes.Count; ++i)
             {
                 var cell = _hive.GetCell<KeyNodeCell>(CellIndexes[i]);
-                if (string.Compare(name, cell.Name, StringComparison.OrdinalIgnoreCase) == 0)
+                if (string.Equals(name, cell.Name, StringComparison.OrdinalIgnoreCase))
                 {
                     CellIndexes.RemoveAt(i);
                     return _hive.UpdateCell(this, true);

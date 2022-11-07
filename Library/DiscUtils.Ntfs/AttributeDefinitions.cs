@@ -101,7 +101,7 @@ public sealed class AttributeDefinitions
     {
         foreach (var record in _attrDefs.Values)
         {
-            if (string.Compare(name, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Equals(name, record.Name, StringComparison.OrdinalIgnoreCase))
             {
                 return record;
             }
@@ -114,7 +114,7 @@ public sealed class AttributeDefinitions
     {
         foreach (var record in _attrDefs.Values)
         {
-            if (string.Compare(name, record.Name, StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Equals(name, record.Name, StringComparison.OrdinalIgnoreCase))
             {
                 return record.Type;
             }
