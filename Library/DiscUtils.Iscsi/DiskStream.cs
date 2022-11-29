@@ -61,9 +61,7 @@ internal class DiskStream : SparseStream
     public override bool CanWrite { get; }
 
     public override IEnumerable<StreamExtent> Extents
-    {
-        get { yield return new StreamExtent(0, _length); }
-    }
+        => SingleValueEnumerable.Get(new StreamExtent(0, _length));
 
     public override long Length
     {

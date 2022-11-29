@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
@@ -62,9 +63,7 @@ internal class Mode2Buffer : Streams.Buffer
     }
 
     public override IEnumerable<StreamExtent> Extents
-    {
-        get { yield return new StreamExtent(0, Capacity); }
-    }
+        => SingleValueEnumerable.Get(new StreamExtent(0, Capacity));
 
     public override int Read(long pos, byte[] buffer, int offset, int count)
     {
@@ -160,7 +159,9 @@ internal class Mode2Buffer : Streams.Buffer
         if (start < capacity)
         {
             var end = Math.Min(start + count, capacity);
-            yield return new StreamExtent(start, end - start);
+            return SingleValueEnumerable.Get(new StreamExtent(start, end - start));
         }
+
+        return Enumerable.Empty<StreamExtent>();
     }
 }

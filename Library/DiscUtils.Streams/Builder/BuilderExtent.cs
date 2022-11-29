@@ -44,9 +44,7 @@ public abstract class BuilderExtent : IDisposable
     /// </summary>
     /// <remarks>This may be an empty enumeration if all bytes are zero.</remarks>
     public virtual IEnumerable<StreamExtent> StreamExtents
-    {
-        get { yield return new StreamExtent(Start, Length); }
-    }
+        => SingleValueEnumerable.Get(new StreamExtent(Start, Length));
 
     public abstract void PrepareForRead();
 

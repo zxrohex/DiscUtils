@@ -22,6 +22,8 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.SquashFs;
@@ -33,8 +35,10 @@ internal class FileSystemFactory : VfsFileSystemFactory
     {
         if (SquashFileSystemReader.Detect(stream))
         {
-            yield return new VfsFileSystemInfo("SquashFS", "Squash Filesystem", Open);
+            return SingleValueEnumerable.Get(new VfsFileSystemInfo("SquashFS", "Squash Filesystem", Open));
         }
+
+        return Enumerable.Empty<FileSystemInfo>();
     }
 
     private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

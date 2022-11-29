@@ -63,9 +63,7 @@ internal class FatFileStream : SparseStream
     }
 
     public override IEnumerable<StreamExtent> Extents
-    {
-        get { yield return new StreamExtent(0, Length); }
-    }
+        => SingleValueEnumerable.Get(new StreamExtent(0, Length));
 
     public override long Length
     {

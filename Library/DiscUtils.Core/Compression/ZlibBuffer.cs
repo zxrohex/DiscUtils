@@ -110,9 +110,7 @@ internal class ZlibBuffer : Buffer
     }
 
     public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
-    {
-        yield return new StreamExtent(0, _stream.Length);
-    }
+        => SingleValueEnumerable.Get(new StreamExtent(0, _stream.Length));
 
     protected override void Dispose(bool disposing)
     {

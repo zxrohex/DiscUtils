@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using DiscUtils;
 using DiscUtils.Internal;
@@ -308,8 +309,10 @@ class MyFileSystemFactory : VfsFileSystemFactory
 
         if (Encoding.ASCII.GetString(header, 0, 4) == "MYFS")
         {
-            yield return new VfsFileSystemInfo("MyFs", "My File System", Open);
+            return SingleValueEnumerable.Get(new VfsFileSystemInfo("MyFs", "My File System", Open));
         }
+
+        return Enumerable.Empty<DiscUtils.FileSystemInfo>();
     }
 
     private DiscFileSystem Open(Stream stream, VolumeInfo volInfo, FileSystemParameters parameters)

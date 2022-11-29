@@ -292,7 +292,7 @@ public abstract class SparseStream : CompatibilityStream
                 {
                     return wrappedAsSparse.Extents;
                 }
-                return new[] { new StreamExtent(0, _wrapped.Length) };
+                return SingleValueEnumerable.Get(new StreamExtent(0, _wrapped.Length));
             }
         }
 

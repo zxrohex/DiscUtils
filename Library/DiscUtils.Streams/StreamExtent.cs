@@ -190,7 +190,7 @@ public readonly struct StreamExtent : IEquatable<StreamExtent>, IComparable<Stre
     /// <returns>The intersection of the extents.</returns>
     public static IEnumerable<StreamExtent> Intersect(IEnumerable<StreamExtent> extents, StreamExtent other)
     {
-        return Intersect(extents, new[] { other });
+        return Intersect(extents, SingleValueEnumerable.Get(other));
     }
 
     /// <summary>
@@ -267,7 +267,7 @@ public readonly struct StreamExtent : IEquatable<StreamExtent>, IComparable<Stre
     /// <returns>The subtraction of <c>other</c> from <c>extents</c>.</returns>
     public static IEnumerable<StreamExtent> Subtract(IEnumerable<StreamExtent> extents, StreamExtent other)
     {
-        return Subtract(extents, new[] { other });
+        return Subtract(extents, SingleValueEnumerable.Get(other));
     }
 
     /// <summary>

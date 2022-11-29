@@ -21,7 +21,9 @@
 //
 
 using System.Collections.Generic;
+using System.Linq;
 using DiscUtils;
+using DiscUtils.Streams;
 using DiscUtils.Vfs;
 using DiscUtils.VirtualFileSystem;
 
@@ -32,8 +34,10 @@ internal class ZipFileSystemFactory : VfsFileSystemFactory
     {
         if (ZipFileSystem.Detect(stream))
         {
-            yield return new VfsFileSystemInfo("ZIP", "ZIP", Open);
+            return SingleValueEnumerable.Get(new VfsFileSystemInfo("ZIP", "ZIP", Open));
         }
+
+        return Enumerable.Empty<FileSystemInfo>();
     }
 
     private DiscFileSystem Open(System.IO.Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

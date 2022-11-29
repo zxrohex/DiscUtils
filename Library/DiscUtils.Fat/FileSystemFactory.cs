@@ -24,6 +24,7 @@ using System.IO;
 using DiscUtils.Vfs;
 using DiscUtils.Streams;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DiscUtils.Fat;
 
@@ -34,8 +35,10 @@ internal class FileSystemFactory : VfsFileSystemFactory
     {
         if (FatFileSystem.Detect(stream))
         {
-            yield return new VfsFileSystemInfo("FAT", "Microsoft FAT", Open);
+            return SingleValueEnumerable.Get(new VfsFileSystemInfo("FAT", "Microsoft FAT", Open));
         }
+
+        return Enumerable.Empty<FileSystemInfo>();
     }
 
     private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

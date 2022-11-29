@@ -22,6 +22,8 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.Swap;
@@ -33,8 +35,10 @@ internal class FileSystemFactory : VfsFileSystemFactory
     {
         if (SwapFileSystem.Detect(stream))
         {
-            yield return  new VfsFileSystemInfo("Swap", "Linux Swap", Open);
+            return SingleValueEnumerable.Get(new VfsFileSystemInfo("Swap", "Linux Swap", Open));
         }
+
+        return Enumerable.Empty<FileSystemInfo>();
     }
 
     private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

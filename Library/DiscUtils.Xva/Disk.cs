@@ -112,9 +112,7 @@ public sealed class Disk : VirtualDisk
     /// Gets the (single) layer of an XVA disk.
     /// </summary>
     public override IEnumerable<VirtualDiskLayer> Layers
-    {
-        get { yield return new DiskLayer(_vm, _capacity, _location); }
-    }
+        => SingleValueEnumerable.Get(new DiskLayer(_vm, _capacity, _location));
 
     /// <summary>
     /// Gets the Unique id of the disk, as known by XenServer.

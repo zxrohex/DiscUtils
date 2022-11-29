@@ -79,12 +79,7 @@ internal class FileContentBuffer : Streams.Buffer
     }
 
     public override IEnumerable<StreamExtent> Extents
-    {
-        get
-        {
-            yield return new StreamExtent(0, Capacity);
-        }
-    }
+        => SingleValueEnumerable.Get(new StreamExtent(0, Capacity));
 
     public override int Read(long pos, byte[] buffer, int offset, int count)
     {

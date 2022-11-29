@@ -600,25 +600,14 @@ public class ValidatingFileSystem<TFileSystem, TChecker> : DiscFileSystem
     {
         try
         {
-#if !NETCOREAPP
             return (TFileSystem)typeof(TFileSystem).GetConstructor(new Type[] { typeof(Stream) }).Invoke(new object[] { stream });
-#else
-            return (TFileSystem)typeof(TFileSystem).GetTypeInfo().GetConstructor(new Type[] { typeof(Stream) }).Invoke(new object[] { stream });
-#endif
         }
         catch (TargetInvocationException tie)
         {
-#if !NETCOREAPP
             var remoteStackTraceString = typeof(Exception).GetField("_remoteStackTraceString", BindingFlags.Instance | BindingFlags.NonPublic);
             remoteStackTraceString.SetValue(tie.InnerException, tie.InnerException.StackTrace + Environment.NewLine);
 
             throw tie.InnerException;
-#else
-            FieldInfo remoteStackTraceString = typeof(Exception).GetTypeInfo().GetField("_remoteStackTraceString", BindingFlags.Instance | BindingFlags.NonPublic);
-            remoteStackTraceString.SetValue(tie.InnerException, tie.InnerException.StackTrace + Environment.NewLine);
-
-            throw tie.InnerException; 
-#endif
         }
     }
 
@@ -626,25 +615,14 @@ public class ValidatingFileSystem<TFileSystem, TChecker> : DiscFileSystem
     {
         try
         {
-#if !NETCOREAPP
             return (TChecker)typeof(TChecker).GetConstructor(new Type[] { typeof(Stream) }).Invoke(new object[] { stream });
-#else
-            return (TChecker)typeof(TChecker).GetTypeInfo().GetConstructor(new Type[] { typeof(Stream) }).Invoke(new object[] { stream });
-#endif
         }
         catch (TargetInvocationException tie)
         {
-#if !NETCOREAPP
             var remoteStackTraceString = typeof(Exception).GetField("_remoteStackTraceString", BindingFlags.Instance | BindingFlags.NonPublic);
             remoteStackTraceString.SetValue(tie.InnerException, tie.InnerException.StackTrace + Environment.NewLine);
 
             throw tie.InnerException;
-#else
-            FieldInfo remoteStackTraceString = typeof(Exception).GetTypeInfo().GetField("_remoteStackTraceString", BindingFlags.Instance | BindingFlags.NonPublic);
-            remoteStackTraceString.SetValue(tie.InnerException, tie.InnerException.StackTrace + Environment.NewLine);
-
-            throw tie.InnerException;
-#endif
         }
     }
 

@@ -80,7 +80,7 @@ public class WrappingMappedStream<T> : MappedStream
             {
                 return sparse.Extents;
             }
-            return new[] { new StreamExtent(0, WrappedStream.Length) };
+            return SingleValueEnumerable.Get(new StreamExtent(0, WrappedStream.Length));
         }
     }
 
@@ -103,7 +103,7 @@ public class WrappingMappedStream<T> : MappedStream
         {
             return mapped.MapContent(start, length);
         }
-        return new[] { new StreamExtent(start, length) };
+        return SingleValueEnumerable.Get(new StreamExtent(start, length));
     }
 
     public override void Flush()

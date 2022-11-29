@@ -34,15 +34,15 @@ internal sealed class FileName : IEquatable<FileName>
     private const byte SpaceByte = 0x20;
 
     public static readonly FileName SelfEntryName =
-        new FileName(stackalloc byte[] { 0x2E, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 });
+        new FileName(".          "u8);
 
     public static readonly FileName ParentEntryName =
-        new FileName(stackalloc byte[] { 0x2E, 0x2E, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 });
+        new FileName("..         "u8);
 
     public static readonly FileName Null =
-        new FileName(stackalloc byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
+        new FileName("\0\0\0\0\0\0\0\0\0\0\0"u8);
 
-    private static readonly byte[] InvalidBytes = { 0x22, 0x2A, 0x2B, 0x2C, 0x2E, 0x2F, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x5B, 0x5C, 0x5D, 0x7C };
+    private static readonly byte[] InvalidBytes = "\"*+,./:;<=>?[\\]|"u8.ToArray();
 
     private readonly byte[] _raw;
 

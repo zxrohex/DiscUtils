@@ -154,7 +154,7 @@ internal sealed class DiscContentBuffer : Buffer
     public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
     {
         return StreamExtent.Intersect(
-            new[] { new StreamExtent(0, Capacity) },
+            SingleValueEnumerable.Get(new StreamExtent(0, Capacity)),
             new StreamExtent(start, count));
     }
 

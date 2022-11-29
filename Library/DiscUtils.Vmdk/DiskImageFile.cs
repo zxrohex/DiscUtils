@@ -532,9 +532,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// </summary>
     /// <returns>The parent locations as an array.</returns>
     public override IEnumerable<string> GetParentLocations()
-    {
-        yield return _descriptor.ParentFileNameHint.Replace('\\', Path.DirectorySeparatorChar);
-    }
+        => SingleValueEnumerable.Get(_descriptor.ParentFileNameHint.Replace('\\', Path.DirectorySeparatorChar));
 
     /// <summary>
     /// Creates a new virtual disk at the specified path.

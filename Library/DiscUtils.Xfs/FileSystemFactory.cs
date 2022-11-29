@@ -25,6 +25,8 @@ namespace DiscUtils.Xfs;
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
 [VfsFileSystemFactory]
@@ -34,8 +36,10 @@ internal class FileSystemFactory : VfsFileSystemFactory
     {
         if (XfsFileSystem.Detect(stream))
         {
-            yield return new VfsFileSystemInfo("xfs", "Linux xfs family filesystem", Open);
+            return SingleValueEnumerable.Get(new VfsFileSystemInfo("xfs", "Linux xfs family filesystem", Open));
         }
+
+        return Enumerable.Empty<DiscUtils.FileSystemInfo>();
     }
 
     private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

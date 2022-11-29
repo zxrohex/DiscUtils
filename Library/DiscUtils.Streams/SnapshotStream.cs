@@ -112,7 +112,7 @@ public sealed class SnapshotStream : SparseStream
         {
             if (_baseStream is not SparseStream sparseBase)
             {
-                return new[] { new StreamExtent(0, Length) };
+                return SingleValueEnumerable.Get(new StreamExtent(0, Length));
             }
             return StreamExtent.Union(sparseBase.Extents, _diffExtents);
         }

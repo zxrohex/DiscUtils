@@ -22,6 +22,8 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.HfsPlus;
@@ -33,8 +35,10 @@ internal class FileSystemFactory : VfsFileSystemFactory
     {
         if (HfsPlusFileSystem.Detect(stream))
         {
-            yield return new VfsFileSystemInfo("HFS+", "Apple HFS+", Open);
+            return SingleValueEnumerable.Get(new VfsFileSystemInfo("HFS+", "Apple HFS+", Open));
         }
+
+        return Enumerable.Empty<FileSystemInfo>();
     }
 
     private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

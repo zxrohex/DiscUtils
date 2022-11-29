@@ -83,15 +83,10 @@ public class StripedStream : SparseStream
         get { return _canWrite; }
     }
 
+    // Temporary, indicate there are no 'unstored' extents.
+    // Consider combining extent information from all wrapped streams in future.
     public override IEnumerable<StreamExtent> Extents
-    {
-        get
-        {
-            // Temporary, indicate there are no 'unstored' extents.
-            // Consider combining extent information from all wrapped streams in future.
-            yield return new StreamExtent(0, _length);
-        }
-    }
+        => SingleValueEnumerable.Get(new StreamExtent(0, _length));
 
     public override long Length
     {

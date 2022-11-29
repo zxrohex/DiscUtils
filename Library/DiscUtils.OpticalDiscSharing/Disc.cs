@@ -108,9 +108,7 @@ internal sealed class Disc : VirtualDisk
     /// Gets the layers that make up the disc.
     /// </summary>
     public override IEnumerable<VirtualDiskLayer> Layers
-    {
-        get { yield return _file; }
-    }
+        => SingleValueEnumerable.Get(_file);
 
     /// <summary>
     /// Not supported for Optical Discs.

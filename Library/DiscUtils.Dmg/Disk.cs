@@ -110,9 +110,7 @@ public class Disk : VirtualDisk
     /// Gets the layers that make up the disk.
     /// </summary>
     public override IEnumerable<VirtualDiskLayer> Layers
-    {
-        get { return new VirtualDiskLayer[] { _file }; }
-    }
+        => SingleValueEnumerable.Get(_file);
 
     public override PartitionTable Partitions
     {

@@ -88,7 +88,7 @@ public class SubStream : MappedStream
             {
                 return OffsetExtents(parentAsSparse.GetExtentsInRange(_first, _length));
             }
-            return new[] { new StreamExtent(0, _length) };
+            return SingleValueEnumerable.Get(new StreamExtent(0, _length));
         }
     }
 
@@ -115,9 +115,7 @@ public class SubStream : MappedStream
     }
 
     public override IEnumerable<StreamExtent> MapContent(long start, long length)
-    {
-        yield return new StreamExtent(start + _first, length);
-    }
+        => SingleValueEnumerable.Get(new StreamExtent(start + _first, length));
 
     public override void Flush()
     {

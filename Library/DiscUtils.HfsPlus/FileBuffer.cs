@@ -199,9 +199,7 @@ internal sealed class FileBuffer : Buffer
     }
 
     public override IEnumerable<StreamExtent> GetExtentsInRange(long start, long count)
-    {
-        yield return new StreamExtent(start, Math.Min(start + count, Capacity) - start);
-    }
+        => SingleValueEnumerable.Get(new StreamExtent(start, Math.Min(start + count, Capacity) - start));
 
     private ExtentDescriptor FindExtent(long pos, out long extentLogicalStart)
     {

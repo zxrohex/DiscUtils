@@ -38,7 +38,7 @@ public static class Utilities
 
             var breakPos = text.LastIndexOf(' ', start, count);
 
-            yield return text.Substring(pos, breakPos - pos).TrimEnd(' ');
+            yield return text.AsSpan(pos, breakPos - pos).TrimEnd(' ').ToString();
 
             while (breakPos < text.Length && text[breakPos] == ' ')
             {

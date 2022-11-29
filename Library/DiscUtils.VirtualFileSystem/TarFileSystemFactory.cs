@@ -22,6 +22,8 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.VirtualFileSystem;
@@ -33,8 +35,10 @@ internal class TarFileSystemFactory : VfsFileSystemFactory
     {
         if (TarFileSystem.Detect(stream))
         {
-            yield return new VfsFileSystemInfo("TAR", "TAR", Open);
+            return SingleValueEnumerable.Get(new VfsFileSystemInfo("TAR", "TAR", Open));
         }
+
+        return Enumerable.Empty<FileSystemInfo>();
     }
 
     private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)

@@ -138,9 +138,7 @@ public sealed class Disk : VirtualDisk
     /// Gets the layers that make up the disk.
     /// </summary>
     public override IEnumerable<VirtualDiskLayer> Layers
-    {
-        get { yield return _diskImage; }
-    }
+        => SingleValueEnumerable.Get(_diskImage);
 
     /// <summary>
     /// Initializes a stream as a fixed-sized VDI file.

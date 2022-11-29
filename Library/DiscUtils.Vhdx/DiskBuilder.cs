@@ -81,7 +81,7 @@ public sealed class DiskBuilder : DiskImageBuilder
         var fileSpec = new DiskImageFileSpecification(baseName + ".vhdx",
             new DiskStreamBuilder(Content, DiskType, BlockSize));
 
-        yield return fileSpec;
+        return SingleValueEnumerable.Get(fileSpec);
     }
 
     private class DiskStreamBuilder : StreamBuilder

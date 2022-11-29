@@ -22,6 +22,8 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using DiscUtils.Streams;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.Ntfs;
@@ -33,8 +35,10 @@ internal class FileSystemFactory : VfsFileSystemFactory
     {
         if (NtfsFileSystem.Detect(stream))
         {
-            yield return new VfsFileSystemInfo("NTFS", "Microsoft NTFS", Open);
+            return SingleValueEnumerable.Get(new VfsFileSystemInfo("NTFS", "Microsoft NTFS", Open));
         }
+
+        return Enumerable.Empty<FileSystemInfo>();
     }
 
     private DiscFileSystem Open(Stream stream, VolumeInfo volumeInfo, FileSystemParameters parameters)
