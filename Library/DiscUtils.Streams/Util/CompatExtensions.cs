@@ -433,10 +433,10 @@ public static class CompatExtensions
             return new(stream.WriteAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count, cancellationToken));
         }
 
-        return new(WriteUsingTemporaryArrayAsync(stream, buffer, cancellationToken));
+        return WriteUsingTemporaryArrayAsync(stream, buffer, cancellationToken);
     }
 
-    private static async Task WriteUsingTemporaryArrayAsync(Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+    private static async ValueTask WriteUsingTemporaryArrayAsync(Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         var bytes = ArrayPool<byte>.Shared.Rent(buffer.Length);
         try
