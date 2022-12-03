@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>DiscUtils LVM</Description>
-    <Authors>Bianco Veigel</Authors>
+    <Authors>Bianco Veigel;Olof Lagerkvist</Authors>
     <PackageTags>DiscUtils;Lvm</PackageTags>
   </PropertyGroup>
 

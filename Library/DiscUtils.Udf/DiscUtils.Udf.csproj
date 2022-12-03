@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>DiscUtils UDF filesystem parser.</Description>
-    <Authors>Kenneth Bell;LordMike</Authors>
+    
     <PackageTags>DiscUtils;Filesystem;UDF</PackageTags>
   </PropertyGroup>
 

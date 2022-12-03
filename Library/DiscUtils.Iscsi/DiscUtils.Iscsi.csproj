@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>DiscUtils iSCSI</Description>
-    <Authors>Kenneth Bell;LordMike</Authors>
+    
     <PackageTags>DiscUtils;iSCSI</PackageTags>
   </PropertyGroup>
 

@@ -3,7 +3,7 @@
   
   <PropertyGroup>
     <Description>DiscUtils, complete meta-package</Description>
-    <Authors>Kenneth Bell;LordMike</Authors>
+    
     <PackageTags>DiscUtils</PackageTags>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
@@ -12,7 +12,7 @@
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\DiscUtils.Btrfs\DiscUtils.Btrfs.csproj" />
     <ProjectReference Include="..\DiscUtils.Core\DiscUtils.Core.csproj" />

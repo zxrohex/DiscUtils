@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>DiscUtils WIM</Description>
-    <Authors>Kenneth Bell;LordMike</Authors>
+    
     <PackageTags>DiscUtils;WIM</PackageTags>
   </PropertyGroup>
 

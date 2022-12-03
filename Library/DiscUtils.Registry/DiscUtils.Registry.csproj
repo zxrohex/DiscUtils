@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>DiscUtils Registry</Description>
-    <Authors>Kenneth Bell;LordMike</Authors>
+    
     <PackageTags>DiscUtils;Registry</PackageTags>
   </PropertyGroup>
 

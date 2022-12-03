@@ -126,6 +126,16 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscUtils.Btrfs", "Library\DiscUtils.Btrfs\DiscUtils.Btrfs.csproj", "{FAA5ADC9-49ED-4949-B53B-9EC93AE35893}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{DE170219-2D7C-4D77-80AE-7316BA68EEC3}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		Changelog.txt = Changelog.txt
+		LICENSE.txt = LICENSE.txt
+		README.md = README.md
+		SigningKey.snk = SigningKey.snk
+		version.json = version.json
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscUtils.VirtualFileSystem", "Library\DiscUtils.VirtualFileSystem\DiscUtils.VirtualFileSystem.csproj", "{DD506E79-41D5-490D-BE12-05F5C7839575}"
 EndProject

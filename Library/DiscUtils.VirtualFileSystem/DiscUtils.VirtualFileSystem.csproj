@@ -2,8 +2,8 @@
   
 
   <PropertyGroup>
-    <Description>DiscUtils WIM</Description>
-    <Authors>Kenneth Bell;Olof Lagerkvist</Authors>
+    <Description>DiscUtils Virtual File System</Description>
+    <Authors>Olof Lagerkvist</Authors>
     <PackageTags>DiscUtils;tar;zip</PackageTags>
   </PropertyGroup>
 
