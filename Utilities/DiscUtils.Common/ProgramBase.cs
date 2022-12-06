@@ -28,6 +28,7 @@ using System.Reflection;
 using DiscUtils.Streams;
 using System.Linq;
 using DiscUtils.Streams.Compatibility;
+using System.IO;
 
 namespace DiscUtils.Common;
 
@@ -383,9 +384,13 @@ public abstract class ProgramBase
     {
         get
         {
-            var asmVersion = GetType().Assembly.GetName().Version;
-            var libVersion = typeof(IBuffer).Assembly.GetName().Version;
-            return new[] { asmVersion, libVersion }.Max().ToString(3);
+            var modules = Process.GetCurrentProcess().Modules;
+
+            var appModule = Path.GetFileName(GetType().Assembly.Location);
+            
+            var appVersion = modules.OfType<ProcessModule>().FirstOrDefault(m => m.ModuleName == appModule)?.FileVersionInfo.FileVersion;
+
+            return appVersion;
         }
     }
 

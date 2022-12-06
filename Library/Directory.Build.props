@@ -16,7 +16,6 @@
 	<OutputPath>..\$(Configuration)</OutputPath>
     <FileVersion>1.0.11</FileVersion>
     <PackageVersion>$(FileVersion)</PackageVersion>
-    <AssemblyVersion>$(FileVersion)</AssemblyVersion>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
