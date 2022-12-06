@@ -295,8 +295,8 @@ public abstract class ProgramBase
 
     protected virtual void DisplayHeader()
     {
-        Console.WriteLine($"{ExeName} v{Version}, available from http://discutils.codeplex.com");
-        Console.WriteLine("Copyright (c) Kenneth Bell, 2008-2013");
+        Console.WriteLine($"{ExeName} v{Version}, available from https://github.com/LTRData/DiscUtils");
+        Console.WriteLine("Copyright (c) Kenneth Bell, Olof Lagerkvist and contributors, 2008-2022");
         Console.WriteLine("Free software issued under the MIT License, see LICENSE.TXT for details.");
         Console.WriteLine();
     }
@@ -357,7 +357,7 @@ public abstract class ProgramBase
             {
                 foreach (var variant in variants)
                 {
-                    outputTypes.Add(type.ToUpperInvariant() + "-" + variant.ToLowerInvariant());
+                    outputTypes.Add($"{type.ToUpperInvariant()}-{variant.ToLowerInvariant()}");
                 }
             }
         }
@@ -368,18 +368,14 @@ public abstract class ProgramBase
             "of",
             "outputFormat",
             "format",
-            "Mandatory - the type of disk to output, one of " + string.Join(", ", outputTypes.Take(outputTypes.Count - 1)) + " or " + outputTypes[outputTypes.Count - 1] + ".");
+            $"Mandatory - the type of disk to output, one of {string.Join(", ", outputTypes.Take(outputTypes.Count - 1))} or {outputTypes[outputTypes.Count - 1]}.");
     }
 
     private string ExeName
     {
         get
         {
-#if !NETCOREAPP
             return GetType().Assembly.GetName().Name;
-#else
-            return GetType().GetTypeInfo().Assembly.GetName().Name;
-#endif
         }
     }
 
@@ -387,11 +383,9 @@ public abstract class ProgramBase
     {
         get
         {
-#if !NETCOREAPP
-            return GetType().Assembly.GetName().Version.ToString(3);
-#else
-            return GetType().GetTypeInfo().Assembly.GetName().Version.ToString(3);
-#endif
+            var asmVersion = GetType().Assembly.GetName().Version;
+            var libVersion = typeof(IBuffer).Assembly.GetName().Version;
+            return new[] { asmVersion, libVersion }.Max().ToString(3);
         }
     }
 
