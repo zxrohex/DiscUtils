@@ -26,6 +26,8 @@ using System.Text;
 using DiscUtils.Streams;
 using DiscUtils.Internal;
 using System.Linq;
+using System.Buffers;
+using System.IO;
 
 namespace DiscUtils.Registry;
 
@@ -60,7 +62,8 @@ public sealed class RegistryKey
         {
             if (_cell.ClassNameIndex > 0)
             {
-                return Encoding.Unicode.GetString(_hive.RawCellData(_cell.ClassNameIndex, _cell.ClassNameLength));
+                Span<byte> buffer = stackalloc byte[_cell.ClassNameLength];
+                return EndianUtilities.LittleEndianUnicodeBytesToString(_hive.RawCellData(_cell.ClassNameIndex, buffer));
             }
 
             return null;
@@ -157,12 +160,20 @@ public sealed class RegistryKey
         {
             if (_cell.NumValues != 0)
             {
-                var valueList = _hive.RawCellData(_cell.ValueListIndex, _cell.NumValues * 4);
-
-                for (var i = 0; i < _cell.NumValues; ++i)
+                var valueListMem = ArrayPool<byte>.Shared.Rent(_cell.NumValues * 4);
+                try
                 {
-                    var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList, i * 4);
-                    yield return new RegistryValue(_hive, _hive.GetCell<ValueCell>(valueIndex));
+                    var valueList = valueListMem.AsMemory(0, _hive.RawCellData(_cell.ValueListIndex, valueListMem.AsSpan(0, _cell.NumValues * 4)).Length);
+
+                    for (var i = 0; i < _cell.NumValues; ++i)
+                    {
+                        var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList.Span.Slice(i * 4));
+                        yield return new RegistryValue(_hive, _hive.GetCell<ValueCell>(valueIndex));
+                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(valueListMem);
                 }
             }
         }
@@ -396,46 +407,49 @@ public sealed class RegistryKey
 
         if (_cell.NumValues != 0)
         {
-            var valueList = _hive.RawCellData(_cell.ValueListIndex, _cell.NumValues * 4);
-
-            var i = 0;
-            while (i < _cell.NumValues)
+            var valueListMem = ArrayPool<byte>.Shared.Rent(_cell.NumValues * 4);
+            try
             {
-                var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList, i * 4);
-                var valueCell = _hive.GetCell<ValueCell>(valueIndex);
-                if (string.Equals(valueCell.Name, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    foundValue = true;
-                    _hive.FreeCell(valueIndex);
-                    _cell.NumValues--;
-                    _hive.UpdateCell(_cell, false);
-                    break;
-                }
+                var valueList = _hive.RawCellData(_cell.ValueListIndex, valueListMem.AsSpan(0, _cell.NumValues * 4));
 
-                ++i;
-            }
-
-            // Move following value's to fill gap
-            if (i < _cell.NumValues)
-            {
+                var i = 0;
                 while (i < _cell.NumValues)
                 {
-                    var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList, (i + 1) * 4);
-                    EndianUtilities.WriteBytesLittleEndian(valueIndex, valueList, i * 4);
+                    var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList.Slice(i * 4));
+                    var valueCell = _hive.GetCell<ValueCell>(valueIndex);
+                    if (string.Equals(valueCell.Name, name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        foundValue = true;
+                        _hive.FreeCell(valueIndex);
+                        _cell.NumValues--;
+                        _hive.UpdateCell(_cell, false);
+                        break;
+                    }
 
                     ++i;
                 }
 
-                _hive.WriteRawCellData(_cell.ValueListIndex, valueList, 0, _cell.NumValues * 4);
-            }
+                // Move following value's to fill gap
+                if (i < _cell.NumValues)
+                {
+                    valueList.Slice(4, _cell.NumValues * 4).CopyTo(valueList);
 
-            // TODO: Update maxbytes for value name and value content if this was the largest value for either.
-            // Windows seems to repair this info, if not accurate, though.
+                    _hive.WriteRawCellData(_cell.ValueListIndex, valueList.Slice(0, _cell.NumValues * 4));
+                }
+
+                // TODO: Update maxbytes for value name and value content if this was the largest value for either.
+                // Windows seems to repair this info, if not accurate, though.
+
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(valueListMem);
+            }
         }
 
         if (throwOnMissingValue && !foundValue)
         {
-            throw new ArgumentException("No such value: " + name, nameof(name));
+            throw new ArgumentException($"No such value: {name}", nameof(name));
         }
     }
 
@@ -643,17 +657,25 @@ public sealed class RegistryKey
 
         if (_cell.NumValues != 0)
         {
-            var valueList = _hive.RawCellData(_cell.ValueListIndex, _cell.NumValues * 4);
-
-            for (var i = 0; i < _cell.NumValues; ++i)
+            var valueListMem = ArrayPool<byte>.Shared.Rent(_cell.NumValues * 4);
+            try
             {
-                var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList, i * 4);
-                var cell = _hive.GetCell<ValueCell>(valueIndex);
-                if (cell is not null &&
-                    string.Equals(cell.Name, name, StringComparison.OrdinalIgnoreCase))
+                var valueList = _hive.RawCellData(_cell.ValueListIndex, valueListMem.AsSpan(0, _cell.NumValues * 4));
+
+                for (var i = 0; i < _cell.NumValues; ++i)
                 {
-                    return new RegistryValue(_hive, cell);
+                    var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList.Slice(i * 4));
+                    var cell = _hive.GetCell<ValueCell>(valueIndex);
+                    if (cell is not null &&
+                        string.Equals(cell.Name, name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return new RegistryValue(_hive, cell);
+                    }
                 }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(valueListMem);
             }
         }
 
@@ -662,54 +684,70 @@ public sealed class RegistryKey
 
     private RegistryValue AddRegistryValue(string name)
     {
-        var valueList = _hive.RawCellData(_cell.ValueListIndex, _cell.NumValues * 4);
-        if (valueList == null)
+        var valueListMem = ArrayPool<byte>.Shared.Rent(_cell.NumValues * 4);
+        try
         {
-            valueList = Array.Empty<byte>();
-        }
-
-        var insertIdx = 0;
-        while (insertIdx < _cell.NumValues)
-        {
-            var valueCellIndex = EndianUtilities.ToInt32LittleEndian(valueList, insertIdx * 4);
-            var cell = _hive.GetCell<ValueCell>(valueCellIndex);
-            if (string.Compare(name, cell.Name, StringComparison.OrdinalIgnoreCase) < 0)
+            var valueList = _hive.RawCellData(_cell.ValueListIndex, valueListMem.AsSpan(0, _cell.NumValues * 4));
+            if (valueList == null)
             {
-                break;
+                valueList = Array.Empty<byte>();
             }
 
-            ++insertIdx;
-        }
-
-        // Allocate a new value cell (note _hive.UpdateCell does actual allocation).
-        var valueCell = new ValueCell(name);
-        _hive.UpdateCell(valueCell, true);
-
-        // Update the value list, re-allocating if necessary
-        var newValueList = new byte[_cell.NumValues * 4 + 4];
-        System.Buffer.BlockCopy(valueList, 0, newValueList, 0, insertIdx * 4);
-        EndianUtilities.WriteBytesLittleEndian(valueCell.Index, newValueList, insertIdx * 4);
-        System.Buffer.BlockCopy(valueList, insertIdx * 4, newValueList, insertIdx * 4 + 4, (_cell.NumValues - insertIdx) * 4);
-        if (_cell.ValueListIndex == -1 ||
-            !_hive.WriteRawCellData(_cell.ValueListIndex, newValueList, 0, newValueList.Length))
-        {
-            var newListCellIndex = _hive.AllocateRawCell(MathUtilities.RoundUp(newValueList.Length, 8));
-            _hive.WriteRawCellData(newListCellIndex, newValueList, 0, newValueList.Length);
-
-            if (_cell.ValueListIndex != -1)
+            var insertIdx = 0;
+            while (insertIdx < _cell.NumValues)
             {
-                _hive.FreeCell(_cell.ValueListIndex);
+                var valueCellIndex = EndianUtilities.ToInt32LittleEndian(valueList.Slice(insertIdx * 4));
+                var cell = _hive.GetCell<ValueCell>(valueCellIndex);
+                if (string.Compare(name, cell.Name, StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    break;
+                }
+
+                ++insertIdx;
             }
 
-            _cell.ValueListIndex = newListCellIndex;
+            // Allocate a new value cell (note _hive.UpdateCell does actual allocation).
+            var valueCell = new ValueCell(name);
+            _hive.UpdateCell(valueCell, true);
+
+            // Update the value list, re-allocating if necessary
+            var newValueListMem = ArrayPool<byte>.Shared.Rent(_cell.NumValues * 4 + 4);
+            var newValueList = newValueListMem.AsSpan(0, _cell.NumValues * 4 + 4);
+            try
+            {
+                valueList.Slice(0, insertIdx * 4).CopyTo(newValueList);
+                EndianUtilities.WriteBytesLittleEndian(valueCell.Index, newValueList.Slice(insertIdx * 4));
+                valueList.Slice(insertIdx * 4, (_cell.NumValues - insertIdx) * 4).CopyTo(newValueList.Slice(insertIdx * 4 + 4));
+                if (_cell.ValueListIndex == -1 ||
+                    !_hive.WriteRawCellData(_cell.ValueListIndex, newValueList))
+                {
+                    var newListCellIndex = _hive.AllocateRawCell(MathUtilities.RoundUp(newValueList.Length, 8));
+                    _hive.WriteRawCellData(newListCellIndex, newValueList);
+
+                    if (_cell.ValueListIndex != -1)
+                    {
+                        _hive.FreeCell(_cell.ValueListIndex);
+                    }
+
+                    _cell.ValueListIndex = newListCellIndex;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(newValueListMem);
+            }
+
+            // Record the new value and save this cell
+            _cell.NumValues++;
+            _hive.UpdateCell(_cell, false);
+
+            // Finally, set the data in the value cell
+            return new RegistryValue(_hive, valueCell);
         }
-
-        // Record the new value and save this cell
-        _cell.NumValues++;
-        _hive.UpdateCell(_cell, false);
-
-        // Finally, set the data in the value cell
-        return new RegistryValue(_hive, valueCell);
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(valueListMem);
+        }
     }
 
     private int FindSubKeyCell(string name)
@@ -792,12 +830,20 @@ public sealed class RegistryKey
     {
         if (cell.NumValues != 0 && cell.ValueListIndex != -1)
         {
-            var valueList = _hive.RawCellData(cell.ValueListIndex, cell.NumValues * 4);
-
-            for (var i = 0; i < cell.NumValues; ++i)
+            var valueListMem = ArrayPool<byte>.Shared.Rent(cell.NumValues * 4);
+            try
             {
-                var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList, i * 4);
-                _hive.FreeCell(valueIndex);
+                var valueList = _hive.RawCellData(cell.ValueListIndex, valueListMem.AsSpan(0, cell.NumValues * 4));
+
+                for (var i = 0; i < cell.NumValues; ++i)
+                {
+                    var valueIndex = EndianUtilities.ToInt32LittleEndian(valueList.Slice(i * 4));
+                    _hive.FreeCell(valueIndex);
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(valueListMem);
             }
 
             _hive.FreeCell(cell.ValueListIndex);

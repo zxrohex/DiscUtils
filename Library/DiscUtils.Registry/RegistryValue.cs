@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Text;
 using DiscUtils.Streams;
 
@@ -97,14 +98,25 @@ internal sealed class RegistryValue
     /// </remarks>
     public object Value
     {
-        get { return ConvertToObject(GetData(), DataType); }
+        get
+        {
+            var buffer = ArrayPool<byte>.Shared.Rent(_cell.DataLength & int.MaxValue);
+            try
+            {
+                return ConvertToObject(GetData(buffer), DataType);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
     }
 
     /// <summary>
     /// The raw value data as a byte array.
     /// </summary>
     /// <returns>The value as a raw byte array.</returns>
-    public byte[] GetData()
+    public Span<byte> GetData(Span<byte> maxBytes)
     {
         if (_cell.DataLength < 0)
         {
@@ -115,51 +127,49 @@ internal sealed class RegistryValue
             Span<byte> buffer = stackalloc byte[4];
             EndianUtilities.WriteBytesLittleEndian(_cell.DataIndex, buffer);
 
-            var result = new byte[len];
+            var result = maxBytes.Slice(0, len);
             buffer.Slice(0, Math.Min(len, buffer.Length)).CopyTo(result);
             return result;
         }
 
-        return _hive.RawCellData(_cell.DataIndex, _cell.DataLength);
+        return _hive.RawCellData(_cell.DataIndex, maxBytes.Slice(0, _cell.DataLength));
     }
 
     /// <summary>
     /// Sets the value as raw bytes, with no validation that enough data is specified for the given value type.
     /// </summary>
     /// <param name="data">The data to store.</param>
-    /// <param name="offset">The offset within <c>data</c> of the first byte to store.</param>
-    /// <param name="count">The number of bytes to store.</param>
     /// <param name="valueType">The type of the data.</param>
-    public void SetData(byte[] data, int offset, int count, RegistryValueType valueType)
+    public void SetData(ReadOnlySpan<byte> data, RegistryValueType valueType)
     {
         // If we can place the data in the DataIndex field, do that to save space / allocation
-        if ((valueType == RegistryValueType.Dword || valueType == RegistryValueType.DwordBigEndian) && count <= 4)
+        if ((valueType == RegistryValueType.Dword || valueType == RegistryValueType.DwordBigEndian) && data.Length <= 4)
         {
             if (_cell.DataLength >= 0)
             {
                 _hive.FreeCell(_cell.DataIndex);
             }
 
-            _cell.DataLength = (int)((uint)count | 0x80000000);
-            _cell.DataIndex = EndianUtilities.ToInt32LittleEndian(data, offset);
+            _cell.DataLength = (int)((uint)data.Length | 0x80000000);
+            _cell.DataIndex = EndianUtilities.ToInt32LittleEndian(data);
             _cell.DataType = valueType;
         }
         else
         {
             if (_cell.DataIndex == -1 || _cell.DataLength < 0)
             {
-                _cell.DataIndex = _hive.AllocateRawCell(count);
+                _cell.DataIndex = _hive.AllocateRawCell(data.Length);
             }
 
-            if (!_hive.WriteRawCellData(_cell.DataIndex, data, offset, count))
+            if (!_hive.WriteRawCellData(_cell.DataIndex, data))
             {
-                var newDataIndex = _hive.AllocateRawCell(count);
-                _hive.WriteRawCellData(newDataIndex, data, offset, count);
+                var newDataIndex = _hive.AllocateRawCell(data.Length);
+                _hive.WriteRawCellData(newDataIndex, data);
                 _hive.FreeCell(_cell.DataIndex);
                 _cell.DataIndex = newDataIndex;
             }
 
-            _cell.DataLength = count;
+            _cell.DataLength = data.Length;
             _cell.DataType = valueType;
         }
 
@@ -194,7 +204,7 @@ internal sealed class RegistryValue
         }
 
         var data = ConvertToData(value, valueType);
-        SetData(data, 0, data.Length, valueType);
+        SetData(data, valueType);
     }
 
     /// <summary>
@@ -206,30 +216,30 @@ internal sealed class RegistryValue
         return Name + ":" + DataType + ":" + DataAsString();
     }
 
-    private static object ConvertToObject(byte[] data, RegistryValueType type)
+    private static object ConvertToObject(ReadOnlySpan<byte> data, RegistryValueType type)
     {
         switch (type)
         {
             case RegistryValueType.String:
             case RegistryValueType.ExpandString:
             case RegistryValueType.Link:
-                return Encoding.Unicode.GetString(data).Trim('\0');
+                return EndianUtilities.LittleEndianUnicodeBytesToString(data).Trim('\0');
 
             case RegistryValueType.Dword:
-                return EndianUtilities.ToInt32LittleEndian(data, 0);
+                return EndianUtilities.ToInt32LittleEndian(data);
 
             case RegistryValueType.DwordBigEndian:
-                return EndianUtilities.ToInt32BigEndian(data, 0);
+                return EndianUtilities.ToInt32BigEndian(data);
 
             case RegistryValueType.MultiString:
-                var multiString = Encoding.Unicode.GetString(data).Trim('\0');
+                var multiString = EndianUtilities.LittleEndianUnicodeBytesToString(data).Trim('\0');
                 return multiString.Split('\0');
 
             case RegistryValueType.QWord:
-                return string.Empty + EndianUtilities.ToUInt64LittleEndian(data, 0);
+                return string.Empty + EndianUtilities.ToUInt64LittleEndian(data);
 
             default:
-                return data;
+                return data.ToArray();
         }
     }
 
@@ -276,28 +286,37 @@ internal sealed class RegistryValue
 
     private string DataAsString()
     {
-        switch (DataType)
+        var buffer = ArrayPool<byte>.Shared.Rent(_cell.DataLength & int.MaxValue);
+        try
         {
-            case RegistryValueType.String:
-            case RegistryValueType.ExpandString:
-            case RegistryValueType.Link:
-            case RegistryValueType.Dword:
-            case RegistryValueType.DwordBigEndian:
-            case RegistryValueType.QWord:
-                return ConvertToObject(GetData(), DataType).ToString();
+            var data = GetData(buffer);
 
-            case RegistryValueType.MultiString:
-                return string.Join(",", (string[])ConvertToObject(GetData(), DataType));
+            switch (DataType)
+            {
+                case RegistryValueType.String:
+                case RegistryValueType.ExpandString:
+                case RegistryValueType.Link:
+                case RegistryValueType.Dword:
+                case RegistryValueType.DwordBigEndian:
+                case RegistryValueType.QWord:
+                    return ConvertToObject(data, DataType).ToString();
 
-            default:
-                var data = GetData();
-                var result = string.Empty;
-                for (var i = 0; i < Math.Min(data.Length, 8); ++i)
-                {
-                    result += $"{(int)data[i]:X2} ";
-                }
+                case RegistryValueType.MultiString:
+                    return string.Join(",", (string[])ConvertToObject(data, DataType));
 
-                return result + $" ({data.Length} bytes)";
+                default:
+                    var result = string.Empty;
+                    for (var i = 0; i < Math.Min(data.Length, 8); ++i)
+                    {
+                        result += $"{(int)data[i]:X2} ";
+                    }
+
+                    return result + $" ({data.Length} bytes)";
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 }

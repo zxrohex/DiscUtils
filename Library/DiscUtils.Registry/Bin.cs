@@ -148,27 +148,27 @@ internal sealed class Bin
         return true;
     }
 
-    public byte[] ReadRawCellData(int cellIndex, int maxBytes)
+    public Span<byte> ReadRawCellData(int cellIndex, Span<byte> maxBytes)
     {
         var index = cellIndex - _header.FileOffset;
         var len = Math.Abs(EndianUtilities.ToInt32LittleEndian(_buffer, index));
-        var result = new byte[Math.Min(len - 4, maxBytes)];
-        System.Buffer.BlockCopy(_buffer, index + 4, result, 0, result.Length);
+        var result = maxBytes.Slice(0, Math.Min(len - 4, maxBytes.Length));
+        _buffer.AsSpan(index + 4, result.Length).CopyTo(result);
         return result;
     }
 
-    internal bool WriteRawCellData(int cellIndex, byte[] data, int offset, int count)
+    internal bool WriteRawCellData(int cellIndex, ReadOnlySpan<byte> data)
     {
         var index = cellIndex - _header.FileOffset;
         var allocSize = Math.Abs(EndianUtilities.ToInt32LittleEndian(_buffer, index));
 
-        var newSize = count + 4;
+        var newSize = data.Length + 4;
         if (newSize > allocSize)
         {
             return false;
         }
 
-        System.Buffer.BlockCopy(data, offset, _buffer, index + 4, count);
+        data.CopyTo(_buffer.AsSpan(index + 4));
 
         _fileStream.Position = _streamPos + index;
         _fileStream.Write(_buffer, index, newSize);

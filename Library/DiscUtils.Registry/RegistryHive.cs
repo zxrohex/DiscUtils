@@ -338,18 +338,18 @@ public class RegistryHive : IDisposable
 
         stream.Position = 0;
 
-        var buffer = new byte[hiveHeader.Size];
-        hiveHeader.WriteTo(buffer);
-        stream.Write(buffer, 0, buffer.Length);
+        Span<byte> hiveHeaderBuffer = stackalloc byte[hiveHeader.Size];
+        hiveHeader.WriteTo(hiveHeaderBuffer);
+        stream.Write(hiveHeaderBuffer);
 
-        buffer = new byte[binHeader.Size];
-        binHeader.WriteTo(buffer);
+        Span<byte> binHeaderBuffer = stackalloc byte[binHeader.Size];
+        binHeader.WriteTo(binHeaderBuffer);
         stream.Position = BinStart;
-        stream.Write(buffer, 0, buffer.Length);
+        stream.Write(binHeaderBuffer);
 
-        buffer = new byte[4];
-        EndianUtilities.WriteBytesLittleEndian(binHeader.BinSize - binHeader.Size, buffer, 0);
-        stream.Write(buffer, 0, buffer.Length);
+        Span<byte> sizeBuffer = stackalloc byte[4];
+        EndianUtilities.WriteBytesLittleEndian(binHeader.BinSize - binHeader.Size, sizeBuffer);
+        stream.Write(sizeBuffer);
 
         // Make sure the file is initialized out to the end of the firs bin
         stream.Position = BinStart + binHeader.BinSize - 1;
@@ -375,10 +375,9 @@ public class RegistryHive : IDisposable
 
         // Ref the root cell from the hive header
         hiveHeader.RootCell = rootCell.Index;
-        buffer = new byte[hiveHeader.Size];
-        hiveHeader.WriteTo(buffer);
+        hiveHeader.WriteTo(hiveHeaderBuffer);
         stream.Position = 0;
-        stream.Write(buffer, 0, buffer.Length);
+        stream.Write(hiveHeaderBuffer);
 
         // Finally, return the new hive
         return new RegistryHive(stream, ownership);
@@ -452,7 +451,7 @@ public class RegistryHive : IDisposable
         throw new RegistryCorruptException("No bin found containing index: " + cell.Index);
     }
 
-    internal byte[] RawCellData(int index, int maxBytes)
+    internal Span<byte> RawCellData(int index, Span<byte> maxBytes)
     {
         var bin = GetBin(index);
 
@@ -460,16 +459,16 @@ public class RegistryHive : IDisposable
         {
             return bin.ReadRawCellData(index, maxBytes);
         }
-        return null;
+        return default;
     }
 
-    internal bool WriteRawCellData(int index, byte[] data, int offset, int count)
+    internal bool WriteRawCellData(int index, ReadOnlySpan<byte> data)
     {
         var bin = GetBin(index);
 
         if (bin is not null)
         {
-            return bin.WriteRawCellData(index, data, offset, count);
+            return bin.WriteRawCellData(index, data);
         }
         throw new RegistryCorruptException("No bin found containing index: " + index);
     }
