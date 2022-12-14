@@ -55,7 +55,7 @@ internal sealed class ParentLocator : IByteArraySerializable
         LocatorType = EndianUtilities.ToGuidLittleEndian(buffer);
         if (LocatorType != LocatorTypeGuid)
         {
-            throw new IOException("Unrecognized Parent Locator type: " + LocatorType);
+            throw new IOException($"Unrecognized Parent Locator type: {LocatorType}");
         }
 
         Entries = new Dictionary<string, string>();

@@ -250,10 +250,10 @@ namespace LibraryTests
 
             if (failed)
             {
-                var str = "Expected " + eList.Count + "(<";
+                var str = $"Expected {eList.Count}(<";
                 for (var i = 0; i < Math.Min(4, eList.Count); ++i)
                 {
-                    str += eList[i].ToString() + ",";
+                    str += $"{eList[i]},";
                 }
                 if (eList.Count > 4)
                 {
@@ -261,10 +261,10 @@ namespace LibraryTests
                 }
                 str += ">)";
 
-                str += ", actual " + aList.Count + "(<";
+                str += $", actual {aList.Count}(<";
                 for (var i = 0; i < Math.Min(4, aList.Count); ++i)
                 {
-                    str += aList[i].ToString() + ",";
+                    str += $"{aList[i]},";
                 }
                 if (aList.Count > 4)
                 {
@@ -274,7 +274,7 @@ namespace LibraryTests
 
                 if (failedIndex != -1)
                 {
-                    str += " - different at index " + failedIndex;
+                    str += $" - different at index {failedIndex}";
                 }
 
                 Assert.True(false, str);

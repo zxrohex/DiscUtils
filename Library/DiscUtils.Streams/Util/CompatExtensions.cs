@@ -162,6 +162,40 @@ public static class CompatExtensions
 
 #endif
 
+    public static IEnumerable<ReadOnlyMemory<char>> Split(this ReadOnlyMemory<char> chars, char delimiter, StringSplitOptions options = StringSplitOptions.None)
+    {
+        while (!chars.IsEmpty)
+        {
+            var i = chars.Span.IndexOf(delimiter);
+            if (i < 0)
+            {
+                i = chars.Length;
+            }
+
+            var value = chars.Slice(0, i);
+
+#if NET5_0_OR_GREATER
+            if (options.HasFlag(StringSplitOptions.TrimEntries))
+            {
+                value = value.Trim();
+            }
+#endif
+
+            if (!value.IsEmpty ||
+                !options.HasFlag(StringSplitOptions.RemoveEmptyEntries))
+            {
+                yield return value;
+            }
+
+            if (i >= chars.Length)
+            {
+                break;
+            }
+
+            chars = chars.Slice(i + 1);
+        }
+    }
+
     public static IEnumerable<ReadOnlyMemory<char>> Split(this ReadOnlyMemory<char> chars, char delimiter1, char delimiter2, StringSplitOptions options = StringSplitOptions.None)
     {
         while (!chars.IsEmpty)
@@ -175,10 +209,10 @@ public static class CompatExtensions
             var value = chars.Slice(0, i);
 
 #if NET5_0_OR_GREATER
-        if (options.HasFlag(StringSplitOptions.TrimEntries))
-        {
-            value = value.Trim();
-        }
+            if (options.HasFlag(StringSplitOptions.TrimEntries))
+            {
+                value = value.Trim();
+            }
 #endif
 
             if (!value.IsEmpty ||

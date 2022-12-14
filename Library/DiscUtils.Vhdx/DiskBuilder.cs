@@ -78,7 +78,7 @@ public sealed class DiskBuilder : DiskImageBuilder
             throw new InvalidOperationException("No content stream specified");
         }
 
-        var fileSpec = new DiskImageFileSpecification(baseName + ".vhdx",
+        var fileSpec = new DiskImageFileSpecification($"{baseName}.vhdx",
             new DiskStreamBuilder(Content, DiskType, BlockSize));
 
         return SingleValueEnumerable.Get(fileSpec);

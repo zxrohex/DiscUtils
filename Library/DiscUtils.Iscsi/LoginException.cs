@@ -58,7 +58,7 @@ public class LoginException : IscsiException
     /// <param name="message">The reason for the exception.</param>
     /// <param name="code">The target-indicated reason for the exception.</param>
     public LoginException(string message, LoginStatusCode code)
-        : base("iSCSI login failure (" + code + "):" + message) {}
+        : base($"iSCSI login failure ({code}):{message}") {}
 
     /// <summary>
     /// Initializes a new instance of the LoginException class.

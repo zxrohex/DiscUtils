@@ -104,7 +104,7 @@ internal class UdifBuffer : Buffer
                     break;
 
                 default:
-                    throw new NotImplementedException("Reading from run of type " + _activeRun.Type);
+                    throw new NotImplementedException($"Reading from run of type {_activeRun.Type}");
             }
 
             currentPos += toCopy;
@@ -187,7 +187,7 @@ internal class UdifBuffer : Buffer
                     break;
 
                 default:
-                    throw new NotImplementedException("Reading from run of type " + _activeRun.Type);
+                    throw new NotImplementedException($"Reading from run of type {_activeRun.Type}");
             }
 
             currentPos += toCopy;
@@ -350,12 +350,11 @@ internal class UdifBuffer : Buffer
                     }
                 }
 
-                throw new IOException("No run for sector " + findSector + " in block starting at " +
-                                      block.FirstSector);
+                throw new IOException($"No run for sector {findSector} in block starting at {block.FirstSector}");
             }
         }
 
-        throw new IOException("No block for sector " + findSector);
+        throw new IOException($"No block for sector {findSector}");
     }
 
     private async ValueTask LoadRunAsync(long pos, CancellationToken cancellationToken)
@@ -389,12 +388,11 @@ internal class UdifBuffer : Buffer
                     }
                 }
 
-                throw new IOException("No run for sector " + findSector + " in block starting at " +
-                                      block.FirstSector);
+                throw new IOException($"No run for sector {findSector} in block starting at {block.FirstSector}");
             }
         }
 
-        throw new IOException("No block for sector " + findSector);
+        throw new IOException($"No block for sector {findSector}");
     }
 
     private void LoadRun(CompressedRun run)

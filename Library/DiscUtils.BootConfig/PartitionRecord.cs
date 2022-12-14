@@ -123,12 +123,12 @@ internal class PartitionRecord : DeviceRecord
             }
             else
             {
-                throw new NotImplementedException("Unknown partition type: " + PartitionType);
+                throw new NotImplementedException($"Unknown partition type: {PartitionType}");
             }
         }
         else
         {
-            throw new NotImplementedException("Unknown device type: " + Type);
+            throw new NotImplementedException($"Unknown device type: {Type}");
         }
     }
 }

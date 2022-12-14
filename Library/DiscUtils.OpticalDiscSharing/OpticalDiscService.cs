@@ -132,7 +132,7 @@ public sealed class OpticalDiscService
             Scheme = "http",
             Host = ipAddrs[0].Address.ToString(),
             Port = ipAddrs[0].Port,
-            Path = "/" + name + ".dmg"
+            Path = $"/{name}.dmg"
         };
 
         return new Disc(builder.Uri, _userName, _askToken);
@@ -141,7 +141,7 @@ public sealed class OpticalDiscService
     private static string GetAskToken(string askId, UriBuilder uriBuilder, int maxWaitSecs)
     {
         uriBuilder.Path = "/ods-ask-status";
-        uriBuilder.Query = "askID=" + askId;
+        uriBuilder.Query = $"askID={askId}";
         var askStatus = "unknown";
         string askToken = null;
 

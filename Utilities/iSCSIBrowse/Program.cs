@@ -61,14 +61,14 @@ class Program : ProgramBase
             foreach (var target in initiator.GetTargets(_portalAddress.Value))
             {
                 foundTargets = true;
-                Console.WriteLine("Target: " + target);
+                Console.WriteLine($"Target: {target}");
 
                 if (Verbose)
                 {
-                    Console.WriteLine("  Name: " + target.Name);
+                    Console.WriteLine($"  Name: {target.Name}");
                     foreach (var addr in target.Addresses)
                     {
-                        Console.WriteLine("  Address: " + addr + "  <" + addr.ToUri() + ">");
+                        Console.WriteLine($"  Address: {addr}  <{addr.ToUri()}>");
                     }
                     Console.WriteLine();
                 }
@@ -92,12 +92,12 @@ class Program : ProgramBase
 
                     if (Verbose)
                     {
-                        Console.WriteLine("  LUN: " + lun.Lun.ToString("x16", CultureInfo.InvariantCulture));
-                        Console.WriteLine("  Device Type: " + lun.DeviceType);
-                        Console.WriteLine("  Removeable: " + (lun.Removable ? "Yes" : "No"));
-                        Console.WriteLine("  Vendor: " + lun.VendorId);
-                        Console.WriteLine("  Product: " + lun.ProductId);
-                        Console.WriteLine("  Revision: " + lun.ProductRevision);
+                        Console.WriteLine($"  LUN: {lun.Lun:x16}");
+                        Console.WriteLine($"  Device Type: {lun.DeviceType}");
+                        Console.WriteLine($"  Removeable: {(lun.Removable ? "Yes" : "No")}");
+                        Console.WriteLine($"  Vendor: {lun.VendorId}");
+                        Console.WriteLine($"  Product: {lun.ProductId}");
+                        Console.WriteLine($"  Revision: {lun.ProductRevision}");
                         Console.WriteLine();
                     }
                 }

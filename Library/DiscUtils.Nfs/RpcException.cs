@@ -83,12 +83,9 @@ public sealed class RpcException : IOException
                 case RpcAcceptStatus.ProgramVersionMismatch:
                     if (reply.AcceptReply.MismatchInfo.Low == reply.AcceptReply.MismatchInfo.High)
                     {
-                        return "RPC program version mismatch, server supports version " +
-                               reply.AcceptReply.MismatchInfo.Low;
+                        return $"RPC program version mismatch, server supports version {reply.AcceptReply.MismatchInfo.Low}";
                     }
-                    return "RPC program version mismatch, server supports versions " +
-                           reply.AcceptReply.MismatchInfo.Low + " through " +
-                           reply.AcceptReply.MismatchInfo.High;
+                    return $"RPC program version mismatch, server supports versions {reply.AcceptReply.MismatchInfo.Low} through {reply.AcceptReply.MismatchInfo.High}";
 
                 case RpcAcceptStatus.ProcedureUnavailable:
                     return "RPC procedure unavailable";

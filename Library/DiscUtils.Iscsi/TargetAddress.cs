@@ -88,12 +88,20 @@ public class TargetAddress
 
             if (portEnd == -1)
             {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+                port = int.Parse(address.AsSpan(portStart), provider: CultureInfo.InvariantCulture);
+#else
                 port = int.Parse(address.Substring(portStart), CultureInfo.InvariantCulture);
+#endif
                 focus = address.Length;
             }
             else
             {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+                port = int.Parse(address.AsSpan(portStart, portEnd - portStart), provider: CultureInfo.InvariantCulture);
+#else
                 port = int.Parse(address.Substring(portStart, portEnd - portStart), CultureInfo.InvariantCulture);
+#endif
                 focus = portEnd;
             }
         }
@@ -115,12 +123,12 @@ public class TargetAddress
         var result = NetworkAddress;
         if (NetworkPort != DefaultPort)
         {
-            result += ":" + NetworkPort;
+            result += $":{NetworkPort}";
         }
 
         if (!string.IsNullOrEmpty(TargetGroupTag))
         {
-            result += "," + TargetGroupTag;
+            result += $",{TargetGroupTag}";
         }
 
         return result;

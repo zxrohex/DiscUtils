@@ -85,7 +85,7 @@ internal sealed class ProtocolKeyAttribute : Attribute
 
             throw new NotImplementedException();
         }
-        throw new NotSupportedException("Unknown property type: " + valueType);
+        throw new NotSupportedException($"Unknown property type: {valueType}");
     }
 
     internal static object GetValueAsObject(string value, Type valueType)
@@ -119,7 +119,7 @@ internal sealed class ProtocolKeyAttribute : Attribute
 
             throw new NotImplementedException();
         }
-        throw new NotSupportedException("Unknown property type: " + valueType);
+        throw new NotSupportedException($"Unknown property type: {valueType}");
     }
 
     internal bool ShouldTransmit(object currentValue, Type valueType, KeyUsagePhase phase, bool discoverySession)

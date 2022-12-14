@@ -55,7 +55,7 @@ class Program : ProgramBase
         _showFiles = new CommandLineSwitch("sf", "showfiles", null, "Includes a list of all files found in volumes");
         _showBootCode = new CommandLineSwitch("bc", "bootcode", null, "Includes a hexdump of the MBR and OS boot code in the output");
         _hideExtents = new CommandLineSwitch("he", "hideextents", null, "Suppresses display of the stored extents, which can be slow for large disk images");
-        _diskType = new CommandLineSwitch("dt", "disktype", "type", "Force the type of disk - use a file extension (one of " + string.Join(", ", VirtualDiskManager.SupportedDiskTypes) + ")");
+        _diskType = new CommandLineSwitch("dt", "disktype", "type", $"Force the type of disk - use a file extension (one of {string.Join(", ", VirtualDiskManager.SupportedDiskTypes)})");
 
         parser.AddMultiParameter(_inFiles);
         parser.AddSwitch(_showContent);
@@ -89,15 +89,15 @@ class Program : ProgramBase
             disks.Add(disk);
 
             Console.WriteLine();
-            Console.WriteLine("DISK: " + path);
+            Console.WriteLine($"DISK: {path}");
             Console.WriteLine();
-            Console.WriteLine("       Capacity: {0:X16}", disk.Capacity);
-            Console.WriteLine("       Geometry: {0}", disk.Geometry);
-            Console.WriteLine("  BIOS Geometry: {0}", disk.BiosGeometry);
-            Console.WriteLine("      Signature: {0:X8}", disk.Signature);
+            Console.WriteLine($"       Capacity: {disk.Capacity:X16}");
+            Console.WriteLine($"       Geometry: {disk.Geometry}");
+            Console.WriteLine($"  BIOS Geometry: {disk.BiosGeometry}");
+            Console.WriteLine($"      Signature: {disk.Signature:X8}");
             if (disk.IsPartitioned)
             {
-                Console.WriteLine("           GUID: {0}", disk.Partitions.DiskGuid);
+                Console.WriteLine($"           GUID: {disk.Partitions.DiskGuid}");
             }
             Console.WriteLine();
 
@@ -108,7 +108,7 @@ class Program : ProgramBase
                 Console.WriteLine();
                 foreach (var extent in disk.Content.Extents)
                 {
-                    Console.WriteLine("    {0:X16} - {1:X16}", extent.Start, extent.Start + extent.Length);
+                    Console.WriteLine($"    {extent.Start:X16} - {extent.Start + extent.Length:X16}");
                 }
                 Console.WriteLine();
             }
@@ -176,16 +176,16 @@ class Program : ProgramBase
             Console.WriteLine();
             foreach (var vol in volMgr.GetPhysicalVolumes())
             {
-                Console.WriteLine("  " + vol.Identity);
-                Console.WriteLine("    Type: " + vol.VolumeType);
-                Console.WriteLine("    BIOS Type: " + vol.BiosType.ToString("X2") + " [" + BiosPartitionTypes.ToString(vol.BiosType) + "]");
-                Console.WriteLine("    Size: " + vol.Length);
-                Console.WriteLine("    Disk Id: " + vol.DiskIdentity);
-                Console.WriteLine("    Disk Sig: " + vol.DiskSignature.ToString("X8"));
-                Console.WriteLine("    Partition: " + vol.PartitionIdentity);
-                Console.WriteLine("    Disk Geometry: " + vol.PhysicalGeometry);
-                Console.WriteLine("    BIOS Geometry: " + vol.BiosGeometry);
-                Console.WriteLine("    First Sector: " + vol.PhysicalStartSector);
+                Console.WriteLine($"  {vol.Identity}");
+                Console.WriteLine($"    Type: {vol.VolumeType}");
+                Console.WriteLine($"    BIOS Type: {vol.BiosType:X2} [{BiosPartitionTypes.ToString(vol.BiosType)}]");
+                Console.WriteLine($"    Size: {vol.Length}");
+                Console.WriteLine($"    Disk Id: {vol.DiskIdentity}");
+                Console.WriteLine($"    Disk Sig: {vol.DiskSignature.ToString("X8")}");
+                Console.WriteLine($"    Partition: {vol.PartitionIdentity}");
+                Console.WriteLine($"    Disk Geometry: {vol.PhysicalGeometry}");
+                Console.WriteLine($"    BIOS Geometry: {vol.BiosGeometry}");
+                Console.WriteLine($"    First Sector: {vol.PhysicalStartSector}");
                 Console.WriteLine();
             }
         }
@@ -201,13 +201,13 @@ class Program : ProgramBase
             Console.WriteLine();
             foreach (var vol in volMgr.GetLogicalVolumes())
             {
-                Console.WriteLine("  " + vol.Identity);
-                Console.WriteLine("    BIOS Type: " + vol.BiosType.ToString("X2") + " [" + BiosPartitionTypes.ToString(vol.BiosType) + "]");
-                Console.WriteLine("    Status: " + vol.Status);
-                Console.WriteLine("    Size: " + vol.Length);
-                Console.WriteLine("    Disk Geometry: " + vol.PhysicalGeometry);
-                Console.WriteLine("    BIOS Geometry: " + vol.BiosGeometry);
-                Console.WriteLine("    First Sector: " + vol.PhysicalStartSector);
+                Console.WriteLine($"  {vol.Identity}");
+                Console.WriteLine($"    BIOS Type: {vol.BiosType:X2} [{BiosPartitionTypes.ToString(vol.BiosType)}]");
+                Console.WriteLine($"    Status: {vol.Status}");
+                Console.WriteLine($"    Size: {vol.Length}");
+                Console.WriteLine($"    Disk Geometry: {vol.PhysicalGeometry}");
+                Console.WriteLine($"    BIOS Geometry: {vol.BiosGeometry}");
+                Console.WriteLine($"    First Sector: {vol.PhysicalStartSector}");
 
                 if (vol.Status == LogicalVolumeStatus.Failed)
                 {
@@ -217,7 +217,7 @@ class Program : ProgramBase
                 }
 
                 var fileSystemInfos = FileSystemManager.DetectFileSystems(vol);
-                Console.WriteLine("    File Systems: " + string.Join<DiscUtils.FileSystemInfo>(", ", fileSystemInfos));
+                Console.WriteLine($"    File Systems: {string.Join(", ", fileSystemInfos)}");
 
                 Console.WriteLine();
 
@@ -256,7 +256,7 @@ class Program : ProgramBase
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine("      Unable to show boot code: " + e.Message);
+                            Console.WriteLine($"      Unable to show boot code: {e.Message}");
                         }
                         Console.WriteLine();
                     }
@@ -268,8 +268,8 @@ class Program : ProgramBase
                     {
                         using (var fs = fsi.Open(vol, FileSystemParameters))
                         {
-                            Console.WriteLine("    {0} Volume Label: {1}", fsi.Name, fs.VolumeLabel);
-                            Console.WriteLine("    Files ({0})...", fsi.Name);
+                            Console.WriteLine($"    {fsi.Name} Volume Label: {fs.VolumeLabel}");
+                            Console.WriteLine($"    Files ({fsi.Name})...");
                             ShowDir(fs.Root, 6);
                         }
                         Console.WriteLine();

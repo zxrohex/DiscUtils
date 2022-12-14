@@ -113,10 +113,10 @@ class Program : ProgramBase
                 Environment.Exit(1);
             }
 
-            var outFile = _recoverFile.Value + "__recovered.bin";
+            var outFile = $"{_recoverFile.Value}__recovered.bin";
             if (File.Exists(outFile))
             {
-                Console.WriteLine("Sorry, the file already exists: " + outFile);
+                Console.WriteLine($"Sorry, the file already exists: {outFile}");
                 Environment.Exit(1);
             }
 
@@ -125,7 +125,7 @@ class Program : ProgramBase
                 Pump(content, outFileStream);
             }
 
-            Console.WriteLine("Possible file contents saved as: " + outFile);
+            Console.WriteLine($"Possible file contents saved as: {outFile}");
             Console.WriteLine();
             Console.WriteLine("Caution! It is rare for the file contents of deleted files to be intact - most");
             Console.WriteLine("likely the contents recovered are corrupt as the space has been reused.");

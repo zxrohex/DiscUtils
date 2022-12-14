@@ -315,8 +315,7 @@ public class FileChecker
 
         if (_footer.CreatorHostOS != "Wi2k" && _footer.CreatorHostOS != "Mac ")
         {
-            ReportWarning("Footer: Creator Host OS is not a documented value ('Wi2K' or 'Mac '), is '" +
-                          _footer.CreatorHostOS + "'");
+            ReportWarning($"Footer: Creator Host OS is not a documented value ('Wi2K' or 'Mac '), is '{_footer.CreatorHostOS}'");
         }
 
         if (_footer.OriginalSize != _footer.CurrentSize)

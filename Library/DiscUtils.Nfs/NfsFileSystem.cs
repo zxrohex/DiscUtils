@@ -243,7 +243,7 @@ public class NfsFileSystem : DiscFileSystem
             var handle = GetFile(path);
             if (handle != null && _client.GetAttributes(handle).Type != Nfs3FileType.Directory)
             {
-                throw new DirectoryNotFoundException("No such directory: " + path);
+                throw new DirectoryNotFoundException($"No such directory: {path}");
             }
 
             var parent = GetParentDirectory(path);
@@ -771,7 +771,7 @@ public class NfsFileSystem : DiscFileSystem
 
     private static Exception ConvertNfsException(Nfs3Exception ne)
     {
-        throw new IOException("NFS Status: " + ne.Message, ne);
+        throw new IOException($"NFS Status: {ne.Message}", ne);
     }
 
     private IEnumerable<string> DoSearch(string path, Func<string, bool> filter, bool subFolders, bool dirs, bool files)

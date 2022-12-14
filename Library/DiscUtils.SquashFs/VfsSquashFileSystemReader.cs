@@ -71,8 +71,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
 
         if (_context.SuperBlock.MajorVersion != 4)
         {
-            throw new IOException("Unsupported file system version: " + _context.SuperBlock.MajorVersion + "." +
-                                  _context.SuperBlock.MinorVersion);
+            throw new IOException($"Unsupported file system version: {_context.SuperBlock.MajorVersion}.{_context.SuperBlock.MinorVersion}");
         }
 
         // Create block caches, used to reduce the amount of I/O and decompression activity.
@@ -172,7 +171,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
             InodeType.File or InodeType.ExtendedFile => UnixFileType.Regular,
             InodeType.Socket or InodeType.ExtendedSocket => UnixFileType.Socket,
             InodeType.Symlink or InodeType.ExtendedSymlink => UnixFileType.Link,
-            _ => throw new NotSupportedException("Unrecognized inode type: " + inodeType),
+            _ => throw new NotSupportedException($"Unrecognized inode type: {inodeType}"),
         };
     }
 

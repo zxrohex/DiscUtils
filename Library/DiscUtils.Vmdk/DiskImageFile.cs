@@ -888,7 +888,11 @@ public sealed class DiskImageFile : VirtualDiskLayer
             throw new ArgumentException("name must end in .vmdk to be adorned");
         }
 
+#if NET6_0_OR_GREATER
+        return $"{name.AsSpan(0, name.Length - 5)}-{adornment}.vmdk";
+#else
         return $"{name.Substring(0, name.Length - 5)}-{adornment}.vmdk";
+#endif
     }
 
     private static ExtentType CreateTypeToExtentType(DiskCreateType type)

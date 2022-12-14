@@ -45,7 +45,7 @@ internal class NonResidentAttributeBuffer : NonResidentDataBuffer
             AttributeFlags.Sparse => new SparseClusterStream(_attribute, _rawStream),
             AttributeFlags.Compressed => new CompressedClusterStream(_context, _attribute, _rawStream),
             AttributeFlags.None => _rawStream,
-            _ => throw new NotImplementedException("Unhandled attribute type '" + attribute.Flags + "'"),
+            _ => throw new NotImplementedException($"Unhandled attribute type '{attribute.Flags}'"),
         };
     }
 

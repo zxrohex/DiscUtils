@@ -88,7 +88,7 @@ public sealed class Provider : NavigationCmdletProvider, IDynamicPropertyCmdletP
         }
         else
         {
-            return new VirtualRegistryPSDriveInfo(drive, MakePath(Utilities.NormalizePath(filePath + "!"), Utilities.NormalizePath(relPath)), hiveStream);
+            return new VirtualRegistryPSDriveInfo(drive, MakePath(Utilities.NormalizePath($"{filePath}!"), Utilities.NormalizePath(relPath)), hiveStream);
         }
     }
 

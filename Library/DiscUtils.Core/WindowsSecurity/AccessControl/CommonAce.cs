@@ -88,12 +88,7 @@ public sealed class CommonAce : QualifiedAce
                 "Unable to convert conditional ACEs to SDDL");
         }
 
-        return string.Format(CultureInfo.InvariantCulture,
-            "({0};{1};{2};;;{3})",
-            GetSddlAceType(AceType),
-            GetSddlAceFlags(AceFlags),
-            GetSddlAccessRights(AccessMask),
-            SecurityIdentifier.GetSddlForm());
+        return $"({GetSddlAceType(AceType)};{GetSddlAceFlags(AceFlags)};{GetSddlAccessRights(AccessMask)};;;{SecurityIdentifier.GetSddlForm()})";
     }
 
     private static AceType ConvertType(AceQualifier qualifier,

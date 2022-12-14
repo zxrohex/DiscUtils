@@ -71,9 +71,9 @@ public sealed class LogicalVolumeInfo : VolumeInfo
         {
             if (_guid != Guid.Empty)
             {
-                return "VLG" + _guid.ToString("B");
+                return $"VLG{_guid:B}";
             }
-            return "VLP:" + _physicalVol.Identity;
+            return $"VLP:{_physicalVol.Identity}";
         }
     }
 

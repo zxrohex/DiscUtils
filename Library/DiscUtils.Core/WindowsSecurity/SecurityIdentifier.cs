@@ -267,7 +267,7 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         }
 
         return sid.StartsWith("S-1-5-21", StringComparison.OrdinalIgnoreCase)
-               && sid.EndsWith("-" + acct.Rid, StringComparison.OrdinalIgnoreCase);
+               && sid.EndsWith($"-{acct.Rid}", StringComparison.OrdinalIgnoreCase);
     }
 
     public override string ToString() => Value;

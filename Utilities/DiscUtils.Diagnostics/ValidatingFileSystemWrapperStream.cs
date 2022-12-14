@@ -304,7 +304,7 @@ internal sealed class ValidatingFileSystemWrapperStream<Tfs, Tc> : SparseStream
 
     private SparseStream GetNativeStream(Tfs fs, Dictionary<string, object> context, long shadowPosition)
     {
-        var streamKey = "WrapStream#" + _replayHandle + "_Stream";
+        var streamKey = $"WrapStream#{_replayHandle}_Stream";
 
         SparseStream s;
 
@@ -331,7 +331,7 @@ internal sealed class ValidatingFileSystemWrapperStream<Tfs, Tc> : SparseStream
 
     private void ForgetNativeStream(Dictionary<string, object> context)
     {
-        var streamKey = "WrapStream#" + _replayHandle + "_Stream";
+        var streamKey = $"WrapStream#{_replayHandle}_Stream";
         context.Remove(streamKey);
     }
 }

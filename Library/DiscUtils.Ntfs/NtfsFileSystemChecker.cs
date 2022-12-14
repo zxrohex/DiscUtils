@@ -80,12 +80,12 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         }
         catch (AbortException ae)
         {
-            ReportError("File system check aborted: " + ae);
+            ReportError($"File system check aborted: {ae}");
             return false;
         }
         catch (Exception e)
         {
-            ReportError("File system check aborted with exception: " + e);
+            ReportError($"File system check aborted with exception: {e}");
             return false;
         }
 
@@ -465,7 +465,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
                 var f = new File(_context, fr);
                 foreach (var attr in f.AllAttributes)
                 {
-                    var attrKey = fr.MasterFileTableIndex + ":" + attr.Id;
+                    var attrKey = $"{fr.MasterFileTableIndex}:{attr.Id}";
 
                     foreach (var range in attr.GetClusters())
                     {
@@ -619,7 +619,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         _levelsDetected |= ReportLevels.Information;
         if ((_reportLevels & ReportLevels.Information) != 0)
         {
-            _report.WriteLine("INFO: " + str, args);
+            _report.WriteLine($"INFO: {str}", args);
         }
     }
 
@@ -628,7 +628,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         _levelsDetected |= ReportLevels.Errors;
         if ((_reportLevels & ReportLevels.Errors) != 0)
         {
-            _report.WriteLine("ERROR: " + str, args);
+            _report.WriteLine($"ERROR: {str}", args);
         }
     }
 

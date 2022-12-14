@@ -211,10 +211,7 @@ internal sealed class RegistryValue
     /// Gets a string representation of the registry value.
     /// </summary>
     /// <returns>The registry value as a string.</returns>
-    public override string ToString()
-    {
-        return Name + ":" + DataType + ":" + DataAsString();
-    }
+    public override string ToString() => $"{Name}:{DataType}:{DataAsString()}";
 
     private static object ConvertToObject(ReadOnlySpan<byte> data, RegistryValueType type)
     {
@@ -271,7 +268,7 @@ internal sealed class RegistryValue
                 break;
 
             case RegistryValueType.MultiString:
-                var multiStrValue = string.Join("\0", (string[])value) + "\0";
+                var multiStrValue = $"{string.Join("\0", (string[])value)}\0";
                 data = new byte[multiStrValue.Length * 2 + 2];
                 Encoding.Unicode.GetBytes(multiStrValue, 0, multiStrValue.Length, data, 0);
                 break;

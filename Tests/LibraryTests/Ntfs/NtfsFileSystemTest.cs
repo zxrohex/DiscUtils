@@ -189,7 +189,7 @@ namespace LibraryTests.Ntfs
 
             for (var i = 0; i < 50; ++i)
             {
-                ntfs.CreateHardLink("file", "hl" + i);
+                ntfs.CreateHardLink("file", $"hl{i}");
             }
 
             using (Stream s = ntfs.OpenFile("hl35", FileMode.Open, FileAccess.ReadWrite))
@@ -206,7 +206,7 @@ namespace LibraryTests.Ntfs
 
             for (var i = 0; i < 50; ++i)
             {
-                ntfs.DeleteFile("hl" + i);
+                ntfs.DeleteFile($"hl{i}");
             }
 
             Assert.Single(ntfs.GetFiles(@"\"));
@@ -407,12 +407,12 @@ namespace LibraryTests.Ntfs
 
             for(var i = 0; i < 2500; ++i)
             {
-                using(var stream = ntfs.OpenFile(@"DIR\file" + i + ".bin", FileMode.Create, FileAccess.ReadWrite))
+                using(var stream = ntfs.OpenFile(@$"DIR\file{i}.bin", FileMode.Create, FileAccess.ReadWrite))
                 {
                     stream.Write(buffer, 0,buffer.Length);
                 }
 
-                using(var stream = ntfs.OpenFile(@"DIR\" + i + ".bin", FileMode.Create, FileAccess.ReadWrite))
+                using(var stream = ntfs.OpenFile(@$"DIR\{i}.bin", FileMode.Create, FileAccess.ReadWrite))
                 {
                     stream.Write(buffer, 0,buffer.Length);
                 }
@@ -420,7 +420,7 @@ namespace LibraryTests.Ntfs
 
             for (var i = 0; i < 2500; ++i)
             {
-                ntfs.DeleteFile(@"DIR\file" + i + ".bin");
+                ntfs.DeleteFile($@"DIR\file{i}.bin");
             }
 
             // Create fragmented file (lots of small writes)

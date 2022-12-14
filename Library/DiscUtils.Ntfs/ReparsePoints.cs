@@ -66,14 +66,13 @@ internal class ReparsePoints
 
     internal void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "REPARSE POINT INDEX");
+        writer.WriteLine($"{indent}REPARSE POINT INDEX");
 
         foreach (var entry in _index.Entries)
         {
-            writer.WriteLine(indent + "  REPARSE POINT INDEX ENTRY");
-            writer.WriteLine(indent + "            Tag: " +
-                             entry.Key.Tag.ToString("x", CultureInfo.InvariantCulture));
-            writer.WriteLine(indent + "  MFT Reference: " + entry.Key.File);
+            writer.WriteLine($"{indent}  REPARSE POINT INDEX ENTRY");
+            writer.WriteLine($"{indent}            Tag: {entry.Key.Tag:x}");
+            writer.WriteLine($"{indent}  MFT Reference: {entry.Key.File}");
         }
     }
 

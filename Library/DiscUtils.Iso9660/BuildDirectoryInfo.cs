@@ -157,7 +157,7 @@ public sealed class BuildDirectoryInfo : BuildDirectoryMember
             return longName;
         }
 
-        var shortNameChars = longName.ToUpper(CultureInfo.InvariantCulture).ToCharArray();
+        var shortNameChars = longName.ToUpperInvariant().ToCharArray();
         for (var i = 0; i < shortNameChars.Length; ++i)
         {
             if (!IsoUtilities.IsValidDChar(shortNameChars[i]) && shortNameChars[i] != '.' && shortNameChars[i] != ';')

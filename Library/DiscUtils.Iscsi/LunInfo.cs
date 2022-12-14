@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -139,14 +140,14 @@ public class LunInfo
         var targetInfo = new TargetInfo(targetName,
             new[] { new TargetAddress(address, port, targetGroupTag) });
 
-        foreach (var queryElem in uri.Query.Substring(1).Split('&'))
+        foreach (var queryElem in uri.Query.AsMemory(1).Split('&'))
         {
-            if (queryElem.StartsWith("LUN=", StringComparison.OrdinalIgnoreCase))
+            if (queryElem.Span.StartsWith("LUN=".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-                lun = ulong.Parse(queryElem.AsSpan(4), NumberStyles.None, CultureInfo.InvariantCulture);
+                lun = ulong.Parse(queryElem.Span.Slice(4), NumberStyles.None, CultureInfo.InvariantCulture);
 #else
-                lun = ulong.Parse(queryElem.Substring(4), CultureInfo.InvariantCulture);
+                lun = ulong.Parse(queryElem.Span.Slice(4).ToString(), CultureInfo.InvariantCulture);
 #endif
                 if (lun < 256)
                 {

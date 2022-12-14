@@ -122,7 +122,7 @@ public sealed class ServiceDiscoveryClient : IDisposable
     /// <remarks>Excluding some fields (for example the IP address) may reduce the time taken.</remarks>
     public IEnumerable<ServiceInstance> LookupInstances(string service, string domain, ServiceInstanceFields fields)
     {
-        var records = DoLookup(service + "." + domain, RecordType.Pointer);
+        var records = DoLookup($"{service}.{domain}", RecordType.Pointer);
 
         foreach (PointerRecord record in records)
         {

@@ -339,16 +339,16 @@ public sealed class VolumeManager
             var guid = disk.Partitions.DiskGuid;
             if (guid != Guid.Empty)
             {
-                return "DG" + guid.ToString("B");
+                return $"DG{guid:B}";
             }
         }
 
         var sig = disk.Signature;
         if (sig != 0)
         {
-            return "DS" + sig.ToString("X8", CultureInfo.InvariantCulture);
+            return $"DS{sig:X8}";
         }
 
-        return "DO" + ordinal;
+        return $"DO{ordinal}";
     }
 }

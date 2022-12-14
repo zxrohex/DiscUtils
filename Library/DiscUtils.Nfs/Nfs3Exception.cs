@@ -137,7 +137,7 @@ public sealed class Nfs3Exception : IOException
             Nfs3Status.ServerFault => "Server fault",
             Nfs3Status.BadType => "Server doesn't support object type",
             Nfs3Status.SlowJukebox => "Unable to complete in timely fashion",
-            _ => "Unknown error: " + status,
+            _ => $"Unknown error: {status}",
         };
     }
 }

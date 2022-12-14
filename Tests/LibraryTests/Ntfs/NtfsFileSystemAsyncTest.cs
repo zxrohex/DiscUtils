@@ -156,12 +156,12 @@ namespace LibraryTests.Ntfs
 
             for(var i = 0; i < 2500; ++i)
             {
-                using(var stream = ntfs.OpenFile(@"DIR\file" + i + ".bin", FileMode.Create, FileAccess.ReadWrite))
+                using(var stream = ntfs.OpenFile(@$"DIR\file{i}.bin", FileMode.Create, FileAccess.ReadWrite))
                 {
                     await stream.WriteAsync(buffer);
                 }
 
-                using(var stream = ntfs.OpenFile(@"DIR\" + i + ".bin", FileMode.Create, FileAccess.ReadWrite))
+                using(var stream = ntfs.OpenFile(@$"DIR\{i}.bin", FileMode.Create, FileAccess.ReadWrite))
                 {
                     await stream.WriteAsync(buffer);
                 }
@@ -169,7 +169,7 @@ namespace LibraryTests.Ntfs
 
             for (var i = 0; i < 2500; ++i)
             {
-                ntfs.DeleteFile(@"DIR\file" + i + ".bin");
+                ntfs.DeleteFile(@$"DIR\file{i}.bin");
             }
 
             // Create fragmented file (lots of small writes)

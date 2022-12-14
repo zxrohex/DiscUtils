@@ -72,12 +72,12 @@ public sealed class DiskBuilder : DiskImageBuilder
             var footerStream = SparseStream.FromStream(new MemoryStream(footerSector, false),
                 Ownership.None);
             Stream imageStream = new ConcatStream(Ownership.None, new[] { Content, footerStream });
-            return SingleValueEnumerable.Get(new DiskImageFileSpecification(baseName + ".vhd",
+            return SingleValueEnumerable.Get(new DiskImageFileSpecification($"{baseName}.vhd",
                 new PassthroughStreamBuilder(imageStream)));
         }
         else if (DiskType == FileType.Dynamic)
         {
-            return SingleValueEnumerable.Get(new DiskImageFileSpecification(baseName + ".vhd",
+            return SingleValueEnumerable.Get(new DiskImageFileSpecification($"{baseName}.vhd",
                 new DynamicDiskBuilder(Content, footer, (uint)Sizes.OneMiB * 2)));
         }
         else

@@ -307,12 +307,7 @@ public abstract class ProgramBase
     {
         return new CommandLineParameter(
             paramName,
-            intro + "  " +
-            "This can be a file path or an iSCSI, NFS or ODS URL.  " +
-            "URLs for iSCSI LUNs are of the form: iscsi://192.168.1.2/iqn.2002-2004.example.com:port1?LUN=2.  " +
-            "Use the iSCSIBrowse utility to discover iSCSI URLs.  " +
-            "NFS URLs are of the form: nfs://host/a/path.vhd.  " +
-            "ODS URLs are of the form: ods://domain/host/volumename.",
+            $"{intro}  This can be a file path or an iSCSI, NFS or ODS URL.  URLs for iSCSI LUNs are of the form: iscsi://192.168.1.2/iqn.2002-2004.example.com:port1?LUN=2.  Use the iSCSIBrowse utility to discover iSCSI URLs.  NFS URLs are of the form: nfs://host/a/path.vhd.  ODS URLs are of the form: ods://domain/host/volumename.",
             optional);
     }
 
@@ -320,12 +315,7 @@ public abstract class ProgramBase
     {
         return new CommandLineMultiParameter(
             paramName,
-            intro + "  " +
-            "This can be a file path or an iSCSI, NFS or ODS URL.  " +
-            "URLs for iSCSI LUNs are of the form: iscsi://192.168.1.2/iqn.2002-2004.example.com:port1?LUN=2.  " +
-            "Use the iSCSIBrowse utility to discover iSCSI URLs.  " +
-            "NFS URLs are of the form: nfs://host/a/path.vhd.  " +
-            "ODS URLs are of the form: ods://domain/host/volumename.",
+            $"{intro}  This can be a file path or an iSCSI, NFS or ODS URL.  URLs for iSCSI LUNs are of the form: iscsi://192.168.1.2/iqn.2002-2004.example.com:port1?LUN=2.  Use the iSCSIBrowse utility to discover iSCSI URLs.  NFS URLs are of the form: nfs://host/a/path.vhd.  ODS URLs are of the form: ods://domain/host/volumename.",
             optional);
     }
 

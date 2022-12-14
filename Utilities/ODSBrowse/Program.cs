@@ -58,7 +58,7 @@ class Program : ProgramBase
                 {
                     found = true;
 
-                    Console.WriteLine("Connecting to " + service.DisplayName + " - the owner may need to accept...");
+                    Console.WriteLine($"Connecting to {service.DisplayName} - the owner may need to accept...");
                     service.Connect(Environment.UserName, Environment.MachineName, 30);
 
                     ShowService(service);
@@ -85,18 +85,18 @@ class Program : ProgramBase
     private static void ShowService(OpticalDiscService service)
     {
         Console.WriteLine();
-        Console.WriteLine("Service: " + service.DisplayName);
-        Console.WriteLine("  Safe Name: " + Uri.EscapeDataString(service.DisplayName) + "  (for URLs, copy+paste)");
+        Console.WriteLine($"Service: {service.DisplayName}");
+        Console.WriteLine($"  Safe Name: {Uri.EscapeDataString(service.DisplayName)}  (for URLs, copy+paste)");
         Console.WriteLine();
 
         var foundDisk = false;
         foreach (var disk in service.AdvertisedDiscs)
         {
             foundDisk = true;
-            Console.WriteLine("  Disk: " + disk.VolumeLabel);
-            Console.WriteLine("    Name: " + disk.Name);
-            Console.WriteLine("    Type: " + disk.VolumeType);
-            Console.WriteLine("     Url: " + Uri.EscapeDataString("ods://local/" + service.DisplayName + "/" + disk.VolumeLabel));
+            Console.WriteLine($"  Disk: {disk.VolumeLabel}");
+            Console.WriteLine($"    Name: {disk.Name}");
+            Console.WriteLine($"    Type: {disk.VolumeType}");
+            Console.WriteLine($"     Url: {Uri.EscapeDataString($"ods://local/{service.DisplayName}/{disk.VolumeLabel}")}");
         }
 
         if (!foundDisk)

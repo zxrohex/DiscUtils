@@ -30,7 +30,7 @@ public abstract class QualifiedAce : KnownAce
         AceType.AccessDenied or AceType.AccessDeniedCallback or AceType.AccessDeniedCallbackObject or AceType.AccessDeniedObject => AceQualifier.AccessDenied,
         AceType.SystemAlarm or AceType.SystemAlarmCallback or AceType.SystemAlarmCallbackObject or AceType.SystemAlarmObject => AceQualifier.SystemAlarm,
         AceType.SystemAudit or AceType.SystemAuditCallback or AceType.SystemAuditCallbackObject or AceType.SystemAuditObject => AceQualifier.SystemAudit,
-        _ => throw new ArgumentException("Unrecognized ACE type: " + AceType),
+        _ => throw new ArgumentException($"Unrecognized ACE type: {AceType}"),
     };
 
     public bool IsCallback =>

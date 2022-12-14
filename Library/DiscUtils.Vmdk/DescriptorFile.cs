@@ -98,7 +98,6 @@ internal class DescriptorFile
 
             return default;
         }
-
         set
         {
             SetDiskDatabase(DiskDbBiosCylinders, value.Cylinders.ToString(CultureInfo.InvariantCulture));

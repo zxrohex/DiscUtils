@@ -61,14 +61,14 @@ public class RegistryHive : IDisposable
 
     private static IEnumerable<Stream> OpenLogFiles(string hivePath, FileAccess access)
     {
-        var log = hivePath + ".LOG";
+        var log = $"{hivePath}.LOG";
 
-        var log1 = log + "1";
+        var log1 = $"{log}1";
         if (File.Exists(log1))
         {
             yield return File.Open(log1, FileMode.Open, access);
 
-            var log2 = log + "2";
+            var log2 = $"{log}2";
             if (File.Exists(log2))
             {
                 yield return File.Open(log2, FileMode.Open, access);
@@ -97,14 +97,14 @@ public class RegistryHive : IDisposable
 
     private static IEnumerable<Stream> OpenLogFiles(DiscFileInfo hivePath, FileAccess access)
     {
-        var log = hivePath.FileSystem.GetFileInfo(hivePath.FullName + ".LOG");
+        var log = hivePath.FileSystem.GetFileInfo($"{hivePath.FullName}.LOG");
 
-        var log1 = log.FileSystem.GetFileInfo(log.FullName + "1");
+        var log1 = log.FileSystem.GetFileInfo($"{log.FullName}1");
         if (log1.Exists)
         {
             yield return log1.Open(FileMode.Open, access);
 
-            var log2 = log.FileSystem.GetFileInfo(log.FullName + "2");
+            var log2 = log.FileSystem.GetFileInfo($"{log.FullName}2");
             if (log2.Exists)
             {
                 yield return log2.Open(FileMode.Open, access);
@@ -351,7 +351,7 @@ public class RegistryHive : IDisposable
         EndianUtilities.WriteBytesLittleEndian(binHeader.BinSize - binHeader.Size, sizeBuffer);
         stream.Write(sizeBuffer);
 
-        // Make sure the file is initialized out to the end of the firs bin
+        // Make sure the file is initialized out to the end of the first bin
         stream.Position = BinStart + binHeader.BinSize - 1;
         stream.WriteByte(0);
 
@@ -448,7 +448,7 @@ public class RegistryHive : IDisposable
             throw new ArgumentException("Can't update cell, needs relocation but relocation disabled",
                 nameof(canRelocate));
         }
-        throw new RegistryCorruptException("No bin found containing index: " + cell.Index);
+        throw new RegistryCorruptException($"No bin found containing index: {cell.Index}");
     }
 
     internal Span<byte> RawCellData(int index, Span<byte> maxBytes)
@@ -459,6 +459,7 @@ public class RegistryHive : IDisposable
         {
             return bin.ReadRawCellData(index, maxBytes);
         }
+
         return default;
     }
 
@@ -470,7 +471,8 @@ public class RegistryHive : IDisposable
         {
             return bin.WriteRawCellData(index, data);
         }
-        throw new RegistryCorruptException("No bin found containing index: " + index);
+
+        throw new RegistryCorruptException($"No bin found containing index: {index}");
     }
 
     internal int AllocateRawCell(int capacity)

@@ -64,6 +64,6 @@ public class TargetInfo
     /// <returns>String of the form host[:port][,group]/name.</returns>
     public override string ToString()
     {
-        return _addresses[0] + "/" + Name;
+        return $"{_addresses[0]}/{Name}";
     }
 }

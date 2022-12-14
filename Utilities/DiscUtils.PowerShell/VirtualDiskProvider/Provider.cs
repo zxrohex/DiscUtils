@@ -96,7 +96,7 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
 
             var access = dynParams.ReadWrite.IsPresent ? FileAccess.ReadWrite : FileAccess.Read;
             var disk = VirtualDisk.OpenDisk(fullPath, dynParams.DiskType, access, user, password);
-            return new VirtualDiskPSDriveInfo(drive, MakePath(Utilities.NormalizePath(fullPath) + "!", relPath), disk);
+            return new VirtualDiskPSDriveInfo(drive, MakePath($"{Utilities.NormalizePath(fullPath)}!", relPath), disk);
         }
         catch (IOException ioe)
         {
@@ -222,7 +222,7 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
         else
         {
             WriteError(new ErrorRecord(
-                new InvalidOperationException("Cannot delete items of this type: " + (obj != null ? obj.GetType() : null)),
+                new InvalidOperationException($"Cannot delete items of this type: {obj?.GetType()}"),
                 "UnknownObjectTypeToRemove",
                 ErrorCategory.InvalidOperation,
                 obj));
@@ -293,7 +293,7 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
         else
         {
             WriteError(new ErrorRecord(
-                new InvalidOperationException("Cannot create items in an object of this type: " + (obj != null ? obj.GetType() : null)),
+                new InvalidOperationException($"Cannot create items in an object of this type: {obj?.GetType()}"),
                 "UnknownObjectTypeForNewItemParent",
                 ErrorCategory.InvalidOperation,
                 obj));

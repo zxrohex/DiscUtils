@@ -210,7 +210,7 @@ internal sealed class SubKeyHashedListCell : ListCell
         }
         else
         {
-            var hashStr = name + "\0\0\0\0";
+            var hashStr = $"{name}\0\0\0\0";
             for (var i = 0; i < 4; ++i)
             {
                 hash |= (uint)((hashStr[i] & 0xFF) << (i * 8));
@@ -263,7 +263,7 @@ internal sealed class SubKeyHashedListCell : ListCell
     private IEnumerable<int> FindByPrefix(string name, int start)
     {
         var compChars = Math.Min(name.Length, 4);
-        var compStr = name.Substring(0, compChars).ToUpperInvariant() + "\0\0\0\0";
+        var compStr = $"{name.Substring(0, compChars).ToUpperInvariant()}\0\0\0\0";
 
         for (var i = start; i < _nameHashes.Count; ++i)
         {

@@ -91,16 +91,16 @@ internal sealed class ObjectIds
 
     internal void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "OBJECT ID INDEX");
+        writer.WriteLine($"{indent}OBJECT ID INDEX");
 
         foreach (var entry in _index.Entries)
         {
-            writer.WriteLine(indent + "  OBJECT ID INDEX ENTRY");
-            writer.WriteLine(indent + "             Id: " + entry.Key.Id);
-            writer.WriteLine(indent + "  MFT Reference: " + entry.Value.MftReference);
-            writer.WriteLine(indent + "   Birth Volume: " + entry.Value.BirthVolumeId);
-            writer.WriteLine(indent + "       Birth Id: " + entry.Value.BirthObjectId);
-            writer.WriteLine(indent + "   Birth Domain: " + entry.Value.BirthDomainId);
+            writer.WriteLine($"{indent}  OBJECT ID INDEX ENTRY");
+            writer.WriteLine($"{indent}             Id: {entry.Key.Id}");
+            writer.WriteLine($"{indent}  MFT Reference: {entry.Value.MftReference}");
+            writer.WriteLine($"{indent}   Birth Volume: {entry.Value.BirthVolumeId}");
+            writer.WriteLine($"{indent}       Birth Id: {entry.Value.BirthObjectId}");
+            writer.WriteLine($"{indent}   Birth Domain: {entry.Value.BirthDomainId}");
         }
     }
 

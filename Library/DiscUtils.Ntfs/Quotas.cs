@@ -59,29 +59,29 @@ internal sealed class Quotas
 
     public void Dump(TextWriter writer, string indent)
     {
-        writer.WriteLine(indent + "QUOTAS");
+        writer.WriteLine($"{indent}QUOTAS");
 
-        writer.WriteLine(indent + "  OWNER INDEX");
+        writer.WriteLine($"{indent}  OWNER INDEX");
         foreach (var entry in _ownerIndex.Entries)
         {
-            writer.WriteLine(indent + "    OWNER INDEX ENTRY");
-            writer.WriteLine(indent + "            SID: " + entry.Key.Sid);
-            writer.WriteLine(indent + "       Owner Id: " + entry.Value.OwnerId);
+            writer.WriteLine($"{indent}    OWNER INDEX ENTRY");
+            writer.WriteLine($"{indent}            SID: {entry.Key.Sid}");
+            writer.WriteLine($"{indent}       Owner Id: {entry.Value.OwnerId}");
         }
 
-        writer.WriteLine(indent + "  QUOTA INDEX");
+        writer.WriteLine($"{indent}  QUOTA INDEX");
         foreach (var entry in _quotaIndex.Entries)
         {
-            writer.WriteLine(indent + "    QUOTA INDEX ENTRY");
-            writer.WriteLine(indent + "           Owner Id: " + entry.Key.OwnerId);
-            writer.WriteLine(indent + "           User SID: " + entry.Value.Sid);
-            writer.WriteLine(indent + "            Changed: " + entry.Value.ChangeTime);
-            writer.WriteLine(indent + "           Exceeded: " + entry.Value.ExceededTime);
-            writer.WriteLine(indent + "         Bytes Used: " + entry.Value.BytesUsed);
-            writer.WriteLine(indent + "              Flags: " + entry.Value.Flags);
-            writer.WriteLine(indent + "         Hard Limit: " + entry.Value.HardLimit);
-            writer.WriteLine(indent + "      Warning Limit: " + entry.Value.WarningLimit);
-            writer.WriteLine(indent + "            Version: " + entry.Value.Version);
+            writer.WriteLine($"{indent}    QUOTA INDEX ENTRY");
+            writer.WriteLine($"{indent}           Owner Id: {entry.Key.OwnerId}");
+            writer.WriteLine($"{indent}           User SID: {entry.Value.Sid}");
+            writer.WriteLine($"{indent}            Changed: {entry.Value.ChangeTime}");
+            writer.WriteLine($"{indent}           Exceeded: {entry.Value.ExceededTime}");
+            writer.WriteLine($"{indent}         Bytes Used: {entry.Value.BytesUsed}");
+            writer.WriteLine($"{indent}              Flags: {entry.Value.Flags}");
+            writer.WriteLine($"{indent}         Hard Limit: {entry.Value.HardLimit}");
+            writer.WriteLine($"{indent}      Warning Limit: {entry.Value.WarningLimit}");
+            writer.WriteLine($"{indent}            Version: {entry.Value.Version}");
         }
     }
 

@@ -249,7 +249,7 @@ public sealed class ObjectAce : QualifiedAce
                 }
 
             default:
-                throw new ArgumentException("Unrecognized ACE qualifier: " + qualifier, nameof(qualifier));
+                throw new ArgumentException($"Unrecognized ACE qualifier: {qualifier}", nameof(qualifier));
         }
     }
 

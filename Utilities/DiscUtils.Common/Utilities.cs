@@ -71,19 +71,19 @@ public static class Utilities
     {
         if (size > 10 * (1024 * 1024L * 1024))
         {
-            return (size / (1024 * 1024 * 1024)) + " GiB";
+            return $"{size / (1024 * 1024 * 1024)} GiB";
         }
         else if (size > 10 * (1024 * 1024L))
         {
-            return (size / (1024 * 1024)) + " MiB";
+            return $"{size / (1024 * 1024)} MiB";
         }
         else if (size > 10 * 1024)
         {
-            return (size / 1024) + " KiB";
+            return $"{size / 1024} KiB";
         }
         else
         {
-            return size + " B";
+            return $"{size} B";
         }
     }
 
