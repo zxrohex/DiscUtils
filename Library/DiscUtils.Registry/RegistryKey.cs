@@ -88,7 +88,7 @@ public sealed class RegistryKey
             var parent = Parent;
             if (parent != null && ((parent.Flags & RegistryKeyFlags.Root) == 0))
             {
-                return parent.Name + @"\" + _cell.Name;
+                return $@"{parent.Name}\{_cell.Name}";
             }
             return _cell.Name;
         }
@@ -432,7 +432,7 @@ public sealed class RegistryKey
                 // Move following value's to fill gap
                 if (i < _cell.NumValues)
                 {
-                    valueList.Slice(4, _cell.NumValues * 4).CopyTo(valueList);
+                    valueList.Slice((i + 1) * 4, (_cell.NumValues - i) * 4).CopyTo(valueList.Slice(i * 4));
 
                     _hive.WriteRawCellData(_cell.ValueListIndex, valueList.Slice(0, _cell.NumValues * 4));
                 }
