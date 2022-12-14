@@ -14,7 +14,7 @@
     <Authors>Kenneth Bell;LordMike;Olof Lagerkvist</Authors>
 	<PackageOutputPath>$(LocalNuGetPath)</PackageOutputPath>
 	<OutputPath>..\$(Configuration)</OutputPath>
-    <FileVersion>1.0.12</FileVersion>
+    <FileVersion>1.0.13</FileVersion>
     <PackageVersion>$(FileVersion)</PackageVersion>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
