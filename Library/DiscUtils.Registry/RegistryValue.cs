@@ -229,7 +229,7 @@ internal sealed class RegistryValue
                 return EndianUtilities.ToInt32BigEndian(data);
 
             case RegistryValueType.MultiString:
-                var multiString = EndianUtilities.LittleEndianUnicodeBytesToString(data).Trim('\0');
+                var multiString = EndianUtilities.LittleEndianUnicodeBytesToString(data).TrimEnd('\0');
                 return multiString.Split('\0');
 
             case RegistryValueType.QWord:
