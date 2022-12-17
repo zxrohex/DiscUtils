@@ -78,9 +78,9 @@ internal class FatFileStream : SparseStream
 
     protected override void Dispose(bool disposing)
     {
-        if (_dir.FileSystem.CanWrite)
+        try
         {
-            try
+            if (disposing && _dir.FileSystem.CanWrite)
             {
                 var now = _dir.FileSystem.ConvertFromUtc(DateTime.UtcNow);
 
@@ -94,10 +94,10 @@ internal class FatFileStream : SparseStream
 
                 _dir.UpdateEntry(_dirId, dirEntry);
             }
-            finally
-            {
-                base.Dispose(disposing);
-            }
+        }
+        finally
+        {
+            base.Dispose(disposing);
         }
     }
 

@@ -94,7 +94,7 @@ internal sealed class DiscTransport : VirtualDiskTransport
     {
         try
         {
-            if (_odsClient != null)
+            if (disposing && _odsClient != null)
             {
                 _odsClient.Dispose();
                 _odsClient = null;

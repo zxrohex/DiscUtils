@@ -118,14 +118,17 @@ internal sealed class NtfsFileStream : SparseStream
             return;
         }
 
-        using (NtfsTransaction.Begin())
+        if (disposing)
         {
-            base.Dispose(disposing);
-            _baseStream.Dispose();
+            using (NtfsTransaction.Begin())
+            {
+                base.Dispose(disposing);
+                _baseStream.Dispose();
 
-            UpdateMetadata();
+                UpdateMetadata();
 
-            _baseStream = null;
+                _baseStream = null;
+            }
         }
     }
 

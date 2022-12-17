@@ -588,14 +588,17 @@ public sealed class ContentStream : MappedStream
     {
         try
         {
-            if (_parentStream != null)
+            if (disposing)
             {
-                if (_ownsParent == Ownership.Dispose)
+                if (_parentStream != null)
                 {
-                    _parentStream.Dispose();
-                }
+                    if (_ownsParent == Ownership.Dispose)
+                    {
+                        _parentStream.Dispose();
+                    }
 
-                _parentStream = null;
+                    _parentStream = null;
+                }
             }
         }
         finally

@@ -671,7 +671,7 @@ internal class DiskStream : SparseStream
         _isDisposed = true;
         try
         {
-            if (_ownsStream == Ownership.Dispose && _fileStream != null)
+            if (disposing && _ownsStream == Ownership.Dispose && _fileStream != null)
             {
                 _fileStream.Dispose();
                 _fileStream = null;

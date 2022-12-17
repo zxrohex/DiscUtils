@@ -1275,7 +1275,11 @@ internal class File
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
-            _wrapped.Dispose();
+            
+            if (disposing)
+            {
+                _wrapped.Dispose();
+            }
         }
 
         public override void Flush()

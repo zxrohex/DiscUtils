@@ -29,6 +29,7 @@ using DiscUtils.Streams;
 using System.Xml.Linq;
 using System.Xml.XPath;
 using System.Linq;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Wim;
 
@@ -613,17 +614,18 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
     /// <param name="disposing"><c>true</c> if disposing, else <c>false</c>.</param>
     protected override void Dispose(bool disposing)
     {
-        try
+        if (disposing)
         {
-            _metaDataStream.Dispose();
-            _metaDataStream = null;
+            if (_metaDataStream != null)
+            {
+                _metaDataStream.Dispose();
+                _metaDataStream = null;
+            }
 
             _file = null;
         }
-        finally
-        {
-            base.Dispose(disposing);
-        }
+
+        base.Dispose(disposing);
     }
 
     private static void SplitFileName(string path, out string filePart, out string altStreamPart)
@@ -645,6 +647,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
     private List<DirectoryEntry> GetDirectory(long id)
     {
         var dir = _dirCache[id];
+
         if (dir == null)
         {
             _metaDataStream.Position = id == 0 ? _rootDirPos : id;
@@ -653,6 +656,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
             dir = new List<DirectoryEntry>();
 
             var entry = DirectoryEntry.ReadFrom(reader);
+
             while (entry != null)
             {
                 dir.Add(entry);
@@ -674,6 +678,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
         var totalLength = reader.ReadUInt32();
         var numEntries = reader.ReadUInt32();
         var sdLengths = new ulong[numEntries];
+
         for (uint i = 0; i < numEntries; ++i)
         {
             sdLengths[i] = reader.ReadUInt64();
@@ -705,10 +710,10 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
             path = Path.DirectorySeparatorChar + path;
         }
 
-        return GetEntry(GetDirectory(0), path.Split(Utilities.PathSeparators));
+        return GetEntry(GetDirectory(0), path.AsMemory().Split('/', '\\').ToArray());
     }
 
-    private DirectoryEntry GetEntry(List<DirectoryEntry> dir, string[] path)
+    private DirectoryEntry GetEntry(List<DirectoryEntry> dir, ReadOnlyMemory<char>[] path)
     {
         var currentDir = dir;
         DirectoryEntry nextEntry = null;
@@ -719,10 +724,10 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
 
             foreach (var entry in currentDir)
             {
-                if (path[i].Equals(entry.FileName, StringComparison.OrdinalIgnoreCase)
+                if (path[i].Span.Equals(entry.FileName.AsSpan(), StringComparison.OrdinalIgnoreCase)
                     ||
                     (!string.IsNullOrEmpty(entry.ShortName) &&
-                     path[i].Equals(entry.ShortName, StringComparison.OrdinalIgnoreCase)))
+                     path[i].Span.Equals(entry.ShortName.AsSpan(), StringComparison.OrdinalIgnoreCase)))
                 {
                     nextEntry = entry;
                     break;

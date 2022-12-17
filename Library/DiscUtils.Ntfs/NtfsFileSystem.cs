@@ -2178,7 +2178,6 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
         {
             yield return name;
         }
-
     }
 
     private static void SplitPath(string path, out string plainPath, out string attributeName)

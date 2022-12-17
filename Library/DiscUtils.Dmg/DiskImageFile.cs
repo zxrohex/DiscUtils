@@ -119,7 +119,7 @@ internal sealed class DiskImageFile : VirtualDiskLayer
     {
         try
         {
-            if (_stream is not null && _ownsStream == Ownership.Dispose)
+            if (disposing && _stream is not null && _ownsStream == Ownership.Dispose)
             {
                 _stream.Dispose();
             }

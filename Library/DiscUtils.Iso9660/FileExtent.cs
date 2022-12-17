@@ -44,7 +44,7 @@ internal class FileExtent : BuilderExtent
 
     protected override void Dispose(bool disposing)
     {
-        if (_readStream != null)
+        if (disposing && _readStream != null)
         {
             _fileInfo.CloseStream(_readStream);
             _readStream = null;
