@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -177,14 +178,14 @@ internal sealed class DiscContentBuffer : Buffer
     {
         var result = new Dictionary<string, string>();
 
-        var elements = header.Split(' ');
+        var elements = header.AsMemory().Split(' ').ToArray();
 
-        authMethod = elements[0];
+        authMethod = elements[0].ToString();
 
         for (var i = 1; i < elements.Length; ++i)
         {
-            var nvPair = elements[i].Split('=', 2, StringSplitOptions.None);
-            result.Add(nvPair[0], nvPair[1].Trim('\"'));
+            var nvPair = elements[i].Split('=', StringSplitOptions.None);
+            result.Add(nvPair.ElementAt(0).ToString(), nvPair.ElementAt(1).Span.Trim('\"').ToString());
         }
 
         return result;

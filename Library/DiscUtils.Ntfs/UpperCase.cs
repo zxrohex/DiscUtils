@@ -23,7 +23,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.Ntfs;
 
@@ -37,12 +39,22 @@ internal readonly struct UpperCase : IComparer<string>
 
         _table = new char[s.Length / 2];
 
-        var buffer = StreamUtilities.ReadExact(s, (int)s.Length);
+        var bytes = MemoryMarshal.AsBytes(_table.AsSpan());
 
-        for (var i = 0; i < _table.Length; ++i)
+        StreamUtilities.ReadExact(s, bytes);
+
+        if (!BitConverter.IsLittleEndian)
         {
-            _table[i] = (char)EndianUtilities.ToUInt16LittleEndian(buffer, i * 2);
+            for (var i = 0; i < _table.Length; ++i)
+            {
+                _table[i] = (char)EndianUtilities.ToUInt16LittleEndian(bytes.Slice(i * 2));
+            }
         }
+    }
+
+    public UpperCase(char[] table)
+    {
+        _table = table;
     }
 
     public int Compare(string x, string y)
@@ -84,17 +96,19 @@ internal readonly struct UpperCase : IComparer<string>
 
     internal static UpperCase Initialize(File file)
     {
-        var buffer = new byte[(char.MaxValue + 1) * 2];
+        var table = new char[char.MaxValue + 1];
+        var bytes = MemoryMarshal.AsBytes(table.AsSpan());
+
         for (int i = char.MinValue; i <= char.MaxValue; ++i)
         {
-            EndianUtilities.WriteBytesLittleEndian(char.ToUpperInvariant((char)i), buffer, i * 2);
+            EndianUtilities.WriteBytesLittleEndian(char.ToUpperInvariant((char)i), bytes.Slice(i * 2));
         }
 
         using (Stream s = file.OpenStream(AttributeType.Data, null, FileAccess.ReadWrite))
         {
-            s.Write(buffer, 0, buffer.Length);
+            s.Write(bytes);
         }
 
-        return new UpperCase(file);
+        return new UpperCase(table);
     }
 }

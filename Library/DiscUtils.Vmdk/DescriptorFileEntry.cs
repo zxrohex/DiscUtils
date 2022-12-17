@@ -22,6 +22,7 @@
 
 using DiscUtils.Streams.Compatibility;
 using System;
+using System.Linq;
 
 namespace DiscUtils.Vmdk;
 
@@ -42,7 +43,7 @@ internal class DescriptorFileEntry
 
     public static DescriptorFileEntry Parse(string value)
     {
-        var parts = value.Split('=', 2);
+        var parts = value.AsMemory().Split('=').Take(2).ToArray();
 
         for (var i = 0; i < parts.Length; ++i)
         {
@@ -51,13 +52,13 @@ internal class DescriptorFileEntry
 
         if (parts.Length > 1)
         {
-            if (parts[1].StartsWith("\"", StringComparison.Ordinal))
+            if (parts[1].Span.StartsWith("\"".AsSpan(), StringComparison.Ordinal))
             {
-                return new DescriptorFileEntry(parts[0], parts[1].Trim('\"'), DescriptorFileEntryType.Quoted);
+                return new DescriptorFileEntry(parts[0].ToString(), parts[1].Trim('\"').ToString(), DescriptorFileEntryType.Quoted);
             }
-            return new DescriptorFileEntry(parts[0], parts[1], DescriptorFileEntryType.Plain);
+            return new DescriptorFileEntry(parts[0].ToString(), parts[1].ToString(), DescriptorFileEntryType.Plain);
         }
-        return new DescriptorFileEntry(parts[0], string.Empty, DescriptorFileEntryType.NoValue);
+        return new DescriptorFileEntry(parts[0].ToString(), string.Empty, DescriptorFileEntryType.NoValue);
     }
 
     public override string ToString()

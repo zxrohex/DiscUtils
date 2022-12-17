@@ -359,27 +359,37 @@ internal class NtfsFormatter
 
     private void CreateBiosParameterBlock(Stream stream, int bootFileSize)
     {
-        var bootSectors = new byte[bootFileSize];
+        var bootSectors = ArrayPool<byte>.Shared.Rent(bootFileSize);
 
-        if (BootCode != null)
+        try
         {
-            System.Buffer.BlockCopy(BootCode, 0, bootSectors, 0, BootCode.Length);
+            Array.Clear(bootSectors, 0, bootFileSize);
+
+            if (BootCode != null)
+            {
+                System.Buffer.BlockCopy(BootCode, 0, bootSectors, 0, BootCode.Length);
+            }
+
+            var bpb = BiosParameterBlock.Initialized(DiskGeometry, _clusterSize, (uint)FirstSector,
+                SectorCount, _mftRecordSize, _indexBufferSize);
+
+            bpb.MftCluster = _mftCluster;
+            bpb.MftMirrorCluster = _mftMirrorCluster;
+            bpb.ToBytes(bootSectors);
+
+            // Primary goes at the start of the partition
+            stream.Position = 0;
+            stream.Write(bootSectors, 0, bootFileSize);
+
+            // Backup goes at the end of the data in the partition
+            stream.Position = (SectorCount - 1) * Sizes.Sector;
+            stream.Write(bootSectors, 0, Sizes.Sector);
+
+            _context.BiosParameterBlock = bpb;
         }
-
-        var bpb = BiosParameterBlock.Initialized(DiskGeometry, _clusterSize, (uint)FirstSector,
-            SectorCount, _mftRecordSize, _indexBufferSize);
-        bpb.MftCluster = _mftCluster;
-        bpb.MftMirrorCluster = _mftMirrorCluster;
-        bpb.ToBytes(bootSectors);
-
-        // Primary goes at the start of the partition
-        stream.Position = 0;
-        stream.Write(bootSectors, 0, bootSectors.Length);
-
-        // Backup goes at the end of the data in the partition
-        stream.Position = (SectorCount - 1) * Sizes.Sector;
-        stream.Write(bootSectors, 0, Sizes.Sector);
-
-        _context.BiosParameterBlock = bpb;
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(bootSectors);
+        }
     }
 }

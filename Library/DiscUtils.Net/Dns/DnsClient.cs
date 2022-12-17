@@ -46,7 +46,7 @@ public abstract class DnsClient
 
     internal static string NormalizeDomainName(string name)
     {
-        var labels = name.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        var labels = name.AsMemory().Split('.', StringSplitOptions.RemoveEmptyEntries);
 
         return $"{string.Join(".", labels)}.";
     }

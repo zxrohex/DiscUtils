@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using DiscUtils.Streams.Compatibility;
 using System.Text;
+using System.Linq;
 
 namespace DiscUtils.Iso9660;
 
@@ -104,29 +105,29 @@ public abstract class BuildDirectoryMember
     {
         public override int Compare(BuildDirectoryMember x, BuildDirectoryMember y)
         {
-            var xParts = x.Name.Split('.', ';');
-            var yParts = y.Name.Split('.', ';');
+            var xParts = x.Name.AsMemory().Split('.', ';').ToArray();
+            var yParts = y.Name.AsMemory().Split('.', ';').ToArray();
 
-            string xPart;
-            string yPart;
+            ReadOnlyMemory<char> xPart;
+            ReadOnlyMemory<char> yPart;
 
             for (var i = 0; i < 2; ++i)
             {
-                xPart = xParts.Length > i ? xParts[i] : string.Empty;
-                yPart = yParts.Length > i ? yParts[i] : string.Empty;
-                var val = ComparePart(xPart, yPart, ' ');
+                xPart = xParts.Length > i ? xParts[i] : ReadOnlyMemory<char>.Empty;
+                yPart = yParts.Length > i ? yParts[i] : ReadOnlyMemory<char>.Empty;
+                var val = ComparePart(xPart.Span, yPart.Span, ' ');
                 if (val != 0)
                 {
                     return val;
                 }
             }
 
-            xPart = xParts.Length > 2 ? xParts[2] : string.Empty;
-            yPart = yParts.Length > 2 ? yParts[2] : string.Empty;
-            return ComparePartBackwards(xPart, yPart, '0');
+            xPart = xParts.Length > 2 ? xParts[2] : ReadOnlyMemory<char>.Empty;
+            yPart = yParts.Length > 2 ? yParts[2] : ReadOnlyMemory<char>.Empty;
+            return ComparePartBackwards(xPart.Span, yPart.Span, '0');
         }
 
-        private static int ComparePart(string x, string y, char padChar)
+        private static int ComparePart(ReadOnlySpan<char> x, ReadOnlySpan<char> y, char padChar)
         {
             var max = Math.Max(x.Length, y.Length);
             for (var i = 0; i < max; ++i)
@@ -143,7 +144,7 @@ public abstract class BuildDirectoryMember
             return 0;
         }
 
-        private static int ComparePartBackwards(string x, string y, char padChar)
+        private static int ComparePartBackwards(ReadOnlySpan<char> x, ReadOnlySpan<char> y, char padChar)
         {
             var max = Math.Max(x.Length, y.Length);
 

@@ -23,6 +23,11 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         buffer = ParseSddlForm(sddlForm);
     }
 
+    public SecurityIdentifier(ReadOnlySpan<char> sddlForm)
+        : this(ParseSddlForm(sddlForm))
+    {
+    }
+
     public SecurityIdentifier(byte[] binaryForm, int offset)
         : this(binaryForm.AsSpan(offset))
     {
@@ -376,6 +381,46 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         var ret = new SecurityIdentifier(sid);
         pos += len;
         return ret;
+    }
+
+    internal static string ParseSddlForm(ReadOnlySpan<char> sddlForm)
+    {
+        if (sddlForm.Length < 2)
+        {
+            throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
+        }
+
+        string sid;
+        int len;
+
+        if (sddlForm.StartsWith("S-".AsSpan(), StringComparison.OrdinalIgnoreCase))
+        {
+            // Looks like a SID, try to parse it.
+            var endPos = 0;
+
+            var ch = char.ToUpperInvariant(sddlForm[endPos]);
+            while (ch is 'S' or '-' or 'X'
+                   or >= '0' and <= '9' or >= 'A' and <= 'F')
+            {
+                ++endPos;
+                ch = char.ToUpperInvariant(sddlForm[endPos]);
+            }
+
+            if (ch == ':' && sddlForm[endPos - 1] == 'D')
+            {
+                endPos--;
+            }
+
+            sid = sddlForm.Slice(0, endPos).ToString();
+            len = endPos;
+        }
+        else
+        {
+            sid = sddlForm.Slice(0, 2).ToString().ToUpperInvariant();
+            len = 2;
+        }
+
+        return sid;
     }
 
     private static byte[] ParseSddlForm(string sddlForm)

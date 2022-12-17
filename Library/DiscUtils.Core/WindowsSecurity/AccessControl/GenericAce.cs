@@ -1,6 +1,7 @@
 using DiscUtils.Streams.Compatibility;
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 namespace DiscUtils.Core.WindowsSecurity.AccessControl;
@@ -237,7 +238,7 @@ public abstract class GenericAce
         var count = endPos;
         var elementsStr = sddlForm.Slice(0, count).ToString();
         elementsStr = elementsStr.ToUpperInvariant();
-        var elements = elementsStr.Split(';');
+        var elements = elementsStr.AsMemory().Split(';').ToArray();
         if (elements.Length != 6)
         {
             throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
@@ -245,28 +246,36 @@ public abstract class GenericAce
 
         var objFlags = ObjectAceFlags.None;
 
-        var type = ParseSddlAceType(elements[0]);
+        var type = ParseSddlAceType(elements[0].ToString());
 
-        var flags = ParseSddlAceFlags(elements[1]);
+        var flags = ParseSddlAceFlags(elements[1].ToString());
 
-        var accessMask = ParseSddlAccessRights(elements[2]);
+        var accessMask = ParseSddlAccessRights(elements[2].Span);
 
         var objectType = Guid.Empty;
-        if (!string.IsNullOrEmpty(elements[3]))
+        if (!elements[3].IsEmpty)
         {
-            objectType = new Guid(elements[3]);
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            objectType = Guid.Parse(elements[3].Span);
+#else
+            objectType = Guid.Parse(elements[3].ToString());
+#endif
             objFlags |= ObjectAceFlags.ObjectAceTypePresent;
         }
 
         var inhObjectType = Guid.Empty;
-        if (!string.IsNullOrEmpty(elements[4]))
+        if (!elements[4].IsEmpty)
         {
-            inhObjectType = new Guid(elements[4]);
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            inhObjectType = Guid.Parse(elements[4].Span);
+#else
+            inhObjectType = Guid.Parse(elements[4].ToString());
+#endif
             objFlags |= ObjectAceFlags.InheritedObjectAceTypePresent;
         }
 
         var sid
-            = new SecurityIdentifier(elements[5]);
+            = new SecurityIdentifier(elements[5].Span);
 
         if (type is AceType.AccessAllowedCallback
             or AceType.AccessDeniedCallback)
@@ -410,25 +419,31 @@ public abstract class GenericAce
         return ret;
     }
 
-    private static int ParseSddlAccessRights(string accessMask)
+    private static int ParseSddlAccessRights(ReadOnlySpan<char> accessMask)
     {
-        if (accessMask.StartsWith("0X"))
+        if (accessMask.StartsWith("0X".AsSpan(), StringComparison.Ordinal))
         {
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-            return int.Parse(accessMask.AsSpan(2),
+            return int.Parse(accessMask.Slice(2),
                 NumberStyles.HexNumber,
                 CultureInfo.InvariantCulture);
 #else
-            return int.Parse(accessMask.Substring(2),
+            return int.Parse(accessMask.Slice(2).ToString(),
                 NumberStyles.HexNumber,
                 CultureInfo.InvariantCulture);
 #endif
         }
-        else if (char.IsDigit(accessMask, 0))
+        else if (char.IsDigit(accessMask[0]))
         {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
             return int.Parse(accessMask,
                 NumberStyles.Integer,
                 CultureInfo.InvariantCulture);
+#else
+            return int.Parse(accessMask.ToString(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture);
+#endif
         }
         else
         {
@@ -436,14 +451,14 @@ public abstract class GenericAce
         }
     }
 
-    private static int ParseSddlAliasRights(string accessMask)
+    private static int ParseSddlAliasRights(ReadOnlySpan<char> accessMask)
     {
         var ret = 0;
 
         var pos = 0;
         while (pos < accessMask.Length - 1)
         {
-            var flag = accessMask.AsSpan(pos, 2);
+            var flag = accessMask.Slice(pos, 2);
             var right = SddlAccessRight.LookupByName(flag);
             if (right == null)
             {

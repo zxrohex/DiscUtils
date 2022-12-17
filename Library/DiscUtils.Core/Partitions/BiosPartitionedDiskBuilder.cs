@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using DiscUtils.Streams;
 
@@ -104,17 +105,29 @@ public class BiosPartitionedDiskBuilder : StreamBuilder
         _bootSectors = new SparseMemoryStream();
         _bootSectors.SetLength(_capacity);
 
-        var sector = _biosGeometry.BytesPerSector <= 1024
-            ? stackalloc byte[_biosGeometry.BytesPerSector]
-            : new byte[_biosGeometry.BytesPerSector];
+        byte[] allocated = null;
 
-        foreach (var extent in new BiosPartitionTable(sourceDisk).GetMetadataDiskExtents())
+        var sector = _biosGeometry.BytesPerSector <= 512
+            ? stackalloc byte[_biosGeometry.BytesPerSector]
+            : (allocated = ArrayPool<byte>.Shared.Rent(_biosGeometry.BytesPerSector)).AsSpan(0, _biosGeometry.BytesPerSector);
+
+        try
         {
-            sourceDisk.Content.Position = extent.Start;
-            var buffer = sector.Slice(0, checked((int)extent.Length));
-            StreamUtilities.ReadExact(sourceDisk.Content, buffer);
-            _bootSectors.Position = extent.Start;
-            _bootSectors.Write(buffer);
+            foreach (var extent in new BiosPartitionTable(sourceDisk).GetMetadataDiskExtents())
+            {
+                sourceDisk.Content.Position = extent.Start;
+                var buffer = sector.Slice(0, checked((int)extent.Length));
+                StreamUtilities.ReadExact(sourceDisk.Content, buffer);
+                _bootSectors.Position = extent.Start;
+                _bootSectors.Write(buffer);
+            }
+        }
+        finally
+        {
+            if (allocated is not null)
+            {
+                ArrayPool<byte>.Shared.Return(allocated);
+            }
         }
 
         PartitionTable = new BiosPartitionTable(_bootSectors, _biosGeometry);

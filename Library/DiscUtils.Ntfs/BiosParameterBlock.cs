@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -251,19 +252,32 @@ internal class BiosParameterBlock
         return mftPos < TotalSectors64 * BytesPerSector && mftPos < volumeSize;
     }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     private static ulong GenSerialNumber()
     {
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         Span<byte> buffer = stackalloc byte[sizeof(ulong)];
         RandomNumberGenerator.Fill(buffer);
         return MemoryMarshal.Read<ulong>(buffer);
-#else
-        var buffer = new byte[sizeof(ulong)];
-        var rng = new Random();
-        rng.NextBytes(buffer);
-        return BitConverter.ToUInt64(buffer, 0);
-#endif
     }
+#else
+    [ThreadStatic]
+    private static RandomNumberGenerator rng;
+
+    private static ulong GenSerialNumber()
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(sizeof(ulong));
+        try
+        {
+            rng ??= RandomNumberGenerator.Create();
+            rng.GetBytes(buffer, 0, sizeof(ulong));
+            return BitConverter.ToUInt64(buffer, 0);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+#endif
 
     private byte CodeRecordSize(int size)
     {

@@ -68,7 +68,6 @@ namespace LibraryTests
             }
         }
 
-
         [Fact]
         public void TestMbr_Null()
         {
@@ -76,7 +75,7 @@ namespace LibraryTests
             ms.SetLength(1024 * 1024);
 
             var rawDisk = new DiscUtils.Raw.Disk(ms, Ownership.Dispose);
-            Assert.Throws<ArgumentNullException>(() => rawDisk.SetMasterBootRecord(null));
+            Assert.Throws<ArgumentException>(() => rawDisk.SetMasterBootRecord(null));
         }
 
         [Fact]

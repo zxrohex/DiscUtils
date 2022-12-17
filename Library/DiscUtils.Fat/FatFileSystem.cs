@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using DiscUtils.CoreCompat;
 using DiscUtils.Internal;
@@ -989,16 +990,16 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
     /// <param name="path">The directory to create.</param>
     public override void CreateDirectory(string path)
     {
-        var pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
+        var pathElements = path.AsMemory().Split('\\', '/', StringSplitOptions.RemoveEmptyEntries);
 
         var focusDir = _rootDir;
 
-        for (var i = 0; i < pathElements.Length; ++i)
+        foreach (var pathElement in pathElements)
         {
             FileName name;
             try
             {
-                name = new FileName(pathElements[i], FatOptions.FileNameEncoding);
+                name = new FileName(pathElement.ToString(), FatOptions.FileNameEncoding);
             }
             catch (ArgumentException ae)
             {
@@ -1755,11 +1756,11 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
 
     private long GetDirectoryEntry(Directory dir, string path, out Directory parent)
     {
-        var pathElements = path.Split(Utilities.PathSeparators, StringSplitOptions.RemoveEmptyEntries);
+        var pathElements = path.AsMemory().Split('\\', '/', StringSplitOptions.RemoveEmptyEntries).ToArray();
         return GetDirectoryEntry(dir, pathElements, 0, out parent);
     }
 
-    private long GetDirectoryEntry(Directory dir, string[] pathEntries, int pathOffset, out Directory parent)
+    private long GetDirectoryEntry(Directory dir, ReadOnlyMemory<char>[] pathEntries, int pathOffset, out Directory parent)
     {
         long entryId;
 
@@ -1769,7 +1770,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
             parent = null;
             return 0;
         }
-        entryId = dir.FindEntry(new FileName(pathEntries[pathOffset], FatOptions.FileNameEncoding));
+        entryId = dir.FindEntry(new FileName(pathEntries[pathOffset].ToString(), FatOptions.FileNameEncoding));
         if (entryId >= 0)
         {
             if (pathOffset == pathEntries.Length - 1)

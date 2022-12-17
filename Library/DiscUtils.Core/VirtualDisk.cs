@@ -24,6 +24,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Partitions;
 using DiscUtils.Streams;
@@ -132,12 +134,17 @@ public abstract class VirtualDisk :
     /// </summary>
     public virtual int Signature
     {
-        get { return EndianUtilities.ToInt32LittleEndian(GetMasterBootRecord(), 0x01B8); }
-
+        get
+        {
+            Span<byte> mbr = stackalloc byte[Sizes.Sector];
+            GetMasterBootRecord(mbr);
+            return EndianUtilities.ToInt32LittleEndian(mbr.Slice(0x01B8));
+        }
         set
         {
-            var mbr = GetMasterBootRecord();
-            EndianUtilities.WriteBytesLittleEndian(value, mbr, 0x01B8);
+            Span<byte> mbr = stackalloc byte[Sizes.Sector];
+            GetMasterBootRecord(mbr);
+            EndianUtilities.WriteBytesLittleEndian(value, mbr.Slice(0x01B8));
             SetMasterBootRecord(mbr);
         }
     }
@@ -521,36 +528,70 @@ public abstract class VirtualDisk :
     /// Reads the first sector of the disk, known as the Master Boot Record.
     /// </summary>
     /// <returns>The MBR as a byte array.</returns>
-    public virtual byte[] GetMasterBootRecord()
+    public byte[] GetMasterBootRecord()
     {
         var sector = new byte[Sizes.Sector];
 
-        var oldPos = Content.Position;
-        Content.Position = 0;
-        StreamUtilities.ReadExact(Content, sector, 0, Sizes.Sector);
-        Content.Position = oldPos;
+        GetMasterBootRecord(sector);
 
         return sector;
+    }
+
+    /// <summary>
+    /// Reads the first sector of the disk, known as the Master Boot Record.
+    /// </summary>
+    /// <returns>The MBR as a byte array.</returns>
+    public virtual void GetMasterBootRecord(Span<byte> sector)
+    {
+        var oldPos = Content.Position;
+        Content.Position = 0;
+        StreamUtilities.ReadExact(Content, sector.Slice(0, Sizes.Sector));
+        Content.Position = oldPos;
+    }
+
+    /// <summary>
+    /// Reads the first sector of the disk, known as the Master Boot Record.
+    /// </summary>
+    /// <returns>The MBR as a byte array.</returns>
+    public virtual async ValueTask GetMasterBootRecordAsync(Memory<byte> sector, CancellationToken cancellationToken)
+    {
+        var oldPos = Content.Position;
+        Content.Position = 0;
+        await StreamUtilities.ReadExactAsync(Content, sector.Slice(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
+        Content.Position = oldPos;
     }
 
     /// <summary>
     /// Overwrites the first sector of the disk, known as the Master Boot Record.
     /// </summary>
     /// <param name="data">The master boot record, must be 512 bytes in length.</param>
-    public virtual void SetMasterBootRecord(byte[] data)
+    public virtual void SetMasterBootRecord(ReadOnlySpan<byte> data)
     {
-        if (data is null)
-        {
-            throw new ArgumentNullException(nameof(data));
-        }
-        else if (data.Length > Sizes.Sector)
+        if (data.Length != Sizes.Sector)
         {
             throw new ArgumentException("The Master Boot Record must be 512 bytes in length", nameof(data));
         }
 
         var oldPos = Content.Position;
         Content.Position = 0;
-        Content.Write(data, 0, data.Length);
+        Content.Write(data);
+        Content.Position = oldPos;
+    }
+
+    /// <summary>
+    /// Overwrites the first sector of the disk, known as the Master Boot Record.
+    /// </summary>
+    /// <param name="data">The master boot record, must be 512 bytes in length.</param>
+    public virtual async ValueTask SetMasterBootRecordAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
+    {
+        if (data.Length != Sizes.Sector)
+        {
+            throw new ArgumentException("The Master Boot Record must be 512 bytes in length", nameof(data));
+        }
+
+        var oldPos = Content.Position;
+        Content.Position = 0;
+        await Content.WriteAsync(data, cancellationToken).ConfigureAwait(false);
         Content.Position = oldPos;
     }
 
