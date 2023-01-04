@@ -1,5 +1,7 @@
 <Project>
 
+  <Import Project="..\Directory.Build.props" Condition="Exists('..\Directory.Build.props')"/>
+
   <!-- Package related stuff -->
   <PropertyGroup>
     <IsPackable>false</IsPackable>
