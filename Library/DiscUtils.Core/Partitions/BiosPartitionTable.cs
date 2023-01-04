@@ -197,6 +197,8 @@ public sealed class BiosPartitionTable : PartitionTable
         {
             // If the partition extends beyond the end of the disk, this is probably an invalid partition table
             if (record.PartitionType != BiosPartitionTypes.GptProtective &&
+                record.PartitionType != BiosPartitionTypes.Extended &&
+                record.PartitionType != BiosPartitionTypes.ExtendedLba &&
                 (record.LBAStart + (long)record.LBALength) * Sizes.Sector > disk.Length)
             {
                 return false;
@@ -204,7 +206,7 @@ public sealed class BiosPartitionTable : PartitionTable
 
             if (record.LBALength > 0)
             {
-                StreamExtent[] thisPartitionExtents = { new StreamExtent(record.LBAStart, record.LBALength) };
+                var thisPartitionExtents = SingleValueEnumerable.Get(new StreamExtent(record.LBAStart, record.LBALength));
 
                 // If the partition intersects another partition, this is probably an invalid partition table
                 foreach (var overlap in StreamExtent.Intersect(knownPartitions, thisPartitionExtents))
