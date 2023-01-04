@@ -178,4 +178,6 @@ internal class FatFileStream : SparseStream
         dirEntry.FirstCluster = cluster;
         _dir.UpdateEntry(_dirId, dirEntry);
     }
+
+    public IEnumerable<Range<long, long>> EnumerateAllocatedClusters() => _stream.EnumerateAllocatedClusters();
 }

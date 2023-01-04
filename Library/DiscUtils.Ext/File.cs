@@ -108,6 +108,21 @@ internal class File : IVfsFile
         return fileBuffer.EnumerateAllocationExtents();
     }
 
+    public IEnumerable<Range<long, long>> EnumerateAllocationClusters()
+    {
+        if (_content == null)
+        {
+            _content = Inode.GetContentBuffer(Context);
+        }
+
+        if (_content is not IFileBuffer fileBuffer)
+        {
+            return Enumerable.Empty<Range<long, long>>();
+        }
+
+        return fileBuffer.EnumerateAllocationClusters();
+    }
+
     private static FileAttributes FromMode(uint mode)
     {
         return Utilities.FileAttributesFromUnixFileType((UnixFileType)((mode >> 12) & 0xF));

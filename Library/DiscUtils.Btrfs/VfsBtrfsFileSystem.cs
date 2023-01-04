@@ -30,7 +30,8 @@ using DiscUtils.Vfs;
 
 namespace DiscUtils.Btrfs;
 
-internal sealed class VfsBtrfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
+internal sealed class VfsBtrfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>,
+    IUnixFileSystem, IAllocationExtentsFileSystem
 {
     public override bool IsCaseSensitive => true;
 
@@ -149,7 +150,7 @@ internal sealed class VfsBtrfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File,
         }
     }
 
-    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
         var file = GetFile(path);
 

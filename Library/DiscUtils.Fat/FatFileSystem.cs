@@ -35,7 +35,7 @@ namespace DiscUtils.Fat;
 /// <summary>
 /// Class for accessing FAT file systems.
 /// </summary>
-public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
+public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem, IClusterBasedFileSystem
 {
     /// <summary>
     /// The Epoch for FAT file systems (1st Jan, 1980).
@@ -187,10 +187,18 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
     /// <summary>
     /// Gets the number of bytes per sector (as stored in the file-system meta data).
     /// </summary>
-    public int BytesPerSector
+    public int SectorSize
     {
         get { return _bpbBytesPerSec; }
     }
+
+    public long ClusterSize => ClusterReader.ClusterSize;
+
+    public long TotalClusters => TotalSectors / ClusterReader.SectorsPerCluster;
+
+    public long OffsetToCluster(long offset) => offset / ClusterReader.SectorsPerCluster;
+
+    public long ClusterToOffset(long cluster) => cluster * ClusterReader.SectorsPerCluster;
 
     /// <summary>
     /// Indicates if this file system is read-only or read-write.
@@ -457,6 +465,18 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
         }
         return parent.OpenFile(dirEntry.Name, mode, access);
     }
+
+    public IEnumerable<StreamExtent> PathToExtents(string path)
+        => PathToClusters(path).Select(range => new StreamExtent(range.Offset * ClusterSize, range.Count * ClusterSize));
+
+    public IEnumerable<Range<long, long>> PathToClusters(string path)
+    {
+        var stream = (FatFileStream)OpenFile(path, FileMode.Open, FileAccess.Read);
+        return stream.EnumerateAllocatedClusters();
+    }
+
+    public long GetAllocatedClustersCount(string path)
+        => PathToClusters(path).Sum(range => range.Count);
 
     public long GetFileId(string path)
     {
@@ -1841,7 +1861,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
     /// <summary>
     /// Size of the Filesystem in bytes
     /// </summary>
-    public override long Size { get { return ((TotalSectors - ReservedSectorCount - (FatSize * FatCount))*BytesPerSector); } }
+    public override long Size { get { return ((TotalSectors - ReservedSectorCount - (FatSize * FatCount))*SectorSize); } }
 
     /// <summary>
     /// Used space of the Filesystem in bytes
@@ -1859,7 +1879,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem
                     usedCluster++;
                 }
             }
-            return (usedCluster *SectorsPerCluster*BytesPerSector);
+            return (usedCluster *SectorsPerCluster*SectorSize);
         }
     }
 

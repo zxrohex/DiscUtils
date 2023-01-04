@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 using System;
 using System.Collections.Generic;
@@ -613,5 +614,31 @@ internal class ClusterStream : CompatibilityStream
         }
 
         return (uint)((_knownClusters.Count - 1) * (long)_reader.ClusterSize);
+    }
+
+    public IEnumerable<Range<long, long>> EnumerateAllocatedClusters()
+    {
+        uint? firstCluster = null;
+        uint? lastCluster = null;
+
+        for (var i = 0; i < _knownClusters.Count && !_fat.IsEndOfChain(_knownClusters[i]); i++)
+        {
+            if (firstCluster == null)
+            {
+                firstCluster = _knownClusters[i];
+            }
+
+            if (lastCluster == null
+                || _knownClusters[i] == lastCluster.Value + 1)
+            {
+                lastCluster = _knownClusters[i];
+                continue;
+            }
+
+            yield return new(firstCluster.Value, lastCluster.Value - firstCluster.Value + 1);
+
+            firstCluster = null;
+            lastCluster = null;
+        }
     }
 }

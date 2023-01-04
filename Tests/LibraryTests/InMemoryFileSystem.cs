@@ -118,13 +118,13 @@ namespace LibraryTests
 
         public override SparseStream OpenFile(string path, FileMode mode, FileAccess access)
         {
-            if (_files.ContainsKey(path))
+            if (_files.TryGetValue(path, out var buffer))
             {
                 if(mode == FileMode.CreateNew)
                 {
                     throw new IOException("File already exists");
                 }
-                return new SparseMemoryStream(_files[path], access);
+                return new SparseMemoryStream(buffer, access);
             }
             else if(mode == FileMode.Create || mode == FileMode.CreateNew || mode == FileMode.OpenOrCreate || mode == FileMode.Truncate)
             {
@@ -179,9 +179,9 @@ namespace LibraryTests
 
         public override long GetFileLength(string path)
         {
-            if (_files.ContainsKey(path))
+            if (_files.TryGetValue(path, out var buffer))
             {
-                return _files[path].Capacity;
+                return buffer.Capacity;
             }
             else
             {

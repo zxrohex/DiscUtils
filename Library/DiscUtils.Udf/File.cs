@@ -53,15 +53,17 @@ internal class File : IVfsFile
     {
         get
         {
-            if (_content != null)
+            if (_content == null)
             {
-                return _content;
+                _content = new FileContentBuffer(_context, _partition, _fileEntry, _blockSize);
             }
 
-            _content = new FileContentBuffer(_context, _partition, _fileEntry, _blockSize);
             return _content;
         }
     }
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+        => ((FileContentBuffer)FileContent).EnumerateAllocationExtents();
 
     public DateTime LastAccessTimeUtc
     {

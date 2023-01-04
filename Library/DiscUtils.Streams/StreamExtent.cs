@@ -94,11 +94,7 @@ public readonly struct StreamExtent : IEquatable<StreamExtent>, IComparable<Stre
     /// <returns>The union of the extents.</returns>
     public static IEnumerable<StreamExtent> Union(IEnumerable<StreamExtent> extents, StreamExtent other)
     {
-        var otherList = new List<StreamExtent>
-        {
-            other
-        };
-        return Union(extents, otherList);
+        return Union(extents, SingleValueEnumerable.Get(other));
     }
 
     /// <summary>

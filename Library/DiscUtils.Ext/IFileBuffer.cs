@@ -6,4 +6,6 @@ namespace DiscUtils.Ext;
 internal interface IFileBuffer : IBuffer
 {
     IEnumerable<StreamExtent> EnumerateAllocationExtents();
+
+    IEnumerable<Range<long, long>> EnumerateAllocationClusters();
 }

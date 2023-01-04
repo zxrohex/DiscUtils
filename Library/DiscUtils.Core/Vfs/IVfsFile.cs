@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 
@@ -65,4 +66,6 @@ public interface IVfsFile
     /// Gets or sets the last write time in UTC.
     /// </summary>
     DateTime LastWriteTimeUtc { get; set; }
+
+    IEnumerable<StreamExtent> EnumerateAllocationExtents();
 }

@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Streams;
 
 namespace DiscUtils.Ntfs;
@@ -114,7 +115,7 @@ internal readonly struct NtfsStream
         return Attribute.GetClusters();
     }
 
-    internal IEnumerable<StreamExtent> GetAbsoluteExtents()
+    public IEnumerable<StreamExtent> GetAbsoluteExtents()
     {
         long clusterSize = _file.Context.BiosParameterBlock.BytesPerCluster;
         if (Attribute.IsNonResident)
@@ -128,6 +129,19 @@ internal readonly struct NtfsStream
         else
         {
             yield return new StreamExtent(Attribute.OffsetToAbsolutePos(0), Attribute.Length);
+        }
+    }
+
+    public long GetAllocatedClustersCount()
+    {
+        if (Attribute.IsNonResident)
+        {
+            var clusters = Attribute.GetClusters().Sum(clusterRange => clusterRange.Count);
+            return clusters;
+        }
+        else
+        {
+            return 0;
         }
     }
 }

@@ -206,6 +206,8 @@ class MyFile : IVfsFile
             return result;
         }
     }
+
+    IEnumerable<StreamExtent> IVfsFile.EnumerateAllocationExtents() => throw new NotImplementedException();
 }
 
 class MyDirectory : MyFile, IVfsDirectory<MyDirEntry, MyFile>

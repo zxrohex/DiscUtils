@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -93,4 +94,6 @@ internal class File : IVfsFile
             return _content;
         }
     }
+
+    IEnumerable<StreamExtent> IVfsFile.EnumerateAllocationExtents() => throw new NotImplementedException();
 }

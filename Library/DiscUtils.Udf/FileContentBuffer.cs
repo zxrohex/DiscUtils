@@ -63,6 +63,44 @@ internal class FileContentBuffer : Streams.Buffer
         get { throw new NotImplementedException(); }
     }
 
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+    {
+        if (_fileEntry.InformationControlBlock.AllocationType == AllocationType.Embedded)
+        {
+            yield break;
+        }
+
+        var totalToRead = Capacity;
+        var totalRead = 0;
+
+        while (totalRead < totalToRead)
+        {
+            var extent = FindExtent(totalRead);
+
+            var extentOffset = totalRead - extent.FileContentOffset;
+            var toRead = (int)Math.Min(totalToRead - totalRead, extent.Length - extentOffset);
+
+            Partition part;
+            if (extent.Partition != int.MaxValue)
+            {
+                part = _context.LogicalPartitions[extent.Partition];
+            }
+            else
+            {
+                part = _partition;
+            }
+
+            if (toRead == 0)
+            {
+                yield break;
+            }
+
+            yield return new(extent.StartPos + extentOffset, toRead);
+
+            totalRead += toRead;
+        }
+    }
+
     public override int Read(long pos, byte[] buffer, int offset, int count)
     {
         if (_fileEntry.InformationControlBlock.AllocationType == AllocationType.Embedded)

@@ -21,13 +21,14 @@
 //
 
 using DiscUtils.Streams;
+using System.Collections.Generic;
 
 namespace DiscUtils;
 
 /// <summary>
 /// Base class for all file systems based on a cluster model.
 /// </summary>
-public interface IClusterBasedFileSystem : IFileSystem
+public interface IClusterBasedFileSystem : IFileSystem, IAllocationExtentsFileSystem
 {
     /// <summary>
     /// Gets the size (in bytes) of each cluster.
@@ -70,21 +71,12 @@ public interface IClusterBasedFileSystem : IFileSystem
     /// <returns>The clusters.</returns>
     /// <remarks>Note that in some file systems, small files may not have dedicated
     /// clusters.  Only dedicated clusters will be returned.</remarks>
-    Range<long, long>[] PathToClusters(string path);
+    IEnumerable<Range<long, long>> PathToClusters(string path);
 
     /// <summary>
-    /// Converts a file name to the extents containing its data.
+    /// Gets number of allocated clusters for a file.
     /// </summary>
     /// <param name="path">The path to inspect.</param>
-    /// <returns>The file extents, as absolute byte positions in the underlying stream.</returns>
-    /// <remarks>Use this method with caution - not all file systems will store all bytes
-    /// directly in extents.  Files may be compressed, sparse or encrypted.  This method
-    /// merely indicates where file data is stored, not what's stored.</remarks>
-    StreamExtent[] PathToExtents(string path);
-
-    /// <summary>
-    /// Gets an object that can convert between clusters and files.
-    /// </summary>
-    /// <returns>The cluster map.</returns>
-    ClusterMap BuildClusterMap();
+    /// <returns>Number of clusters allocated</returns>
+    long GetAllocatedClustersCount(string path);
 }

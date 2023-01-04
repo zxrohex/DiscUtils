@@ -21,6 +21,7 @@
 //
 
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
@@ -30,7 +31,8 @@ namespace DiscUtils.Iso9660;
 /// <summary>
 /// Class for reading existing ISO images.
 /// </summary>
-public class CDReader : VfsFileSystemFacade, IClusterBasedFileSystem, IUnixFileSystem
+public class CDReader : VfsFileSystemFacade, IClusterBasedFileSystem,
+    IUnixFileSystem, IFileSystemWithClusterMap
 {
     /// <summary>
     /// Initializes a new instance of the CDReader class.
@@ -142,7 +144,7 @@ public class CDReader : VfsFileSystemFacade, IClusterBasedFileSystem, IUnixFileS
     /// <returns>The clusters.</returns>
     /// <remarks>Note that in some file systems, small files may not have dedicated
     /// clusters.  Only dedicated clusters will be returned.</remarks>
-    public Range<long, long>[] PathToClusters(string path)
+    public IEnumerable<Range<long, long>> PathToClusters(string path)
     {
         return GetRealFileSystem<VfsCDReader>().PathToClusters(path);
     }
@@ -155,10 +157,18 @@ public class CDReader : VfsFileSystemFacade, IClusterBasedFileSystem, IUnixFileS
     /// <remarks>Use this method with caution - not all file systems will store all bytes
     /// directly in extents.  Files may be compressed, sparse or encrypted.  This method
     /// merely indicates where file data is stored, not what's stored.</remarks>
-    public StreamExtent[] PathToExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
         return GetRealFileSystem<VfsCDReader>().PathToExtents(path);
     }
+
+    /// <summary>
+    /// Gets number of allocated clusters for a file.
+    /// </summary>
+    /// <param name="path">The path to inspect.</param>
+    /// <returns>Number of clusters allocated</returns>
+    public long GetAllocatedClustersCount(string path)
+        => GetRealFileSystem<VfsCDReader>().GetAllocatedClustersCount(path);
 
     /// <summary>
     /// Gets an object that can convert between clusters and files.

@@ -936,7 +936,7 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
 
             if (currentEntry == null)
             {
-                Trace.WriteLine($"Unable to resolve symlink '{path}'");
+                Trace.WriteLine($"Unable to resolve symlink '{path}' to '{symlink.TargetPath}'");
                 return null;
             }
 

@@ -129,6 +129,75 @@ internal class FileBuffer : Buffer, IFileBuffer
         }
     }
 
+    public IEnumerable<Range<long, long>> EnumerateAllocationClusters()
+    {
+        if (_inode.FileSize == 0)
+        {
+            yield break;
+        }
+
+        var blockSize = _context.SuperBlock.BlockSize;
+
+        var count = _inode.BlocksCount;
+        var totalRead = 0;
+        var totalBlocksRemaining = count;
+
+        while (totalBlocksRemaining > 0)
+        {
+            var logicalBlock = (uint)totalRead;
+
+            uint physicalBlock = 0;
+            if (logicalBlock < 12)
+            {
+                physicalBlock = _inode.DirectBlocks[logicalBlock];
+            }
+            else
+            {
+                logicalBlock -= 12;
+                if (logicalBlock < blockSize / 4)
+                {
+                    if (_inode.IndirectBlock != 0)
+                    {
+                        _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
+                        physicalBlock = EndianUtilities.ReadUInt32LittleEndian(_context.RawStream);
+                    }
+                }
+                else
+                {
+                    logicalBlock -= blockSize / 4;
+                    if (logicalBlock < blockSize / 4 * (blockSize / 4))
+                    {
+                        if (_inode.DoubleIndirectBlock != 0)
+                        {
+                            _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
+                                                          logicalBlock / (blockSize / 4) * 4;
+                            var indirectBlock = EndianUtilities.ReadUInt32LittleEndian(_context.RawStream);
+
+                            if (indirectBlock != 0)
+                            {
+                                _context.RawStream.Position = indirectBlock * (long)blockSize +
+                                                              logicalBlock % (blockSize / 4) * 4;
+                                physicalBlock = EndianUtilities.ReadUInt32LittleEndian(_context.RawStream);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new NotSupportedException("Triple indirection");
+                    }
+                }
+            }
+
+            if (physicalBlock != 0)
+            {
+                yield return new(physicalBlock, 1);
+            }
+
+            totalBlocksRemaining --;
+            totalRead ++;
+        }
+    }
+
     public override int Read(long pos, byte[] buffer, int offset, int count)
     {
         if (pos > _inode.FileSize)

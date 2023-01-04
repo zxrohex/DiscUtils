@@ -53,7 +53,7 @@ namespace LibraryTests.Combined
             pt.Create(5 * 1024 * 1024, WellKnownPartitionType.WindowsFat, false);
 
             var fileSystem = FatFileSystem.FormatPartition(disk, 1, null);
-            var fileSystemSize = fileSystem.TotalSectors * fileSystem.BytesPerSector;
+            var fileSystemSize = fileSystem.TotalSectors * fileSystem.SectorSize;
             Assert.True(fileSystemSize > (5 * 1024 * 1024) * 0.9);
         }
 

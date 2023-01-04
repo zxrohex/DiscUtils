@@ -24,6 +24,8 @@ using System;
 using System.IO;
 using DiscUtils.Vfs;
 using DiscUtils.Streams;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace DiscUtils.Iso9660;
 
@@ -115,4 +117,8 @@ internal class File : IVfsFile
             return new StreamBuffer(es, Ownership.Dispose);
         }
     }
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+        => SingleValueEnumerable.Get(new StreamExtent(_dirEntry.Record.LocationOfExtent * IsoUtilities.SectorSize,
+            _dirEntry.Record.DataLength));
 }

@@ -30,7 +30,7 @@ using DiscUtils.Vfs;
 namespace DiscUtils.Iso9660;
 
 internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderDirectory, IsoContext>,
-                             IClusterBasedFileSystem, IUnixFileSystem
+                             IClusterBasedFileSystem, IUnixFileSystem, IFileSystemWithClusterMap
 {
     public override bool IsCaseSensitive => false;
 
@@ -317,7 +317,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
 
     public override bool SupportsUsedAvailableSpace => false;
 
-    public Range<long, long>[] PathToClusters(string path)
+    public IEnumerable<Range<long, long>> PathToClusters(string path)
     {
         var entry = GetDirectoryEntry(path);
         if (entry == null)
@@ -330,14 +330,12 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
             throw new NotSupportedException("Non-contiguous extents not supported");
         }
 
-        return new[]
-        {
+        return SingleValueEnumerable.Get(
             new Range<long, long>(entry.Record.LocationOfExtent,
-                MathUtilities.Ceil(entry.Record.DataLength, IsoUtilities.SectorSize))
-        };
+                MathUtilities.Ceil(entry.Record.DataLength, IsoUtilities.SectorSize)));
     }
 
-    public StreamExtent[] PathToExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
         var entry = GetDirectoryEntry(path);
         if (entry == null)
@@ -350,8 +348,24 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
             throw new NotSupportedException("Non-contiguous extents not supported");
         }
 
-        return new[]
-            { new StreamExtent(entry.Record.LocationOfExtent * IsoUtilities.SectorSize, entry.Record.DataLength) };
+        return SingleValueEnumerable.Get(
+            new StreamExtent(entry.Record.LocationOfExtent * IsoUtilities.SectorSize, entry.Record.DataLength));
+    }
+
+    public long GetAllocatedClustersCount(string path)
+    {
+        var entry = GetDirectoryEntry(path);
+        if (entry == null)
+        {
+            throw new FileNotFoundException("File not found", path);
+        }
+
+        if (entry.Record.FileUnitSize != 0 || entry.Record.InterleaveGapSize != 0)
+        {
+            throw new NotSupportedException("Non-contiguous extents not supported");
+        }
+
+        return entry.Record.DataLength / IsoUtilities.SectorSize;
     }
 
     public ClusterMap BuildClusterMap()

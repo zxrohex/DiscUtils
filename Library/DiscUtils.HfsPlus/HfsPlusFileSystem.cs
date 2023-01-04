@@ -31,7 +31,7 @@ namespace DiscUtils.HfsPlus;
 /// <summary>
 /// Class that interprets Apple's HFS+ file system, found in DMG files.
 /// </summary>
-public class HfsPlusFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocationExtentsEnumerable
+public class HfsPlusFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocationExtentsFileSystem
 {
     /// <summary>
     /// Initializes a new instance of the HfsPlusFileSystem class.
@@ -67,8 +67,8 @@ public class HfsPlusFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocati
         return hdr.IsValid;
     }
 
-    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
-        return GetRealFileSystem<HfsPlusFileSystemImpl>().EnumerateAllocationExtents(path);
+        return GetRealFileSystem<HfsPlusFileSystemImpl>().PathToExtents(path);
     }
 }

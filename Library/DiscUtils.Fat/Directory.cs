@@ -223,7 +223,7 @@ internal class Directory : IDisposable
         return -1;
     }
 
-    internal SparseStream OpenFile(FileName name, FileMode mode, FileAccess fileAccess)
+    internal FatFileStream OpenFile(FileName name, FileMode mode, FileAccess fileAccess)
     {
         if (mode == FileMode.Append || mode == FileMode.Truncate)
         {
@@ -244,7 +244,7 @@ internal class Directory : IDisposable
         }
         if ((mode == FileMode.Open || mode == FileMode.OpenOrCreate || mode == FileMode.Create) && exists)
         {
-            SparseStream stream = new FatFileStream(FileSystem, this, fileId, fileAccess);
+            var stream = new FatFileStream(FileSystem, this, fileId, fileAccess);
             if (mode == FileMode.Create)
             {
                 stream.SetLength(0);

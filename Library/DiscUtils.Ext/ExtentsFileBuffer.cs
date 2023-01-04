@@ -57,6 +57,63 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         get { return _inode.FileSize; }
     }
 
+    public IEnumerable<Range<long, long>> EnumerateAllocationClusters()
+    {
+        if (_inode.FileSize == 0)
+        {
+            yield break;
+        }
+
+        var blockSize = (int)_context.SuperBlock.BlockSize;
+
+        var count = _inode.FileSize;
+        int totalRead = 0;
+        int totalBlocksRemaining = (int)count;
+
+        ExtentBlock extents = _inode.Extents;
+
+        while (totalBlocksRemaining > 0)
+        {
+            uint logicalBlock = (uint)totalRead;
+
+            int numRead = 0;
+
+            var extent = FindExtent(extents, logicalBlock);
+            if (extent == null)
+            {
+                throw new IOException($"Unable to find extent for block {logicalBlock}");
+            }
+            if (extent.Value.FirstLogicalBlock > logicalBlock)
+            {
+                numRead =
+                    (int)
+                    Math.Min(totalBlocksRemaining,
+                        extent.Value.FirstLogicalBlock - logicalBlock);
+            }
+            else
+            {
+                long physicalBlock = logicalBlock - extent.Value.FirstLogicalBlock + (long)extent.Value.FirstPhysicalBlock;
+                int toRead =
+                    (int)
+                    Math.Min(totalBlocksRemaining,
+                        extent.Value.NumBlocks - (logicalBlock - extent.Value.FirstLogicalBlock));
+
+                if (toRead == 0)
+                {
+                    numRead = blockSize;
+                }
+                else
+                {
+                    yield return new(physicalBlock, toRead);
+                }
+                numRead = toRead;
+            }
+
+            totalBlocksRemaining -= numRead;
+            totalRead += numRead;
+        }
+    }
+
     public IEnumerable<StreamExtent> EnumerateAllocationExtents()
     {
         var pos = 0;

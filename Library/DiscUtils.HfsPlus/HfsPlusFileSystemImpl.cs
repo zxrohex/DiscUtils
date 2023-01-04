@@ -29,7 +29,8 @@ using DiscUtils.Vfs;
 
 namespace DiscUtils.HfsPlus;
 
-internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
+internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Directory, Context>,
+    IUnixFileSystem, IAllocationExtentsFileSystem
 {
     public override bool IsCaseSensitive => true;
 
@@ -113,7 +114,7 @@ internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Dire
         return new File(Context, dirEntry.NodeId, dirEntry.CatalogFileInfo);
     }
 
-    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
         var file = GetFile(path);
 

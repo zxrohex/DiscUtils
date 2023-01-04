@@ -58,6 +58,10 @@ internal sealed class ClusterReader
         get { return _clusterSize; }
     }
 
+    public int BytesPerSector => _bytesPerSector;
+
+    public int SectorsPerCluster => _sectorsPerCluster;
+
     public void ReadCluster(uint cluster, byte[] buffer, int offset)
     {
         if (offset + ClusterSize > buffer.Length)

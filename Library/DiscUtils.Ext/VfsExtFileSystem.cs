@@ -23,13 +23,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
 using DiscUtils.Vfs;
 
 namespace DiscUtils.Ext;
 
-internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
+internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>,
+    IUnixFileSystem, IClusterBasedFileSystem
 {
     public override bool IsCaseSensitive => true;
 
@@ -146,11 +148,16 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
         };
     }
 
-    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
         var file = GetFile(path);
-
         return file.EnumerateAllocationExtents();
+    }
+
+    public IEnumerable<Range<long, long>> PathToClusters(string path)
+    {
+        var file = GetFile(path);
+        return file.EnumerateAllocationClusters();
     }
 
     protected override File ConvertDirEntryToFile(DirEntry dirEntry)
@@ -195,6 +202,12 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
     {
         return _blockGroups[index];
     }
+
+    public long ClusterToOffset(long cluster) => cluster * ClusterSize;
+
+    public long OffsetToCluster(long offset) => offset / ClusterSize;
+
+    public long GetAllocatedClustersCount(string path) => PathToClusters(path).Sum(range => range.Count);
 
     /// <summary>
     /// Size of the Filesystem in bytes
@@ -258,4 +271,26 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
             }
         }
     }
+
+    public long ClusterSize
+    {
+        get
+        {
+            var superBlock = Context.SuperBlock;
+            return superBlock.BlockSize;
+        }
+    }
+
+    public long TotalClusters
+    {
+        get
+        {
+            var superBlock = Context.SuperBlock;
+            return superBlock.BlocksCount;
+        }
+    }
+
+    public int SectorSize => 512;
+
+    public long TotalSectors => Size / SectorSize;
 }

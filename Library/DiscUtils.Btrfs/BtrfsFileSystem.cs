@@ -30,7 +30,7 @@ namespace DiscUtils.Btrfs;
 /// <summary>
 /// Read-only access to btrfs file system.
 /// </summary>
-public sealed class BtrfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocationExtentsEnumerable
+public sealed class BtrfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocationExtentsFileSystem
 {
     internal static readonly long[] SuperblockOffsets = {0x10000L, 0x4000000L, 0x4000000000L, 0x4000000000000L};
 
@@ -68,9 +68,9 @@ public sealed class BtrfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAll
         return superblock.Magic == SuperBlock.BtrfsMagic;
     }
 
-    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
-        return GetRealFileSystem<VfsBtrfsFileSystem>().EnumerateAllocationExtents(path);
+        return GetRealFileSystem<VfsBtrfsFileSystem>().PathToExtents(path);
     }
 
     /// <summary>

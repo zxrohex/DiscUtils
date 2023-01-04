@@ -117,7 +117,7 @@ namespace LibraryTests.Ntfs
                 s.Write(new byte[(int)ntfs.ClusterSize], 0, (int)ntfs.ClusterSize);
             }
 
-            var ranges = ntfs.PathToClusters("file");
+            var ranges = ntfs.PathToClusters("file").ToArray();
             Assert.Single(ranges);
             Assert.Equal(1, ranges[0].Count);
 
@@ -127,7 +127,7 @@ namespace LibraryTests.Ntfs
             {
                 s.WriteByte(1);
             }
-            ranges = ntfs.PathToClusters("file2");
+            ranges = ntfs.PathToClusters("file2").ToArray();
             Assert.Empty(ranges);
         }
 
@@ -148,7 +148,7 @@ namespace LibraryTests.Ntfs
                 s.Write(data, 0, (int)ntfs.ClusterSize);
             }
 
-            var extents = ntfs.PathToExtents("file");
+            var extents = ntfs.PathToExtents("file").ToArray();
             Assert.Single(extents);
             Assert.Equal(ntfs.ClusterSize, extents[0].Length);
 
@@ -165,7 +165,7 @@ namespace LibraryTests.Ntfs
                 s.WriteByte(0x82);
                 s.WriteByte(0x2C);
             }
-            extents = ntfs.PathToExtents("file2");
+            extents = ntfs.PathToExtents("file2").ToArray();
             Assert.Single(extents);
             Assert.Equal(3, extents[0].Length);
 

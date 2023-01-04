@@ -29,7 +29,8 @@ using DiscUtils.Vfs;
 using DiscUtils.Streams;
 using System.Collections.Generic;
 
-internal sealed class VfsXfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>, IUnixFileSystem, IAllocationExtentsEnumerable
+internal sealed class VfsXfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, Directory, Context>,
+    IUnixFileSystem, IAllocationExtentsFileSystem
 {
     public override bool IsCaseSensitive => true;
 
@@ -150,7 +151,7 @@ internal sealed class VfsXfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
         }
     }
 
-    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
         var file = GetFile(path);
 

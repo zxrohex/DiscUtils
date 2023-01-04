@@ -35,8 +35,8 @@ namespace DiscUtils.Ntfs;
 /// <summary>
 /// Class for accessing NTFS file systems.
 /// </summary>
-public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IWindowsFileSystem,
-                                     IDiagnosticTraceable
+public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
+    IFileSystemWithClusterMap, IWindowsFileSystem, IDiagnosticTraceable
 {
     private const FileAttributes NonSettableFileAttributes =
         FileAttributes.Directory | FileAttributes.Offline | FileAttributes.ReparsePoint;
@@ -1088,7 +1088,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// <returns>The clusters as a list of cluster ranges.</returns>
     /// <remarks>Note that in some file systems, small files may not have dedicated
     /// clusters.  Only dedicated clusters will be returned.</remarks>
-    public Range<long, long>[] PathToClusters(string path)
+    public IEnumerable<Range<long, long>> PathToClusters(string path)
     {
         SplitPath(path, out var plainPath, out var attributeName);
 
@@ -1107,7 +1107,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 $"File does not contain '{attributeName}' data attribute", path);
         }
 
-        return stream.Value.GetClusters().ToArray();
+        return stream.Value.GetClusters();
     }
 
     /// <summary>
@@ -1120,7 +1120,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
     /// Master File Table, where corruption protection algorithms mean that some bytes do not contain
     /// the expected values.  This method merely indicates where file data is stored,
     /// not what's stored.  To access the contents of a file, use OpenFile.</remarks>
-    public StreamExtent[] PathToExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
         SplitPath(path, out var plainPath, out var attributeName);
 
@@ -1139,7 +1139,34 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem, IW
                 $"File does not contain '{attributeName}' data attribute", path);
         }
 
-        return stream.Value.GetAbsoluteExtents().ToArray();
+        return stream.Value.GetAbsoluteExtents();
+    }
+
+    /// <summary>
+    /// Gets number of allocated clusters for a file.
+    /// </summary>
+    /// <param name="path">The path to inspect.</param>
+    /// <returns>Number of clusters allocated</returns>
+    public long GetAllocatedClustersCount(string path)
+    {
+        SplitPath(path, out var plainPath, out var attributeName);
+
+        var dirEntry = GetDirectoryEntry(plainPath);
+        if (dirEntry == null || dirEntry.Value.IsDirectory)
+        {
+            throw new FileNotFoundException("No such file", path);
+        }
+
+        var file = GetFile(dirEntry.Value.Reference);
+
+        var stream = file.GetStream(AttributeType.Data, attributeName);
+        if (stream == null)
+        {
+            throw new FileNotFoundException(
+                $"File does not contain '{attributeName}' data attribute", path);
+        }
+
+        return stream.Value.GetAllocatedClustersCount();
     }
 
     /// <summary>

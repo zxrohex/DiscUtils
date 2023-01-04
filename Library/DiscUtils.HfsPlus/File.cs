@@ -21,8 +21,10 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using DiscUtils.Compression;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
@@ -207,6 +209,41 @@ internal class File : IVfsFileWithStreams
             }
             return new FileBuffer(Context, fileInfo.DataFork, fileInfo.FileId);
         }
+    }
+
+    public IEnumerable<StreamExtent> EnumerateAllocationExtents()
+    {
+        if (_catalogInfo is not CatalogFileInfo fileInfo)
+        {
+            throw new InvalidOperationException();
+        }
+
+        if (_hasCompressionAttribute)
+        {
+            // Open the compression attribute
+            var compressionAttributeData =
+                Context.Attributes.Find(new AttributeKey(_catalogInfo.FileId, "com.apple.decmpfs"));
+            var compressionAttribute = new CompressionAttribute();
+            compressionAttribute.ReadFrom(compressionAttributeData);
+
+            // There are multiple possibilities, not all of which are supported by DiscUtils.HfsPlus.
+            // See FileCompressionType for a full description of all possibilities.
+            switch (compressionAttribute.CompressionType)
+            {
+                case FileCompressionType.ZlibAttribute:
+                case FileCompressionType.RawAttribute:
+                    // Inline
+                    return Enumerable.Empty<StreamExtent>();
+
+                case FileCompressionType.ZlibResource:
+                    // The data is stored in the resource fork.
+                    return new FileBuffer(Context, fileInfo.ResourceFork, fileInfo.FileId).EnumerateAllocationExtents();
+
+                default:
+                    throw new NotSupportedException($"The HfsPlus compression type {compressionAttribute.CompressionType} is not supported by DiscUtils.HfsPlus");
+            }
+        }
+        return new FileBuffer(Context, fileInfo.DataFork, fileInfo.FileId).EnumerateAllocationExtents();
     }
 
     public SparseStream CreateStream(string name)

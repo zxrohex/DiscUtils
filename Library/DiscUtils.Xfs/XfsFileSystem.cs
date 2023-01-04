@@ -31,7 +31,7 @@ using System;
 /// <summary>
 /// Read-only access to ext file system.
 /// </summary>
-public sealed class XfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocationExtentsEnumerable
+public sealed class XfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAllocationExtentsFileSystem
 {
     /// <summary>
     /// Initializes a new instance of the ExtFileSystem class.
@@ -63,9 +63,9 @@ public sealed class XfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAlloc
         return GetRealFileSystem<VfsXfsFileSystem>().GetUnixFileInfo(path);
     }
 
-    public IEnumerable<StreamExtent> EnumerateAllocationExtents(string path)
+    public IEnumerable<StreamExtent> PathToExtents(string path)
     {
-        return GetRealFileSystem<VfsXfsFileSystem>().EnumerateAllocationExtents(path);
+        return GetRealFileSystem<VfsXfsFileSystem>().PathToExtents(path);
     }
 
     internal static bool Detect(Stream stream)
