@@ -1,0 +1,18 @@
+<Project>
+
+  <PropertyGroup>
+
+    <LangVersion>Latest</LangVersion>
+
+    <PackageProjectUrl>https://github.com/LTRData/DiscUtils</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+
+    <Company>LTR Data</Company>
+    <Authors>Kenneth Bell;LordMike;Olof Lagerkvist</Authors>
+    <OutputPath>..\$(Configuration)</OutputPath>
+    <FileVersion>1.0.15</FileVersion>
+
+  </PropertyGroup>
+  
+</Project>
