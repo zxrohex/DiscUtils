@@ -13,6 +13,7 @@ public static class SetupHelper
         Setup.SetupHelper.RegisterAssembly(typeof(Vhd.Disk).Assembly);
         Setup.SetupHelper.RegisterAssembly(typeof(Vhdx.Disk).Assembly);
         Setup.SetupHelper.RegisterAssembly(typeof(Vmdk.Disk).Assembly);
+        Setup.SetupHelper.RegisterAssembly(typeof(Vdi.Disk).Assembly);
         Setup.SetupHelper.RegisterAssembly(typeof(WimFile).Assembly);
         Setup.SetupHelper.RegisterAssembly(typeof(Xva.Disk).Assembly);
     }
