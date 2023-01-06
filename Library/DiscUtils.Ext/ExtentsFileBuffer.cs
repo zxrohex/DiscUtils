@@ -76,14 +76,15 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         {
             uint logicalBlock = (uint)totalRead;
 
-            int numRead = 0;
+            int numRead;
 
             var extent = FindExtent(extents, logicalBlock);
+
             if (extent == null)
             {
-                throw new IOException($"Unable to find extent for block {logicalBlock}");
+                numRead = 1;
             }
-            if (extent.Value.FirstLogicalBlock > logicalBlock)
+            else if (extent.Value.FirstLogicalBlock > logicalBlock)
             {
                 numRead =
                     (int)
@@ -135,15 +136,15 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         {
             uint logicalBlock = (uint)((pos + totalRead) / blockSize);
             int blockOffset = (int)(pos + totalRead - logicalBlock * blockSize);
-
-            int numRead = 0;
+            int numRead;
 
             var extent = FindExtent(extents, logicalBlock);
+
             if (extent == null)
             {
-                throw new IOException($"Unable to find extent for block {logicalBlock}");
+                numRead = Math.Min(totalBytesRemaining, blockSize - blockOffset);
             }
-            if (extent.Value.FirstLogicalBlock > logicalBlock)
+            else if (extent.Value.FirstLogicalBlock > logicalBlock)
             {
                 numRead =
                     (int)
@@ -192,20 +193,23 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         {
             uint logicalBlock = (uint)((pos + totalRead) / blockSize);
             int blockOffset = (int)(pos + totalRead - logicalBlock * blockSize);
-
-            int numRead = 0;
+            int numRead;
 
             var extent = FindExtent(extents, logicalBlock);
+
             if (extent == null)
             {
-                throw new IOException($"Unable to find extent for block {logicalBlock}");
+                numRead = Math.Min(totalBytesRemaining, blockSize - blockOffset);
+
+                Array.Clear(buffer, offset + totalRead, numRead);
             }
-            if (extent.Value.FirstLogicalBlock > logicalBlock)
+            else if (extent.Value.FirstLogicalBlock > logicalBlock)
             {
                 numRead =
                     (int)
                     Math.Min(totalBytesRemaining,
                         (extent.Value.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+                
                 Array.Clear(buffer, offset + totalRead, numRead);
             }
             else
@@ -253,15 +257,17 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         {
             uint logicalBlock = (uint)((pos + totalRead) / blockSize);
             int blockOffset = (int)(pos + totalRead - logicalBlock * blockSize);
-
-            int numRead = 0;
+            int numRead;
 
             var extent = FindExtent(extents, logicalBlock);
+
             if (extent == null)
             {
-                throw new IOException($"Unable to find extent for block {logicalBlock}");
+                numRead = Math.Min(totalBytesRemaining, blockSize - blockOffset);
+
+                buffer.Span.Slice(totalRead, numRead).Clear();
             }
-            if (extent.Value.FirstLogicalBlock > logicalBlock)
+            else if (extent.Value.FirstLogicalBlock > logicalBlock)
             {
                 numRead =
                     (int)
@@ -315,20 +321,23 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         {
             uint logicalBlock = (uint)((pos + totalRead) / blockSize);
             int blockOffset = (int)(pos + totalRead - logicalBlock * blockSize);
-
-            int numRead = 0;
+            int numRead;
 
             var extent = FindExtent(extents, logicalBlock);
+
             if (extent == null)
             {
-                throw new IOException($"Unable to find extent for block {logicalBlock}");
+                numRead = Math.Min(totalBytesRemaining, blockSize - blockOffset);
+
+                buffer.Slice(totalRead, numRead).Clear();
             }
-            if (extent.Value.FirstLogicalBlock > logicalBlock)
+            else if (extent.Value.FirstLogicalBlock > logicalBlock)
             {
                 numRead =
                     (int)
                     Math.Min(totalBytesRemaining,
                         (extent.Value.FirstLogicalBlock - logicalBlock) * blockSize - blockOffset);
+
                 buffer.Slice(totalRead, numRead).Clear();
             }
             else
