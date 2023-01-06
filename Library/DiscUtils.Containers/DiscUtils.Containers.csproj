@@ -9,6 +9,7 @@
     <ProjectReference Include="..\DiscUtils.Core\DiscUtils.Core.csproj" />
     <ProjectReference Include="..\DiscUtils.Dmg\DiscUtils.Dmg.csproj" />
     <ProjectReference Include="..\DiscUtils.Iso9660\DiscUtils.Iso9660.csproj" />
+    <ProjectReference Include="..\DiscUtils.Lvm\DiscUtils.Lvm.csproj" />
     <ProjectReference Include="..\DiscUtils.Vhd\DiscUtils.Vhd.csproj" />
     <ProjectReference Include="..\DiscUtils.Vhdx\DiscUtils.Vhdx.csproj" />
     <ProjectReference Include="..\DiscUtils.Vmdk\DiscUtils.Vmdk.csproj" />
