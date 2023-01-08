@@ -69,7 +69,7 @@ public sealed class TarHeader
 
     public TarHeader(ReadOnlySpan<byte> buffer)
     {
-        FileName = ReadNullTerminatedString(buffer.Slice(0, 100));
+        FileName = EndianUtilities.BytesToString(ReadNullTerminatedString(buffer.Slice(0, 100)));
         FileMode = (UnixFilePermissions)OctalToLong(ReadNullTerminatedString(buffer.Slice(100, 8)));
         OwnerId = (int)OctalToLong(ReadNullTerminatedString(buffer.Slice(108, 8)));
         GroupId = (int)OctalToLong(ReadNullTerminatedString(buffer.Slice(116, 8)));
@@ -77,19 +77,20 @@ public sealed class TarHeader
         ModificationTime = DateTimeOffset.FromUnixTimeSeconds((uint)OctalToLong(ReadNullTerminatedString(buffer.Slice(136, 12))));
         CheckSum = (int)OctalToLong(ReadNullTerminatedString(buffer.Slice(148, 8)));
         FileType = (UnixFileType)buffer[156];
-        LinkName = ReadNullTerminatedString(buffer.Slice(157, 100));
-        Magic = ReadNullTerminatedString(buffer.Slice(257, 6));
+        LinkName = EndianUtilities.BytesToString(ReadNullTerminatedString(buffer.Slice(157, 100)));
+        Magic = EndianUtilities.BytesToString(ReadNullTerminatedString(buffer.Slice(257, 6)));
         Version = (int)OctalToLong(ReadNullTerminatedString(buffer.Slice(263, 2)));
-        OwnerName = ReadNullTerminatedString(buffer.Slice(265, 32));
-        GroupName = ReadNullTerminatedString(buffer.Slice(297, 32));
+        OwnerName = EndianUtilities.BytesToString(ReadNullTerminatedString(buffer.Slice(265, 32)));
+        GroupName = EndianUtilities.BytesToString(ReadNullTerminatedString(buffer.Slice(297, 32)));
         DevMajor = (int)OctalToLong(ReadNullTerminatedString(buffer.Slice(329, 8)));
         DevMinor = (int)OctalToLong(ReadNullTerminatedString(buffer.Slice(337, 8)));
 
         var prefix = ReadNullTerminatedString(buffer.Slice(345, 131));
 
-        if (!string.IsNullOrEmpty(prefix))
+        if (!prefix.IsEmpty)
         {
-            FileName = $"{prefix}/{FileName}";
+            var parentPath = EndianUtilities.BytesToString(prefix);
+            FileName = $"{parentPath}/{FileName}";
         }
 
         LastAccessTime = DateTimeOffset.FromUnixTimeSeconds((uint)OctalToLong(ReadNullTerminatedString(buffer.Slice(476, 12))));
@@ -98,20 +99,20 @@ public sealed class TarHeader
 
     public static bool IsValid(ReadOnlySpan<byte> buffer)
     {
-        if (buffer[0] != 0 &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(100, 8))) &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(108, 8))) &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(116, 8))) &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(136, 12))) &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(148, 8))) &&
-            buffer[257] != 0 &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(263, 2))) &&
-            buffer[265] != 0 &&
-            buffer[297] != 0 &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(329, 8))) &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(337, 8))) &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(476, 12))) &&
-            IsValidOctalString(ReadNullTerminatedString(buffer.Slice(488, 12))))
+        if (buffer.Slice(0, 100).IndexOf((byte)0) > 0 &&
+            IsValidOctalString(buffer.Slice(100, 8)) &&
+            IsValidOctalString(buffer.Slice(108, 8)) &&
+            IsValidOctalString(buffer.Slice(116, 8)) &&
+            IsValidOctalString(buffer.Slice(136, 12)) &&
+            IsValidOctalString(buffer.Slice(148, 8)) &&
+            buffer.Slice(257, 6).IndexOf((byte)0) > 0 &&
+            IsValidOctalString(buffer.Slice(263, 2)) &&
+            buffer.Slice(265, 32).IndexOf((byte)0) >= 0 &&
+            buffer.Slice(297, 32).IndexOf((byte)0) >= 0 &&
+            IsValidOctalString(buffer.Slice(329, 8)) &&
+            IsValidOctalString(buffer.Slice(337, 8)) &&
+            IsValidOctalString(buffer.Slice(476, 12)) &&
+            IsValidOctalString(buffer.Slice(488, 12)))
         {
             return true;
         }
@@ -121,8 +122,20 @@ public sealed class TarHeader
         }
     }
 
-    private static bool IsValidOctalString(string v) =>
-        string.IsNullOrEmpty(v) || v.All(c => c >= '0' && c <= '7');
+    private static bool IsValidOctalString(ReadOnlySpan<byte> v)
+    {
+        v = ReadNullTerminatedString(v);
+
+        foreach (var c in v)
+        {
+            if (c is < (byte)'0' or > (byte)'9')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     private static long ParseFileLength(ReadOnlySpan<byte> buffer)
     {
@@ -180,34 +193,38 @@ public sealed class TarHeader
         buffer[155] = 0;
     }
 
-    internal static string ReadNullTerminatedString(ReadOnlySpan<byte> buffer)
+    internal static ReadOnlySpan<byte> ReadNullTerminatedString(ReadOnlySpan<byte> v)
     {
-        var z = buffer.IndexOf(default(byte));
-
-        if (z == 0)
+        while (v.Length > 0 && v[0] == ' ')
         {
-            return string.Empty;
-        }
-        else if (z > 0)
-        {
-            buffer = buffer.Slice(0, z);
+            v = v.Slice(1);
         }
 
-        return EndianUtilities.BytesToString(buffer).TrimEnd(' ');
+        var z = v.IndexOf((byte)0);
+        if (z >= 0)
+        {
+            v = v.Slice(0, z);
+        }
+
+        while (v.Length > 0 && v[v.Length - 1] == ' ')
+        {
+            v = v.Slice(0, v.Length - 1);
+        }
+
+        return v;
     }
 
-    private static long OctalToLong(string value) =>
-        string.IsNullOrEmpty(value) ? 0 : Convert.ToInt64(value, 8);
-    //{
-    //    long result = 0;
+    private static long OctalToLong(ReadOnlySpan<byte> value)
+    {
+        long result = 0;
 
-    //    for (int i = 0; i < value.Length; ++i)
-    //    {
-    //        result = (result * 8) + (value[i] - '0');
-    //    }
+        for (int i = 0; i < value.Length; ++i)
+        {
+            result = (result * 8) + (value[i] - '0');
+        }
 
-    //    return result;
-    //}
+        return result;
+    }
 
     private static string LongToOctal(long value, int length) =>
         Convert.ToString(value, 8).PadLeft(length, '0');

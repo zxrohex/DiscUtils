@@ -70,9 +70,17 @@ public class TarFile : IDisposable
             if (hdr.FileType == UnixFileType.TarEntryLongLink &&
                 hdr.FileName.Equals("././@LongLink", StringComparison.Ordinal))
             {
-                var buffer = _fileStream.ReadExact(checked((int)hdr.FileLength));
-                long_path = TarHeader.ReadNullTerminatedString(buffer).TrimEnd(' ');
-                _fileStream.Position += -(buffer.Length & 511) & 511;
+                var buffer = ArrayPool<byte>.Shared.Rent(checked((int)hdr.FileLength));
+                try
+                {
+                    _fileStream.ReadExact(buffer, 0, (int)hdr.FileLength);
+                    long_path = EndianUtilities.BytesToString(TarHeader.ReadNullTerminatedString(buffer.AsSpan(0, (int)hdr.FileLength)));
+                    _fileStream.Position += -(buffer.Length & 511) & 511;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
             }
             else
             {
@@ -216,7 +224,7 @@ public class TarFile : IDisposable
                 {
                     archive.ReadExact(data, 0, (int)hdr.FileLength);
 
-                    long_path = TarHeader.ReadNullTerminatedString(data.AsSpan(0, (int)hdr.FileLength));
+                    long_path = EndianUtilities.BytesToString(TarHeader.ReadNullTerminatedString(data.AsSpan(0, (int)hdr.FileLength)));
                 }
                 finally
                 {
