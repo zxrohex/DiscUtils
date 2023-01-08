@@ -1,10 +1,9 @@
-﻿using System;
+﻿using DiscUtils.Streams;
+using System;
 using System.IO;
 using System.IO.Compression;
 
 namespace DiscUtils.VirtualFileSystem;
-
-using Streams;
 
 public class ZipFileSystem : VirtualFileSystem
 {

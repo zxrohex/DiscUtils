@@ -1,16 +1,17 @@
-﻿using System;
+﻿using DiscUtils.Archives;
+using DiscUtils.Internal;
+using DiscUtils.Streams;
+using System;
+using System.Diagnostics;
 using System.IO;
 
 namespace DiscUtils.VirtualFileSystem;
 
-using Archives;
-using Streams;
-using Internal;
-using System.Diagnostics;
-
 public class TarFileSystem : VirtualFileSystem
 {
     private readonly WeakReference<Stream> _tar;
+
+    public override bool IsThreadSafe => true;
 
     public static bool Detect(Stream archive)
     {
@@ -69,7 +70,7 @@ public class TarFileSystem : VirtualFileSystem
                 path = path.TrimEnd('\\');
 
                 AddDirectory(path,
-                    file.Header.CreationTime.DateTime, file.Header.ModificationTime.DateTime, file.Header.LastAccessTime.DateTime,
+                    file.Header.CreationTime.LocalDateTime, file.Header.ModificationTime.LocalDateTime, file.Header.LastAccessTime.LocalDateTime,
                     Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
             }
             else
@@ -81,7 +82,7 @@ public class TarFileSystem : VirtualFileSystem
                 }
 
                 AddFile(path, file.GetStream() ?? Stream.Null,
-                    file.Header.CreationTime.DateTime, file.Header.ModificationTime.DateTime, file.Header.LastAccessTime.DateTime,
+                    file.Header.CreationTime.LocalDateTime, file.Header.ModificationTime.LocalDateTime, file.Header.LastAccessTime.LocalDateTime,
                     Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
             }
         }

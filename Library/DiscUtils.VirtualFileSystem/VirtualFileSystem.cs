@@ -31,6 +31,23 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         return string.Empty;
     }
 
+    public static string GetPathFileName(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return string.Empty;
+        }
+
+        var index = path.LastIndexOfAny(Utilities.PathSeparators);
+
+        if (index >= 0)
+        {
+            return path.Substring(index + 1);
+        }
+
+        return path;
+    }
+
     private readonly VirtualFileSystemDirectory _root;
 
     private long _used_space;
@@ -94,7 +111,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
         var destination = _root.CreateSubDirectoryTree(GetPathDirectoryName(new_path));
 
-        return entry.AddLink(destination, Path.GetFileName(new_path));
+        return entry.AddLink(destination, GetPathFileName(new_path));
     }
 
     public virtual VirtualFileSystemDirectoryEntry AddLink(VirtualFileSystemDirectoryEntry entry, string new_path)
@@ -106,7 +123,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
         var destination = _root.CreateSubDirectoryTree(GetPathDirectoryName(new_path));
 
-        return entry.AddLink(destination, Path.GetFileName(new_path));
+        return entry.AddLink(destination, GetPathFileName(new_path));
     }
 
     public override sealed void CreateDirectory(string path) => AddDirectory(path);
@@ -177,7 +194,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         return directory.EnumerateTree()
             .Where(entry => entry.Value is VirtualFileSystemDirectory)
             .Select(entry => entry.Key)
-            .Where(name => filter(Path.GetFileName(name)))
+            .Where(name => filter(GetPathFileName(name)))
             .Select(name => Path.Combine(path, name));
     }
 
@@ -223,7 +240,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         return directory.EnumerateTree()
             .Where(entry => entry.Value is VirtualFileSystemFile)
             .Select(entry => entry.Key)
-            .Where(name => filter(Path.GetFileName(name)))
+            .Where(name => filter(GetPathFileName(name)))
             .Select(name => Path.Combine(path, name));
     }
 
@@ -253,7 +270,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
         var destination = AddDirectory(GetPathDirectoryName(destinationDirectoryName));
 
-        directory.Move(destination, Path.GetFileName(destinationDirectoryName), replace: false);
+        directory.Move(destination, GetPathFileName(destinationDirectoryName), replace: false);
     }
 
     public override void MoveFile(string sourceName, string destinationName, bool overwrite)
@@ -263,12 +280,12 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
         var destination = AddDirectory(GetPathDirectoryName(destinationName));
 
-        file.Move(destination, Path.GetFileName(destinationName), overwrite);
+        file.Move(destination, GetPathFileName(destinationName), overwrite);
     }
 
     public VirtualFileSystemFile AddFile(string path, byte[] data) =>
         new(AddDirectory(GetPathDirectoryName(path)),
-            Path.GetFileName(path),
+            GetPathFileName(path),
             (mode, access) => new MemoryStream(data, access.HasFlag(FileAccess.Write)))
         {
             Length = data.Length
@@ -276,7 +293,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
     public VirtualFileSystemFile AddFile(string path, byte[] data, int index, int count) =>
         new(AddDirectory(GetPathDirectoryName(path)),
-            Path.GetFileName(path),
+            GetPathFileName(path),
             (mode, access) => new MemoryStream(data, index, count, access.HasFlag(FileAccess.Write)))
         {
             Length = count
@@ -284,12 +301,12 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
     public VirtualFileSystemFile AddFile(string path, FileOpenDelegate open) =>
         new(AddDirectory(GetPathDirectoryName(path)),
-            Path.GetFileName(path),
+            GetPathFileName(path),
             open);
 
     public VirtualFileSystemFile AddFile(string path, DiscFileInfo existingFile) =>
         new(AddDirectory(GetPathDirectoryName(path)),
-            Path.GetFileName(path),
+            GetPathFileName(path),
             existingFile.Open)
         {
             Attributes = existingFile.Attributes,
@@ -301,7 +318,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
     public VirtualFileSystemFile AddFile(string path, IFileSystem fileSystem, string existingPath) =>
         new(AddDirectory(GetPathDirectoryName(path)),
-            Path.GetFileName(path),
+            GetPathFileName(path),
             (mode, access) => fileSystem.OpenFile(existingPath, mode, access))
         {
             Attributes = fileSystem.GetAttributes(existingPath),
@@ -313,7 +330,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
     public VirtualFileSystemFile AddFile(string path, string existingPhysicalPath) =>
         new(AddDirectory(GetPathDirectoryName(path)),
-            Path.GetFileName(path),
+            GetPathFileName(path),
             (mode, access) => File.Open(existingPhysicalPath, mode, access))
         {
             Attributes = File.GetAttributes(existingPhysicalPath),
@@ -336,36 +353,36 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
     public VirtualFileSystemFile AddFile(string path, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
         new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
-            Path.GetFileName(path),
+            GetPathFileName(path),
             (mode, access) => new MemoryStream(content, access.HasFlag(FileAccess.Write)))
         {
             Attributes = attributes,
             CreationTimeUtc = creationTime.ToUniversalTime(),
-            LastAccessTimeUtc = creationTime.ToUniversalTime(),
-            LastWriteTimeUtc = creationTime.ToUniversalTime(),
+            LastAccessTimeUtc = accessedTime.ToUniversalTime(),
+            LastWriteTimeUtc = writtenTime.ToUniversalTime(),
             Length = content.Length
         };
 
     public VirtualFileSystemFile AddFile(string path, Stream source, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
         new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
-            Path.GetFileName(path), (mode, access) => SparseStream.FromStream(source, Ownership.None))
+            GetPathFileName(path), (mode, access) => SparseStream.FromStream(source, Ownership.None))
         {
             Attributes = attributes,
             CreationTimeUtc = creationTime.ToUniversalTime(),
-            LastAccessTimeUtc = creationTime.ToUniversalTime(),
-            LastWriteTimeUtc = creationTime.ToUniversalTime(),
+            LastAccessTimeUtc = accessedTime.ToUniversalTime(),
+            LastWriteTimeUtc = writtenTime.ToUniversalTime(),
             Length = source.Length
         };
 
     public VirtualFileSystemFile AddFile(string path, string existingPhysicalPath, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
         new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
-            Path.GetFileName(path),
+            GetPathFileName(path),
             (mode, access) => File.Open(existingPhysicalPath, mode, access))
         {
             Attributes = attributes,
             CreationTimeUtc = creationTime.ToUniversalTime(),
-            LastAccessTimeUtc = creationTime.ToUniversalTime(),
-            LastWriteTimeUtc = creationTime.ToUniversalTime(),
+            LastAccessTimeUtc = accessedTime.ToUniversalTime(),
+            LastWriteTimeUtc = writtenTime.ToUniversalTime(),
             Length = new FileInfo(existingPhysicalPath).Length
         };
 
