@@ -69,9 +69,8 @@ public class TarFileSystem : VirtualFileSystem
             {
                 path = path.TrimEnd('\\');
 
-                AddDirectory(path,
-                    file.Header.CreationTime.LocalDateTime, file.Header.ModificationTime.LocalDateTime, file.Header.LastAccessTime.LocalDateTime,
-                    Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
+                AddDirectory(path, file.Header.OwnerId, file.Header.GroupId, file.Header.FileMode,
+                    file.Header.CreationTime.LocalDateTime, file.Header.ModificationTime.LocalDateTime, file.Header.LastAccessTime.LocalDateTime);
             }
             else
             {
@@ -81,9 +80,8 @@ public class TarFileSystem : VirtualFileSystem
                     continue;
                 }
 
-                AddFile(path, file.GetStream() ?? Stream.Null,
-                    file.Header.CreationTime.LocalDateTime, file.Header.ModificationTime.LocalDateTime, file.Header.LastAccessTime.LocalDateTime,
-                    Utilities.FileAttributesFromUnixFilePermissions(path, file.Header.FileMode, file.Header.FileType));
+                AddFile(path, file.GetStream() ?? Stream.Null, file.Header.OwnerId, file.Header.GroupId, file.Header.FileMode, file.Header.FileType,
+                    file.Header.CreationTime.LocalDateTime, file.Header.ModificationTime.LocalDateTime, file.Header.LastAccessTime.LocalDateTime);
             }
         }
 

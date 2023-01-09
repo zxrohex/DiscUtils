@@ -10,7 +10,7 @@ using Streams;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFileSystemBuilder
+public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IUnixFileSystem, IFileSystemBuilder
 {
     public delegate Stream FileOpenDelegate(FileMode mode, FileAccess access);
 
@@ -60,7 +60,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
 
     public event EventHandler<CreateFileEventArgs> CreateFile;
 
-    public new VirtualFileSystemOptions Options => base.Options as VirtualFileSystemOptions;
+    public new VirtualFileSystemOptions Options => (VirtualFileSystemOptions)base.Options;
 
     public override bool CanWrite => Options.CanWrite;
 
@@ -89,6 +89,8 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         Options.CaseSensitive
         ? StringComparer.Ordinal
         : StringComparer.OrdinalIgnoreCase;
+
+    string IFileSystemBuilder.VolumeIdentifier { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
     public virtual void SetUsedSpace(long size) => _used_space = size;
 
@@ -533,6 +535,35 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         }
     }
 
+    public UnixFileSystemInfo GetUnixFileInfo(string path)
+    {
+        var dirEntry = _root.ResolvePathToEntry(path);
+
+        if (dirEntry == null)
+        {
+            throw new FileNotFoundException("File not found", path);
+        }
+
+        var isDirectory = dirEntry is VirtualFileSystemDirectory;
+
+        var ufsinfo = new UnixFileSystemInfo
+        {
+            FileType = isDirectory ? UnixFileType.Directory : UnixFileType.Regular,
+            UserId = dirEntry.UnixOwnerId,
+            GroupId = dirEntry.UnixGroupId,
+            Permissions = dirEntry.UnixFileMode,
+            Inode = dirEntry.FileId
+        };
+
+        if (ufsinfo.Permissions == VirtualFileSystemDirectoryEntry.DefaultUnixFilePermissions
+            && dirEntry.Attributes.HasFlag(FileAttributes.ReadOnly))
+        {
+            ufsinfo.Permissions &= ~(UnixFilePermissions.OwnerWrite | UnixFilePermissions.GroupWrite | UnixFilePermissions.OthersWrite);
+        }
+
+        return ufsinfo;
+    }
+
     public void Freeze()
     {
         Options.CanWrite = false;
@@ -544,27 +575,55 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
     void IFileSystemBuilder.AddDirectory(string name) =>
         AddDirectory(name);
 
-    void IFileSystemBuilder.AddDirectory(string name, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+    public VirtualFileSystemDirectory AddDirectory(string name,
+                                                   int ownerId,
+                                                   int groupId,
+                                                   UnixFilePermissions fileMode,
+                                                   DateTime creationTime,
+                                                   DateTime modificationTime,
+                                                   DateTime accessedTime)
     {
         var member = AddDirectory(name);
-        
+
+        member.CreationTimeUtc = creationTime.ToUniversalTime();
         member.LastWriteTimeUtc = modificationTime.ToUniversalTime();
-        
-        if (!fileMode.HasFlag(UnixFilePermissions.OwnerWrite))
-        {
-            member.Attributes |= FileAttributes.ReadOnly;
-        }
+        member.LastAccessTimeUtc = accessedTime.ToUniversalTime();
+
+        member.Attributes = Utilities.FileAttributesFromUnixFilePermissions(name, fileMode, UnixFileType.Directory);
+
+        member.UnixOwnerId = ownerId;
+        member.UnixGroupId = groupId;
+        member.UnixFileMode = fileMode;
+
+        return member;
     }
 
     void IFileSystemBuilder.AddFile(string name, byte[] content) =>
         AddFile(name, content);
 
-    void IFileSystemBuilder.AddFile(string name, byte[] content, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+    public VirtualFileSystemFile AddFile(string name,
+                                         byte[] content,
+                                         int ownerId,
+                                         int groupId,
+                                         UnixFilePermissions fileMode,
+                                         UnixFileType fileType,
+                                         DateTime creationTime,
+                                         DateTime modificationTime,
+                                         DateTime accessedTime)
     {
         var member = AddFile(name, content);
-        
+
+        member.CreationTimeUtc = creationTime.ToUniversalTime();
         member.LastWriteTimeUtc = modificationTime.ToUniversalTime();
-        member.Attributes = Utilities.FileAttributesFromUnixFilePermissions(name, fileMode, UnixFileType.Regular);
+        member.LastAccessTimeUtc = accessedTime.ToUniversalTime();
+
+        member.Attributes = Utilities.FileAttributesFromUnixFilePermissions(name, fileMode, fileType);
+
+        member.UnixOwnerId = ownerId;
+        member.UnixGroupId = groupId;
+        member.UnixFileMode = fileMode;
+
+        return member;
     }
 
     void IFileSystemBuilder.AddFile(string name, Stream source)
@@ -579,32 +638,69 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         }
     }
 
-    void IFileSystemBuilder.AddFile(string name, Stream source, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+    public VirtualFileSystemFile AddFile(string name,
+                                         Stream source,
+                                         int ownerId,
+                                         int groupId,
+                                         UnixFilePermissions fileMode,
+                                         UnixFileType fileType,
+                                         DateTime creationTime,
+                                         DateTime modificationTime,
+                                         DateTime accessedTime)
     {
         var member = AddFile(name, (mode, access) => SparseStream.FromStream(source, Ownership.None));
 
         member.Length = source.Length;
-        member.LastWriteTimeUtc = modificationTime;
-        
-        if (!fileMode.HasFlag(UnixFilePermissions.OwnerRead) || !source.CanWrite)
+
+        member.CreationTimeUtc = creationTime.ToUniversalTime();
+        member.LastWriteTimeUtc = modificationTime.ToUniversalTime();
+        member.LastAccessTimeUtc = accessedTime.ToUniversalTime();
+
+        member.Attributes = Utilities.FileAttributesFromUnixFilePermissions(name, fileMode, fileType);
+
+        if (!source.CanWrite)
         {
             member.Attributes |= FileAttributes.ReadOnly;
         }
+
+        member.UnixOwnerId = ownerId;
+        member.UnixGroupId = groupId;
+        member.UnixFileMode = fileMode;
+
+        return member;
     }
 
     void IFileSystemBuilder.AddFile(string name, string sourcePath) =>
         AddFile(name, sourcePath);
 
-    void IFileSystemBuilder.AddFile(string name, string sourcePath, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+    public VirtualFileSystemFile AddFile(string name,
+                                         string sourcePath,
+                                         int ownerId,
+                                         int groupId,
+                                         UnixFilePermissions fileMode,
+                                         UnixFileType fileType,
+                                         DateTime creationTime,
+                                         DateTime modificationTime,
+                                         DateTime accessedTime)
     {
         var member = AddFile(name, sourcePath);
-        
-        member.LastWriteTimeUtc = modificationTime.ToUniversalTime();
 
-        if (!fileMode.HasFlag(UnixFilePermissions.OwnerRead))
+        member.CreationTimeUtc = creationTime.ToUniversalTime();
+        member.LastWriteTimeUtc = modificationTime.ToUniversalTime();
+        member.LastAccessTimeUtc = accessedTime.ToUniversalTime();
+
+        member.Attributes = Utilities.FileAttributesFromUnixFilePermissions(name, fileMode, fileType);
+
+        if (File.GetAttributes(sourcePath).HasFlag(FileAttributes.ReadOnly))
         {
             member.Attributes |= FileAttributes.ReadOnly;
         }
+
+        member.UnixOwnerId = ownerId;
+        member.UnixGroupId = groupId;
+        member.UnixFileMode = fileMode;
+
+        return member;
     }
 
     IFileSystem IFileSystemBuilder.GenerateFileSystem() => this;
@@ -699,15 +795,27 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IFi
         return file.FileId;
     }
 
-    void IFileSystemBuilder.AddDirectory(string name, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
-        AddDirectory(name, creationTime, writtenTime, accessedTime, attributes);
+    void IFileSystemBuilder.AddDirectory(string name, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
+        => AddDirectory(name, creationTime, writtenTime, accessedTime, attributes);
 
-    void IFileSystemBuilder.AddFile(string name, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
-        AddFile(name, content, creationTime, writtenTime, accessedTime, attributes);
+    void IFileSystemBuilder.AddFile(string name, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
+        => AddFile(name, content, creationTime, writtenTime, accessedTime, attributes);
 
-    void IFileSystemBuilder.AddFile(string name, Stream source, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
-        AddFile(name, source, creationTime, writtenTime, accessedTime, attributes);
+    void IFileSystemBuilder.AddFile(string name, Stream source, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
+        => AddFile(name, source, creationTime, writtenTime, accessedTime, attributes);
 
-    void IFileSystemBuilder.AddFile(string name, string sourcePath, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
-        AddFile(name, sourcePath, creationTime, writtenTime, accessedTime, attributes);
+    void IFileSystemBuilder.AddFile(string name, string sourcePath, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes)
+        => AddFile(name, sourcePath, creationTime, writtenTime, accessedTime, attributes);
+
+    void IFileSystemBuilder.AddDirectory(string name, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+        => AddDirectory(name, ownerId, groupId, fileMode, modificationTime, modificationTime, modificationTime);
+
+    void IFileSystemBuilder.AddFile(string name, byte[] content, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+        => AddFile(name, content, ownerId, groupId, fileMode, UnixFileType.Regular, modificationTime, modificationTime, modificationTime);
+
+    void IFileSystemBuilder.AddFile(string name, Stream source, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+        => AddFile(name, source, ownerId, groupId, fileMode, UnixFileType.Regular, modificationTime, modificationTime, modificationTime);
+
+    void IFileSystemBuilder.AddFile(string name, string sourcePath, int ownerId, int groupId, UnixFilePermissions fileMode, DateTime modificationTime)
+        => AddFile(name, sourcePath, ownerId, groupId, fileMode, UnixFileType.Regular, modificationTime, modificationTime, modificationTime);
 }

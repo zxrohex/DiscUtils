@@ -19,6 +19,15 @@ public abstract class VirtualFileSystemDirectoryEntry
 
     public DateTime CreationTimeUtc { get; set; } = DateTime.UtcNow;
 
+    public const UnixFilePermissions DefaultUnixFilePermissions
+        = UnixFilePermissions.OwnerAll | UnixFilePermissions.GroupAll | UnixFilePermissions.OthersAll;
+
+    public UnixFilePermissions UnixFileMode { get; set; } = DefaultUnixFilePermissions;
+
+    public int UnixOwnerId { get; set; }
+
+    public int UnixGroupId { get; set; }
+
     public RawSecurityDescriptor SecurityDescriptor { get; set; }
 
     public ReparsePoint ReparsePoint { get; set; }
