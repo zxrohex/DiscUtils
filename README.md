@@ -14,7 +14,7 @@ All libraries target .NET Framework 4.6 and 4.8, .NET Standard 2.0 and 2.1 as we
 
 ### Implementation status
 
-Implementations of the ISO, UDF, FAT and NTFS file systems are fairly stable. Lots of work have been carried out to solve issues with Ext2/3/4, SquashFs and Btrfs implementations, but there are probably a few bugs left. It is also possible to open TAR and ZIP archives as file systems. VHD, XVA, VMDK and VDI disk formats are implemented, as well as read/write Registry support. The library also includes a simple iSCSI initiator, for accessing disks via iSCSI and an NFS client implementation.
+Implementations of the ISO, UDF, FAT and NTFS file systems are fairly stable. Lots of work have been carried out to solve issues with Ext2/3/4, SquashFs and Btrfs implementations, but there are probably a few bugs left. It is also possible to open TAR and ZIP archives as file systems. VHD, XVA, VMDK and VDI disk formats are implemented, as well as read/write Registry support. Support for pending updates in Registry log files is also implemented. The library also includes a simple iSCSI initiator, for accessing disks via iSCSI and an NFS client implementation.
 
 ### Wiki
 
