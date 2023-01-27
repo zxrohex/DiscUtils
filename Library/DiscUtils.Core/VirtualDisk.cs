@@ -348,7 +348,7 @@ public abstract class VirtualDisk :
         var uri = PathToUri(path);
         VirtualDisk result;
 
-        if (!VirtualDiskManager.DiskTransports.TryGetValue(uri.Scheme.ToUpperInvariant(), out var transportType))
+        if (!VirtualDiskManager.DiskTransports.TryGetValue(uri.Scheme, out var transportType))
         {
             throw new FileNotFoundException($"Unable to parse path '{path}'", path);
         }
@@ -429,7 +429,7 @@ public abstract class VirtualDisk :
         var uri = PathToUri(path);
         VirtualDisk result = null;
 
-        if (!VirtualDiskManager.DiskTransports.TryGetValue(uri.Scheme.ToUpperInvariant(), out var transportType))
+        if (!VirtualDiskManager.DiskTransports.TryGetValue(uri.Scheme, out var transportType))
         {
             throw new FileNotFoundException($"Unable to parse path '{uri}'", path);
         }
@@ -455,7 +455,7 @@ public abstract class VirtualDisk :
                 }
                 else
                 {
-                    var extension = Path.GetExtension(uri.AbsolutePath).ToUpperInvariant();
+                    var extension = Path.GetExtension(uri.AbsolutePath);
                     if (extension.StartsWith(".", StringComparison.Ordinal))
                     {
                         extension = extension.Substring(1);
@@ -501,7 +501,7 @@ public abstract class VirtualDisk :
             return OpenDisk(path, access);
         }
 
-        var extension = Path.GetExtension(path).ToUpperInvariant();
+        var extension = Path.GetExtension(path);
         if (extension.StartsWith(".", StringComparison.Ordinal))
         {
             extension = extension.Substring(1);
@@ -612,7 +612,7 @@ public abstract class VirtualDisk :
 
     internal static VirtualDiskLayer OpenDiskLayer(FileLocator locator, string path, FileAccess access)
     {
-        var extension = Path.GetExtension(path).ToUpperInvariant();
+        var extension = Path.GetExtension(path);
         if (extension.StartsWith(".", StringComparison.Ordinal))
         {
             extension = extension.Substring(1);

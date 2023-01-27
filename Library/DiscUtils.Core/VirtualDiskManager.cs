@@ -12,9 +12,9 @@ public static class VirtualDiskManager
 {
     static VirtualDiskManager()
     {
-        ExtensionMap = new Dictionary<string, VirtualDiskFactory>();
+        ExtensionMap = new Dictionary<string, VirtualDiskFactory>(StringComparer.OrdinalIgnoreCase);
         TypeMap = new Dictionary<string, VirtualDiskFactory>();
-        DiskTransports = new Dictionary<string, Type>();
+        DiskTransports = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
     }
 
     internal static Dictionary<string, Type> DiskTransports { get; }
@@ -54,14 +54,14 @@ public static class VirtualDiskManager
 
                 foreach (var extension in diskFactoryAttribute.FileExtensions)
                 {
-                    ExtensionMap.Add(extension.ToUpperInvariant(), factory);
+                    ExtensionMap.Add(extension, factory);
                 }
             }
 
             var diskTransportAttribute = type.GetCustomAttribute<VirtualDiskTransportAttribute>(false);
             if (diskTransportAttribute != null)
             {
-                DiskTransports.Add(diskTransportAttribute.Scheme.ToUpperInvariant(), type);
+                DiskTransports.Add(diskTransportAttribute.Scheme, type);
             }
         }
     }

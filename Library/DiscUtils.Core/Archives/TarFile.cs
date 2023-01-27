@@ -68,7 +68,7 @@ public class TarFile : IDisposable
 
             var record = new TarFileRecord(hdr, _fileStream.Position);
             if (hdr.FileType == UnixFileType.TarEntryLongLink &&
-                hdr.FileName.Equals("././@LongLink", StringComparison.Ordinal))
+                hdr.FileName == "././@LongLink")
             {
                 var buffer = ArrayPool<byte>.Shared.Rent(checked((int)hdr.FileLength));
                 try
@@ -217,7 +217,7 @@ public class TarFile : IDisposable
                 yield return new(hdr, source: null);
             }
             else if (hdr.FileType == UnixFileType.TarEntryLongLink &&
-                hdr.FileName.Equals("././@LongLink", StringComparison.Ordinal))
+                hdr.FileName == "././@LongLink")
             {
                 var data = ArrayPool<byte>.Shared.Rent(checked((int)hdr.FileLength));
                 try

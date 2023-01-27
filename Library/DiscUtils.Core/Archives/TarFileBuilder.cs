@@ -44,11 +44,11 @@ public class TarFileBuilder : StreamBuilder
 
     public bool Exists(string name)
     {
-        name = name.TrimEnd('/');
+        var nameSpan = name.AsSpan().TrimEnd('/');
 
         foreach (var file in _files)
         {
-            if (name.Equals(file.Name.TrimEnd('/'), StringComparison.Ordinal))
+            if (nameSpan.Equals(file.Name.AsSpan().TrimEnd('/'), StringComparison.Ordinal))
             {
                 return true;
             }

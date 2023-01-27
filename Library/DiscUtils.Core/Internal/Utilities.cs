@@ -395,8 +395,7 @@ public static class Utilities
     /// </remarks>
     public static Func<string, bool> ConvertWildcardsToRegEx(string pattern, bool ignoreCase)
     {
-        if (pattern.Equals("*", StringComparison.Ordinal) ||
-            pattern.Equals("*.*", StringComparison.Ordinal))
+        if (pattern == "*" || pattern == "*.*")
         {
             return null;
         }
