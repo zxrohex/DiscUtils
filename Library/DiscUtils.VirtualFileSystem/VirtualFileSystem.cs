@@ -203,8 +203,7 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IUn
     public Func<string, bool> GetFilter(string pattern)
     {
         if (string.IsNullOrEmpty(pattern) ||
-            pattern.Equals("*", StringComparison.Ordinal) ||
-            pattern.Equals("*.*", StringComparison.Ordinal))
+            pattern == "*" || pattern == "*.*")
         {
             return name => true;
         }

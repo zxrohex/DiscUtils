@@ -28,11 +28,45 @@ using DiscUtils.Ntfs;
 using DiscUtils.Streams;
 using Xunit;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Threading.Tasks;
+using System.Threading;
+using DiscUtils.Streams.Compatibility;
+using System;
 
 namespace LibraryTests.Ntfs
 {
     public class NtfsFileSystemTest
     {
+        [Fact]
+        public void RecursiveDelete()
+        {
+            var ntfs = FileSystemSource.NtfsFileSystem();
+
+            //ntfs.NtfsOptions.HideHiddenFiles = false;
+            //ntfs.NtfsOptions.HideSystemFiles = false;
+
+            ntfs.CreateDirectory("Dir");
+
+            ntfs.CreateDirectory(@"Dir\SubDir");
+
+            var filePath = Path.Combine("Dir", "SubDir", "File.bin");
+
+            ntfs.OpenFile(filePath, FileMode.Create, FileAccess.ReadWrite).Close();
+
+            ntfs.SetAttributes(filePath, FileAttributes.Hidden | FileAttributes.System);
+
+            var info = ntfs.GetDirectoryInfo("Dir");
+
+            Assert.True(info.Exists);
+
+            info.Delete(recursive: true);
+
+            info = ntfs.GetDirectoryInfo("Dir");
+            
+            Assert.False(info.Exists);
+        }
+
         [Fact]//(Skip = "Issue #14")]
         public void AclInheritance()
         {
@@ -115,6 +149,54 @@ namespace LibraryTests.Ntfs
             using (Stream s = ntfs.OpenFile(@"file", FileMode.Create, FileAccess.ReadWrite))
             {
                 s.Write(new byte[(int)ntfs.ClusterSize], 0, (int)ntfs.ClusterSize);
+            }
+
+            var ranges = ntfs.PathToClusters("file").ToArray();
+            Assert.Single(ranges);
+            Assert.Equal(1, ranges[0].Count);
+
+
+            // Short files have no clusters (stored in MFT)
+            using (Stream s = ntfs.OpenFile(@"file2", FileMode.Create, FileAccess.ReadWrite))
+            {
+                s.WriteByte(1);
+            }
+            ranges = ntfs.PathToClusters("file2").ToArray();
+            Assert.Empty(ranges);
+        }
+
+        [Fact]
+        public async Task ClusterInfoAsync()
+        {
+            // 'Big' files have clusters
+            var ntfs = FileSystemSource.NtfsFileSystem();
+            using (Stream s = ntfs.OpenFile(@"file", FileMode.Create, FileAccess.ReadWrite))
+            {
+                await s.WriteAsync(new byte[(int)ntfs.ClusterSize], CancellationToken.None);
+            }
+
+            var ranges = ntfs.PathToClusters("file").ToArray();
+            Assert.Single(ranges);
+            Assert.Equal(1, ranges[0].Count);
+
+
+            // Short files have no clusters (stored in MFT)
+            using (Stream s = ntfs.OpenFile(@"file2", FileMode.Create, FileAccess.ReadWrite))
+            {
+                s.WriteByte(1);
+            }
+            ranges = ntfs.PathToClusters("file2").ToArray();
+            Assert.Empty(ranges);
+        }
+
+        [Fact]
+        public void ClusterInfoSpan()
+        {
+            // 'Big' files have clusters
+            var ntfs = FileSystemSource.NtfsFileSystem();
+            using (Stream s = ntfs.OpenFile(@"file", FileMode.Create, FileAccess.ReadWrite))
+            {
+                s.Write(new byte[(int)ntfs.ClusterSize]);
             }
 
             var ranges = ntfs.PathToClusters("file").ToArray();
@@ -456,6 +538,124 @@ namespace LibraryTests.Ntfs
         }
 
         [Fact]
+        public void FragmentedSpan()
+        {
+            var ntfs = FileSystemSource.NtfsFileSystem();
+
+            ntfs.CreateDirectory(@"DIR");
+
+            var buffer = new byte[4096];
+
+            for (var i = 0; i < 2500; ++i)
+            {
+                using (var stream = ntfs.OpenFile(@$"DIR\file{i}.bin", FileMode.Create, FileAccess.ReadWrite))
+                {
+                    stream.Write(buffer);
+                }
+
+                using (var stream = ntfs.OpenFile(@$"DIR\{i}.bin", FileMode.Create, FileAccess.ReadWrite))
+                {
+                    stream.Write(buffer);
+                }
+            }
+
+            for (var i = 0; i < 2500; ++i)
+            {
+                ntfs.DeleteFile($@"DIR\file{i}.bin");
+            }
+
+            // Create fragmented file (lots of small writes)
+            using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.Create, FileAccess.ReadWrite))
+            {
+                for (var i = 0; i < 2500; ++i)
+                {
+                    stream.Write(buffer);
+                }
+            }
+
+            // Try a large write
+            var largeWriteBuffer = new byte[200 * 1024];
+            for (var i = 0; i < largeWriteBuffer.Length / 4096; ++i)
+            {
+                largeWriteBuffer[i * 4096] = (byte)i;
+            }
+            using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            {
+                stream.Position = stream.Length - largeWriteBuffer.Length;
+                stream.Write(largeWriteBuffer);
+            }
+
+            // And a large read
+            var largeReadBuffer = new byte[largeWriteBuffer.Length];
+            using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            {
+                stream.Position = stream.Length - largeReadBuffer.Length;
+                stream.ReadExact(largeReadBuffer);
+            }
+
+            Assert.Equal(largeWriteBuffer, largeReadBuffer);
+        }
+
+        [Fact]
+        public async Task FragmentedAsync()
+        {
+            var ntfs = FileSystemSource.NtfsFileSystem();
+
+            ntfs.CreateDirectory(@"DIR");
+
+            var buffer = new byte[4096];
+
+            for (var i = 0; i < 2500; ++i)
+            {
+                using (var stream = ntfs.OpenFile(@$"DIR\file{i}.bin", FileMode.Create, FileAccess.ReadWrite))
+                {
+                    await stream.WriteAsync(buffer);
+                }
+
+                using (var stream = ntfs.OpenFile(@$"DIR\{i}.bin", FileMode.Create, FileAccess.ReadWrite))
+                {
+                    await stream.WriteAsync(buffer);
+                }
+            }
+
+            for (var i = 0; i < 2500; ++i)
+            {
+                ntfs.DeleteFile($@"DIR\file{i}.bin");
+            }
+
+            // Create fragmented file (lots of small writes)
+            using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.Create, FileAccess.ReadWrite))
+            {
+                for (var i = 0; i < 2500; ++i)
+                {
+                    await stream.WriteAsync(buffer);
+                }
+            }
+
+            // Try a large write
+            var largeWriteBuffer = new byte[200 * 1024];
+            for (var i = 0; i < largeWriteBuffer.Length / 4096; ++i)
+            {
+                largeWriteBuffer[i * 4096] = (byte)i;
+            }
+            using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            {
+                stream.Position = stream.Length - largeWriteBuffer.Length;
+                await stream.WriteAsync(largeWriteBuffer);
+            }
+
+            // And a large read
+            var largeReadBuffer = new byte[largeWriteBuffer.Length];
+            using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            {
+                stream.Position = stream.Length - largeReadBuffer.Length;
+                await stream.ReadExactAsync(largeReadBuffer);
+            }
+
+            Assert.Equal(largeWriteBuffer, largeReadBuffer);
+        }
+
+        [Fact]
         public void Sparse()
         {
             var fileSize = 1 * 1024 * 1024;
@@ -499,6 +699,124 @@ namespace LibraryTests.Ntfs
                 var readBuffer = new byte[fileSize];
                 s.Position = 0;
                 s.ReadExact(readBuffer, 0, fileSize);
+
+                for (var i = 64 * 1024; i < (128 + 64) * 1024; ++i)
+                {
+                    data[i] = 0;
+                }
+                for (var i = fileSize - (64 * 1024); i < fileSize; ++i)
+                {
+                    data[i] = 0;
+                }
+                data[72 * 1024] = 99;
+
+                Assert.Equal(data, readBuffer);
+            }
+        }
+
+        [Fact]
+        public void SparseSpan()
+        {
+            var fileSize = 1 * 1024 * 1024;
+
+            var ntfs = FileSystemSource.NtfsFileSystem();
+
+            var data = new byte[fileSize];
+            for (var i = 0; i < fileSize; i++)
+            {
+                data[i] = (byte)i;
+            }
+
+            using (var s = ntfs.OpenFile("file.bin", FileMode.CreateNew))
+            {
+                s.Write(data.AsSpan(0, fileSize));
+
+                ntfs.SetAttributes("file.bin", ntfs.GetAttributes("file.bin") | FileAttributes.SparseFile);
+
+                s.Position = 64 * 1024;
+                s.Clear(128 * 1024);
+                s.Position = fileSize - 64 * 1024;
+                s.Clear(128 * 1024);
+            }
+
+            using (var s = ntfs.OpenFile("file.bin", FileMode.Open))
+            {
+                Assert.Equal(fileSize + 64 * 1024, s.Length);
+
+                var extents = new List<StreamExtent>(s.Extents);
+
+                Assert.Equal(2, extents.Count);
+                Assert.Equal(0, extents[0].Start);
+                Assert.Equal(64 * 1024, extents[0].Length);
+                Assert.Equal((64 + 128) * 1024, extents[1].Start);
+                Assert.Equal(fileSize - (64 * 1024) - ((64 + 128) * 1024), extents[1].Length);
+
+
+                s.Position = 72 * 1024;
+                s.WriteByte(99);
+
+                var readBuffer = new byte[fileSize];
+                s.Position = 0;
+                s.ReadExact(readBuffer.AsSpan(0, fileSize));
+
+                for (var i = 64 * 1024; i < (128 + 64) * 1024; ++i)
+                {
+                    data[i] = 0;
+                }
+                for (var i = fileSize - (64 * 1024); i < fileSize; ++i)
+                {
+                    data[i] = 0;
+                }
+                data[72 * 1024] = 99;
+
+                Assert.Equal(data, readBuffer);
+            }
+        }
+
+        [Fact]
+        public async Task SparseAsync()
+        {
+            var fileSize = 1 * 1024 * 1024;
+
+            var ntfs = FileSystemSource.NtfsFileSystem();
+
+            var data = new byte[fileSize];
+            for (var i = 0; i < fileSize; i++)
+            {
+                data[i] = (byte)i;
+            }
+
+            using (var s = ntfs.OpenFile("file.bin", FileMode.CreateNew))
+            {
+                await s.WriteAsync(data.AsMemory(0, fileSize));
+
+                ntfs.SetAttributes("file.bin", ntfs.GetAttributes("file.bin") | FileAttributes.SparseFile);
+
+                s.Position = 64 * 1024;
+                s.Clear(128 * 1024);
+                s.Position = fileSize - 64 * 1024;
+                s.Clear(128 * 1024);
+            }
+
+            using (var s = ntfs.OpenFile("file.bin", FileMode.Open))
+            {
+                Assert.Equal(fileSize + 64 * 1024, s.Length);
+
+                var extents = new List<StreamExtent>(s.Extents);
+
+                Assert.Equal(2, extents.Count);
+                Assert.Equal(0, extents[0].Start);
+                Assert.Equal(64 * 1024, extents[0].Length);
+                Assert.Equal((64 + 128) * 1024, extents[1].Start);
+                Assert.Equal(fileSize - (64 * 1024) - ((64 + 128) * 1024), extents[1].Length);
+
+
+                s.Position = 72 * 1024;
+                s.WriteByte(99);
+
+                var readBuffer = new byte[fileSize];
+                s.Position = 0;
+                await s.ReadExactAsync(readBuffer.AsMemory(0, fileSize));
 
                 for (var i = 64 * 1024; i < (128 + 64) * 1024; ++i)
                 {

@@ -123,7 +123,7 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static async ValueTask ReadExactAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+    public static async ValueTask ReadExactAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         var originalCount = buffer.Length;
 

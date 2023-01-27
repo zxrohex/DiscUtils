@@ -32,6 +32,9 @@ using System.Buffers;
 
 namespace DiscUtils.Ntfs;
 
+using DirectoryIndexEntry =
+    KeyValuePair<FileNameRecord, FileRecordReference>;
+
 /// <summary>
 /// Class for accessing NTFS file systems.
 /// </summary>
@@ -370,6 +373,31 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
     }
 
     /// <summary>
+    /// Deletes a directory, optionally with all descendants.
+    /// </summary>
+    /// <param name="path">The path of the directory to delete.</param>
+    /// <param name="recursive">Determines if the all descendants should be deleted.</param>
+    public override void DeleteDirectory(string path, bool recursive)
+    {
+        if (recursive)
+        {
+            foreach (var dir in DoSearch(path, null, subFolders: true, dirs: true, files: false,
+                entry => entry.Key.FileNameNamespace != FileNameNamespace.Dos).ToArray())
+            {
+                DeleteDirectory(dir, true);
+            }
+
+            foreach (var file in DoSearch(path, null, subFolders: true, dirs: false, files: true,
+                entry => entry.Key.FileNameNamespace != FileNameNamespace.Dos).ToArray())
+            {
+                DeleteFile(file);
+            }
+        }
+
+        DeleteDirectory(path);
+    }
+
+    /// <summary>
     /// Deletes a file.
     /// </summary>
     /// <param name="path">The path of the file to delete.</param>
@@ -390,12 +418,18 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
             var parentDir = GetDirectory(parentDirEntry.Value.Reference);
 
             var dirEntry = parentDir.GetEntryByName(Utilities.GetFileFromPath(dirEntryPath));
+            
             if (dirEntry == null || dirEntry.Value.IsDirectory)
             {
                 throw new FileNotFoundException("No such file", path);
             }
 
             var file = GetFile(dirEntry.Value.Reference);
+
+            if (file == null)
+            {
+                throw new FileNotFoundException("Invalid directory entry, please check file system integrity", path);
+            }
 
             if (string.IsNullOrEmpty(attributeName) && attributeType == AttributeType.Data)
             {
@@ -492,7 +526,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
         {
             var re = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
-            foreach (var dir in DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false))
+            foreach (var dir in DoSearch(path, re, searchOption == SearchOption.AllDirectories, true, false, FilterEntry))
             {
                 yield return dir;
             }
@@ -513,7 +547,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
         {
             var filter = Utilities.ConvertWildcardsToRegEx(searchPattern, ignoreCase: true);
 
-            foreach (var result in DoSearch(path, filter, searchOption == SearchOption.AllDirectories, false, true))
+            foreach (var result in DoSearch(path, filter, searchOption == SearchOption.AllDirectories, false, true, FilterEntry))
             {
                 yield return result;
             }
@@ -538,12 +572,30 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
             var parentDir = GetDirectory(parentDirEntry.Value.Reference);
 
             foreach (var entry in parentDir
-                .GetAllEntries(filter: true)
+                .GetAllEntries(FilterEntry)
                 .Select(m => Utilities.CombinePaths(path, m.Details.FileName)))
             {
                 yield return entry;
             }
         }
+    }
+
+    internal bool FilterEntry(DirectoryIndexEntry entry)
+    {
+        // Weed out short-name entries for files and any hidden / system / metadata files.
+        if ((entry.Key.Flags & NtfsFileAttributes.Hidden) != 0
+            && _context.Options.HideHiddenFiles
+            || (entry.Key.Flags & NtfsFileAttributes.System) != 0
+            && _context.Options.HideSystemFiles
+            || entry.Value.MftIndex < 24
+            && _context.Options.HideMetafiles
+            || entry.Key.FileNameNamespace == FileNameNamespace.Dos
+            && _context.Options.HideDosFileNames)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -569,7 +621,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
 
             var parentDir = GetDirectory(parentDirEntry.Value.Reference);
 
-            var results = parentDir.GetAllEntries(true)
+            var results = parentDir.GetAllEntries(FilterEntry)
                 .Where(dirEntry => filter is null || filter(dirEntry.Details.FileName))
                 .Select(dirEntry => Utilities.CombinePaths(path, dirEntry.Details.FileName));
 
@@ -2294,7 +2346,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
         return GetDirectoryEntry(dir, pathElements, 0);
     }
 
-    private IEnumerable<string> DoSearch(string path, Func<string, bool> filter, bool subFolders, bool dirs, bool files)
+    private IEnumerable<string> DoSearch(string path, Func<string, bool> filter, bool subFolders, bool dirs, bool files, Func<DirectoryIndexEntry, bool> filterEntry)
     {
         var parentDirEntry = GetDirectoryEntry(path);
         if (parentDirEntry == null)
@@ -2308,7 +2360,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
             throw new DirectoryNotFoundException($"The directory '{path}' was not found");
         }
 
-        foreach (var de in parentDir.GetAllEntries(true))
+        foreach (var de in parentDir.GetAllEntries(filterEntry))
         {
             var isDir = (de.Details.FileAttributes & FileAttributes.Directory) != 0;
 
@@ -2322,7 +2374,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
 
             if (subFolders && isDir)
             {
-                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.Details.FileName), filter, subFolders, dirs, files))
+                foreach (var subdirentry in DoSearch(Utilities.CombinePaths(path, de.Details.FileName), filter, subFolders, dirs, files, filterEntry))
                 {
                     yield return subdirentry;
                 }
@@ -2471,7 +2523,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
 
     private void DumpDirectory(Directory dir, TextWriter writer, string indent)
     {
-        foreach (var dirEntry in dir.GetAllEntries(true))
+        foreach (var dirEntry in dir.GetAllEntries(FilterEntry))
         {
             var file = GetFile(dirEntry.Reference);
             writer.WriteLine($"{indent}+-{file} ({file.IndexInMft})");

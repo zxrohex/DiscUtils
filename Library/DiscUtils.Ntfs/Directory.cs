@@ -57,13 +57,13 @@ internal class Directory : File
         get { return Index.Count == 0; }
     }
 
-    public IEnumerable<DirectoryEntry> GetAllEntries(bool filter)
+    public IEnumerable<DirectoryEntry> GetAllEntries(Func<DirectoryIndexEntry, bool> filter)
     {
         var entries = Index.Entries;
 
-        if (filter)
+        if (filter is not null)
         {
-            entries = entries.Where(FilterEntry);
+            entries = entries.Where(filter);
         }
 
         return entries.Select(entry => new DirectoryEntry(this, entry.Value, entry.Key));
@@ -164,6 +164,11 @@ internal class Directory : File
     {
         var file = _context.GetFileByRef(dirEntry.Reference);
 
+        if (file is null)
+        {
+            throw new FileNotFoundException($"Cannot find file '{dirEntry.SearchName}', {dirEntry.Reference}");
+        }
+
         var nameRecord = dirEntry.Details;
 
         Index.Remove(dirEntry.Details);
@@ -233,24 +238,6 @@ internal class Directory : File
         } while (GetEntryByName(candidate) != null);
 
         return candidate;
-    }
-
-    private bool FilterEntry(DirectoryIndexEntry entry)
-    {
-        // Weed out short-name entries for files and any hidden / system / metadata files.
-        if ((entry.Key.Flags & NtfsFileAttributes.Hidden) != 0
-            && _context.Options.HideHiddenFiles
-            || (entry.Key.Flags & NtfsFileAttributes.System) != 0
-            && _context.Options.HideSystemFiles
-            || entry.Value.MftIndex < 24
-            && _context.Options.HideMetafiles
-            || entry.Key.FileNameNamespace == FileNameNamespace.Dos
-            && _context.Options.HideDosFileNames)
-        {
-            return false;
-        }
-
-        return true;
     }
 
     private sealed class FileNameQuery : IComparable<byte[]>

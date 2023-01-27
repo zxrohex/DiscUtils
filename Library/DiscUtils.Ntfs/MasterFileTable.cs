@@ -23,6 +23,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -344,7 +345,8 @@ internal class MasterFileTable : IDiagnosticTraceable, IDisposable
             fileReference.SequenceNumber != 0 && result.SequenceNumber != 0 &&
             fileReference.SequenceNumber != result.SequenceNumber)
         {
-            throw new IOException("Attempt to get an MFT record with an old reference");
+            Trace.WriteLine($"Attempt to get an MFT record {result.MasterFileTableIndex}:{result.SequenceNumber} with an old reference {fileReference.SequenceNumber}");
+            return null;
         }
 
         return result;
