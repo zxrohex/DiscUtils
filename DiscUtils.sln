@@ -9,12 +9,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Library", "Library", "{E20A
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utilities", "Utilities", "{ACF7813E-5C0D-4900-BAD6-4169A2E013AE}"
 	ProjectSection(SolutionItems) = preProject
-		Utilities\Directory.build.props = Utilities\Directory.build.props
+		Utilities\Directory.Build.props = Utilities\Directory.Build.props
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{94C9C1CB-7CD2-4327-AEC0-DDE375C85CEF}"
 	ProjectSection(SolutionItems) = preProject
-		Tests\Directory.build.props = Tests\Directory.build.props
+		Tests\Directory.Build.props = Tests\Directory.Build.props
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscUtils.Core", "Library\DiscUtils.Core\DiscUtils.Core.csproj", "{1D40DF20-B233-4A06-965D-60C37410234D}"
