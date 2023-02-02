@@ -24,7 +24,7 @@ using System.Globalization;
 
 namespace DiscUtils.HfsPlus;
 
-internal struct CatalogNodeId
+internal readonly struct CatalogNodeId
 {
     public static readonly CatalogNodeId RootParentId = new CatalogNodeId(1);
     public static readonly CatalogNodeId RootFolderId = new CatalogNodeId(2);

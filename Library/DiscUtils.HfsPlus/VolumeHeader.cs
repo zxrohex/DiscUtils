@@ -21,13 +21,14 @@
 //
 
 using System;
+using System.Linq;
 using DiscUtils.Streams;
 
 namespace DiscUtils.HfsPlus;
 
 internal sealed class VolumeHeader : IByteArraySerializable
 {
-    public const ushort HfsPlusSignature = 0x482b;
+    private static readonly ushort[] HfsPlusSignatures = { 0x482b, 0x4858 };
 
     public ForkData AllocationFile;
     public VolumeAttributes Attributes;
@@ -65,7 +66,7 @@ internal sealed class VolumeHeader : IByteArraySerializable
 
     public bool IsValid
     {
-        get { return Signature == HfsPlusSignature; }
+        get { return Array.IndexOf(HfsPlusSignatures, Signature) >= 0; }
     }
 
     public int Size
