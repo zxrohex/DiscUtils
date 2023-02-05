@@ -13,7 +13,7 @@ public static class VirtualDiskManager
     static VirtualDiskManager()
     {
         ExtensionMap = new Dictionary<string, VirtualDiskFactory>(StringComparer.OrdinalIgnoreCase);
-        TypeMap = new Dictionary<string, VirtualDiskFactory>();
+        TypeMap = new Dictionary<string, VirtualDiskFactory>(StringComparer.OrdinalIgnoreCase);
         DiskTransports = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
     }
 
