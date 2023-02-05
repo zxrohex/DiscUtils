@@ -273,19 +273,35 @@ public abstract class ProgramBase
             }
         }
 
-        if (_timeSwitch.IsPresent)
+        try
         {
-            var stopWatch = new Stopwatch();
-            stopWatch.Start();
-            DoRun();
-            stopWatch.Stop();
+            if (_timeSwitch.IsPresent)
+            {
+                var stopWatch = new Stopwatch();
+                stopWatch.Start();
+                DoRun();
+                stopWatch.Stop();
 
-            Console.WriteLine();
-            Console.WriteLine($"Time taken: {stopWatch.Elapsed}");
+                Console.WriteLine();
+                Console.WriteLine($"Time taken: {stopWatch.Elapsed}");
+            }
+            else
+            {
+                DoRun();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            DoRun();
+            Console.ForegroundColor = ConsoleColor.Red;
+
+            while (ex is not null)
+            {
+                Environment.ExitCode = ex.HResult;
+                Console.Error.WriteLine(ex.Message);
+                ex = ex.InnerException;
+            }
+
+            Console.ResetColor();
         }
     }
 
