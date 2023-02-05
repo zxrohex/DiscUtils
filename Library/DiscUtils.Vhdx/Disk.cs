@@ -342,6 +342,18 @@ public sealed class Disk : VirtualDisk
     /// <param name="stream">The stream to initialize.</param>
     /// <param name="ownsStream">Indicates if the new instance controls the lifetime of the stream.</param>
     /// <param name="capacity">The desired capacity of the new disk.</param>
+    /// <returns>An object that accesses the stream as a VHDX file.</returns>
+    public static Disk InitializeDynamic(Stream stream, Ownership ownsStream, long capacity)
+    {
+        return new Disk(DiskImageFile.InitializeDynamic(stream, ownsStream, capacity), Ownership.Dispose);
+    }
+
+    /// <summary>
+    /// Initializes a stream as a dynamically-sized VHDX file.
+    /// </summary>
+    /// <param name="stream">The stream to initialize.</param>
+    /// <param name="ownsStream">Indicates if the new instance controls the lifetime of the stream.</param>
+    /// <param name="capacity">The desired capacity of the new disk.</param>
     /// <param name="blockSize">The size of each block (unit of allocation).</param>
     /// <returns>An object that accesses the stream as a VHDX file.</returns>
     public static Disk InitializeDynamic(Stream stream, Ownership ownsStream, long capacity, Geometry geometry, long blockSize)

@@ -130,7 +130,8 @@ public sealed class DiskImageFile : VirtualDiskLayer
 
     internal DiskImageFile(FileLocator locator, string path, FileAccess access)
     {
-        var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
+        // FileShare.ReadWrite makes it possible to create children from attached parents!
+        var share = access == FileAccess.Read ? FileShare.ReadWrite : FileShare.Read;
         _fileStream = locator.Open(path, FileMode.Open, access, share);
         _ownsStream = Ownership.Dispose;
 
@@ -304,6 +305,19 @@ public sealed class DiskImageFile : VirtualDiskLayer
                                                 Geometry geometry)
     {
         InitializeFixedInternal(stream, capacity, geometry);
+        return new DiskImageFile(stream, ownsStream);
+    }
+
+    /// <summary>
+    /// Initializes a stream as a dynamically-sized VHDX file.
+    /// </summary>
+    /// <param name="stream">The stream to initialize.</param>
+    /// <param name="ownsStream">Indicates if the new instance controls the lifetime of the stream.</param>
+    /// <param name="capacity">The desired capacity of the new disk.</param>
+    /// <returns>An object that accesses the stream as a VHDX file.</returns>
+    public static DiskImageFile InitializeDynamic(Stream stream, Ownership ownsStream, long capacity)
+    {
+        InitializeDynamicInternal(stream, capacity, null, FileParameters.DefaultDynamicBlockSize);
         return new DiskImageFile(stream, ownsStream);
     }
 
@@ -519,6 +533,8 @@ public sealed class DiskImageFile : VirtualDiskLayer
                 "BlockSize must be a power of 2 between 1MB and 256MB");
         }
 
+        geometry ??= Geometry.FromCapacity(capacity);
+
         var logicalSectorSize = geometry.BytesPerSector;
         var physicalSectorSize = 4096;
         var chunkRatio = 0x800000L * logicalSectorSize / blockSize;
@@ -600,17 +616,96 @@ public sealed class DiskImageFile : VirtualDiskLayer
             BlockSize = (uint)blockSize,
             Flags = FileParametersFlags.None
         };
-        var parentLocator = new ParentLocator();
 
-        Stream metadataStream = new SubStream(stream, metadataRegion.FileOffset, metadataRegion.Length);
-        var metadata = Metadata.Initialize(metadataStream, fileParams, (ulong)capacity,
+        var metadataStream = new SubStream(stream, metadataRegion.FileOffset, metadataRegion.Length);
+        _ = Metadata.Initialize(metadataStream, fileParams, (ulong)capacity,
             (uint)logicalSectorSize, (uint)physicalSectorSize, null);
     }
 
     private static void InitializeDifferencingInternal(Stream stream, DiskImageFile parent,
                                                        string parentAbsolutePath, string parentRelativePath, DateTime parentModificationTimeUtc)
     {
-        throw new NotImplementedException();
+        var logicalSectorSize = parent._metadata.LogicalSectorSize;
+        var physicalSectorSize = parent._metadata.PhysicalSectorSize;
+        var blockSize = parent._metadata.FileParameters.BlockSize;
+        var capacity = parent._metadata.DiskSize;
+
+        var chunkRatio = 0x800000L * logicalSectorSize / blockSize;
+        var dataBlocksCount = MathUtilities.Ceil((long)capacity, blockSize);
+        var sectorBitmapBlocksCount = MathUtilities.Ceil(dataBlocksCount, chunkRatio);
+        var totalBatEntriesDynamic = dataBlocksCount + (dataBlocksCount - 1) / chunkRatio;
+
+        var fileHeader = new FileHeader { Creator = ".NET DiscUtils" };
+
+        var fileEnd = Sizes.OneMiB;
+
+        var header1 = new VhdxHeader();
+        header1.SequenceNumber = 0;
+        header1.FileWriteGuid = Guid.NewGuid();
+        header1.DataWriteGuid = Guid.NewGuid();
+        header1.LogGuid = Guid.Empty;
+        header1.LogVersion = 0;
+        header1.Version = 1;
+        header1.LogLength = (uint)Sizes.OneMiB;
+        header1.LogOffset = (ulong)fileEnd;
+        header1.CalcChecksum();
+
+        fileEnd += header1.LogLength;
+
+        var header2 = new VhdxHeader(header1);
+        header2.SequenceNumber = 1;
+        header2.CalcChecksum();
+
+        var regionTable = new RegionTable();
+
+        var metadataRegion = new RegionEntry();
+        metadataRegion.Guid = RegionEntry.MetadataRegionGuid;
+        metadataRegion.FileOffset = fileEnd;
+        metadataRegion.Length = (uint)Sizes.OneMiB;
+        metadataRegion.Flags = RegionFlags.Required;
+        regionTable.Regions.Add(metadataRegion.Guid, metadataRegion);
+
+        fileEnd += metadataRegion.Length;
+
+        var batRegion = new RegionEntry();
+        batRegion.Guid = RegionEntry.BatGuid;
+        batRegion.FileOffset = 3 * Sizes.OneMiB;
+        batRegion.Length = (uint)MathUtilities.RoundUp(totalBatEntriesDynamic * 8, Sizes.OneMiB);
+        batRegion.Flags = RegionFlags.Required;
+        regionTable.Regions.Add(batRegion.Guid, batRegion);
+
+        fileEnd += batRegion.Length;
+
+        stream.Position = 0;
+        StreamUtilities.WriteStruct(stream, fileHeader);
+
+        stream.Position = 64 * Sizes.OneKiB;
+        StreamUtilities.WriteStruct(stream, header1);
+
+        stream.Position = 128 * Sizes.OneKiB;
+        StreamUtilities.WriteStruct(stream, header2);
+
+        stream.Position = 192 * Sizes.OneKiB;
+        StreamUtilities.WriteStruct(stream, regionTable);
+
+        stream.Position = 256 * Sizes.OneKiB;
+        StreamUtilities.WriteStruct(stream, regionTable);
+
+        // Set stream to min size
+        stream.Position = fileEnd - 1;
+        stream.WriteByte(0);
+
+        // Metadata
+        var fileParams = new FileParameters
+        {
+            BlockSize = (uint)blockSize,
+            Flags = FileParametersFlags.HasParent
+        };
+        var parentLocator = new ParentLocator(parent._header.DataWriteGuid.ToString("b"), parentRelativePath, parentAbsolutePath);
+
+        var metadataStream = new SubStream(stream, metadataRegion.FileOffset, metadataRegion.Length);
+        _ = Metadata.Initialize(metadataStream, fileParams, (ulong)capacity,
+            (uint)logicalSectorSize, (uint)physicalSectorSize, parentLocator);
     }
 
     private void Initialize()

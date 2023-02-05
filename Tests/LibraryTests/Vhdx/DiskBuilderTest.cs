@@ -20,8 +20,11 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Setup;
 using DiscUtils.Streams;
 using DiscUtils.Vhdx;
+using System;
+using System.IO;
 using System.Linq;
 using Xunit;
 
@@ -81,13 +84,78 @@ namespace LibraryTests.Vhdx
                 Content = new SparseMemoryStream()
             };
 
-
             var fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhdx", fileSpecs[0].Name);
 
             using var disk = new Disk(fileSpecs[0].OpenStream(), Ownership.Dispose);
             Assert.Equal(0, disk.Content.Length);
+        }
+
+        [Fact]
+        public void CreateDifferencing()
+        {
+            SetupHelper.RegisterAssembly(typeof(Disk).Assembly);
+
+            var tempPath = Path.GetTempPath();
+
+            var nameGuid = Guid.NewGuid();
+
+            var parentPath = Path.Combine(tempPath, $"{nameGuid}_parent.vhdx");
+
+            var diffPath = Path.Combine(tempPath, $"{nameGuid}_diff.vhdx");
+
+            try
+            {
+                using (var parentDiskBuild = DiscUtils.VirtualDisk.CreateDisk("vhdx", "dynamic", parentPath, diskParameters: new() { Capacity = 200L << 20 }, null, null))
+                {
+                    for (byte i = 0; i < 8; ++i)
+                    {
+                        parentDiskBuild.Content.Position = i * 1024L * 1024;
+                        parentDiskBuild.Content.WriteByte(i);
+                    }
+
+                    parentDiskBuild.Content.Position = 150 * 1024 * 1024;
+                    parentDiskBuild.Content.WriteByte(0xff);
+                }
+
+                using var parentDisk = DiscUtils.VirtualDisk.OpenDisk(parentPath, FileAccess.Read);
+
+                using (var diffDisk = parentDisk.CreateDifferencingDisk(diffPath))
+                {
+                    for (var i = 0; i < 8; ++i)
+                    {
+                        diffDisk.Content.Position = i * 1024L * 1024;
+                        Assert.Equal(i, diffDisk.Content.ReadByte());
+                    }
+
+                    diffDisk.Content.Position = 150 * 1024 * 1024;
+                    Assert.Equal(0xFF, diffDisk.Content.ReadByte());
+
+                    for (byte i = 0; i < 8; ++i)
+                    {
+                        diffDisk.Content.Position = i * 1024L * 1024;
+                        diffDisk.Content.WriteByte(0xfe);
+                    }
+
+                    diffDisk.Content.Position = 150 * 1024 * 1024;
+                    diffDisk.Content.WriteByte(0xfe);
+                }
+
+                for (var i = 0; i < 8; ++i)
+                {
+                    parentDisk.Content.Position = i * 1024L * 1024;
+                    Assert.Equal(i, parentDisk.Content.ReadByte());
+                }
+
+                parentDisk.Content.Position = 150 * 1024 * 1024;
+                Assert.Equal(0xFF, parentDisk.Content.ReadByte());
+            }
+            finally
+            {
+                if (File.Exists(diffPath)) { File.Delete(diffPath); }
+                if (File.Exists(parentPath)) { File.Delete(parentPath); }
+            }
         }
 
         [Fact]
