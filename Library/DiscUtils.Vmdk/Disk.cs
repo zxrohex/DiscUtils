@@ -44,7 +44,7 @@ public sealed class Disk : VirtualDisk
     /// <summary>
     /// The list of files that make up the disk.
     /// </summary>
-    private readonly List<Tuple<VirtualDiskLayer, Ownership>> _files;
+    private readonly List<(VirtualDiskLayer VirtualDiskLayer, Ownership Ownership)> _files;
 
     private readonly string _path;
 
@@ -66,10 +66,12 @@ public sealed class Disk : VirtualDisk
     {
         _path = path;
         FileLocator fileLocator = new DiscFileLocator(fileSystem, Utilities.GetDirectoryFromPath(path));
-        _files = new List<Tuple<VirtualDiskLayer, Ownership>>();
-        _files.Add(
-            new Tuple<VirtualDiskLayer, Ownership>(
-                new DiskImageFile(fileLocator, Utilities.GetFileFromPath(path), access), Ownership.Dispose));
+        
+        _files = new()
+        {
+            (new DiskImageFile(fileLocator, Utilities.GetFileFromPath(path), access), Ownership.Dispose)
+        };
+
         ResolveFileChain();
     }
 
@@ -85,31 +87,39 @@ public sealed class Disk : VirtualDisk
             _path = fileStream.Name;
         }
 
-        _files = new List<Tuple<VirtualDiskLayer, Ownership>>();
-        _files.Add(new Tuple<VirtualDiskLayer, Ownership>(new DiskImageFile(stream, ownsStream),
-            Ownership.Dispose));
+        _files = new()
+        {
+            (new DiskImageFile(stream, ownsStream),
+            Ownership.Dispose)
+        };
     }
 
     internal Disk(DiskImageFile file, Ownership ownsStream)
     {
-        _files = new List<Tuple<VirtualDiskLayer, Ownership>>();
-        _files.Add(new Tuple<VirtualDiskLayer, Ownership>(file, ownsStream));
+        _files = new()
+        {
+            (file, ownsStream)
+        };
+
         ResolveFileChain();
     }
 
     internal Disk(FileLocator layerLocator, string path, FileAccess access)
     {
         _path = path;
-        _files = new List<Tuple<VirtualDiskLayer, Ownership>>();
-        _files.Add(new Tuple<VirtualDiskLayer, Ownership>(new DiskImageFile(layerLocator, path, access),
-            Ownership.Dispose));
+        _files = new()
+        {
+            (new DiskImageFile(layerLocator, path, access),
+            Ownership.Dispose)
+        };
+
         ResolveFileChain();
     }
 
     /// <summary>
     /// Gets a value indicating whether the layer data is opened for writing.
     /// </summary>
-    public override bool CanWrite => _files[0].Item1.CanWrite;
+    public override bool CanWrite => _files[0].VirtualDiskLayer.CanWrite;
 
     /// <summary>
     /// Gets the geometry of the disk as it is anticipated a hypervisor BIOS will represent it.
@@ -118,13 +128,13 @@ public sealed class Disk : VirtualDisk
     {
         get
         {
-            var result = _files[_files.Count - 1].Item1 is DiskImageFile file
+            var result = _files[_files.Count - 1].VirtualDiskLayer is DiskImageFile file
                 ? file.BiosGeometry
                 : default;
             
             result = result != default
                 ? result
-                : Geometry.MakeBiosSafe(_files[_files.Count - 1].Item1.Geometry, Capacity);
+                : Geometry.MakeBiosSafe(_files[_files.Count - 1].VirtualDiskLayer.Geometry, Capacity);
 
             return result;
         }
@@ -135,7 +145,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     public override long Capacity
     {
-        get { return _files[0].Item1.Capacity; }
+        get { return _files[0].VirtualDiskLayer.Capacity; }
     }
 
     /// <summary>
@@ -153,7 +163,7 @@ public sealed class Disk : VirtualDisk
                 SparseStream stream = null;
                 for (var i = _files.Count - 1; i >= 0; --i)
                 {
-                    stream = _files[i].Item1.OpenContent(stream, Ownership.Dispose);
+                    stream = _files[i].VirtualDiskLayer.OpenContent(stream, Ownership.Dispose);
                 }
 
                 _content = stream;
@@ -178,7 +188,7 @@ public sealed class Disk : VirtualDisk
     /// BIOS geometry is preserved in the disk file.</remarks>
     public override VirtualDiskTypeInfo DiskTypeInfo
     {
-        get { return DiskFactory.MakeDiskTypeInfo(((DiskImageFile)_files[_files.Count - 1].Item1).CreateType); }
+        get { return DiskFactory.MakeDiskTypeInfo(((DiskImageFile)_files[_files.Count - 1].VirtualDiskLayer).CreateType); }
     }
 
     /// <summary>
@@ -186,7 +196,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     public override Geometry Geometry
     {
-        get { return _files[_files.Count - 1].Item1.Geometry; }
+        get { return _files[_files.Count - 1].VirtualDiskLayer.Geometry; }
     }
 
     /// <summary>
@@ -198,7 +208,7 @@ public sealed class Disk : VirtualDisk
         {
             foreach (var file in _files)
             {
-                yield return file.Item1;
+                yield return file.VirtualDiskLayer;
             }
         }
     }
@@ -212,7 +222,7 @@ public sealed class Disk : VirtualDisk
         {
             foreach (var file in _files)
             {
-                yield return (DiskImageFile)file.Item1;
+                yield return (DiskImageFile)file.VirtualDiskLayer;
             }
         }
     }
@@ -225,7 +235,7 @@ public sealed class Disk : VirtualDisk
     {
         get
         {
-            var file = (DiskImageFile)_files[_files.Count - 1].Item1;
+            var file = (DiskImageFile)_files[_files.Count - 1].VirtualDiskLayer;
 
             var diskParams = new VirtualDiskParameters
             {
@@ -372,7 +382,7 @@ public sealed class Disk : VirtualDisk
     /// <returns>The newly created disk.</returns>
     public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path)
     {
-        return InitializeDifferencing(fileSystem, path, DiffDiskCreateType(_files[0].Item1), _path);
+        return InitializeDifferencing(fileSystem, path, DiffDiskCreateType(_files[0].VirtualDiskLayer), _path);
     }
 
     /// <summary>
@@ -382,7 +392,7 @@ public sealed class Disk : VirtualDisk
     /// <returns>The newly created disk.</returns>
     public override VirtualDisk CreateDifferencingDisk(string path)
     {
-        var firstLayer = _files[0].Item1;
+        var firstLayer = _files[0].VirtualDiskLayer;
         return InitializeDifferencing(path, DiffDiskCreateType(firstLayer),
             firstLayer.RelativeFileLocator.GetFullPath(_path));
     }
@@ -410,9 +420,9 @@ public sealed class Disk : VirtualDisk
 
                 foreach (var file in _files)
                 {
-                    if (file.Item2 == Ownership.Dispose)
+                    if (file.Ownership == Ownership.Dispose)
                     {
-                        file.Item1.Dispose();
+                        file.VirtualDiskLayer.Dispose();
                     }
                 }
             }
@@ -438,7 +448,7 @@ public sealed class Disk : VirtualDisk
 
     private void ResolveFileChain()
     {
-        var file = _files[_files.Count - 1].Item1;
+        var file = _files[_files.Count - 1].VirtualDiskLayer;
 
         while (file.NeedsParent)
         {
@@ -450,7 +460,7 @@ public sealed class Disk : VirtualDisk
                 if (locator.Exists(posParent))
                 {
                     file = OpenDiskLayer(file.RelativeFileLocator, posParent, FileAccess.Read);
-                    _files.Add(new Tuple<VirtualDiskLayer, Ownership>(file, Ownership.Dispose));
+                    _files.Add((file, Ownership.Dispose));
                     foundParent = true;
                     break;
                 }

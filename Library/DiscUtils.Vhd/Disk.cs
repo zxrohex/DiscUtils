@@ -41,7 +41,7 @@ public sealed class Disk : VirtualDisk
     /// <summary>
     /// The list of files that make up the disk.
     /// </summary>
-    private List<Tuple<DiskImageFile, Ownership>> _files;
+    private List<(DiskImageFile DiakImageFile, Ownership Ownership)> _files;
 
     /// <summary>
     /// Initializes a new instance of the Disk class.  Differencing disks are not supported.
@@ -50,11 +50,13 @@ public sealed class Disk : VirtualDisk
     /// <param name="ownsStream">Indicates if the new instance should control the lifetime of the stream.</param>
     public Disk(Stream stream, Ownership ownsStream)
     {
-        _files = new List<Tuple<DiskImageFile, Ownership>>();
-        _files.Add(new Tuple<DiskImageFile, Ownership>(new DiskImageFile(stream, ownsStream),
-            Ownership.Dispose));
+        _files = new()
+        {
+            (new DiskImageFile(stream, ownsStream),
+            Ownership.Dispose)
+        };
 
-        if (_files[0].Item1.NeedsParent)
+        if (_files[0].DiakImageFile.NeedsParent)
         {
             throw new NotSupportedException("Differencing disks cannot be opened from a stream");
         }
@@ -67,8 +69,12 @@ public sealed class Disk : VirtualDisk
     public Disk(string path)
     {
         var file = new DiskImageFile(path, FileAccess.ReadWrite);
-        _files = new List<Tuple<DiskImageFile, Ownership>>();
-        _files.Add(new Tuple<DiskImageFile, Ownership>(file, Ownership.Dispose));
+        
+        _files = new()
+        {
+            (file, Ownership.Dispose)
+        };
+        
         ResolveFileChain();
     }
 
@@ -80,8 +86,12 @@ public sealed class Disk : VirtualDisk
     public Disk(string path, FileAccess access)
     {
         var file = new DiskImageFile(path, access);
-        _files = new List<Tuple<DiskImageFile, Ownership>>();
-        _files.Add(new Tuple<DiskImageFile, Ownership>(file, Ownership.Dispose));
+        
+        _files = new()
+        {
+            (file, Ownership.Dispose)
+        };
+        
         ResolveFileChain();
     }
 
@@ -95,8 +105,12 @@ public sealed class Disk : VirtualDisk
     {
         FileLocator fileLocator = new DiscFileLocator(fileSystem, Utilities.GetDirectoryFromPath(path));
         var file = new DiskImageFile(fileLocator, Utilities.GetFileFromPath(path), access);
-        _files = new List<Tuple<DiskImageFile, Ownership>>();
-        _files.Add(new Tuple<DiskImageFile, Ownership>(file, Ownership.Dispose));
+        
+        _files = new()
+        {
+            (file, Ownership.Dispose)
+        };
+        
         ResolveFileChain();
     }
 
@@ -120,7 +134,7 @@ public sealed class Disk : VirtualDisk
         }
 
         var tempList =
-            new List<Tuple<DiskImageFile, Ownership>>(files.Count);
+            new List<(DiskImageFile DiakImageFile, Ownership Ownership)>(files.Count);
         for (var i = 0; i < files.Count - 1; ++i)
         {
             if (!files[i].NeedsParent)
@@ -134,10 +148,10 @@ public sealed class Disk : VirtualDisk
                 throw new ArgumentException($"File at index {i + 1} is not the parent of file at index {i} - Unique Ids don't match");
             }
 
-            tempList.Add(new Tuple<DiskImageFile, Ownership>(files[i], ownsFiles));
+            tempList.Add((files[i], ownsFiles));
         }
 
-        tempList.Add(new Tuple<DiskImageFile, Ownership>(files[files.Count - 1], ownsFiles));
+        tempList.Add((files[files.Count - 1], ownsFiles));
 
         _files = tempList;
     }
@@ -151,8 +165,12 @@ public sealed class Disk : VirtualDisk
     internal Disk(FileLocator locator, string path, FileAccess access)
     {
         var file = new DiskImageFile(locator, path, access);
-        _files = new List<Tuple<DiskImageFile, Ownership>>();
-        _files.Add(new Tuple<DiskImageFile, Ownership>(file, Ownership.Dispose));
+        
+        _files = new()
+        {
+            (file, Ownership.Dispose)
+        };
+        
         ResolveFileChain();
     }
 
@@ -163,8 +181,11 @@ public sealed class Disk : VirtualDisk
     /// <param name="ownsFile">Indicates if the new instance should control the lifetime of the file.</param>
     private Disk(DiskImageFile file, Ownership ownsFile)
     {
-        _files = new List<Tuple<DiskImageFile, Ownership>>();
-        _files.Add(new Tuple<DiskImageFile, Ownership>(file, ownsFile));
+        _files = new()
+        {
+            (file, ownsFile)
+        };
+        
         ResolveFileChain();
     }
 
@@ -177,12 +198,15 @@ public sealed class Disk : VirtualDisk
     /// <param name="parentPath">Path to the parent disk (if required).</param>
     private Disk(DiskImageFile file, Ownership ownsFile, FileLocator parentLocator, string parentPath)
     {
-        _files = new List<Tuple<DiskImageFile, Ownership>>();
-        _files.Add(new Tuple<DiskImageFile, Ownership>(file, ownsFile));
+        _files = new()
+        {
+            (file, ownsFile)
+        };
+
         if (file.NeedsParent)
         {
             _files.Add(
-                new Tuple<DiskImageFile, Ownership>(
+                (
                     new DiskImageFile(parentLocator, parentPath, FileAccess.Read),
                     Ownership.Dispose));
             ResolveFileChain();
@@ -198,11 +222,14 @@ public sealed class Disk : VirtualDisk
     /// <param name="ownsParent">Indicates if the new instance should control the lifetime of the parentFile.</param>
     private Disk(DiskImageFile file, Ownership ownsFile, DiskImageFile parentFile, Ownership ownsParent)
     {
-        _files = new List<Tuple<DiskImageFile, Ownership>>();
-        _files.Add(new Tuple<DiskImageFile, Ownership>(file, ownsFile));
+        _files = new()
+        {
+            (file, ownsFile)
+        };
+
         if (file.NeedsParent)
         {
-            _files.Add(new Tuple<DiskImageFile, Ownership>(parentFile, ownsParent));
+            _files.Add((parentFile, ownsParent));
             ResolveFileChain();
         }
         else
@@ -217,7 +244,7 @@ public sealed class Disk : VirtualDisk
     /// <summary>
     /// Gets a value indicating whether the layer data is opened for writing.
     /// </summary>
-    public override bool CanWrite => _files[0].Item1.CanWrite;
+    public override bool CanWrite => _files[0].DiakImageFile.CanWrite;
 
     /// <summary>
     /// Gets or sets a value indicating whether the VHD footer is written every time a new block is allocated.
@@ -252,7 +279,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     public override long Capacity
     {
-        get { return _files[0].Item1.Capacity; }
+        get { return _files[0].DiakImageFile.Capacity; }
     }
 
     /// <summary>
@@ -270,7 +297,7 @@ public sealed class Disk : VirtualDisk
                 SparseStream stream = null;
                 for (var i = _files.Count - 1; i >= 0; --i)
                 {
-                    stream = _files[i].Item1.OpenContent(stream, Ownership.Dispose);
+                    stream = _files[i].DiakImageFile.OpenContent(stream, Ownership.Dispose);
                 }
 
                 _content = stream;
@@ -295,7 +322,7 @@ public sealed class Disk : VirtualDisk
     /// BIOS geometry is preserved in the disk file.</remarks>
     public override VirtualDiskTypeInfo DiskTypeInfo
     {
-        get { return DiskFactory.MakeDiskTypeInfo(_files[_files.Count - 1].Item1.IsSparse ? "dynamic" : "fixed"); }
+        get { return DiskFactory.MakeDiskTypeInfo(_files[_files.Count - 1].DiakImageFile.IsSparse ? "dynamic" : "fixed"); }
     }
 
     /// <summary>
@@ -303,7 +330,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     public override Geometry Geometry
     {
-        get { return _files[0].Item1.Geometry; }
+        get { return _files[0].DiakImageFile.Geometry; }
     }
 
     /// <summary>
@@ -315,7 +342,7 @@ public sealed class Disk : VirtualDisk
         {
             foreach (var file in _files)
             {
-                yield return file.Item1;
+                yield return file.DiakImageFile;
             }
         }
     }
@@ -438,7 +465,7 @@ public sealed class Disk : VirtualDisk
     public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path)
     {
         FileLocator locator = new DiscFileLocator(fileSystem, Utilities.GetDirectoryFromPath(path));
-        var file = _files[0].Item1.CreateDifferencing(locator, Utilities.GetFileFromPath(path));
+        var file = _files[0].DiakImageFile.CreateDifferencing(locator, Utilities.GetFileFromPath(path));
         return new Disk(file, Ownership.Dispose);
     }
 
@@ -450,7 +477,7 @@ public sealed class Disk : VirtualDisk
     public override VirtualDisk CreateDifferencingDisk(string path)
     {
         FileLocator locator = new LocalFileLocator(Path.GetDirectoryName(path));
-        var file = _files[0].Item1.CreateDifferencing(locator, Path.GetFileName(path));
+        var file = _files[0].DiakImageFile.CreateDifferencing(locator, Path.GetFileName(path));
         return new Disk(file, Ownership.Dispose);
     }
 
@@ -487,9 +514,9 @@ public sealed class Disk : VirtualDisk
                 {
                     foreach (var record in _files)
                     {
-                        if (record.Item2 == Ownership.Dispose)
+                        if (record.Ownership == Ownership.Dispose)
                         {
-                            record.Item1.Dispose();
+                            record.DiakImageFile.Dispose();
                         }
                     }
 
@@ -505,7 +532,7 @@ public sealed class Disk : VirtualDisk
 
     private void ResolveFileChain()
     {
-        var file = _files[_files.Count - 1].Item1;
+        var file = _files[_files.Count - 1].DiakImageFile;
 
         while (file.NeedsParent)
         {
@@ -525,7 +552,7 @@ public sealed class Disk : VirtualDisk
                     }
 
                     file = newFile;
-                    _files.Add(new Tuple<DiskImageFile, Ownership>(file, Ownership.Dispose));
+                    _files.Add((file, Ownership.Dispose));
                     found = true;
                     break;
                 }
