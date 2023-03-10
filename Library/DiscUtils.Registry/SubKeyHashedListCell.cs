@@ -306,7 +306,7 @@ internal sealed class SubKeyHashedListCell : ListCell
         {
             // TODO: Be more efficient at ruling out no-hopes by using the hash values
             var cell = _hive.GetCell<KeyNodeCell>(x);
-            var result = string.Compare(cell.Name, _searchName, StringComparison.OrdinalIgnoreCase);
+            var result = string.Compare(cell?.Name, _searchName, StringComparison.OrdinalIgnoreCase);
             if (result == 0)
             {
                 CellIndex = x;
