@@ -57,6 +57,11 @@ public class BcdObject
     public const string DebuggerSettingsGroupId = "{4636856E-540F-4170-A130-A84776F4C654}";
 
     /// <summary>
+    /// Well-known object for Emergency Management Services settings.
+    /// </summary>
+    public const string HypervisorSettingsGroupId = "{7ff607e0-4395-11db-b0de-0800200c9a66}";
+
+    /// <summary>
     /// Well-known object for NTLDR application.
     /// </summary>
     public const string WindowsLegacyNtldrId = "{466F5A88-0AF2-4F76-9038-095B170DC21C}";
@@ -142,6 +147,7 @@ public class BcdObject
         AddMapping("{badmemory}", BadMemoryGroupId);
         AddMapping("{bootloadersettings}", BootLoaderSettingsGroupId);
         AddMapping("{globalsettings}", GlobalSettingsGroupId);
+        AddMapping("{hypervisorsettings}", HypervisorSettingsGroupId);
         AddMapping("{bootmgr}", WindowsBootManagerId);
         AddMapping("{fwbootmgr}", FirmwareBootManagerId);
         AddMapping("{ramdiskoptions}", WindowsSetupRamdiskOptionsId);
