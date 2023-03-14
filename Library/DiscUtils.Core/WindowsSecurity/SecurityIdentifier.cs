@@ -24,8 +24,8 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     }
 
     public SecurityIdentifier(ReadOnlySpan<char> sddlForm)
-        : this(ParseSddlForm(sddlForm))
     {
+        buffer = ParseSddlForm(sddlForm);
     }
 
     public SecurityIdentifier(byte[] binaryForm, int offset)
@@ -383,44 +383,32 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         return ret;
     }
 
-    internal static string ParseSddlForm(ReadOnlySpan<char> sddlForm)
+    private static byte[] ParseSddlForm(ReadOnlySpan<char> sddlForm)
     {
-        if (sddlForm.Length < 2)
+        var sid = sddlForm;
+
+        // If only 2 characters long, can't be a full SID string - so assume
+        // it's an attempted alias.  Do that conversion first.
+        if (sid.Length == 2)
         {
-            throw new ArgumentException("Invalid SDDL string.", nameof(sddlForm));
-        }
-
-        string sid;
-        int len;
-
-        if (sddlForm.StartsWith("S-".AsSpan(), StringComparison.OrdinalIgnoreCase))
-        {
-            // Looks like a SID, try to parse it.
-            var endPos = 0;
-
-            var ch = char.ToUpperInvariant(sddlForm[endPos]);
-            while (ch is 'S' or '-' or 'X'
-                   or >= '0' and <= '9' or >= 'A' and <= 'F')
+            var acct = WellKnownAccount.LookupBySddlForm(sid);
+            if (acct == null)
             {
-                ++endPos;
-                ch = char.ToUpperInvariant(sddlForm[endPos]);
+                throw new ArgumentException(
+                    $"Invalid SDDL string - unrecognized account: {sid.ToString()}",
+                    nameof(sddlForm));
             }
 
-            if (ch == ':' && sddlForm[endPos - 1] == 'D')
+            if (!acct.IsAbsolute)
             {
-                endPos--;
+                throw new NotImplementedException(
+                    $"Unable to convert account to SID: {acct.Name ?? sid.ToString()}");
             }
 
-            sid = sddlForm.Slice(0, endPos).ToString();
-            len = endPos;
-        }
-        else
-        {
-            sid = sddlForm.Slice(0, 2).ToString().ToUpperInvariant();
-            len = 2;
+            sid = acct.Sid.AsSpan();
         }
 
-        return sid;
+        return ParseSddlForm(sid.ToString());
     }
 
     private static byte[] ParseSddlForm(string sddlForm)
