@@ -88,7 +88,6 @@ public class ValidatingFileSystem<TFileSystem, TChecker> : DiscFileSystem
     /// </summary>
     private bool _globalTraceCaptureStackTraces = false;
 
-
     //-------------------------------------
     // INITIALIZED STATE
 
@@ -102,8 +101,6 @@ public class ValidatingFileSystem<TFileSystem, TChecker> : DiscFileSystem
     /// The random number generator used to generate seeds for checkpoint-specific generators.
     /// </summary>
     private Random _masterRng;
-
-
 
     //-------------------------------------
     // RUNNING STATE
@@ -139,10 +136,7 @@ public class ValidatingFileSystem<TFileSystem, TChecker> : DiscFileSystem
     /// </summary>
     private long _totalEventsBeforeLockDown;
 
-
-
     private int _numScheduledCheckpoints;
-
 
     /// <summary>
     /// Creates a new instance.

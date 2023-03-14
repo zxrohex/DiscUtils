@@ -173,14 +173,12 @@ namespace LibraryTests.Vhd
             ms.Read(lastSector, 0, 512);
             Assert.Equal(firstSector, lastSector);
 
-
             // Finally, check default value for AutoCommit lines up with behaviour
             using (var disk = new Disk(ms, Ownership.None))
             {
                 Assert.True(disk.AutoCommitFooter);
             }
         }
-
 
     }
 }

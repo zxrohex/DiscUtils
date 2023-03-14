@@ -402,7 +402,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem, IClusterBase
 
         stream.Position = 0;
         Span<byte> bytes = stackalloc byte[512];
-        StreamUtilities.ReadExact(stream, bytes);
+        StreamUtilities.ReadExactly(stream, bytes);
         var bpbBytesPerSec = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(11));
         if (bpbBytesPerSec != 512)
         {
@@ -594,7 +594,6 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem, IClusterBase
             FileAttributes = (FileAttributes)dirEntry.Attributes
         };
     }
-
 
     /// <summary>
     /// Sets the standard file information for a file.

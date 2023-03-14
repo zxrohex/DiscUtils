@@ -43,7 +43,6 @@ internal class MetadataVolumeGroupSection
     public MetadataPhysicalVolumeSection[] PhysicalVolumes;
     public MetadataLogicalVolumeSection[] LogicalVolumes;
 
-
     internal void Parse(ReadOnlyMemory<char> head, TextReader data)
     {
         Name = head.Span.Trim().TrimEnd('{').TrimEnd().ToString();

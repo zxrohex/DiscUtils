@@ -219,9 +219,6 @@ internal sealed class FileContentReaderWriter : IContentWriter, IContentReader
         }
     }
 
-
-
-
     private Encoding GetEncoding(Encoding defEncoding)
     {
         return _encoding switch

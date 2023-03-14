@@ -42,7 +42,6 @@ namespace LibraryTests
             }
         }
 
-
         public static IEnumerable<object[]> QuickReadWriteFileSystems
         {
             get

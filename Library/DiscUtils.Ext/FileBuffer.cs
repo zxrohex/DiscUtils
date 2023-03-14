@@ -230,7 +230,7 @@ internal class FileBuffer : Buffer, IFileBuffer
                     if (_inode.IndirectBlock != 0)
                     {
                         _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
-                        StreamUtilities.ReadExact(_context.RawStream, indirectData);
+                        StreamUtilities.ReadExactly(_context.RawStream, indirectData);
                         physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData);
                     }
                 }
@@ -243,14 +243,14 @@ internal class FileBuffer : Buffer, IFileBuffer
                         {
                             _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
                                                           logicalBlock / (blockSize / 4) * 4;
-                            StreamUtilities.ReadExact(_context.RawStream, indirectData);
+                            StreamUtilities.ReadExactly(_context.RawStream, indirectData);
                             var indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData);
 
                             if (indirectBlock != 0)
                             {
                                 _context.RawStream.Position = indirectBlock * (long)blockSize +
                                                               logicalBlock % (blockSize / 4) * 4;
-                                StreamUtilities.ReadExact(_context.RawStream, indirectData);
+                                StreamUtilities.ReadExactly(_context.RawStream, indirectData);
                                 physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData);
                             }
                         }
@@ -361,7 +361,6 @@ internal class FileBuffer : Buffer, IFileBuffer
         return totalRead;
     }
 
-
     public override int Read(long pos, Span<byte> buffer)
     {
         if (pos > _inode.FileSize)
@@ -394,7 +393,7 @@ internal class FileBuffer : Buffer, IFileBuffer
                     if (_inode.IndirectBlock != 0)
                     {
                         _context.RawStream.Position = _inode.IndirectBlock * (long)blockSize + logicalBlock * 4;
-                        StreamUtilities.ReadExact(_context.RawStream, indirectData);
+                        StreamUtilities.ReadExactly(_context.RawStream, indirectData);
                         physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData);
                     }
                 }
@@ -407,14 +406,14 @@ internal class FileBuffer : Buffer, IFileBuffer
                         {
                             _context.RawStream.Position = _inode.DoubleIndirectBlock * (long)blockSize +
                                                           logicalBlock / (blockSize / 4) * 4;
-                            StreamUtilities.ReadExact(_context.RawStream, indirectData);
+                            StreamUtilities.ReadExactly(_context.RawStream, indirectData);
                             var indirectBlock = EndianUtilities.ToUInt32LittleEndian(indirectData);
 
                             if (indirectBlock != 0)
                             {
                                 _context.RawStream.Position = indirectBlock * (long)blockSize +
                                                               logicalBlock % (blockSize / 4) * 4;
-                                StreamUtilities.ReadExact(_context.RawStream, indirectData);
+                                StreamUtilities.ReadExactly(_context.RawStream, indirectData);
                                 physicalBlock = EndianUtilities.ToUInt32LittleEndian(indirectData);
                             }
                         }

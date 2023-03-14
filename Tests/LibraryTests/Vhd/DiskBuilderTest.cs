@@ -57,7 +57,6 @@ namespace LibraryTests.Vhd
                 Content = diskContent
             };
 
-
             var fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhd", fileSpecs[0].Name);
@@ -81,7 +80,6 @@ namespace LibraryTests.Vhd
                 DiskType = FileType.Dynamic,
                 Content = diskContent
             };
-
 
             var fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);

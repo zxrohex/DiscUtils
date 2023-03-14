@@ -50,10 +50,8 @@ public abstract class BuilderExtent : IDisposable
 
     public abstract int Read(long diskOffset, byte[] block, int offset, int count);
 
-
     public virtual Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
         Task.FromResult(Read(diskOffset, block, offset, count));
-
 
     public abstract int Read(long diskOffset, Span<byte> block);
 

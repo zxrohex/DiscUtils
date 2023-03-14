@@ -41,7 +41,6 @@ internal sealed class ValidatingFileSystemWrapperStream<Tfs, Tc> : SparseStream
     private long _shadowPosition;
     private bool _disposed;
 
-
     public ValidatingFileSystemWrapperStream(ValidatingFileSystem<Tfs, Tc> fileSystem, ValidatingFileSystem<Tfs, Tc>.StreamOpenFn openFn)
     {
         _fileSystem = fileSystem;

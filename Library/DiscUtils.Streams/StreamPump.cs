@@ -203,7 +203,7 @@ public sealed class StreamPump
             while (extentOffset < extent.Length)
             {
                 var numRead = (int)Math.Min(copyBuffer.Length, extent.Length - extentOffset);
-                StreamUtilities.ReadExact(inStream, copyBuffer, 0, numRead);
+                inStream.ReadExactly(copyBuffer, 0, numRead);
                 BytesRead += numRead;
 
                 var copyBufferOffset = 0;

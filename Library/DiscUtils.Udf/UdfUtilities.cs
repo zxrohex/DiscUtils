@@ -175,7 +175,7 @@ internal static class UdfUtilities
     {
         var partition = context.LogicalPartitions[extent.ExtentLocation.Partition];
         var pos = extent.ExtentLocation.LogicalBlock * partition.LogicalBlockSize;
-        return StreamUtilities.ReadExact(partition.Content, pos, (int)extent.ExtentLength);
+        return StreamUtilities.ReadExactly(partition.Content, pos, (int)extent.ExtentLength);
     }
 
     private static short ForceRange(short min, short max, short val)

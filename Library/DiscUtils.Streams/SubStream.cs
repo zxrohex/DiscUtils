@@ -167,7 +167,6 @@ public class SubStream : MappedStream
         return numRead;
     }
 
-
     public override long Seek(long offset, SeekOrigin origin)
     {
         var absNewPos = offset;
@@ -211,7 +210,6 @@ public class SubStream : MappedStream
         _position += count;
     }
 
-
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (count < 0)
@@ -228,8 +226,6 @@ public class SubStream : MappedStream
         await _parent.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         _position += count;
     }
-
-
 
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -255,11 +251,8 @@ public class SubStream : MappedStream
         _position += buffer.Length;
     }
 
-
-
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         _parent.FlushAsync(cancellationToken);
-
 
     protected override void Dispose(bool disposing)
     {

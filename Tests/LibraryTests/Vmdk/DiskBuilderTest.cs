@@ -57,7 +57,6 @@ namespace LibraryTests.Vmdk
                 Content = diskContent
             };
 
-
             var fileSpecs = builder.Build("foo").ToArray();
             Assert.Equal(2, fileSpecs.Length);
             Assert.Equal("foo.vmdk", fileSpecs[0].Name);
@@ -84,11 +83,9 @@ namespace LibraryTests.Vmdk
                 Content = diskContent
             };
 
-
             var fileSpecs = builder.Build("foo").ToArray();
             Assert.Equal(2, fileSpecs.Length);
             Assert.Equal("foo.vmdk", fileSpecs[0].Name);
-
 
             var dbfs = new DiskBuilderFileSystem(fileSpecs);
 

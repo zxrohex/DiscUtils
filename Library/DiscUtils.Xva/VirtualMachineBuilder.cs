@@ -100,7 +100,6 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
     {
         var tarBuilder = new TarFileBuilder();
 
-
         var ovaFileContent = GenerateOvaXml(out var diskIds);
         tarBuilder.AddFile("ova.xml", Encoding.ASCII.GetBytes(ovaFileContent));
 

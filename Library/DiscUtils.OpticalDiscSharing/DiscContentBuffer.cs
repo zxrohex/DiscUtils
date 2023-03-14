@@ -115,7 +115,6 @@ internal sealed class DiscContentBuffer : Buffer
         return read;
     }
 
-
     public override int Read(long pos, Span<byte> buffer)
     {
         var count = buffer.Length;
@@ -231,7 +230,6 @@ internal sealed class DiscContentBuffer : Buffer
             throw;
         }
     }
-
 
     private async Task<HttpWebResponse> SendRequestAsync(WebRequestCreator wrc)
     {

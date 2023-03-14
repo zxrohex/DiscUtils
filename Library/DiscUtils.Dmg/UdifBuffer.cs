@@ -93,7 +93,7 @@ internal class UdifBuffer : Buffer
 
                 case RunType.Raw:
                     _stream.Position = _activeRun.CompOffset + bufferOffset;
-                    StreamUtilities.ReadExact(_stream, buffer, offset + totalCopied, toCopy);
+                    _stream.ReadExactly(buffer, offset + totalCopied, toCopy);
                     break;
 
                 case RunType.AdcCompressed:
@@ -134,7 +134,7 @@ internal class UdifBuffer : Buffer
 
                 case RunType.Raw:
                     _stream.Position = _activeRun.CompOffset + bufferOffset;
-                    await StreamUtilities.ReadExactAsync(_stream, buffer.Slice(totalCopied, toCopy), cancellationToken).ConfigureAwait(false);
+                    await _stream.ReadExactlyAsync(buffer.Slice(totalCopied, toCopy), cancellationToken).ConfigureAwait(false);
                     break;
 
                 case RunType.AdcCompressed:
@@ -154,7 +154,6 @@ internal class UdifBuffer : Buffer
 
         return totalCopied;
     }
-
 
     public override int Read(long pos, Span<byte> buffer)
     {
@@ -176,7 +175,7 @@ internal class UdifBuffer : Buffer
 
                 case RunType.Raw:
                     _stream.Position = _activeRun.CompOffset + bufferOffset;
-                    StreamUtilities.ReadExact(_stream, buffer.Slice(totalCopied, toCopy));
+                    StreamUtilities.ReadExactly(_stream, buffer.Slice(totalCopied, toCopy));
                     break;
 
                 case RunType.AdcCompressed:
@@ -405,14 +404,14 @@ internal class UdifBuffer : Buffer
                 _stream.Position = run.CompOffset + 2; // 2 byte zlib header
                 using (var ds = new DeflateStream(_stream, CompressionMode.Decompress, true))
                 {
-                    StreamUtilities.ReadExact(ds, _decompBuffer, 0, toCopy);
+                    ds.ReadExactly(_decompBuffer, 0, toCopy);
                 }
 
                 break;
 
             case RunType.AdcCompressed:
                 _stream.Position = run.CompOffset;
-                var compressed = StreamUtilities.ReadExact(_stream, (int)run.CompLength);
+                var compressed = StreamUtilities.ReadExactly(_stream, (int)run.CompLength);
                 if (ADCDecompress(compressed, 0, compressed.Length, _decompBuffer, 0) != toCopy)
                 {
                     throw new InvalidDataException("Run too short when decompressed");
@@ -426,14 +425,14 @@ internal class UdifBuffer : Buffer
                         new BZip2DecoderStream(new SubStream(_stream, run.CompOffset, run.CompLength),
                             Ownership.None))
                 {
-                    StreamUtilities.ReadExact(ds, _decompBuffer, 0, toCopy);
+                    ds.ReadExactly(_decompBuffer, 0, toCopy);
                 }
 
                 break;
 
             case RunType.LzfseCompressed:
                 _stream.Position = run.CompOffset;
-                var lzfseCompressed = StreamUtilities.ReadExact(_stream, (int)run.CompLength);
+                var lzfseCompressed = StreamUtilities.ReadExactly(_stream, (int)run.CompLength);
                 if (Lzfse.LzfseCompressor.Decompress(lzfseCompressed, _decompBuffer) != toCopy)
                 {
                     throw new InvalidDataException("Run too short when decompressed");
@@ -462,14 +461,14 @@ internal class UdifBuffer : Buffer
                 _stream.Position = run.CompOffset + 2; // 2 byte zlib header
                 using (var ds = new DeflateStream(_stream, CompressionMode.Decompress, true))
                 {
-                    await StreamUtilities.ReadExactAsync(ds, _decompBuffer.AsMemory(0, toCopy), cancellationToken).ConfigureAwait(false);
+                    await ds.ReadExactlyAsync(_decompBuffer.AsMemory(0, toCopy), cancellationToken).ConfigureAwait(false);
                 }
 
                 break;
 
             case RunType.AdcCompressed:
                 _stream.Position = run.CompOffset;
-                var compressed = await StreamUtilities.ReadExactAsync(_stream, (int)run.CompLength, cancellationToken).ConfigureAwait(false);
+                var compressed = await _stream.ReadExactlyAsync((int)run.CompLength, cancellationToken).ConfigureAwait(false);
                 if (ADCDecompress(compressed, 0, compressed.Length, _decompBuffer, 0) != toCopy)
                 {
                     throw new InvalidDataException("Run too short when decompressed");
@@ -483,14 +482,14 @@ internal class UdifBuffer : Buffer
                         new BZip2DecoderStream(new SubStream(_stream, run.CompOffset, run.CompLength),
                             Ownership.None))
                 {
-                    await StreamUtilities.ReadExactAsync(ds, _decompBuffer.AsMemory(0, toCopy), cancellationToken).ConfigureAwait(false);
+                    await ds.ReadExactlyAsync(_decompBuffer.AsMemory(0, toCopy), cancellationToken).ConfigureAwait(false);
                 }
 
                 break;
 
             case RunType.LzfseCompressed:
                 _stream.Position = run.CompOffset;
-                var lzfseCompressed = await StreamUtilities.ReadExactAsync(_stream, (int)run.CompLength, cancellationToken).ConfigureAwait(false);
+                var lzfseCompressed = await _stream.ReadExactlyAsync((int)run.CompLength, cancellationToken).ConfigureAwait(false);
                 if (Lzfse.LzfseCompressor.Decompress(lzfseCompressed, _decompBuffer) != toCopy)
                 {
                     throw new InvalidDataException("Run too short when decompressed");

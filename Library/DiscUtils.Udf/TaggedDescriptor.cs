@@ -36,7 +36,7 @@ internal abstract class TaggedDescriptor<T> : BaseTaggedDescriptor
     {
         stream.Position = sector * (long)sectorSize;
         Span<byte> buffer = stackalloc byte[512];
-        StreamUtilities.ReadExact(stream, buffer);
+        StreamUtilities.ReadExactly(stream, buffer);
 
         var result = new T();
         result.ReadFrom(buffer);

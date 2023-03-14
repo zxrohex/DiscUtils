@@ -281,8 +281,6 @@ public sealed class BZip2DecoderStream : ReadOnlyCompatibilityStream
         return numRead;
     }
 
-
-
     /// <summary>
     /// Changes the current stream position.
     /// </summary>

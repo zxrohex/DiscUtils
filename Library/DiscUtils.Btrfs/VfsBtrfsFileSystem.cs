@@ -53,7 +53,7 @@ internal sealed class VfsBtrfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File,
             if (offset + SuperBlock.Length > stream.Length) break;
 
             stream.Position = offset;
-            var superblockData = StreamUtilities.ReadExact(stream, SuperBlock.Length);
+            var superblockData = StreamUtilities.ReadExactly(stream, SuperBlock.Length);
             var superblock = new SuperBlock();
             superblock.ReadFrom(superblockData);
 

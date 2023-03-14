@@ -36,7 +36,6 @@ internal class MetadataPhysicalVolumeSection
     public ulong PeStart;
     public ulong PeCount;
 
-
     internal void Parse(string head, TextReader data)
     {
         Name = head.Trim().TrimEnd('{').TrimEnd();

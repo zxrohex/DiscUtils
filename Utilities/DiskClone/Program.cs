@@ -94,9 +94,7 @@ class Program : ProgramBase
 
         var sourceVolume = _volumes.Values;
 
-
         var cloneVolumes = GatherVolumes(sourceVolume, out var diskNumber);
-
 
         if (!Quiet)
         {
@@ -137,7 +135,6 @@ class Program : ProgramBase
             contentBuilder.UpdateBiosGeometry(builder.BiosGeometry);
         }
 
-
         IVssBackupComponents backupCmpnts;
         int status;
         if (Environment.Is64BitProcess)
@@ -149,14 +146,12 @@ class Program : ProgramBase
             status = NativeMethods.CreateVssBackupComponents(out backupCmpnts);
         }
 
-
         var snapshotSetId = CreateSnapshotSet(cloneVolumes, backupCmpnts);
 
         if (!Quiet)
         {
             Console.Write("Copying Disk...");
         }
-
 
         foreach (var sv in cloneVolumes)
         {
@@ -226,7 +221,6 @@ class Program : ProgramBase
         }
         var contentStream = contentBuilder.Build() as SparseStream;
 
-
         // Write out the disk images
         var dir = Path.GetDirectoryName(_destDisk.Value);
         var file = Path.GetFileNameWithoutExtension(_destDisk.Value);
@@ -273,7 +267,6 @@ class Program : ProgramBase
                 Console.WriteLine();
             }
         }
-
 
         // Complete - tidy up
         CallAsyncMethod(backupCmpnts.BackupComplete);

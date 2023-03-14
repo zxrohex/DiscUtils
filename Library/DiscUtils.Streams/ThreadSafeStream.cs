@@ -235,7 +235,6 @@ public class ThreadSafeStream : SparseStream
         }
     }
 
-
     /// <summary>
     /// Reads data from the stream.
     /// </summary>
@@ -254,7 +253,6 @@ public class ThreadSafeStream : SparseStream
             return numRead;
         }
     }
-
 
     /// <summary>
     /// Changes the current stream position (each view has it's own Position).
@@ -314,7 +312,6 @@ public class ThreadSafeStream : SparseStream
         }
     }
 
-
     /// <summary>
     /// Writes data to the stream (not currently supported).
     /// </summary>
@@ -337,7 +334,6 @@ public class ThreadSafeStream : SparseStream
             _position += buffer.Length;
         }
     }
-
 
     /// <summary>
     /// Disposes of this instance, invalidating any remaining views.

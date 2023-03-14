@@ -51,7 +51,6 @@ namespace LibraryTests.Ntfs
             Assert.Single(ranges);
             Assert.Equal(1, ranges[0].Count);
 
-
             // Short files have no clusters (stored in MFT)
             using (Stream s = ntfs.OpenFile(@"file2", FileMode.Create, FileAccess.ReadWrite))
             {
@@ -86,7 +85,6 @@ namespace LibraryTests.Ntfs
             Assert.Equal(0xAE, ms.ReadByte());
             Assert.Equal(0x3F, ms.ReadByte());
             Assert.Equal(0x8D, ms.ReadByte());
-
 
             // Check resident attribute
             using (Stream s = ntfs.OpenFile(@"file2", FileMode.Create, FileAccess.ReadWrite))
@@ -127,7 +125,6 @@ namespace LibraryTests.Ntfs
                 await attrStream.WriteAsync(new byte[122]);
             }
             Assert.Equal(122, ntfs.GetFileLength("AFILE.TXT:altstream"));
-
 
             // Test NTFS options for hardlink behaviour
             ntfs.CreateDirectory("Dir");
@@ -198,7 +195,7 @@ namespace LibraryTests.Ntfs
             using (var stream = ntfs.OpenFile(@"DIR\fragmented.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
             {
                 stream.Position = stream.Length - largeReadBuffer.Length;
-                await stream.ReadExactAsync(largeReadBuffer, CancellationToken.None);
+                await stream.ReadExactlyAsync(largeReadBuffer, CancellationToken.None);
             }
 
             Assert.Equal(largeWriteBuffer, largeReadBuffer);
@@ -241,13 +238,12 @@ namespace LibraryTests.Ntfs
                 Assert.Equal((64 + 128) * 1024, extents[1].Start);
                 Assert.Equal(fileSize - (64 * 1024) - ((64 + 128) * 1024), extents[1].Length);
 
-
                 s.Position = 72 * 1024;
                 s.WriteByte(99);
 
                 var readBuffer = new byte[fileSize];
                 s.Position = 0;
-                await s.ReadExactAsync(readBuffer, CancellationToken.None);
+                await s.ReadExactlyAsync(readBuffer, CancellationToken.None);
 
                 for (var i = 64 * 1024; i < (128 + 64) * 1024; ++i)
                 {

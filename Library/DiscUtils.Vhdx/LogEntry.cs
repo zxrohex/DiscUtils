@@ -131,7 +131,7 @@ internal sealed class LogEntry
             {
                 System.Buffer.BlockCopy(sectorBuffer, 0, logEntryBuffer, 0, LogSectorSize);
 
-                StreamUtilities.ReadExact(logStream, logEntryBuffer, LogSectorSize, checked((int)(header.EntryLength - LogSectorSize)));
+                logStream.ReadExactly(logEntryBuffer, LogSectorSize, checked((int)(header.EntryLength - LogSectorSize)));
 
                 EndianUtilities.WriteBytesLittleEndian(0, logEntryBuffer, 4);
                 if (header.Checksum !=

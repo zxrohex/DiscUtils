@@ -56,7 +56,7 @@ public class ZlibStream : CompatibilityStream
         {
             // We just sanity check against expected header values...
             Span<byte> headerBuffer = stackalloc byte[sizeof(ushort)];
-            StreamUtilities.ReadExact(stream, headerBuffer);
+            StreamUtilities.ReadExactly(stream, headerBuffer);
             var header = EndianUtilities.ToUInt16BigEndian(headerBuffer);
 
             if (header % 31 != 0)
@@ -145,7 +145,7 @@ public class ZlibStream : CompatibilityStream
             {
                 _stream.Seek(-4, SeekOrigin.End);
                 Span<byte> footerBuffer = stackalloc byte[sizeof(int)];
-                StreamUtilities.ReadExact(_stream, footerBuffer);
+                StreamUtilities.ReadExactly(_stream, footerBuffer);
                 if (EndianUtilities.ToInt32BigEndian(footerBuffer) != _adler32.Value)
                 {
                     throw new InvalidDataException("Corrupt decompressed data detected");
@@ -213,7 +213,6 @@ public class ZlibStream : CompatibilityStream
         _adler32.Process(buffer.Slice(0, numRead));
         return numRead;
     }
-
 
     public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) =>
         ReadAsync(buffer, offset, count, CancellationToken.None).AsAsyncResult(callback, state);

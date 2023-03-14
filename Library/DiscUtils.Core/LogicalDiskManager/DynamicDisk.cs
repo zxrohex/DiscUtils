@@ -128,7 +128,7 @@ internal class DynamicDisk : IDiagnosticTraceable
         var buffer = new byte[_header.TocSizeLba * 512];
         _disk.Content.Position = _header.ConfigurationStartLba * 512 + 1 * _header.TocSizeLba * 512;
 
-        _disk.Content.ReadExact(buffer, 0, buffer.Length);
+        _disk.Content.ReadExactly(buffer, 0, buffer.Length);
         var tocBlock = new TocBlock();
         tocBlock.ReadFrom(buffer);
 

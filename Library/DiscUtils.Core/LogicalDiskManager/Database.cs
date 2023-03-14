@@ -40,7 +40,7 @@ internal class Database
         var buffer = ArrayPool<byte>.Shared.Rent(Sizes.Sector);
         try
         {
-            stream.ReadExact(buffer, 0, Sizes.Sector);
+            stream.ReadExactly(buffer, 0, Sizes.Sector);
             _vmdb = new DatabaseHeader();
             _vmdb.ReadFrom(buffer);
 
@@ -54,7 +54,7 @@ internal class Database
                 buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             }
 
-            StreamUtilities.ReadExact(stream, buffer, 0, bufferSize);
+            stream.ReadExactly(buffer, 0, bufferSize);
 
             _records = new Dictionary<ulong, DatabaseRecord>();
             for (var i = 0; i < _vmdb.NumVBlks; ++i)

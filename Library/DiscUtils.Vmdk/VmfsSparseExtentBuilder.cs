@@ -115,13 +115,11 @@ internal sealed class VmfsSparseExtentBuilder : StreamBuilder
             return _streamView.Read(block, offset, count);
         }
 
-
         public override int Read(long diskOffset, Span<byte> block)
         {
             _streamView.Position = diskOffset - Start;
             return _streamView.Read(block);
         }
-
 
         public override void DisposeReadState()
         {
@@ -216,7 +214,6 @@ internal sealed class VmfsSparseExtentBuilder : StreamBuilder
             _content.Position = _grainMapping[grainIdx] * grainSize + grainOffset;
             return _content.Read(block, offset, maxToRead);
         }
-
 
         public override int Read(long diskOffset, Span<byte> block)
         {

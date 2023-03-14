@@ -91,7 +91,7 @@ public class ZipFileSystem : VirtualFileSystem
                     {
                         var data = new byte[file.Length];
 
-                        file.Open().ReadExact(data, 0, data.Length);
+                        file.Open().ReadExactly(data, 0, data.Length);
 
                         return new MemoryStream(data, writable: false);
                     }

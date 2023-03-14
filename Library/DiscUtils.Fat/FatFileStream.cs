@@ -134,7 +134,6 @@ internal class FatFileStream : SparseStream
 
     public override Task FlushAsync(CancellationToken cancellationToken) => _stream.FlushAsync(cancellationToken);
 
-
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         didWrite = true;

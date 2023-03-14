@@ -20,7 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-
 namespace DiscUtils.Xfs;
 
 using DiscUtils.Streams;
@@ -64,7 +63,6 @@ internal class BTreeExtentRoot : IByteArraySerializable
         }
         return Size;
     }
-
 
     /// <inheritdoc />
     void IByteArraySerializable.WriteTo(Span<byte> buffer)

@@ -25,7 +25,6 @@
 // (see http://www.pinvoke.net/termsofuse.htm)
 //
 
-
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -44,12 +43,10 @@ internal static class NativeMethods
         out IVssBackupComponents vssBackupCmpnts
         );
 
-
     [DllImport("vssapi.dll", EntryPoint = "?CreateVssBackupComponents@@YAJPEAPEAVIVssBackupComponents@@@Z")]
     internal static extern int CreateVssBackupComponents64(
         out IVssBackupComponents vssBackupCmpnts
         );
-
 
     [DllImport("vssapi.dll")]
     internal static extern void VssFreeSnapshotProperties(IntPtr pProperties);
@@ -173,7 +170,6 @@ internal static class NativeMethods
         public readonly int SectorsPerTrack;
         public readonly int BytesPerSector;
     }
-
 
     #region Error codes
     internal const int ERROR_MORE_DATA = 234;

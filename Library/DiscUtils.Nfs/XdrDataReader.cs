@@ -38,11 +38,11 @@ public sealed class XdrDataReader : BigEndianDataReader
 
     public override byte[] ReadBytes(int count)
     {
-        var buffer = StreamUtilities.ReadExact(_stream, count);
+        var buffer = StreamUtilities.ReadExactly(_stream, count);
 
         if ((count & 0x3) != 0)
         {
-            StreamUtilities.ReadExact(_stream, stackalloc byte[4 - (count & 0x3)]);
+            StreamUtilities.ReadExactly(_stream, stackalloc byte[4 - (count & 0x3)]);
         }
 
         return buffer;

@@ -167,7 +167,7 @@ internal sealed class Metadata
         {
             _regionStream.Position = entry.Offset;
             Span<byte> data = stackalloc byte[Marshal.SizeOf<T>()];
-            StreamUtilities.ReadExact(_regionStream, data);
+            StreamUtilities.ReadExactly(_regionStream, data);
             return reader(data);
         }
 

@@ -126,7 +126,6 @@ public abstract class Buffer : MarshalByRefObject, IBuffer, IDisposable
     /// <returns>An enumeration of stream extents, indicating stored bytes.</returns>
     public abstract IEnumerable<StreamExtent> GetExtentsInRange(long start, long count);
 
-
     public abstract int Read(long pos, Span<byte> buffer);
 
     public abstract void Write(long pos, ReadOnlySpan<byte> buffer);

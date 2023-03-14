@@ -72,7 +72,7 @@ internal readonly struct NtfsStream
     {
         using var s = Open(FileAccess.Read);
 
-        var buffer = StreamUtilities.ReadExact(s, (int)s.Length);
+        var buffer = StreamUtilities.ReadExactly(s, (int)s.Length);
 
         return buffer;
     }

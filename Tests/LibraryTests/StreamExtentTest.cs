@@ -20,7 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-
 using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
@@ -222,7 +221,6 @@ namespace LibraryTests
             Assert.Equal(4, ranges[1].Offset);
             Assert.Equal(1, ranges[1].Count);
         }
-
 
         private static void Compare(IEnumerable<StreamExtent> expected, IEnumerable<StreamExtent> actual)
         {

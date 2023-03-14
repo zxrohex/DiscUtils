@@ -81,7 +81,6 @@ public class NewVirtualDiskCommand : PSCmdlet
             return;
         }
 
-
         var type = typeAndVariant[0];
         var variant = typeAndVariant.Length > 1 ? typeAndVariant[1] : null;
 

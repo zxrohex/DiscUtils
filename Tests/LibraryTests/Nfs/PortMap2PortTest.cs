@@ -20,7 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-
 using DiscUtils.Nfs;
 using System.IO;
 using Xunit;

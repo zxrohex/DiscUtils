@@ -291,7 +291,7 @@ public static class EndianUtilities
     public static uint ReadUInt32LittleEndian(Stream stream)
     {
         Span<byte> buffer = stackalloc byte[sizeof(uint)];
-        stream.ReadExact(buffer);
+        stream.ReadExactly(buffer);
         return ToUInt32LittleEndian(buffer);
     }
 
@@ -300,7 +300,7 @@ public static class EndianUtilities
         var buffer = ArrayPool<byte>.Shared.Rent(sizeof(uint));
         try
         {
-            await stream.ReadExactAsync(buffer, cancellationToken).ConfigureAwait(false);
+            await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
             return ToUInt32LittleEndian(buffer);
         }
         finally
@@ -356,7 +356,7 @@ public static class EndianUtilities
     public static int ReadInt32LittleEndian(Stream stream)
     {
         Span<byte> buffer = stackalloc byte[sizeof(int)];
-        stream.ReadExact(buffer);
+        stream.ReadExactly(buffer);
         return ToInt32LittleEndian(buffer);
     }
 
@@ -365,7 +365,7 @@ public static class EndianUtilities
         var buffer = ArrayPool<byte>.Shared.Rent(sizeof(int));
         try
         {
-            await stream.ReadExactAsync(buffer, cancellationToken).ConfigureAwait(false);
+            await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
             return ToInt32LittleEndian(buffer);
         }
         finally

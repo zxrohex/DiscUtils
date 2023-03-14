@@ -40,7 +40,7 @@ internal sealed class PartitionMapFactory : PartitionTableFactory
         s.Position = 0;
 
         Span<byte> initialBytes = stackalloc byte[1024];
-        StreamUtilities.ReadExact(s, initialBytes);
+        StreamUtilities.ReadExactly(s, initialBytes);
 
         var b0 = new BlockZero();
         b0.ReadFrom(initialBytes);

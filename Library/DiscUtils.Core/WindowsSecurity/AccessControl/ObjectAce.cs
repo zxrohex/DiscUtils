@@ -126,7 +126,6 @@ public sealed class ObjectAce : QualifiedAce
 
     bool InheritedObjectAceTypePresent => 0 != (ObjectAceFlags & ObjectAceFlags.InheritedObjectAceTypePresent);
 
-
     public Guid ObjectAceType
     {
         get => _objectAceType;

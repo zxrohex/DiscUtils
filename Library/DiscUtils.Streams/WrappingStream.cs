@@ -87,13 +87,10 @@ public class WrappingStream : SparseStream
         return _wrapped.Read(buffer, offset, count);
     }
 
-
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         return _wrapped.ReadAsync(buffer, offset, count, cancellationToken);
     }
-
-
 
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -104,7 +101,6 @@ public class WrappingStream : SparseStream
     {
         return _wrapped.Read(buffer);
     }
-
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -126,13 +122,10 @@ public class WrappingStream : SparseStream
         _wrapped.Write(buffer, offset, count);
     }
 
-
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         return _wrapped.WriteAsync(buffer, offset, count, cancellationToken);
     }
-
-
 
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -144,11 +137,8 @@ public class WrappingStream : SparseStream
         _wrapped.Write(buffer);
     }
 
-
-
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         _wrapped.FlushAsync(cancellationToken);
-
 
     protected override void Dispose(bool disposing)
     {

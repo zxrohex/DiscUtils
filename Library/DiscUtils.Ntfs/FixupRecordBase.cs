@@ -67,7 +67,7 @@ internal abstract class FixupRecordBase
         if (length <= 1024)
         {
             Span<byte> buffer = stackalloc byte[length];
-            stream.ReadExact(buffer);
+            stream.ReadExactly(buffer);
             FromBytes(buffer, ignoreMagic);
         }
         else
@@ -75,7 +75,7 @@ internal abstract class FixupRecordBase
             var buffer = ArrayPool<byte>.Shared.Rent(length);
             try
             {
-                stream.ReadExact(buffer, 0, length);
+                stream.ReadExactly(buffer, 0, length);
                 FromBytes(buffer.AsSpan(0, length), ignoreMagic);
             }
             finally

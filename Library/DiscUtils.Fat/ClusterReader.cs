@@ -73,7 +73,7 @@ internal sealed class ClusterReader
         var firstSector = (uint)((cluster - 2) * _sectorsPerCluster + _firstDataSector);
 
         _stream.Position = firstSector * _bytesPerSector;
-        StreamUtilities.ReadExact(_stream, buffer, offset, _clusterSize);
+        _stream.ReadExactly(buffer, offset, _clusterSize);
     }
 
     public void ReadCluster(uint cluster, Span<byte> buffer)
@@ -87,7 +87,7 @@ internal sealed class ClusterReader
         var firstSector = (uint)((cluster - 2) * _sectorsPerCluster + _firstDataSector);
 
         _stream.Position = firstSector * _bytesPerSector;
-        StreamUtilities.ReadExact(_stream, buffer.Slice(0, _clusterSize));
+        _stream.ReadExactly(buffer.Slice(0, _clusterSize));
     }
 
     public ValueTask ReadClusterAsync(uint cluster, Memory<byte> buffer, CancellationToken cancellationToken)
@@ -101,7 +101,7 @@ internal sealed class ClusterReader
         var firstSector = (uint)((cluster - 2) * _sectorsPerCluster + _firstDataSector);
 
         _stream.Position = firstSector * _bytesPerSector;
-        return StreamUtilities.ReadExactAsync(_stream, buffer.Slice(0, _clusterSize), cancellationToken);
+        return _stream.ReadExactlyAsync(buffer.Slice(0, _clusterSize), cancellationToken);
     }
 
     internal void WriteCluster(uint cluster, byte[] buffer, int offset)

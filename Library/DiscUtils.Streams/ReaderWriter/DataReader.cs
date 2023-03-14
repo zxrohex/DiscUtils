@@ -68,7 +68,7 @@ public abstract class DataReader
 
     public virtual byte[] ReadBytes(int count)
     {
-        return StreamUtilities.ReadExact(_stream, count);
+        return StreamUtilities.ReadExactly(_stream, count);
     }
 
     protected void ReadToBuffer(int count)
@@ -78,6 +78,6 @@ public abstract class DataReader
             _buffer = new byte[_bufferSize];
         }
 
-        StreamUtilities.ReadExact(_stream, _buffer, 0, count);
+        _stream.ReadExactly(_buffer, 0, count);
     }
 }

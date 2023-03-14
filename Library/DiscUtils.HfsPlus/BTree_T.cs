@@ -36,12 +36,12 @@ internal sealed class BTree<TKey> : BTree
     {
         _data = data;
 
-        var headerInfo = StreamUtilities.ReadExact(_data, 0, 114);
+        var headerInfo = StreamUtilities.ReadExactly(_data, 0, 114);
 
         _header = new BTreeHeaderRecord();
         _header.ReadFrom(headerInfo, 14);
 
-        var node0data = StreamUtilities.ReadExact(_data, 0, _header.NodeSize);
+        var node0data = StreamUtilities.ReadExactly(_data, 0, _header.NodeSize);
 
         var node0 = BTreeNode.ReadNode(this, node0data, 0) as BTreeHeaderNode;
         node0.ReadFrom(node0data, 0);
@@ -69,7 +69,7 @@ internal sealed class BTree<TKey> : BTree
 
     internal BTreeKeyedNode<TKey> GetKeyedNode(uint nodeId)
     {
-        var nodeData = StreamUtilities.ReadExact(_data, (int)nodeId * _header.NodeSize, _header.NodeSize);
+        var nodeData = StreamUtilities.ReadExactly(_data, (int)nodeId * _header.NodeSize, _header.NodeSize);
 
         var node = BTreeNode.ReadNode<TKey>(this, nodeData, 0) as BTreeKeyedNode<TKey>;
         node.ReadFrom(nodeData, 0);

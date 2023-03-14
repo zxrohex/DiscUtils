@@ -236,7 +236,6 @@ public sealed class SnapshotStream : SparseStream
         _baseStream.Flush();
     }
 
-
     /// <summary>
     /// Flushes the stream.
     /// </summary>
@@ -246,7 +245,6 @@ public sealed class SnapshotStream : SparseStream
 
         return _baseStream.FlushAsync(cancellationToken);
     }
-
 
     /// <summary>
     /// Reads data from the stream.
@@ -310,7 +308,6 @@ public sealed class SnapshotStream : SparseStream
 
         return numRead;
     }
-
 
     /// <summary>
     /// Reads data from the stream.
@@ -436,7 +433,6 @@ public sealed class SnapshotStream : SparseStream
         return numRead;
     }
 
-
     /// <summary>
     /// Moves the stream position.
     /// </summary>
@@ -513,7 +509,6 @@ public sealed class SnapshotStream : SparseStream
         }
     }
 
-
     /// <summary>
     /// Writes data to the stream at the current location.
     /// </summary>
@@ -573,7 +568,6 @@ public sealed class SnapshotStream : SparseStream
             _position += buffer.Length;
         }
     }
-
 
     /// <summary>
     /// Disposes of this instance.

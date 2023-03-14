@@ -444,7 +444,7 @@ internal sealed class RawClusterStream : ClusterStream
             {
                 var lcn = _cookedRuns[runIdx].StartLcn + (focusVcn - run.StartVcn);
                 _fsStream.Position = lcn * _bytesPerCluster;
-                StreamUtilities.ReadExact(_fsStream, buffer, offset + totalRead * _bytesPerCluster, toRead * _bytesPerCluster);
+                _fsStream.ReadExactly(buffer, offset + totalRead * _bytesPerCluster, toRead * _bytesPerCluster);
             }
 
             totalRead += toRead;
@@ -472,7 +472,7 @@ internal sealed class RawClusterStream : ClusterStream
             {
                 var lcn = _cookedRuns[runIdx].StartLcn + (focusVcn - run.StartVcn);
                 _fsStream.Position = lcn * _bytesPerCluster;
-                StreamUtilities.ReadExact(_fsStream, buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster));
+                StreamUtilities.ReadExactly(_fsStream, buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster));
             }
 
             totalRead += toRead;
@@ -500,13 +500,12 @@ internal sealed class RawClusterStream : ClusterStream
             {
                 var lcn = _cookedRuns[runIdx].StartLcn + (focusVcn - run.StartVcn);
                 _fsStream.Position = lcn * _bytesPerCluster;
-                await StreamUtilities.ReadExactAsync(_fsStream, buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster), cancellationToken).ConfigureAwait(false);
+                await _fsStream.ReadExactlyAsync(buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster), cancellationToken).ConfigureAwait(false);
             }
 
             totalRead += toRead;
         }
     }
-
 
     public override int WriteClusters(long startVcn, int count, byte[] buffer, int offset)
     {

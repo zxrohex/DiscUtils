@@ -85,7 +85,6 @@ public class RpcMessageHeader
         return HashCode.Combine(IsSuccess, TransactionId, ReplyHeader);
     }
 
-
     public static RpcMessageHeader Accepted(uint transactionId)
     {
         return new RpcMessageHeader()

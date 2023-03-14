@@ -52,7 +52,7 @@ internal class ReaderDirectory : File, IVfsDirectory<ReaderDirEntry, File>
             {
                 var bytesRead = (int)Math.Min(IsoUtilities.SectorSize, totalLength - totalRead);
 
-                StreamUtilities.ReadExact(extent, buffer, 0, bytesRead);
+                extent.ReadExactly(buffer, 0, bytesRead);
                 totalRead += (uint)bytesRead;
 
                 uint pos = 0;

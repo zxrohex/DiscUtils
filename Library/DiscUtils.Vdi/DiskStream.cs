@@ -189,7 +189,7 @@ internal class DiskStream : SparseStream
                 var filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
                                offsetInBlock;
                 _fileStream.Position = filePos;
-                StreamUtilities.ReadExact(_fileStream, buffer, offset + numRead, toRead);
+                _fileStream.ReadExactly(buffer, offset + numRead, toRead);
             }
 
             _position += toRead;
@@ -240,7 +240,7 @@ internal class DiskStream : SparseStream
                 var filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
                                offsetInBlock;
                 _fileStream.Position = filePos;
-                await StreamUtilities.ReadExactAsync(_fileStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                await _fileStream.ReadExactlyAsync(buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
             }
 
             _position += toRead;
@@ -291,7 +291,7 @@ internal class DiskStream : SparseStream
                 var filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
                                offsetInBlock;
                 _fileStream.Position = filePos;
-                StreamUtilities.ReadExact(_fileStream, buffer.Slice(numRead, toRead));
+                StreamUtilities.ReadExactly(_fileStream, buffer.Slice(numRead, toRead));
             }
 
             _position += toRead;
@@ -696,7 +696,7 @@ internal class DiskStream : SparseStream
     {
         _fileStream.Position = _fileHeader.BlocksOffset;
 
-        var buffer = StreamUtilities.ReadExact(_fileStream, _fileHeader.BlockCount * 4);
+        var buffer = StreamUtilities.ReadExactly(_fileStream, _fileHeader.BlockCount * 4);
 
         _blockTable = new uint[_fileHeader.BlockCount];
         for (var i = 0; i < _fileHeader.BlockCount; ++i)

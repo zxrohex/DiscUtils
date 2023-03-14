@@ -58,7 +58,7 @@ internal class PreHeaderRecord
     public void Read(Stream s)
     {
         Span<byte> buffer = stackalloc byte[Size];
-        StreamUtilities.ReadExact(s, buffer);
+        StreamUtilities.ReadExactly(s, buffer);
         Read(buffer);
     }
 

@@ -39,7 +39,6 @@ public sealed class VirtualRegistryPSDriveInfo : PSDriveInfo
         _hive = new RegistryHive(_hiveStream, Ownership.Dispose);
     }
 
-
     internal void Close()
     {
         if (_hive != null)

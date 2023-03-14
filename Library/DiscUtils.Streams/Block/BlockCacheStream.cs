@@ -278,7 +278,7 @@ public sealed class BlockCacheStream : SparseStream
                 // Do the read
                 _stats.TotalReadsOut++;
                 _wrappedStream.Position = readPosition;
-                StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
+                _wrappedStream.ReadExactly(_readBuffer, 0, bytesRead);
 
                 // Cache the read blocks
                 for (var i = 0; i < blocksToRead; ++i)
@@ -415,7 +415,7 @@ public sealed class BlockCacheStream : SparseStream
                 // Do the read
                 _stats.TotalReadsOut++;
                 _wrappedStream.Position = readPosition;
-                StreamUtilities.ReadExact(_wrappedStream, _readBuffer, 0, bytesRead);
+                _wrappedStream.ReadExactly(_readBuffer, 0, bytesRead);
 
                 // Cache the read blocks
                 for (var i = 0; i < blocksToRead; ++i)
@@ -552,7 +552,7 @@ public sealed class BlockCacheStream : SparseStream
                 // Do the read
                 _stats.TotalReadsOut++;
                 _wrappedStream.Position = readPosition;
-                await StreamUtilities.ReadExactAsync(_wrappedStream, _readBuffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
+                await _wrappedStream.ReadExactlyAsync(_readBuffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
 
                 // Cache the read blocks
                 for (var i = 0; i < blocksToRead; ++i)
@@ -596,7 +596,6 @@ public sealed class BlockCacheStream : SparseStream
 
         return totalBytesRead;
     }
-
 
     /// <summary>
     /// Flushes the stream.
@@ -808,7 +807,6 @@ public sealed class BlockCacheStream : SparseStream
 
         _position += buffer.Length;
     }
-
 
     /// <summary>
     /// Disposes of this instance, freeing up associated resources.

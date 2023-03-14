@@ -60,8 +60,6 @@ public static class StreamUtilities
         }
     }
 
-
-
     public static IAsyncResult AsAsyncResult<T>(this Task<T> task, AsyncCallback callback, object state)
     {
         var returntask = task.ContinueWith((t, _) => t.Result, state, TaskScheduler.Default);
@@ -86,9 +84,9 @@ public static class StreamUtilities
         return returntask;
     }
 
-
-
     #region Stream Manipulation
+
+#if !NET7_0_OR_GREATER
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -97,7 +95,7 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static void ReadExact(this Stream stream, byte[] buffer, int offset, int count)
+    public static void ReadExactly(this Stream stream, byte[] buffer, int offset, int count)
     {
         var originalCount = count;
 
@@ -115,7 +113,6 @@ public static class StreamUtilities
         }
     }
 
-
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
@@ -123,7 +120,7 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static async ValueTask ReadExactAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
+    public static async ValueTask ReadExactlyAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         var originalCount = buffer.Length;
 
@@ -140,6 +137,8 @@ public static class StreamUtilities
         }
     }
 
+#endif
+
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
@@ -147,7 +146,7 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static void ReadExact(this Stream stream, Span<byte> buffer)
+    public static void ReadExactly(this Stream stream, Span<byte> buffer)
     {
         var originalCount = buffer.Length;
 
@@ -170,15 +169,14 @@ public static class StreamUtilities
     /// <param name="stream">The stream to read.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static byte[] ReadExact(this Stream stream, int count)
+    public static byte[] ReadExactly(this Stream stream, int count)
     {
         var buffer = new byte[count];
 
-        ReadExact(stream, buffer, 0, count);
+        stream.ReadExactly(buffer, 0, count);
 
         return buffer;
     }
-
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -186,15 +184,14 @@ public static class StreamUtilities
     /// <param name="stream">The stream to read.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static async ValueTask<byte[]> ReadExactAsync(this Stream stream, int count, CancellationToken cancellationToken)
+    public static async ValueTask<byte[]> ReadExactlyAsync(this Stream stream, int count, CancellationToken cancellationToken)
     {
         var buffer = new byte[count];
 
-        await ReadExactAsync(stream, buffer, cancellationToken).ConfigureAwait(false);
+        await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
 
         return buffer;
     }
-
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -204,7 +201,7 @@ public static class StreamUtilities
     /// <param name="data">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static void ReadExact(this IBuffer buffer, long pos, byte[] data, int offset, int count)
+    public static void ReadExactly(this IBuffer buffer, long pos, byte[] data, int offset, int count)
     {
         var originalCount = count;
 
@@ -231,7 +228,7 @@ public static class StreamUtilities
     /// <param name="data">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static async ValueTask ReadExactAsync(this IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
+    public static async ValueTask ReadExactlyAsync(this IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
     {
         var originalCount = data.Length;
 
@@ -257,7 +254,7 @@ public static class StreamUtilities
     /// <param name="data">The buffer to populate.</param>
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
-    public static void ReadExact(this IBuffer buffer, long pos, Span<byte> data)
+    public static void ReadExactly(this IBuffer buffer, long pos, Span<byte> data)
     {
         var originalCount = data.Length;
 
@@ -282,15 +279,14 @@ public static class StreamUtilities
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static byte[] ReadExact(this IBuffer buffer, long pos, int count)
+    public static byte[] ReadExactly(this IBuffer buffer, long pos, int count)
     {
         var result = new byte[count];
 
-        ReadExact(buffer, pos, result, 0, count);
+        ReadExactly(buffer, pos, result, 0, count);
 
         return result;
     }
-
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -299,15 +295,14 @@ public static class StreamUtilities
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The data read from the stream.</returns>
-    public static async ValueTask<byte[]> ReadExactAsync(this IBuffer buffer, long pos, int count, CancellationToken cancellationToken)
+    public static async ValueTask<byte[]> ReadExactlyAsync(this IBuffer buffer, long pos, int count, CancellationToken cancellationToken)
     {
         var result = new byte[count];
 
-        await ReadExactAsync(buffer, pos, result, cancellationToken).ConfigureAwait(false);
+        await ReadExactlyAsync(buffer, pos, result, cancellationToken).ConfigureAwait(false);
 
         return result;
     }
-
 
     /// <summary>
     /// Read bytes until buffer filled or EOF.
@@ -394,7 +389,6 @@ public static class StreamUtilities
         return totalRead;
     }
 
-
     /// <summary>
     /// Read bytes until buffer filled or EOF.
     /// </summary>
@@ -425,7 +419,6 @@ public static class StreamUtilities
 
         return totalRead;
     }
-
 
     /// <summary>
     /// Read bytes until buffer filled or EOF.
@@ -494,9 +487,8 @@ public static class StreamUtilities
     /// <returns>The data read from the stream.</returns>
     public static byte[] ReadAll(this IBuffer buffer)
     {
-        return ReadExact(buffer, 0, (int)buffer.Capacity);
+        return ReadExactly(buffer, 0, (int)buffer.Capacity);
     }
-
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -505,9 +497,8 @@ public static class StreamUtilities
     /// <returns>The data read from the stream.</returns>
     public static ValueTask<byte[]> ReadAllAsync(this IBuffer buffer, CancellationToken cancellationToken)
     {
-        return ReadExactAsync(buffer, 0, (int)buffer.Capacity, cancellationToken);
+        return ReadExactlyAsync(buffer, 0, (int)buffer.Capacity, cancellationToken);
     }
-
 
     /// <summary>
     /// Reads a disk sector (512 bytes).
@@ -516,9 +507,8 @@ public static class StreamUtilities
     /// <returns>The sector data as a byte array.</returns>
     public static byte[] ReadSector(this Stream stream)
     {
-        return ReadExact(stream, Sizes.Sector);
+        return ReadExactly(stream, Sizes.Sector);
     }
-
 
     /// <summary>
     /// Reads a disk sector (512 bytes).
@@ -527,9 +517,8 @@ public static class StreamUtilities
     /// <returns>The sector data as a byte array.</returns>
     public static ValueTask<byte[]> ReadSectorAsync(this Stream stream, CancellationToken cancellationToken)
     {
-        return ReadExactAsync(stream, Sizes.Sector, cancellationToken);
+        return ReadExactlyAsync(stream, Sizes.Sector, cancellationToken);
     }
-
 
     /// <summary>
     /// Reads a structure from a stream.
@@ -545,7 +534,7 @@ public static class StreamUtilities
         if (result.Size <= 1024)
         {
             Span<byte> buffer = stackalloc byte[result.Size];
-            ReadExact(stream, buffer);
+            ReadExactly(stream, buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -553,7 +542,7 @@ public static class StreamUtilities
             var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
             try
             {
-                ReadExact(stream, buffer, 0, result.Size);
+                stream.ReadExactly(buffer, 0, result.Size);
                 result.ReadFrom(buffer.AsSpan(0, result.Size));
             }
             finally
@@ -579,7 +568,7 @@ public static class StreamUtilities
         try
         {
             var mem = buffer.AsMemory(0, result.Size);
-            await ReadExactAsync(stream, mem, cancellationToken).ConfigureAwait(false);
+            await stream.ReadExactlyAsync(mem, cancellationToken).ConfigureAwait(false);
             result.ReadFrom(mem.Span);
         }
         finally
@@ -604,7 +593,7 @@ public static class StreamUtilities
         try
         {
             var mem = buffer.AsMemory(0, length);
-            await ReadExactAsync(stream, mem, cancellationToken).ConfigureAwait(false);
+            await stream.ReadExactlyAsync(mem, cancellationToken).ConfigureAwait(false);
             result.ReadFrom(mem.Span);
         }
         finally
@@ -627,7 +616,7 @@ public static class StreamUtilities
         if (result.Size <= 1024)
         {
             Span<byte> buffer = stackalloc byte[result.Size];
-            ReadExact(stream, buffer);
+            ReadExactly(stream, buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -635,7 +624,7 @@ public static class StreamUtilities
             var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
             try
             {
-                ReadExact(stream, buffer, 0, result.Size);
+                stream.ReadExactly(buffer, 0, result.Size);
                 result.ReadFrom(buffer.AsSpan(0, result.Size));
             }
             finally
@@ -659,7 +648,7 @@ public static class StreamUtilities
         if (length <= 1024)
         {
             Span<byte> buffer = stackalloc byte[length];
-            ReadExact(stream, buffer);
+            ReadExactly(stream, buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -667,7 +656,7 @@ public static class StreamUtilities
             var buffer = ArrayPool<byte>.Shared.Rent(length);
             try
             {
-                ReadExact(stream, buffer, 0, length);
+                stream.ReadExactly(buffer, 0, length);
                 result.ReadFrom(buffer.AsSpan(0, length));
             }
             finally
@@ -690,7 +679,7 @@ public static class StreamUtilities
         if (result.Size <= 1024)
         {
             Span<byte> buffer = stackalloc byte[result.Size];
-            ReadExact(stream, buffer);
+            ReadExactly(stream, buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -698,7 +687,7 @@ public static class StreamUtilities
             var buffer = ArrayPool<byte>.Shared.Rent(result.Size);
             try
             {
-                ReadExact(stream, buffer, 0, result.Size);
+                stream.ReadExactly(buffer, 0, result.Size);
                 result.ReadFrom(buffer.AsSpan(0, result.Size));
             }
             finally
@@ -722,7 +711,7 @@ public static class StreamUtilities
         if (length <= 1024)
         {
             Span<byte> buffer = stackalloc byte[length];
-            ReadExact(stream, buffer);
+            ReadExactly(stream, buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -730,7 +719,7 @@ public static class StreamUtilities
             var buffer = ArrayPool<byte>.Shared.Rent(length);
             try
             {
-                ReadExact(stream, buffer, 0, length);
+                stream.ReadExactly(buffer, 0, length);
                 result.ReadFrom(buffer.AsSpan(0, length));
             }
             finally
@@ -753,7 +742,7 @@ public static class StreamUtilities
         if (length <= 1024)
         {
             Span<byte> buffer = stackalloc byte[length];
-            ReadExact(stream, buffer);
+            ReadExactly(stream, buffer);
             var result = new T();
             result.ReadFrom(buffer);
             return result;
@@ -763,7 +752,7 @@ public static class StreamUtilities
             var buffer = ArrayPool<byte>.Shared.Rent(length);
             try
             {
-                ReadExact(stream, buffer, 0, length);
+                stream.ReadExactly(buffer, 0, length);
                 var result = new T();
                 result.ReadFrom(buffer.AsSpan(0, length));
                 return result;
@@ -806,5 +795,5 @@ public static class StreamUtilities
         }
     }
 
-    #endregion
+#endregion
 }

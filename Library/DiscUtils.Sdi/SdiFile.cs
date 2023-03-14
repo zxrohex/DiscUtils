@@ -56,13 +56,13 @@ public sealed class SdiFile : IDisposable
         _ownership = ownership;
 
         Span<byte> page = stackalloc byte[512];
-        StreamUtilities.ReadExact(_stream, page);
+        StreamUtilities.ReadExactly(_stream, page);
 
         _header = new FileHeader();
         _header.ReadFrom(page);
 
         _stream.Position = _header.PageAlignment * 512;
-        var toc = StreamUtilities.ReadExact(_stream, (int)(_header.PageAlignment * 512));
+        var toc = StreamUtilities.ReadExactly(_stream, (int)(_header.PageAlignment * 512));
 
         _sections = new List<SectionRecord>();
         var pos = 0;

@@ -370,13 +370,13 @@ public sealed class GuidPartitionTable : PartitionTable
             ? stackalloc byte[diskGeometry.BytesPerSector]
             : new byte[diskGeometry.BytesPerSector];
         
-        StreamUtilities.ReadExact(disk, sector);
+        StreamUtilities.ReadExactly(disk, sector);
 
         _primaryHeader = new GptHeader(diskGeometry.BytesPerSector);
         if (!_primaryHeader.ReadFrom(sector) || !ReadEntries(_primaryHeader))
         {
             disk.Position = disk.Length - diskGeometry.BytesPerSector;
-            disk.ReadExact(sector);
+            disk.ReadExactly(sector);
             _secondaryHeader = new GptHeader(diskGeometry.BytesPerSector);
             if (!_secondaryHeader.ReadFrom(sector) || !ReadEntries(_secondaryHeader))
             {
@@ -403,7 +403,7 @@ public sealed class GuidPartitionTable : PartitionTable
         {
             _secondaryHeader = new GptHeader(diskGeometry.BytesPerSector);
             disk.Position = disk.Length - diskGeometry.BytesPerSector;
-            disk.ReadExact(sector);
+            disk.ReadExactly(sector);
             if (!_secondaryHeader.ReadFrom(sector) || !ReadEntries(_secondaryHeader))
             {
                 // Generate from the secondary table from the primary one
@@ -578,7 +578,7 @@ public sealed class GuidPartitionTable : PartitionTable
     {
         _diskData.Position = header.PartitionEntriesLba * _diskGeometry.BytesPerSector;
 
-        var buffer = StreamUtilities.ReadExact(_diskData, (int)(header.PartitionEntrySize * header.PartitionEntryCount));
+        var buffer = StreamUtilities.ReadExactly(_diskData, (int)(header.PartitionEntrySize * header.PartitionEntryCount));
 
         if (header.EntriesCrc != CalcEntriesCrc(buffer))
         {

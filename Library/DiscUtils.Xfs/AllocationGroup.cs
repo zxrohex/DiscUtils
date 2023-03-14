@@ -51,7 +51,7 @@ internal class AllocationGroup
         FreeBlockInfo = new AllocationGroupFreeBlockInfo(superblock);
         data.Position = offset + superblock.SectorSize;
         Span<byte> agfData = stackalloc byte[FreeBlockInfo.Size];
-        StreamUtilities.ReadExact(data, agfData); 
+        StreamUtilities.ReadExactly(data, agfData); 
         FreeBlockInfo.ReadFrom(agfData);
         if (FreeBlockInfo.Magic != AllocationGroupFreeBlockInfo.AgfMagic)
         {
@@ -61,7 +61,7 @@ internal class AllocationGroup
         InodeBtreeInfo = new AllocationGroupInodeBtreeInfo(superblock);
         data.Position = offset + superblock.SectorSize * 2;
         Span<byte> agiData = stackalloc byte[InodeBtreeInfo.Size];
-        StreamUtilities.ReadExact(data, agiData);
+        StreamUtilities.ReadExactly(data, agiData);
 
         InodeBtreeInfo.ReadFrom(agiData);
         if (InodeBtreeInfo.Magic != AllocationGroupInodeBtreeInfo.AgiMagic)

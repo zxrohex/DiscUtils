@@ -21,7 +21,6 @@ namespace LibraryTests.Xfs
             var symlink = new Symlink(context, inode);
             Assert.Equal("init.d", symlink.TargetPath);
 
-
             inode = new Inode(1, context);
             var inodeBuffer = GetInodeBuffer();
             inodeBuffer[0x6C] = 60; //garbage after first null byte

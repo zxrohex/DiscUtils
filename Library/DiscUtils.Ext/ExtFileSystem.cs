@@ -101,7 +101,7 @@ public sealed class ExtFileSystem : VfsFileSystemFacade, IUnixFileSystem, IClust
 
         stream.Position = 1024;
         Span<byte> superblockData = stackalloc byte[1024];
-        StreamUtilities.ReadExact(stream, superblockData);
+        StreamUtilities.ReadExactly(stream, superblockData);
 
         var superblock = new SuperBlock();
         superblock.ReadFrom(superblockData);

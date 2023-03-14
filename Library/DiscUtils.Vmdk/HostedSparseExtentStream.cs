@@ -49,13 +49,13 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
 
         file.Position = 0;
         Span<byte> headerSector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExact(file, headerSector);
+        StreamUtilities.ReadExactly(file, headerSector);
         _hostedHeader = HostedSparseExtentHeader.Read(headerSector);
         if (_hostedHeader.GdOffset == -1)
         {
             // Fall back to secondary copy that (should) be at the end of the stream, just before the end-of-stream sector marker
             file.Position = file.Length - Sizes.OneKiB;
-            StreamUtilities.ReadExact(file, headerSector);
+            StreamUtilities.ReadExactly(file, headerSector);
             _hostedHeader = HostedSparseExtentHeader.Read(headerSector);
 
             if (_hostedHeader.MagicNumber != HostedSparseExtentHeader.VmdkMagicNumber)
@@ -212,7 +212,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
 
             var hdr = StreamUtilities.ReadStruct<CompressedGrainHeader>(_fileStream);
 
-            var readBuffer = StreamUtilities.ReadExact(_fileStream, hdr.DataSize);
+            var readBuffer = StreamUtilities.ReadExactly(_fileStream, hdr.DataSize);
 
             // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
             // check against expected header values...
@@ -237,7 +237,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
             var deflateStream = new DeflateStream(readStream, CompressionMode.Decompress);
 
             // Need to skip some bytes, but DefaultStream doesn't support seeking...
-            StreamUtilities.ReadExact(deflateStream, grainOffset);
+            StreamUtilities.ReadExactly(deflateStream, grainOffset);
 
             return deflateStream.Read(buffer, bufferOffset, numToRead);
         }
@@ -252,7 +252,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
 
             var hdr = await StreamUtilities.ReadStructAsync<CompressedGrainHeader>(_fileStream, cancellationToken).ConfigureAwait(false);
 
-            var readBuffer = await StreamUtilities.ReadExactAsync(_fileStream, hdr.DataSize, cancellationToken).ConfigureAwait(false);
+            var readBuffer = await StreamUtilities.ReadExactlyAsync(_fileStream, hdr.DataSize, cancellationToken).ConfigureAwait(false);
 
             // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
             // check against expected header values...
@@ -277,7 +277,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
             var deflateStream = new DeflateStream(readStream, CompressionMode.Decompress);
 
             // Need to skip some bytes, but DefaultStream doesn't support seeking...
-            await StreamUtilities.ReadExactAsync(deflateStream, grainOffset, cancellationToken).ConfigureAwait(false);
+            await StreamUtilities.ReadExactlyAsync(deflateStream, grainOffset, cancellationToken).ConfigureAwait(false);
 
             return await deflateStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
@@ -292,7 +292,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
 
             var hdr = StreamUtilities.ReadStruct<CompressedGrainHeader>(_fileStream);
 
-            var readBuffer = StreamUtilities.ReadExact(_fileStream, hdr.DataSize);
+            var readBuffer = StreamUtilities.ReadExactly(_fileStream, hdr.DataSize);
 
             // This is really a zlib stream, so has header and footer.  We ignore this right now, but we sanity
             // check against expected header values...
@@ -317,7 +317,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
             var deflateStream = new DeflateStream(readStream, CompressionMode.Decompress);
 
             // Need to skip some bytes, but DefaultStream doesn't support seeking...
-            StreamUtilities.ReadExact(deflateStream, grainOffset);
+            StreamUtilities.ReadExactly(deflateStream, grainOffset);
 
             return deflateStream.Read(buffer);
         }
@@ -346,7 +346,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
             var numGTs = (int)MathUtilities.Ceil(_header.Capacity * Sizes.Sector, _gtCoverage);
             _redundantGlobalDirectory = new uint[numGTs];
             _fileStream.Position = _hostedHeader.RgdOffset * Sizes.Sector;
-            var gdAsBytes = StreamUtilities.ReadExact(_fileStream, numGTs * 4);
+            var gdAsBytes = StreamUtilities.ReadExactly(_fileStream, numGTs * 4);
             for (var i = 0; i < _globalDirectory.Length; ++i)
             {
                 _redundantGlobalDirectory[i] = EndianUtilities.ToUInt32LittleEndian(gdAsBytes, i * 4);
@@ -366,7 +366,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
 
         var size = (int)Math.Min(_header.GrainSize * Sizes.Sector, _parentDiskStream.Length - _parentDiskStream.Position);
 
-        var content = StreamUtilities.ReadExact(_parentDiskStream, size);
+        var content = StreamUtilities.ReadExactly(_parentDiskStream, size);
         
         _fileStream.Position = grainStartPos;
         
@@ -389,7 +389,7 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
 
         var size = (int)Math.Min(_header.GrainSize * Sizes.Sector, _parentDiskStream.Length - _parentDiskStream.Position);
 
-        var content = await StreamUtilities.ReadExactAsync(_parentDiskStream, size, cancellationToken).ConfigureAwait(false);
+        var content = await StreamUtilities.ReadExactlyAsync(_parentDiskStream, size, cancellationToken).ConfigureAwait(false);
 
         _fileStream.Position = grainStartPos;
 

@@ -34,7 +34,7 @@ internal class Header
     public static Header FromStream(Stream stream)
     {
         Span<byte> data = stackalloc byte[16];
-        StreamUtilities.ReadExact(stream, data);
+        StreamUtilities.ReadExactly(stream, data);
         return FromBytes(data);
     }
 

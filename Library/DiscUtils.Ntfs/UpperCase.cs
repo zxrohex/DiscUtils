@@ -41,7 +41,7 @@ internal readonly struct UpperCase : IComparer<string>
 
         var bytes = MemoryMarshal.AsBytes(_table.AsSpan());
 
-        StreamUtilities.ReadExact(s, bytes);
+        StreamUtilities.ReadExactly(s, bytes);
 
         if (!BitConverter.IsLittleEndian)
         {

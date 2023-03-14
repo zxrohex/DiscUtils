@@ -195,7 +195,6 @@ public abstract class ProgramBase
         _timeSwitch = new CommandLineSwitch("time", null, "Times how long this program takes to execute.");
         _parser.AddSwitch(_timeSwitch);
 
-
         var parseResult = _parser.Parse(args);
 
         if (!_quietSwitch.IsPresent)
@@ -317,7 +316,6 @@ public abstract class ProgramBase
         Console.WriteLine("Free software issued under the MIT License, see LICENSE.TXT for details.");
         Console.WriteLine();
     }
-
 
     protected static CommandLineParameter FileOrUriParameter(string paramName, string intro, bool optional)
     {

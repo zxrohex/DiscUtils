@@ -297,7 +297,6 @@ public class BuiltStream : SparseStream
         return totalRead;
     }
 
-
     public override long Seek(long offset, SeekOrigin origin)
     {
         var newPos = offset;

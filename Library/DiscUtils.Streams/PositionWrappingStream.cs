@@ -102,21 +102,17 @@ public class PositionWrappingStream : WrappingStream
         return read;
     }
 
-
     public override void Write(byte[] buffer, int offset, int count)
     {
         base.Write(buffer, offset, count);
         _position += count;
     }
 
-
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         await base.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         _position += count;
     }
-
-
 
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {

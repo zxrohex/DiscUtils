@@ -27,7 +27,6 @@ public sealed class NTAccount : IdentityReference
             Value = $@"{domainName}\{accountName}";
     }
 
-
     public override bool Equals(object o)
     {
         var nt = (o as NTAccount);

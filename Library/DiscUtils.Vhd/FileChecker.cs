@@ -121,7 +121,7 @@ public class FileChecker
         }
 
         _fileStream.Position = _dynamicHeader.TableOffset;
-        var batData = StreamUtilities.ReadExact(_fileStream, batSize);
+        var batData = StreamUtilities.ReadExactly(_fileStream, batSize);
         var bat = new uint[batSize / 4];
         for (var i = 0; i < bat.Length; ++i)
         {
@@ -354,7 +354,7 @@ public class FileChecker
     {
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
         Span<byte> sector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExact(_fileStream, sector);
+        StreamUtilities.ReadExactly(_fileStream, sector);
 
         _footer = Footer.FromBytes(sector);
         if (!_footer.IsValid())
@@ -367,7 +367,7 @@ public class FileChecker
     {
         _fileStream.Position = 0;
         Span<byte> headerSector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExact(_fileStream, headerSector);
+        StreamUtilities.ReadExactly(_fileStream, headerSector);
 
         var header = Footer.FromBytes(headerSector);
         if (!header.IsValid())
@@ -377,7 +377,7 @@ public class FileChecker
 
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
         Span<byte> footerSector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExact(_fileStream, footerSector);
+        StreamUtilities.ReadExactly(_fileStream, footerSector);
 
         if (!footerSector.SequenceEqual(headerSector))
         {

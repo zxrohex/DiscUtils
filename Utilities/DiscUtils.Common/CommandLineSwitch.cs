@@ -150,7 +150,6 @@ public class CommandLineSwitch
         return false;
     }
 
-
     internal virtual int Process(string[] args, int pos)
     {
         _isPresent = true;

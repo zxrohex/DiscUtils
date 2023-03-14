@@ -59,7 +59,6 @@ namespace LibraryTests.Vhdx
                 Content = diskContent
             };
 
-
             var fileSpecs = builder.Build("foo").ToArray();
             Assert.Single(fileSpecs);
             Assert.Equal("foo.vhdx", fileSpecs[0].Name);

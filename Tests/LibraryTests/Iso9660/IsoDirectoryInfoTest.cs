@@ -89,7 +89,6 @@ namespace LibraryTests.Iso9660
             builder.AddDirectory(@"A.DIR");
             var fs = new CDReader(builder.Build(), false);
 
-
             Assert.Equal(2, fs.Root.GetDirectories().Count());
 
             var someDir = fs.Root.GetDirectories(@"SoMeDir").First();

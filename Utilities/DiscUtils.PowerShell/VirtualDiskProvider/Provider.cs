@@ -244,7 +244,6 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
         }
         var itemTypeUpper = itemTypeName.ToUpperInvariant();
 
-
         var obj = FindItemByPath(Utilities.NormalizePath(parentPath), true, false);
 
         if (obj is DiscDirectoryInfo)
@@ -577,7 +576,6 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
         var volumes = volMgr.GetLogicalVolumes();
         var volNumStr = pathElems[0].StartsWith("Volume", StringComparison.OrdinalIgnoreCase) ? pathElems[0].Substring(6) : null;
 
-
         VolumeInfo volInfo;
         if (int.TryParse(volNumStr, out var volNum) || volNum < 0 || volNum >= volumes.Length)
         {
@@ -592,7 +590,6 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
         {
             return volInfo;
         }
-
 
         var fs = GetFileSystem(volInfo, out var disposeFs);
         try
@@ -842,6 +839,4 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
         destFs.SetCreationTimeUtc(destPath, srcFs.GetCreationTimeUtc(srcPath));
     }
 }
-
-
 

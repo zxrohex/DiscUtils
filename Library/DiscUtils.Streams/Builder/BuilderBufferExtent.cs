@@ -59,7 +59,6 @@ public class BuilderBufferExtent : BuilderExtent
         return numBytes;
     }
 
-
     public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
     {
         var startOffset = (int)(diskOffset - Start);
@@ -67,7 +66,6 @@ public class BuilderBufferExtent : BuilderExtent
         System.Buffer.BlockCopy(_buffer, startOffset, block, offset, numBytes);
         return Task.FromResult(numBytes);
     }
-
 
     public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
     {

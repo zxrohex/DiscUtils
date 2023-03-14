@@ -45,7 +45,6 @@ public sealed class CircularStream : WrappingStream
         return read;
     }
 
-
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
         WrapPosition();

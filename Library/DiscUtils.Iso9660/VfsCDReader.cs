@@ -138,7 +138,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
                     if (svdPos != 0)
                     {
                         data.Position = svdPos;
-                        data.ReadExact(buffer, 0, IsoUtilities.SectorSize);
+                        data.ReadExactly(buffer, 0, IsoUtilities.SectorSize);
                         var volDesc = new SupplementaryVolumeDescriptor(buffer);
 
                         Context = new IsoContext { VolumeDescriptor = volDesc, DataStream = _data };
@@ -154,7 +154,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
                     if (pvdPos != 0)
                     {
                         data.Position = pvdPos;
-                        data.ReadExact(buffer, 0, IsoUtilities.SectorSize);
+                        data.ReadExactly(buffer, 0, IsoUtilities.SectorSize);
                         var volDesc = new PrimaryVolumeDescriptor(buffer);
 
                         var context = new IsoContext { VolumeDescriptor = volDesc, DataStream = _data };
@@ -512,7 +512,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
         var firstSector = ArrayPool<byte>.Shared.Rent(context.VolumeDescriptor.LogicalBlockSize);
         try
         {
-            StreamUtilities.ReadExact(context.DataStream, firstSector, 0, context.VolumeDescriptor.LogicalBlockSize);
+            context.DataStream.ReadExactly(firstSector, 0, context.VolumeDescriptor.LogicalBlockSize);
 
             DirectoryRecord.ReadFrom(firstSector, context.VolumeDescriptor.CharacterEncoding, out var rootSelfRecord);
             return rootSelfRecord;
@@ -545,7 +545,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
         if (_bootCatalog == null && _bootVolDesc != null)
         {
             _data.Position = _bootVolDesc.CatalogSector * IsoUtilities.SectorSize;
-            _bootCatalog = StreamUtilities.ReadExact(_data, IsoUtilities.SectorSize);
+            _bootCatalog = StreamUtilities.ReadExactly(_data, IsoUtilities.SectorSize);
         }
 
         return _bootCatalog;

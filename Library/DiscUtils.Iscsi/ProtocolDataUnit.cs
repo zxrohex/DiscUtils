@@ -47,7 +47,7 @@ internal class ProtocolDataUnit
     {
         var numRead = 0;
 
-        var headerData = StreamUtilities.ReadExact(stream, 48);
+        var headerData = StreamUtilities.ReadExactly(stream, 48);
         numRead += 48;
 
         byte[] contentData = null;
@@ -63,7 +63,7 @@ internal class ProtocolDataUnit
 
         if (bhs.DataSegmentLength > 0)
         {
-            contentData = StreamUtilities.ReadExact(stream, bhs.DataSegmentLength);
+            contentData = StreamUtilities.ReadExactly(stream, bhs.DataSegmentLength);
             numRead += bhs.DataSegmentLength;
 
             if (dataDigestEnabled)
@@ -76,7 +76,7 @@ internal class ProtocolDataUnit
         var rem = 4 - numRead % 4;
         if (rem != 4)
         {
-            StreamUtilities.ReadExact(stream, stackalloc byte[rem]);
+            StreamUtilities.ReadExactly(stream, stackalloc byte[rem]);
         }
 
         return new ProtocolDataUnit(headerData, contentData);
@@ -85,7 +85,7 @@ internal class ProtocolDataUnit
     private static uint ReadDigest(Stream stream)
     {
         Span<byte> data = stackalloc byte[4];
-        StreamUtilities.ReadExact(stream, data);
+        StreamUtilities.ReadExactly(stream, data);
         return EndianUtilities.ToUInt32BigEndian(data);
     }
 }

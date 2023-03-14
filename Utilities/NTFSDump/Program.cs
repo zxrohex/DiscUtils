@@ -98,7 +98,6 @@ class Program : ProgramBase
         fs.NtfsOptions.HideSystemFiles = !_showSystem.IsPresent;
         fs.NtfsOptions.HideMetafiles = !_showMeta.IsPresent;
 
-
         fs.Dump(Console.Out, "");
     }
 }

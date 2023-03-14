@@ -51,12 +51,12 @@ internal sealed class Bin
 
         stream.Position = _streamPos;
         Span<byte> buffer = stackalloc byte[0x20];
-        StreamUtilities.ReadExact(stream, buffer);
+        StreamUtilities.ReadExactly(stream, buffer);
         _header = new BinHeader();
         _header.ReadFrom(buffer);
 
         _fileStream.Position = _streamPos;
-        _buffer = StreamUtilities.ReadExact(_fileStream, _header.BinSize);
+        _buffer = StreamUtilities.ReadExactly(_fileStream, _header.BinSize);
 
         // Gather list of all free cells.
         _freeCells = new List<Range<int, int>>();

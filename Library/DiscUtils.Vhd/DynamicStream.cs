@@ -88,7 +88,7 @@ public class DynamicStream : MappedStream
         // Detect where next block should go (cope if the footer is missing)
         _fileStream.Position = MathUtilities.RoundDown(_fileStream.Length, Sizes.Sector) - Sizes.Sector;
         Span<byte> footerBytes = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExact(_fileStream, footerBytes);
+        StreamUtilities.ReadExactly(_fileStream, footerBytes);
         var footer = Footer.FromBytes(footerBytes);
         _nextBlockStart = _fileStream.Position - (footer.IsValid() ? Sizes.Sector : 0);
     }
@@ -298,12 +298,12 @@ public class DynamicStream : MappedStream
                     {
                         _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
                                                Sizes.Sector + _blockBitmapSize + offsetInSector;
-                        StreamUtilities.ReadExact(_fileStream, buffer, offset + numRead, toRead);
+                        _fileStream.ReadExactly(buffer, offset + numRead, toRead);
                     }
                     else
                     {
                         _parentStream.Position = _position;
-                        StreamUtilities.ReadExact(_parentStream, buffer, offset + numRead, toRead);
+                        _parentStream.ReadExactly(buffer, offset + numRead, toRead);
                     }
 
                     numRead += toRead;
@@ -334,13 +334,13 @@ public class DynamicStream : MappedStream
                     if (readFromParent)
                     {
                         _parentStream.Position = _position;
-                        StreamUtilities.ReadExact(_parentStream, buffer, offset + numRead, toRead);
+                        _parentStream.ReadExactly(buffer, offset + numRead, toRead);
                     }
                     else
                     {
                         _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
                                                Sizes.Sector + _blockBitmapSize;
-                        StreamUtilities.ReadExact(_fileStream, buffer, offset + numRead, toRead);
+                        _fileStream.ReadExactly(buffer, offset + numRead, toRead);
                     }
 
                     numRead += toRead;
@@ -351,7 +351,7 @@ public class DynamicStream : MappedStream
             {
                 var toRead = Math.Min(maxToRead - numRead, (int)(_dynamicHeader.BlockSize - offsetInBlock));
                 _parentStream.Position = _position;
-                StreamUtilities.ReadExact(_parentStream, buffer, offset + numRead, toRead);
+                _parentStream.ReadExactly(buffer, offset + numRead, toRead);
                 numRead += toRead;
                 _position += toRead;
             }
@@ -400,12 +400,12 @@ public class DynamicStream : MappedStream
                     {
                         _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
                                                Sizes.Sector + _blockBitmapSize + offsetInSector;
-                        await StreamUtilities.ReadExactAsync(_fileStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                        await _fileStream.ReadExactlyAsync(buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
                         _parentStream.Position = _position;
-                        await StreamUtilities.ReadExactAsync(_parentStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                        await _parentStream.ReadExactlyAsync(buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
                     }
 
                     numRead += toRead;
@@ -436,13 +436,13 @@ public class DynamicStream : MappedStream
                     if (readFromParent)
                     {
                         _parentStream.Position = _position;
-                        await StreamUtilities.ReadExactAsync(_parentStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                        await _parentStream.ReadExactlyAsync(buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
                         _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
                                                Sizes.Sector + _blockBitmapSize;
-                        await StreamUtilities.ReadExactAsync(_fileStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                        await _fileStream.ReadExactlyAsync(buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
                     }
 
                     numRead += toRead;
@@ -453,7 +453,7 @@ public class DynamicStream : MappedStream
             {
                 var toRead = Math.Min(maxToRead - numRead, (int)(_dynamicHeader.BlockSize - offsetInBlock));
                 _parentStream.Position = _position;
-                await StreamUtilities.ReadExactAsync(_parentStream, buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
+                await _parentStream.ReadExactlyAsync(buffer.Slice(numRead, toRead), cancellationToken).ConfigureAwait(false);
                 numRead += toRead;
                 _position += toRead;
             }
@@ -501,12 +501,12 @@ public class DynamicStream : MappedStream
                     {
                         _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
                                                Sizes.Sector + _blockBitmapSize + offsetInSector;
-                        StreamUtilities.ReadExact(_fileStream, buffer.Slice(numRead, toRead));
+                        StreamUtilities.ReadExactly(_fileStream, buffer.Slice(numRead, toRead));
                     }
                     else
                     {
                         _parentStream.Position = _position;
-                        StreamUtilities.ReadExact(_parentStream, buffer.Slice(numRead, toRead));
+                        StreamUtilities.ReadExactly(_parentStream, buffer.Slice(numRead, toRead));
                     }
 
                     numRead += toRead;
@@ -537,13 +537,13 @@ public class DynamicStream : MappedStream
                     if (readFromParent)
                     {
                         _parentStream.Position = _position;
-                        StreamUtilities.ReadExact(_parentStream, buffer.Slice(numRead, toRead));
+                        StreamUtilities.ReadExactly(_parentStream, buffer.Slice(numRead, toRead));
                     }
                     else
                     {
                         _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
                                                Sizes.Sector + _blockBitmapSize;
-                        StreamUtilities.ReadExact(_fileStream, buffer.Slice(numRead, toRead));
+                        StreamUtilities.ReadExactly(_fileStream, buffer.Slice(numRead, toRead));
                     }
 
                     numRead += toRead;
@@ -554,7 +554,7 @@ public class DynamicStream : MappedStream
             {
                 var toRead = Math.Min(maxToRead - numRead, (int)(_dynamicHeader.BlockSize - offsetInBlock));
                 _parentStream.Position = _position;
-                StreamUtilities.ReadExact(_parentStream, buffer.Slice(numRead, toRead));
+                StreamUtilities.ReadExactly(_parentStream, buffer.Slice(numRead, toRead));
                 numRead += toRead;
                 _position += toRead;
             }
@@ -646,12 +646,12 @@ public class DynamicStream : MappedStream
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                 {
                     _fileStream.Position = sectorStart;
-                    StreamUtilities.ReadExact(_fileStream, sectorBuffer);
+                    StreamUtilities.ReadExactly(_fileStream, sectorBuffer);
                 }
                 else
                 {
                     _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
-                    StreamUtilities.ReadExact(_parentStream, sectorBuffer);
+                    StreamUtilities.ReadExactly(_parentStream, sectorBuffer);
                 }
 
                 // Overlay as much data as we have for this sector
@@ -753,12 +753,12 @@ public class DynamicStream : MappedStream
                     if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                     {
                         _fileStream.Position = sectorStart;
-                        await StreamUtilities.ReadExactAsync(_fileStream, sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
+                        await _fileStream.ReadExactlyAsync(sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
                         _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
-                        await StreamUtilities.ReadExactAsync(_parentStream, sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
+                        await _parentStream.ReadExactlyAsync(sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
                     }
 
                     // Overlay as much data as we have for this sector
@@ -864,12 +864,12 @@ public class DynamicStream : MappedStream
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                 {
                     _fileStream.Position = sectorStart;
-                    StreamUtilities.ReadExact(_fileStream, sectorBuffer);
+                    StreamUtilities.ReadExactly(_fileStream, sectorBuffer);
                 }
                 else
                 {
                     _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
-                    StreamUtilities.ReadExact(_parentStream, sectorBuffer);
+                    StreamUtilities.ReadExactly(_parentStream, sectorBuffer);
                 }
 
                 // Overlay as much data as we have for this sector
@@ -1051,7 +1051,7 @@ public class DynamicStream : MappedStream
     private void ReadBlockAllocationTable()
     {
         _fileStream.Position = _dynamicHeader.TableOffset;
-        var data = StreamUtilities.ReadExact(_fileStream, _dynamicHeader.MaxTableEntries * 4);
+        var data = StreamUtilities.ReadExactly(_fileStream, _dynamicHeader.MaxTableEntries * 4);
 
         var bat = new uint[_dynamicHeader.MaxTableEntries];
         for (var i = 0; i < _dynamicHeader.MaxTableEntries; ++i)
@@ -1095,7 +1095,7 @@ public class DynamicStream : MappedStream
 
         // Read in bitmap
         _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
-        _blockBitmaps[block] = StreamUtilities.ReadExact(_fileStream, _blockBitmapSize);
+        _blockBitmaps[block] = StreamUtilities.ReadExactly(_fileStream, _blockBitmapSize);
 
         return true;
     }
@@ -1116,7 +1116,7 @@ public class DynamicStream : MappedStream
 
         // Read in bitmap
         _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
-        _blockBitmaps[block] = await StreamUtilities.ReadExactAsync(_fileStream, _blockBitmapSize, cancellationToken).ConfigureAwait(false);
+        _blockBitmaps[block] = await StreamUtilities.ReadExactlyAsync(_fileStream, _blockBitmapSize, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -1226,7 +1226,7 @@ public class DynamicStream : MappedStream
             if (_footerCache == null)
             {
                 _fileStream.Position = 0;
-                _footerCache = StreamUtilities.ReadExact(_fileStream, Sizes.Sector);
+                _footerCache = StreamUtilities.ReadExactly(_fileStream, Sizes.Sector);
             }
 
             _fileStream.Position = _nextBlockStart;
@@ -1242,7 +1242,7 @@ public class DynamicStream : MappedStream
             if (_footerCache == null)
             {
                 _fileStream.Position = 0;
-                _footerCache = await StreamUtilities.ReadExactAsync(_fileStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                _footerCache = await StreamUtilities.ReadExactlyAsync(_fileStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
             }
 
             _fileStream.Position = _nextBlockStart;

@@ -50,7 +50,6 @@ internal abstract class VolumeDescriptorDiskRegion : BuilderExtent
         return numRead;
     }
 
-
     public override int Read(long diskOffset, Span<byte> buffer)
     {
         var relPos = diskOffset - Start;
@@ -61,7 +60,6 @@ internal abstract class VolumeDescriptorDiskRegion : BuilderExtent
 
         return numRead;
     }
-
 
     public override void DisposeReadState()
     {

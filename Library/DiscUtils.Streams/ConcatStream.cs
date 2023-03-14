@@ -346,7 +346,6 @@ public class ConcatStream : SparseStream
         }
     }
 
-
     protected override void Dispose(bool disposing)
     {
         try

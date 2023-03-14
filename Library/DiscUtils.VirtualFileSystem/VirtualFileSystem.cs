@@ -351,7 +351,6 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IUn
         return member;
     }
 
-
     public VirtualFileSystemFile AddFile(string path, byte[] content, DateTime creationTime, DateTime writtenTime, DateTime accessedTime, FileAttributes attributes) =>
         new VirtualFileSystemFile(AddDirectory(GetPathDirectoryName(path)),
             GetPathFileName(path),
@@ -513,7 +512,6 @@ public partial class VirtualFileSystem : DiscFileSystem, IWindowsFileSystem, IUn
 
         return new CachedDiscDirectoryInfo(this, path, dir.Attributes, dir.CreationTimeUtc, dir.LastAccessTimeUtc, dir.LastWriteTimeUtc);
     }
-
 
     public override DiscFileSystemInfo GetFileSystemInfo(string path)
     {

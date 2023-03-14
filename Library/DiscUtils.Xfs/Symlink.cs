@@ -20,7 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-
 namespace DiscUtils.Xfs;
 
 using System.IO;
@@ -44,7 +43,7 @@ internal class Symlink : File, IVfsSymlink<DirEntry, File>
             }
 
             var content = FileContent;
-            var data = StreamUtilities.ReadExact(content, 0, (int)Inode.Length);
+            var data = StreamUtilities.ReadExactly(content, 0, (int)Inode.Length);
 
             return Context.Options.FileNameEncoding.GetString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
         }

@@ -121,7 +121,7 @@ public class WimFileSystem : ReadOnlyDiscFileSystem, IWindowsFileSystem
 
         using Stream s = _file.OpenResourceStream(hdr);
         var buffer = new byte[s.Length];
-        s.ReadExact(buffer, 0, buffer.Length);
+        s.ReadExactly(buffer, 0, buffer.Length);
         return new ReparsePoint((int)dirEntry.ReparseTag, buffer);
     }
 

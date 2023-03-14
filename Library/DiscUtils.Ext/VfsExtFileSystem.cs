@@ -51,7 +51,7 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
 
         Span<byte> superblockData = stackalloc byte[1024];
         
-        StreamUtilities.ReadExact(stream, superblockData);
+        StreamUtilities.ReadExactly(stream, superblockData);
 
         var superblock = new SuperBlock();
         superblock.ReadFrom(superblockData);
@@ -83,7 +83,7 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
 
         stream.Position = blockDescStart;
         var bgDescSize = superblock.Has64Bit ? superblock.DescriptorSize : BlockGroup.DescriptorSize;
-        var blockDescData = StreamUtilities.ReadExact(stream, (int)numGroups * bgDescSize);
+        var blockDescData = StreamUtilities.ReadExactly(stream, (int)numGroups * bgDescSize);
 
         _blockGroups = new BlockGroup[numGroups];
         for (var i = 0; i < numGroups; ++i)
@@ -98,7 +98,7 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
         {
             var journalInode = GetInode(superblock.JournalInode);
             var journalDataStream = journalInode.GetContentBuffer(Context);
-            var journalData = StreamUtilities.ReadExact(journalDataStream, 0, 1024 + 12);
+            var journalData = StreamUtilities.ReadExactly(journalDataStream, 0, 1024 + 12);
             journalSuperBlock.ReadFrom(journalData, 0);
             Context.JournalSuperblock = journalSuperBlock;
         }
@@ -193,7 +193,7 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
 
         Span<byte> inodeData = stackalloc byte[superBlock.InodeSize];
         
-        StreamUtilities.ReadExact(Context.RawStream, inodeData);
+        StreamUtilities.ReadExactly(Context.RawStream, inodeData);
 
         return EndianUtilities.ToStruct<Inode>(inodeData);
     }

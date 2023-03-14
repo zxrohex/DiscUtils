@@ -86,7 +86,6 @@ class Program : ProgramBase
             volMgr.AddDisk(disk);
         }
 
-
         VolumeInfo volInfo;
         if (!string.IsNullOrEmpty(VolumeId))
         {

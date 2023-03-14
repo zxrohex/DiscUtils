@@ -111,7 +111,6 @@ public class ZeroStream : MappedStream
         return numToClear;
     }
 
-
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (_position > _length)
@@ -136,8 +135,6 @@ public class ZeroStream : MappedStream
 
         return Task.FromResult(numToClear);
     }
-
-
 
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -188,7 +185,6 @@ public class ZeroStream : MappedStream
 
         return numToClear;
     }
-
 
     public override long Seek(long offset, SeekOrigin origin)
     {

@@ -71,7 +71,6 @@ internal class ZlibBuffer : Buffer
         return read;
     }
 
-
     public override async ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         if (pos != position)

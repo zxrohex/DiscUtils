@@ -86,7 +86,6 @@ internal class XpressStream : ReadOnlyCompatibilityStream
         return numToRead;
     }
 
-
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (_position > Length)
@@ -99,7 +98,6 @@ internal class XpressStream : ReadOnlyCompatibilityStream
         _position += numToRead;
         return Task.FromResult(numToRead);
     }
-
 
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -126,7 +124,6 @@ internal class XpressStream : ReadOnlyCompatibilityStream
         _position += numToRead;
         return numToRead;
     }
-
 
     public override long Seek(long offset, SeekOrigin origin)
     {

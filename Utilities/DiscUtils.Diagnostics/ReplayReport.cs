@@ -69,7 +69,6 @@ public sealed class ReplayReport
         _lastCheckpointReport = lastCheckpointReport;
     }
 
-
     /// <summary>
     /// The exception (if any) that caused the file system verification check to fail.
     /// </summary>

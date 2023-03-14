@@ -75,7 +75,7 @@ internal sealed class ReaderDirEntry : VfsDirEntry
                 var firstSector = ArrayPool<byte>.Shared.Rent(_context.VolumeDescriptor.LogicalBlockSize);
                 try
                 {
-                    StreamUtilities.ReadExact(_context.DataStream, firstSector, 0,
+                    _context.DataStream.ReadExactly(firstSector, 0,
                         _context.VolumeDescriptor.LogicalBlockSize);
 
                     DirectoryRecord.ReadFrom(firstSector, _context.VolumeDescriptor.CharacterEncoding, out _record);

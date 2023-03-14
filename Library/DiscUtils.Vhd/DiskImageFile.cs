@@ -624,7 +624,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
                 || pl.PlatformCode == ParentLocator.PlatformCodeWindowsRelativeUnicode)
             {
                 _fileStream.Position = pl.PlatformDataOffset;
-                var buffer = StreamUtilities.ReadExact(_fileStream, pl.PlatformDataLength);
+                var buffer = StreamUtilities.ReadExactly(_fileStream, pl.PlatformDataLength);
                 var locationVal = Encoding.Unicode.GetString(buffer);
 
                 if (pl.PlatformCode == ParentLocator.PlatformCodeWindowsAbsoluteUnicode)
@@ -656,7 +656,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     {
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
         Span<byte> sector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExact(_fileStream, sector);
+        StreamUtilities.ReadExactly(_fileStream, sector);
 
         _footer = Footer.FromBytes(sector);
 
@@ -668,7 +668,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
             }
 
             _fileStream.Position = 0;
-            StreamUtilities.ReadExact(_fileStream, sector);
+            StreamUtilities.ReadExactly(_fileStream, sector);
 
             _footer = Footer.FromBytes(sector);
             if (!_footer.IsValid())

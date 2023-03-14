@@ -339,7 +339,6 @@ public sealed class TracingStream : CompatibilityStream
         }
     }
 
-
     /// <summary>
     /// Moves the stream position.
     /// </summary>

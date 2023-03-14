@@ -98,7 +98,6 @@ internal class Metadata
         VolumeGroupSections = vgSection;
     }
 
-
     internal static string ReadLine(TextReader data)
     {
         var line = data.ReadLine();

@@ -302,7 +302,6 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         return totalRead;
     }
 
-
     public override int Read(long pos, Span<byte> buffer)
     {
         if (pos > _inode.FileSize)
@@ -462,7 +461,7 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
             ? stackalloc byte[(int)blockSize]
             : new byte[blockSize];
         
-        StreamUtilities.ReadExact(_context.RawStream, buffer);
+        StreamUtilities.ReadExactly(_context.RawStream, buffer);
         
         ExtentBlock subBlock = EndianUtilities.ToStruct<ExtentBlock>(buffer);
         

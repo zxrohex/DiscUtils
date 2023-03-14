@@ -154,7 +154,7 @@ public class DiskImageFileInfo
                     || pl.PlatformCode == ParentLocator.PlatformCodeWindowsRelativeUnicode)
                 {
                     _vhdStream.Position = pl.PlatformDataOffset;
-                    var buffer = StreamUtilities.ReadExact(_vhdStream, pl.PlatformDataLength);
+                    var buffer = StreamUtilities.ReadExactly(_vhdStream, pl.PlatformDataLength);
                     vals.Add(Encoding.Unicode.GetString(buffer));
                 }
             }

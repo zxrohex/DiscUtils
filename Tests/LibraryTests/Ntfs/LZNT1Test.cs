@@ -235,7 +235,6 @@ namespace LibraryTests.Ntfs
             var inData = new byte[128 * 1024];
             Buffer.BlockCopy(compressed, 0, inData, 32 * 1024, compressed.Length);
 
-
             // Double-check, make sure native code round-trips
             Assert.Equal(_uncompressedData, NativeDecompress(inData, 32 * 1024, compressed.Length));
 
@@ -282,8 +281,6 @@ namespace LibraryTests.Ntfs
 
             Assert.Equal(_uncompressedData, decompressed);
         }
-
-
 
         private static byte[] NativeCompress(byte[] data, int offset, int length, int chunkSize)
         {

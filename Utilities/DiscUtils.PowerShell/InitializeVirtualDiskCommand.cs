@@ -48,7 +48,6 @@ public class InitializeVirtualDiskCommand : PSCmdlet
     [Parameter]
     public int Signature { get; set; }
 
-
     protected override void ProcessRecord()
     {
         PSObject diskObject = null;
@@ -112,7 +111,6 @@ public class InitializeVirtualDiskCommand : PSCmdlet
         {
             drive.RescanVolumes();
         }
-
 
         WriteObject(disk);
     }

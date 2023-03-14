@@ -80,7 +80,6 @@ public class CommandLineParser
         Console.WriteLine();
         Console.WriteLine();
 
-
         Console.WriteLine("Parameters:");
 
         var maxNameLen = 0;
@@ -103,7 +102,6 @@ public class CommandLineParser
             _multiParam.WriteDescription(Console.Out, $"  {{0,-{maxNameLen}}}  {{1}}", 74 - maxNameLen);
             Console.WriteLine();
         }
-
 
         Console.WriteLine("Switches:");
 

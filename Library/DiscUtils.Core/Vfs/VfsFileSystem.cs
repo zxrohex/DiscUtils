@@ -472,7 +472,6 @@ public abstract class VfsFileSystem<TDirEntry, TFile, TDirectory, TContext> : Di
             attributeName = fileName.Substring(streamSepPos + 1);
         }
 
-
         SparseStream stream;
 
         if (file is IVfsFileWithStreams fileStreams && attributeName != null)

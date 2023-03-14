@@ -511,7 +511,7 @@ internal abstract class CommonSparseExtentStream : MappedStream
 
         _globalDirectory = new uint[numGTs];
         _fileStream.Position = _header.GdOffset * Sizes.Sector;
-        var gdAsBytes = StreamUtilities.ReadExact(_fileStream, numGTs * 4);
+        var gdAsBytes = StreamUtilities.ReadExactly(_fileStream, numGTs * 4);
         for (var i = 0; i < _globalDirectory.Length; ++i)
         {
             _globalDirectory[i] = EndianUtilities.ToUInt32LittleEndian(gdAsBytes, i * 4);
@@ -543,7 +543,7 @@ internal abstract class CommonSparseExtentStream : MappedStream
 
         // Not cached, so read
         _fileStream.Position = (long)_globalDirectory[index] * Sizes.Sector;
-        var newGrainTable = StreamUtilities.ReadExact(_fileStream, (int)_header.NumGTEsPerGT * 4);
+        var newGrainTable = StreamUtilities.ReadExactly(_fileStream, (int)_header.NumGTEsPerGT * 4);
         _currentGrainTable = index;
         _grainTable = newGrainTable;
 
@@ -577,7 +577,7 @@ internal abstract class CommonSparseExtentStream : MappedStream
 
         // Not cached, so read
         _fileStream.Position = (long)_globalDirectory[index] * Sizes.Sector;
-        var newGrainTable = await StreamUtilities.ReadExactAsync(_fileStream, (int)_header.NumGTEsPerGT * 4, cancellationToken).ConfigureAwait(false);
+        var newGrainTable = await StreamUtilities.ReadExactlyAsync(_fileStream, (int)_header.NumGTEsPerGT * 4, cancellationToken).ConfigureAwait(false);
         _currentGrainTable = index;
         _grainTable = newGrainTable;
 

@@ -113,7 +113,6 @@ class Program : ProgramBase
                 Console.WriteLine();
             }
 
-
             if (_showBootCode.IsPresent)
             {
                 Console.WriteLine();
@@ -132,7 +131,6 @@ class Program : ProgramBase
                 }
                 Console.WriteLine();
             }
-
 
             Console.WriteLine();
             Console.WriteLine("  Partitions");
@@ -321,7 +319,6 @@ class Program : ProgramBase
             }
         }
     }
-
 
     private static void ShowDir(DiscDirectoryInfo dirInfo, int indent)
     {

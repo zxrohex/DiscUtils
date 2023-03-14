@@ -185,7 +185,6 @@ class Program : ProgramBase
                         --hardLinksRemaining;
                     }
 
-
                     if (newDir)
                     {
                         if (hardLinksRemaining > 0)
@@ -233,7 +232,6 @@ class Program : ProgramBase
         }
     }
 
-
     private static void CopyFile(NtfsFileSystem sourceNtfs, NtfsFileSystem destNtfs, string path)
     {
         if (IsExcluded(path))
@@ -256,7 +254,6 @@ class Program : ProgramBase
         destNtfs.SetSecurity(path, sourceNtfs.GetSecurity(path));
         destNtfs.SetFileStandardInformation(path, sourceNtfs.GetFileStandardInformation(path));
     }
-
 
     private static bool IsExcluded(string path)
     {

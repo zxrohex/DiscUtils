@@ -179,7 +179,6 @@ internal class NtfsAttributeBuffer : Buffer, IMappedBuffer
         return totalToRead;
     }
 
-
     public override int Read(long pos, Span<byte> buffer)
     {
         var record = _attribute.PrimaryRecord;

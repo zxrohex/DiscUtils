@@ -20,7 +20,6 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -56,7 +55,7 @@ namespace LibraryTests
             // Check I/O is synchronous
             var buffer = new byte[200];
             tss.WriteByte(99);
-            altView.ReadExact(buffer, 0, 200);
+            altView.ReadExactly(buffer, 0, 200);
             Assert.Equal(99, buffer[100]);
 
             // Check positions are updated correctly

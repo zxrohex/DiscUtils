@@ -545,7 +545,7 @@ public abstract class VirtualDisk :
     {
         var oldPos = Content.Position;
         Content.Position = 0;
-        StreamUtilities.ReadExact(Content, sector.Slice(0, Sizes.Sector));
+        StreamUtilities.ReadExactly(Content, sector.Slice(0, Sizes.Sector));
         Content.Position = oldPos;
     }
 
@@ -557,7 +557,7 @@ public abstract class VirtualDisk :
     {
         var oldPos = Content.Position;
         Content.Position = 0;
-        await StreamUtilities.ReadExactAsync(Content, sector.Slice(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
+        await Content.ReadExactlyAsync(sector.Slice(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
         Content.Position = oldPos;
     }
 

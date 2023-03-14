@@ -111,23 +111,18 @@ public class WrappingMappedStream<T> : MappedStream
         WrappedStream.Flush();
     }
 
-
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         WrappedStream.FlushAsync(cancellationToken);
-
 
     public override int Read(byte[] buffer, int offset, int count)
     {
         return WrappedStream.Read(buffer, offset, count);
     }
 
-
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         return WrappedStream.ReadAsync(buffer, offset, count, cancellationToken);
     }
-
-
 
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -138,7 +133,6 @@ public class WrappingMappedStream<T> : MappedStream
     {
         return WrappedStream.Read(buffer);
     }
-
 
     public override long Seek(long offset, SeekOrigin origin)
     {
@@ -167,13 +161,10 @@ public class WrappingMappedStream<T> : MappedStream
         WrappedStream.Write(buffer, offset, count);
     }
 
-
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         return WrappedStream.WriteAsync(buffer, offset, count, cancellationToken);
     }
-
-
 
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -184,7 +175,6 @@ public class WrappingMappedStream<T> : MappedStream
     {
         WrappedStream.Write(buffer);
     }
-
 
     protected override void Dispose(bool disposing)
     {

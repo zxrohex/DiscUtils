@@ -741,7 +741,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     private IEnumerable<StreamExtent> BatControlledFileExtents()
     {
         _batStream.Position = 0;
-        var batData = StreamUtilities.ReadExact(_batStream, (int)_batStream.Length);
+        var batData = StreamUtilities.ReadExactly(_batStream, (int)_batStream.Length);
 
         var blockSize = _metadata.FileParameters.BlockSize;
         var chunkSize = (1L << 23) * _metadata.LogicalSectorSize;

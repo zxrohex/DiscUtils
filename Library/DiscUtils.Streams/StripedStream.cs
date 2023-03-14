@@ -198,7 +198,6 @@ public class StripedStream : SparseStream
         return totalRead;
     }
 
-
     public override long Seek(long offset, SeekOrigin origin)
     {
         var effectiveOffset = offset;
@@ -320,11 +319,8 @@ public class StripedStream : SparseStream
         }
     }
 
-
-
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         Task.WhenAll(_wrapped.Select(stream => stream.FlushAsync(cancellationToken)));
-
 
     protected override void Dispose(bool disposing)
     {

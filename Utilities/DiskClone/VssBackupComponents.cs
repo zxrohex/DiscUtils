@@ -190,7 +190,6 @@ public interface IVssBackupComponents
     //    __in bool bAdditionalRestores
     //    ) = 0;
 
-
     void SetPreviousBackupStamp();
     //// set the backup stamp that the differential or incremental
     //// backup is based on
@@ -202,7 +201,6 @@ public interface IVssBackupComponents
     //    __in LPCWSTR wszComponentName,
     //    __in LPCWSTR wszPreviousBackupStamp
     //    ) = 0;
-
 
     void SaveAsXML();
     //// save BACKUP_COMPONENTS document as XML string

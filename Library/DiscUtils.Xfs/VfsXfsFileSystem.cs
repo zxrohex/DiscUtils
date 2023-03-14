@@ -43,7 +43,7 @@ internal sealed class VfsXfsFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
     {
         stream.Position = 0;
         Span<byte> superblockData = stackalloc byte[264];
-        StreamUtilities.ReadExact(stream, superblockData);
+        StreamUtilities.ReadExactly(stream, superblockData);
 
         var superblock = new SuperBlock();
         superblock.ReadFrom(superblockData);

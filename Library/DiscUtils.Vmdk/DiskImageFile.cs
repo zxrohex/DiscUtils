@@ -968,7 +968,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     private void LoadDescriptor(Stream s)
     {
         s.Position = 0;
-        var header = StreamUtilities.ReadExact(s, (int)Math.Min(Sizes.Sector, s.Length));
+        var header = StreamUtilities.ReadExactly(s, (int)Math.Min(Sizes.Sector, s.Length));
         if (header.Length < Sizes.Sector ||
             EndianUtilities.ToUInt32LittleEndian(header, 0) != HostedSparseExtentHeader.VmdkMagicNumber)
         {

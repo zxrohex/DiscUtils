@@ -36,7 +36,6 @@ namespace LibraryTests.BootConfig
             var hive = RegistryHive.Create(new MemoryStream());
             var s = Store.Initialize(hive.Root);
 
-
             var i = 0;
             foreach (var obj in s.Objects)
             {

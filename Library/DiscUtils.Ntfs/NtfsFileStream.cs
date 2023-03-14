@@ -174,7 +174,6 @@ internal sealed class NtfsFileStream : SparseStream
         }
     }
 
-
     public override long Seek(long offset, SeekOrigin origin)
     {
         AssertOpen();
@@ -209,7 +208,6 @@ internal sealed class NtfsFileStream : SparseStream
         }
     }
 
-
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         AssertOpen();
@@ -221,8 +219,6 @@ internal sealed class NtfsFileStream : SparseStream
             await _baseStream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         }
     }
-
-
 
     public override void Write(ReadOnlySpan<byte> buffer)
     {
@@ -246,11 +242,8 @@ internal sealed class NtfsFileStream : SparseStream
         }
     }
 
-
-
     public override Task FlushAsync(CancellationToken cancellationToken) =>
         _baseStream.FlushAsync(cancellationToken);
-
 
     public override void Clear(int count)
     {

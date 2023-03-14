@@ -721,7 +721,7 @@ internal class File
         var newAttrRecord = _records[0].GetAttribute(id);
 
         IBuffer attrBuffer = attr.GetDataBuffer();
-        var tempData = StreamUtilities.ReadExact(attrBuffer, 0, (int)Math.Min(maxData, attrBuffer.Capacity));
+        var tempData = StreamUtilities.ReadExactly(attrBuffer, 0, (int)Math.Min(maxData, attrBuffer.Capacity));
 
         RemoveAttributeExtents(attr);
         attr.SetExtent(_records[0].Reference, newAttrRecord);
@@ -1142,7 +1142,7 @@ internal class File
         var newAttrRecord = _records[0].GetAttribute(id);
 
         IBuffer attrBuffer = attr.GetDataBuffer();
-        var tempData = StreamUtilities.ReadExact(attrBuffer, 0, (int)Math.Min(maxData, attrBuffer.Capacity));
+        var tempData = StreamUtilities.ReadExactly(attrBuffer, 0, (int)Math.Min(maxData, attrBuffer.Capacity));
 
         RemoveAttributeExtents(attr);
         attr.SetExtent(_records[0].Reference, newAttrRecord);

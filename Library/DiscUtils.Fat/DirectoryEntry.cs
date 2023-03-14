@@ -54,7 +54,7 @@ internal class DirectoryEntry
 
         try
         {
-            StreamUtilities.ReadExact(stream, buffer, 0, bufferLength);
+            stream.ReadExactly(buffer, 0, bufferLength);
 
             // LFN entry
             if ((buffer[0] & 0xc0) == 0x40 && buffer[11] == 0x0f)
@@ -71,7 +71,7 @@ internal class DirectoryEntry
                     buffer = new_buffer;
                 }
 
-                StreamUtilities.ReadExact(stream, buffer, 32, 32 * lfn_entries);
+                stream.ReadExactly(buffer, 32, 32 * lfn_entries);
             }
 
             Load(buffer, 0, bufferLength);

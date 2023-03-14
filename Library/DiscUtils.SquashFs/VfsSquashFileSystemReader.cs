@@ -197,7 +197,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
         _context.RawStream.Position = pos;
         var numBlocks = MathUtilities.Ceil(count * recordSize, MetadataBufferSize);
 
-        var tableBytes = StreamUtilities.ReadExact(_context.RawStream, numBlocks * 8);
+        var tableBytes = StreamUtilities.ReadExactly(_context.RawStream, numBlocks * 8);
         var result = new MetablockReader[numBlocks];
         for (var i = 0; i < numBlocks; ++i)
         {
@@ -240,7 +240,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
                 _ioBuffer = new byte[readLen];
             }
 
-            StreamUtilities.ReadExact(stream, _ioBuffer, 0, readLen);
+            stream.ReadExactly(_ioBuffer, 0, readLen);
 
             using var zlibStream = new ZlibStream(new MemoryStream(_ioBuffer, 0, readLen, false),
                     CompressionMode.Decompress, true);
@@ -248,7 +248,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
         }
         else
         {
-            StreamUtilities.ReadExact(stream, block.Data, 0, readLen);
+            stream.ReadExactly(block.Data, 0, readLen);
             block.Available = readLen;
         }
 
@@ -267,7 +267,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
         stream.Position = pos;
 
         Span<byte> buffer = stackalloc byte[2];
-        StreamUtilities.ReadExact(stream, buffer);
+        StreamUtilities.ReadExactly(stream, buffer);
 
         int readLen = EndianUtilities.ToUInt16LittleEndian(buffer);
         var isCompressed = (readLen & 0x8000) == 0;
@@ -286,7 +286,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
                 _ioBuffer = new byte[readLen];
             }
 
-            StreamUtilities.ReadExact(stream, _ioBuffer, 0, readLen);
+            stream.ReadExactly(_ioBuffer, 0, readLen);
 
             using var zlibStream = new ZlibStream(new MemoryStream(_ioBuffer, 0, readLen, false),
                     CompressionMode.Decompress, true);

@@ -159,7 +159,7 @@ internal class ExtentData : BaseItem
             case ExtentDataCompression.Lzo:
                 {
                     Span<byte> buffer = stackalloc byte[sizeof(uint)];
-                    StreamUtilities.ReadExact(stream, buffer);
+                    StreamUtilities.ReadExactly(stream, buffer);
                     var totalLength = EndianUtilities.ToUInt32LittleEndian(buffer);
                     long processed = sizeof(uint);
                     var parts = new List<SparseStream>();
@@ -167,7 +167,7 @@ internal class ExtentData : BaseItem
                     while (processed < totalLength)
                     {
                         stream.Position = processed;
-                        StreamUtilities.ReadExact(stream, buffer);
+                        StreamUtilities.ReadExactly(stream, buffer);
                         var partLength = EndianUtilities.ToUInt32LittleEndian(buffer);
                         processed += sizeof(uint);
                         var part = new SubStream(stream, Ownership.Dispose, processed, partLength);

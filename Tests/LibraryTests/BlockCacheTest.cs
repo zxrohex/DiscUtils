@@ -160,7 +160,6 @@ namespace LibraryTests
             Assert.Equal(2, cacheStream.Statistics.TotalReadsIn);
         }
 
-
         [Fact]
         public void Overread()
         {
@@ -178,7 +177,6 @@ namespace LibraryTests
             Assert.Equal(0, cacheStream.Statistics.ReadCacheHits);
             Assert.Equal(1, cacheStream.Statistics.TotalReadsIn);
         }
-
 
         [Fact]
         public void CachedOverread()

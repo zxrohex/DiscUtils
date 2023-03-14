@@ -73,7 +73,7 @@ public class TarFile : IDisposable
                 var buffer = ArrayPool<byte>.Shared.Rent(checked((int)hdr.FileLength));
                 try
                 {
-                    _fileStream.ReadExact(buffer, 0, (int)hdr.FileLength);
+                    _fileStream.ReadExactly(buffer, 0, (int)hdr.FileLength);
                     long_path = EndianUtilities.BytesToString(TarHeader.ReadNullTerminatedString(buffer.AsSpan(0, (int)hdr.FileLength)));
                     _fileStream.Position += -(buffer.Length & 511) & 511;
                 }
@@ -222,7 +222,7 @@ public class TarFile : IDisposable
                 var data = ArrayPool<byte>.Shared.Rent(checked((int)hdr.FileLength));
                 try
                 {
-                    archive.ReadExact(data, 0, (int)hdr.FileLength);
+                    archive.ReadExactly(data, 0, (int)hdr.FileLength);
 
                     long_path = EndianUtilities.BytesToString(TarHeader.ReadNullTerminatedString(data.AsSpan(0, (int)hdr.FileLength)));
                 }
@@ -267,7 +267,7 @@ public class TarFile : IDisposable
                 {
                     var data = new byte[hdr.FileLength];
 
-                    archive.ReadExact(data, 0, data.Length);
+                    archive.ReadExactly(data, 0, data.Length);
 
                     datastream = new MemoryStream(data, writable: false);
                 }

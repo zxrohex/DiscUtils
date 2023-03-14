@@ -36,7 +36,6 @@ namespace LibraryTests.Partitions
             long capacity = 10 * 1024 * 1024;
             var geometry = Geometry.FromCapacity(capacity);
 
-
             var builder = new BiosPartitionedDiskBuilder(capacity, geometry);
             builder.PartitionTable.Create(WellKnownPartitionType.WindowsNtfs, true);
             var partitionContent = SparseStream.FromStream(new MemoryStream((int)(builder.PartitionTable[0].SectorCount * 512)), Ownership.Dispose);

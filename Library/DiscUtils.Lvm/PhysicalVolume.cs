@@ -44,7 +44,7 @@ internal class PhysicalVolume
         PhysicalVolumeLabel = physicalVolumeLabel;
         content.Position = (long) (physicalVolumeLabel.Sector * SECTOR_SIZE);
         Span<byte> buffer = stackalloc byte[SECTOR_SIZE];
-        StreamUtilities.ReadExact(content, buffer);
+        StreamUtilities.ReadExactly(content, buffer);
         PvHeader = new PvHeader();
         PvHeader.ReadFrom(buffer.Slice((int)physicalVolumeLabel.Offset));
         if (PvHeader.MetadataDiskAreas.Any())
@@ -53,7 +53,7 @@ internal class PhysicalVolume
             var metadata = new VolumeGroupMetadata();
             content.Position = (long) area.Offset;
             buffer = stackalloc byte[(int)area.Length];
-            StreamUtilities.ReadExact(content, buffer);
+            StreamUtilities.ReadExactly(content, buffer);
             metadata.ReadFrom(buffer);
             VgMetadata = metadata;
         }

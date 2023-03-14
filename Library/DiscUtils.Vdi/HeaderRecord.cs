@@ -95,12 +95,12 @@ internal class HeaderRecord
         {
             var savedPos = s.Position;
             Span<byte> headerSizeBytes = stackalloc byte[4];
-            StreamUtilities.ReadExact(s, headerSizeBytes);
+            StreamUtilities.ReadExactly(s, headerSizeBytes);
             headerSize = EndianUtilities.ToInt32LittleEndian(headerSizeBytes);
             s.Position = savedPos;
         }
 
-        var buffer = StreamUtilities.ReadExact(s, headerSize);
+        var buffer = StreamUtilities.ReadExactly(s, headerSize);
         Read(version, buffer);
     }
 
