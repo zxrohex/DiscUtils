@@ -354,7 +354,7 @@ public class FileChecker
     {
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
         Span<byte> sector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExactly(_fileStream, sector);
+        _fileStream.ReadExactly(sector);
 
         _footer = Footer.FromBytes(sector);
         if (!_footer.IsValid())
@@ -367,7 +367,7 @@ public class FileChecker
     {
         _fileStream.Position = 0;
         Span<byte> headerSector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExactly(_fileStream, headerSector);
+        _fileStream.ReadExactly(headerSector);
 
         var header = Footer.FromBytes(headerSector);
         if (!header.IsValid())
@@ -377,7 +377,7 @@ public class FileChecker
 
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
         Span<byte> footerSector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExactly(_fileStream, footerSector);
+        _fileStream.ReadExactly(footerSector);
 
         if (!footerSector.SequenceEqual(headerSector))
         {

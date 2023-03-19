@@ -267,7 +267,7 @@ internal class VfsSquashFileSystemReader : VfsReadOnlyFileSystem<DirectoryEntry,
         stream.Position = pos;
 
         Span<byte> buffer = stackalloc byte[2];
-        StreamUtilities.ReadExactly(stream, buffer);
+        stream.ReadExactly(buffer);
 
         int readLen = EndianUtilities.ToUInt16LittleEndian(buffer);
         var isCompressed = (readLen & 0x8000) == 0;

@@ -175,7 +175,7 @@ internal class UdifBuffer : Buffer
 
                 case RunType.Raw:
                     _stream.Position = _activeRun.CompOffset + bufferOffset;
-                    StreamUtilities.ReadExactly(_stream, buffer.Slice(totalCopied, toCopy));
+                    _stream.ReadExactly(buffer.Slice(totalCopied, toCopy));
                     break;
 
                 case RunType.AdcCompressed:

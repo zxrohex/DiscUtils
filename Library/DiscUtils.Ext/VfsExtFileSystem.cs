@@ -51,7 +51,7 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
 
         Span<byte> superblockData = stackalloc byte[1024];
         
-        StreamUtilities.ReadExactly(stream, superblockData);
+        stream.ReadExactly(superblockData);
 
         var superblock = new SuperBlock();
         superblock.ReadFrom(superblockData);
@@ -193,7 +193,7 @@ internal sealed class VfsExtFileSystem : VfsReadOnlyFileSystem<DirEntry, File, D
 
         Span<byte> inodeData = stackalloc byte[superBlock.InodeSize];
         
-        StreamUtilities.ReadExactly(Context.RawStream, inodeData);
+        Context.RawStream.ReadExactly(inodeData);
 
         return EndianUtilities.ToStruct<Inode>(inodeData);
     }

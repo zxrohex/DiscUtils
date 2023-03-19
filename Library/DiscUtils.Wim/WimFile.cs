@@ -126,7 +126,7 @@ public class WimFile
             Span<byte> resBuffer = stackalloc byte[ResourceInfo.Size];
             while (numRead < s.Length)
             {
-                StreamUtilities.ReadExactly(s, resBuffer);
+                s.ReadExactly(resBuffer);
                 numRead += ResourceInfo.Size;
 
                 var info = new ResourceInfo();
@@ -188,7 +188,7 @@ public class WimFile
         Span<byte> resBuffer = stackalloc byte[ResourceInfo.Size];
         while (numRead < s.Length)
         {
-            StreamUtilities.ReadExactly(s, resBuffer);
+            s.ReadExactly(resBuffer);
             numRead += ResourceInfo.Size;
 
             var info = new ResourceInfo();

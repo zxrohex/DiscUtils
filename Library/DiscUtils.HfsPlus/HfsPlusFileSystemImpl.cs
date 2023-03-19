@@ -40,7 +40,7 @@ internal sealed class HfsPlusFileSystemImpl : VfsFileSystem<DirEntry, File, Dire
         s.Position = 1024;
 
         Span<byte> headerBuf = stackalloc byte[512];
-        StreamUtilities.ReadExactly(s, headerBuf);
+        s.ReadExactly(headerBuf);
         var hdr = new VolumeHeader();
         hdr.ReadFrom(headerBuf);
 

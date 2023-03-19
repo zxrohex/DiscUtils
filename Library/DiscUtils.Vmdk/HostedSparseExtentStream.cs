@@ -49,13 +49,13 @@ internal sealed class HostedSparseExtentStream : CommonSparseExtentStream
 
         file.Position = 0;
         Span<byte> headerSector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExactly(file, headerSector);
+        file.ReadExactly(headerSector);
         _hostedHeader = HostedSparseExtentHeader.Read(headerSector);
         if (_hostedHeader.GdOffset == -1)
         {
             // Fall back to secondary copy that (should) be at the end of the stream, just before the end-of-stream sector marker
             file.Position = file.Length - Sizes.OneKiB;
-            StreamUtilities.ReadExactly(file, headerSector);
+            file.ReadExactly(headerSector);
             _hostedHeader = HostedSparseExtentHeader.Read(headerSector);
 
             if (_hostedHeader.MagicNumber != HostedSparseExtentHeader.VmdkMagicNumber)

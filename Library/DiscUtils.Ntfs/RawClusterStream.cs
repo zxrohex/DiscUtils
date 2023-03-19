@@ -472,7 +472,7 @@ internal sealed class RawClusterStream : ClusterStream
             {
                 var lcn = _cookedRuns[runIdx].StartLcn + (focusVcn - run.StartVcn);
                 _fsStream.Position = lcn * _bytesPerCluster;
-                StreamUtilities.ReadExactly(_fsStream, buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster));
+                _fsStream.ReadExactly(buffer.Slice(totalRead * _bytesPerCluster, toRead * _bytesPerCluster));
             }
 
             totalRead += toRead;

@@ -77,7 +77,7 @@ public sealed class XfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAlloc
 
         stream.Position = 0;
         Span<byte> superblockData = stackalloc byte[264];
-        StreamUtilities.ReadExactly(stream, superblockData);
+        stream.ReadExactly(superblockData);
 
         var superblock = new SuperBlock();
         superblock.ReadFrom(superblockData);

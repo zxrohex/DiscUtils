@@ -291,7 +291,7 @@ internal class DiskStream : SparseStream
                 var filePos = _fileHeader.DataOffset + _fileHeader.BlockExtraSize + blockOffset +
                                offsetInBlock;
                 _fileStream.Position = filePos;
-                StreamUtilities.ReadExactly(_fileStream, buffer.Slice(numRead, toRead));
+                _fileStream.ReadExactly(buffer.Slice(numRead, toRead));
             }
 
             _position += toRead;

@@ -46,7 +46,7 @@ public sealed class PartitionMap : PartitionTable
 
         stream.Position = 0;
         Span<byte> initialBytes = stackalloc byte[1024];
-        StreamUtilities.ReadExactly(stream, initialBytes);
+        stream.ReadExactly(initialBytes);
 
         var b0 = new BlockZero();
         b0.ReadFrom(initialBytes);

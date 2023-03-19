@@ -88,7 +88,7 @@ public class DynamicStream : MappedStream
         // Detect where next block should go (cope if the footer is missing)
         _fileStream.Position = MathUtilities.RoundDown(_fileStream.Length, Sizes.Sector) - Sizes.Sector;
         Span<byte> footerBytes = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExactly(_fileStream, footerBytes);
+        _fileStream.ReadExactly(footerBytes);
         var footer = Footer.FromBytes(footerBytes);
         _nextBlockStart = _fileStream.Position - (footer.IsValid() ? Sizes.Sector : 0);
     }
@@ -501,12 +501,12 @@ public class DynamicStream : MappedStream
                     {
                         _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
                                                Sizes.Sector + _blockBitmapSize + offsetInSector;
-                        StreamUtilities.ReadExactly(_fileStream, buffer.Slice(numRead, toRead));
+                        _fileStream.ReadExactly(buffer.Slice(numRead, toRead));
                     }
                     else
                     {
                         _parentStream.Position = _position;
-                        StreamUtilities.ReadExactly(_parentStream, buffer.Slice(numRead, toRead));
+                        _parentStream.ReadExactly(buffer.Slice(numRead, toRead));
                     }
 
                     numRead += toRead;
@@ -537,13 +537,13 @@ public class DynamicStream : MappedStream
                     if (readFromParent)
                     {
                         _parentStream.Position = _position;
-                        StreamUtilities.ReadExactly(_parentStream, buffer.Slice(numRead, toRead));
+                        _parentStream.ReadExactly(buffer.Slice(numRead, toRead));
                     }
                     else
                     {
                         _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
                                                Sizes.Sector + _blockBitmapSize;
-                        StreamUtilities.ReadExactly(_fileStream, buffer.Slice(numRead, toRead));
+                        _fileStream.ReadExactly(buffer.Slice(numRead, toRead));
                     }
 
                     numRead += toRead;
@@ -554,7 +554,7 @@ public class DynamicStream : MappedStream
             {
                 var toRead = Math.Min(maxToRead - numRead, (int)(_dynamicHeader.BlockSize - offsetInBlock));
                 _parentStream.Position = _position;
-                StreamUtilities.ReadExactly(_parentStream, buffer.Slice(numRead, toRead));
+                _parentStream.ReadExactly(buffer.Slice(numRead, toRead));
                 numRead += toRead;
                 _position += toRead;
             }
@@ -646,12 +646,12 @@ public class DynamicStream : MappedStream
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                 {
                     _fileStream.Position = sectorStart;
-                    StreamUtilities.ReadExactly(_fileStream, sectorBuffer);
+                    _fileStream.ReadExactly(sectorBuffer);
                 }
                 else
                 {
                     _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
-                    StreamUtilities.ReadExactly(_parentStream, sectorBuffer);
+                    _parentStream.ReadExactly(sectorBuffer);
                 }
 
                 // Overlay as much data as we have for this sector
@@ -864,12 +864,12 @@ public class DynamicStream : MappedStream
                 if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                 {
                     _fileStream.Position = sectorStart;
-                    StreamUtilities.ReadExactly(_fileStream, sectorBuffer);
+                    _fileStream.ReadExactly(sectorBuffer);
                 }
                 else
                 {
                     _parentStream.Position = _position / Sizes.Sector * Sizes.Sector;
-                    StreamUtilities.ReadExactly(_parentStream, sectorBuffer);
+                    _parentStream.ReadExactly(sectorBuffer);
                 }
 
                 // Overlay as much data as we have for this sector

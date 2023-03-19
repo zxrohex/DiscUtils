@@ -78,7 +78,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
 
         stream.Position = 0;
         Span<byte> bytes = stackalloc byte[512];
-        StreamUtilities.ReadExactly(stream, bytes);
+        stream.ReadExactly(bytes);
 
         _context.BiosParameterBlock = BiosParameterBlock.FromBytes(bytes);
         if (!_context.BiosParameterBlock.IsValid(stream.Length))
@@ -1905,7 +1905,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
 
         stream.Position = 0;
         Span<byte> bytes = stackalloc byte[512];
-        StreamUtilities.ReadExactly(stream, bytes);
+        stream.ReadExactly(bytes);
         var bpb = BiosParameterBlock.FromBytes(bytes);
 
         return bpb.IsValid(stream.Length);
@@ -2185,7 +2185,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
 
         _context.RawStream.Position = 0;
         Span<byte> bpbSector = stackalloc byte[512];
-        StreamUtilities.ReadExactly(_context.RawStream, bpbSector);
+        _context.RawStream.ReadExactly(bpbSector);
 
         _context.BiosParameterBlock.ToBytes(bpbSector);
 

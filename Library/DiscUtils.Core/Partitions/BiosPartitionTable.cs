@@ -100,7 +100,7 @@ public sealed class BiosPartitionTable : PartitionTable
 
             try
             {
-                StreamUtilities.ReadExactly(_diskData, bootSector);
+                _diskData.ReadExactly(bootSector);
 
                 Span<byte> guid = stackalloc byte[16];
                 bootSector.Slice(0x1B8, 4).CopyTo(guid);
@@ -148,7 +148,7 @@ public sealed class BiosPartitionTable : PartitionTable
         {
             disk.Position = 0;
             Span<byte> bootSector = stackalloc byte[Sizes.Sector];
-            StreamUtilities.ReadExactly(disk, bootSector);
+            disk.ReadExactly(bootSector);
             if (bootSector[510] == 0x55 && bootSector[511] == 0xAA)
             {
                 byte maxHead = 0;
@@ -184,7 +184,7 @@ public sealed class BiosPartitionTable : PartitionTable
 
         disk.Position = 0;
         Span<byte> bootSector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExactly(disk, bootSector);
+        disk.ReadExactly(bootSector);
 
         // Check for the 'bootable sector' marker
         if (bootSector[510] != 0x55 || bootSector[511] != 0xAA)
@@ -265,7 +265,7 @@ public sealed class BiosPartitionTable : PartitionTable
             if (data.Length >= diskGeometry.BytesPerSector)
             {
                 data.Position = 0;
-                StreamUtilities.ReadExactly(data, bootSector);
+                data.ReadExactly(bootSector);
 
                 // Wipe all four 16-byte partition table entries
                 bootSector.Slice(0x01BE, 16 * 4).Clear();
@@ -576,7 +576,7 @@ public sealed class BiosPartitionTable : PartitionTable
 
         try
         {
-            StreamUtilities.ReadExactly(_diskData, bootSector);
+            _diskData.ReadExactly(bootSector);
 
             var records = ReadPrimaryRecords(bootSector);
 
@@ -706,7 +706,7 @@ public sealed class BiosPartitionTable : PartitionTable
 
         try
         {
-            StreamUtilities.ReadExactly(_diskData, bootSector);
+            _diskData.ReadExactly(bootSector);
 
             return ReadPrimaryRecords(bootSector);
         }
@@ -736,7 +736,7 @@ public sealed class BiosPartitionTable : PartitionTable
 
         try
         {
-            StreamUtilities.ReadExactly(_diskData, bootSector);
+            _diskData.ReadExactly(bootSector);
 
             newRecord.WriteTo(bootSector.Slice(0x01BE + i * 16));
             _diskData.Position = 0;
@@ -835,7 +835,7 @@ public sealed class BiosPartitionTable : PartitionTable
 
         try
         {
-            StreamUtilities.ReadExactly(_diskData, bootSector);
+            _diskData.ReadExactly(bootSector);
 
             if (bootSector[510] != 0x55 || bootSector[511] != 0xAA)
             {

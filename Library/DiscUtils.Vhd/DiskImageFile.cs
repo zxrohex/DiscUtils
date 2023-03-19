@@ -656,7 +656,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     {
         _fileStream.Position = _fileStream.Length - Sizes.Sector;
         Span<byte> sector = stackalloc byte[Sizes.Sector];
-        StreamUtilities.ReadExactly(_fileStream, sector);
+        _fileStream.ReadExactly(sector);
 
         _footer = Footer.FromBytes(sector);
 
@@ -668,7 +668,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
             }
 
             _fileStream.Position = 0;
-            StreamUtilities.ReadExactly(_fileStream, sector);
+            _fileStream.ReadExactly(sector);
 
             _footer = Footer.FromBytes(sector);
             if (!_footer.IsValid())

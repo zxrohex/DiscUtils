@@ -76,7 +76,7 @@ internal class ProtocolDataUnit
         var rem = 4 - numRead % 4;
         if (rem != 4)
         {
-            StreamUtilities.ReadExactly(stream, stackalloc byte[rem]);
+            stream.ReadExactly(stackalloc byte[rem]);
         }
 
         return new ProtocolDataUnit(headerData, contentData);
@@ -85,7 +85,7 @@ internal class ProtocolDataUnit
     private static uint ReadDigest(Stream stream)
     {
         Span<byte> data = stackalloc byte[4];
-        StreamUtilities.ReadExactly(stream, data);
+        stream.ReadExactly(data);
         return EndianUtilities.ToUInt32BigEndian(data);
     }
 }

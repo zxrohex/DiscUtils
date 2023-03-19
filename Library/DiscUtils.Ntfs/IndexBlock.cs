@@ -54,7 +54,7 @@ internal class IndexBlock : FixupRecordBase
         try
         {
             var span = buffer.AsSpan(0, (int)index.IndexBufferSize);
-            StreamUtilities.ReadExactly(stream, span);
+            stream.ReadExactly(span);
             FromBytes(span);
         }
         finally

@@ -106,7 +106,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
 
         _context.RawStream.Position = 0;
         Span<byte> bytes = stackalloc byte[512];
-        StreamUtilities.ReadExactly(_context.RawStream, bytes);
+        _context.RawStream.ReadExactly(bytes);
 
         _context.BiosParameterBlock = BiosParameterBlock.FromBytes(bytes);
 
@@ -125,7 +125,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
     {
         _context.RawStream.Position = 0;
         Span<byte> bytes = stackalloc byte[512];
-        StreamUtilities.ReadExactly(_context.RawStream, bytes);
+        _context.RawStream.ReadExactly(bytes);
 
         _context.BiosParameterBlock = BiosParameterBlock.FromBytes(bytes);
 
@@ -424,7 +424,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
 
         while (mftStream.Position < mftStream.Length)
         {
-            StreamUtilities.ReadExactly(mftStream, recordData);
+            mftStream.ReadExactly(recordData);
 
             var magic = EndianUtilities.BytesToString(recordData, 0, 4);
             if (magic != "FILE")

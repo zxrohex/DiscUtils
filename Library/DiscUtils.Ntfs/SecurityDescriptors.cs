@@ -83,7 +83,7 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
             ? stackalloc byte[(int)s.Length]
             : new byte[s.Length];
 
-        StreamUtilities.ReadExactly(s, buffer);
+        s.ReadExactly(buffer);
 
         foreach (var entry in _idIndex.Entries)
         {

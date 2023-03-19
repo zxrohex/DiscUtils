@@ -402,7 +402,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem, IClusterBase
 
         stream.Position = 0;
         Span<byte> bytes = stackalloc byte[512];
-        StreamUtilities.ReadExactly(stream, bytes);
+        stream.ReadExactly(bytes);
         var bpbBytesPerSec = EndianUtilities.ToUInt16LittleEndian(bytes.Slice(11));
         if (bpbBytesPerSec != 512)
         {

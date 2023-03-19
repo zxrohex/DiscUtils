@@ -117,7 +117,7 @@ public class BiosPartitionedDiskBuilder : StreamBuilder
             {
                 sourceDisk.Content.Position = extent.Start;
                 var buffer = sector.Slice(0, checked((int)extent.Length));
-                StreamUtilities.ReadExactly(sourceDisk.Content, buffer);
+                sourceDisk.Content.ReadExactly(buffer);
                 _bootSectors.Position = extent.Start;
                 _bootSectors.Write(buffer);
             }

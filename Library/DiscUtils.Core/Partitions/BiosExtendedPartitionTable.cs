@@ -50,7 +50,7 @@ internal class BiosExtendedPartitionTable
             while (partPos != 0)
             {
                 _disk.Position = partPos * _diskGeometry.BytesPerSector;
-                StreamUtilities.ReadExactly(_disk, sector.AsSpan(0, _diskGeometry.BytesPerSector));
+                _disk.ReadExactly(sector.AsSpan(0, _diskGeometry.BytesPerSector));
                 if (sector[510] != 0x55 || sector[511] != 0xAA)
                 {
                     throw new IOException("Invalid extended partition sector");
@@ -99,7 +99,7 @@ internal class BiosExtendedPartitionTable
                 yield return new StreamExtent((long)partPos * _diskGeometry.BytesPerSector, _diskGeometry.BytesPerSector);
 
                 _disk.Position = (long)partPos * _diskGeometry.BytesPerSector;
-                StreamUtilities.ReadExactly(_disk, sector.AsSpan(0, _diskGeometry.BytesPerSector));
+                _disk.ReadExactly(sector.AsSpan(0, _diskGeometry.BytesPerSector));
                 if (sector[510] != 0x55 || sector[511] != 0xAA)
                 {
                     throw new IOException("Invalid extended partition sector");

@@ -137,15 +137,11 @@ public static class StreamUtilities
         }
     }
 
-#endif
-
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <param name="buffer">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
     public static void ReadExactly(this Stream stream, Span<byte> buffer)
     {
         var originalCount = buffer.Length;
@@ -162,6 +158,8 @@ public static class StreamUtilities
             buffer = buffer.Slice(numRead);
         }
     }
+
+#endif
 
     /// <summary>
     /// Read bytes until buffer filled or throw EndOfStreamException.
@@ -312,6 +310,10 @@ public static class StreamUtilities
     /// <param name="offset">Offset in the buffer to start.</param>
     /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
+#if NET7_0_OR_GREATER
+    public static int ReadMaximum(this Stream stream, byte[] buffer, int offset, int count)
+        => stream.ReadAtLeast(buffer.AsSpan(offset, count), count, throwOnEndOfStream: false);
+#else
     public static int ReadMaximum(this Stream stream, byte[] buffer, int offset, int count)
     {
         var totalRead = 0;
@@ -332,15 +334,18 @@ public static class StreamUtilities
 
         return totalRead;
     }
+#endif
 
     /// <summary>
     /// Read bytes until buffer filled or EOF.
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <param name="buffer">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
+#if NET7_0_OR_GREATER
+    public static ValueTask<int> ReadMaximumAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+        => stream.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false, cancellationToken);
+#else
     public static async ValueTask<int> ReadMaximumAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         var totalRead = 0;
@@ -360,15 +365,18 @@ public static class StreamUtilities
 
         return totalRead;
     }
+#endif
 
     /// <summary>
     /// Read bytes until buffer filled or EOF.
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <param name="buffer">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
+#if NET7_0_OR_GREATER
+    public static int ReadMaximum(this Stream stream, Span<byte> buffer)
+        => stream.ReadAtLeast(buffer, buffer.Length, throwOnEndOfStream: false);
+#else
     public static int ReadMaximum(this Stream stream, Span<byte> buffer)
     {
         var totalRead = 0;
@@ -388,6 +396,7 @@ public static class StreamUtilities
 
         return totalRead;
     }
+#endif
 
     /// <summary>
     /// Read bytes until buffer filled or EOF.
@@ -534,7 +543,7 @@ public static class StreamUtilities
         if (result.Size <= 1024)
         {
             Span<byte> buffer = stackalloc byte[result.Size];
-            ReadExactly(stream, buffer);
+            stream.ReadExactly(buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -616,7 +625,7 @@ public static class StreamUtilities
         if (result.Size <= 1024)
         {
             Span<byte> buffer = stackalloc byte[result.Size];
-            ReadExactly(stream, buffer);
+            stream.ReadExactly(buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -648,7 +657,7 @@ public static class StreamUtilities
         if (length <= 1024)
         {
             Span<byte> buffer = stackalloc byte[length];
-            ReadExactly(stream, buffer);
+            stream.ReadExactly(buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -679,7 +688,7 @@ public static class StreamUtilities
         if (result.Size <= 1024)
         {
             Span<byte> buffer = stackalloc byte[result.Size];
-            ReadExactly(stream, buffer);
+            stream.ReadExactly(buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -711,7 +720,7 @@ public static class StreamUtilities
         if (length <= 1024)
         {
             Span<byte> buffer = stackalloc byte[length];
-            ReadExactly(stream, buffer);
+            stream.ReadExactly(buffer);
             result.ReadFrom(buffer);
         }
         else
@@ -742,7 +751,7 @@ public static class StreamUtilities
         if (length <= 1024)
         {
             Span<byte> buffer = stackalloc byte[length];
-            ReadExactly(stream, buffer);
+            stream.ReadExactly(buffer);
             var result = new T();
             result.ReadFrom(buffer);
             return result;

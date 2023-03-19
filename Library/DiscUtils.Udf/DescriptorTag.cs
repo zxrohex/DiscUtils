@@ -84,7 +84,7 @@ internal class DescriptorTag : IByteArraySerializable
     public static bool TryFromStream(Stream stream, out DescriptorTag result)
     {
         Span<byte> next = stackalloc byte[512];
-        StreamUtilities.ReadExactly(stream, next);
+        stream.ReadExactly(next);
         if (!IsValid(next))
         {
             result = null;

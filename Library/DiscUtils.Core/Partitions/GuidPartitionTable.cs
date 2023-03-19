@@ -370,7 +370,7 @@ public sealed class GuidPartitionTable : PartitionTable
             ? stackalloc byte[diskGeometry.BytesPerSector]
             : new byte[diskGeometry.BytesPerSector];
         
-        StreamUtilities.ReadExactly(disk, sector);
+        disk.ReadExactly(sector);
 
         _primaryHeader = new GptHeader(diskGeometry.BytesPerSector);
         if (!_primaryHeader.ReadFrom(sector) || !ReadEntries(_primaryHeader))

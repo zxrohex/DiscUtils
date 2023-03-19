@@ -51,7 +51,7 @@ internal sealed class Bin
 
         stream.Position = _streamPos;
         Span<byte> buffer = stackalloc byte[0x20];
-        StreamUtilities.ReadExactly(stream, buffer);
+        stream.ReadExactly(buffer);
         _header = new BinHeader();
         _header.ReadFrom(buffer);
 

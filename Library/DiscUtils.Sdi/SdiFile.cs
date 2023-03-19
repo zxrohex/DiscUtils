@@ -56,7 +56,7 @@ public sealed class SdiFile : IDisposable
         _ownership = ownership;
 
         Span<byte> page = stackalloc byte[512];
-        StreamUtilities.ReadExactly(_stream, page);
+        _stream.ReadExactly(page);
 
         _header = new FileHeader();
         _header.ReadFrom(page);

@@ -545,7 +545,7 @@ public abstract class VirtualDisk :
     {
         var oldPos = Content.Position;
         Content.Position = 0;
-        StreamUtilities.ReadExactly(Content, sector.Slice(0, Sizes.Sector));
+        Content.ReadExactly(sector.Slice(0, Sizes.Sector));
         Content.Position = oldPos;
     }
 

@@ -42,7 +42,7 @@ public sealed class XdrDataReader : BigEndianDataReader
 
         if ((count & 0x3) != 0)
         {
-            StreamUtilities.ReadExactly(_stream, stackalloc byte[4 - (count & 0x3)]);
+            _stream.ReadExactly(stackalloc byte[4 - (count & 0x3)]);
         }
 
         return buffer;

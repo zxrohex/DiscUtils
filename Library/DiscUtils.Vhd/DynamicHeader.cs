@@ -153,7 +153,7 @@ internal class DynamicHeader
     internal static DynamicHeader FromStream(Stream stream)
     {
         Span<byte> buffer = stackalloc byte[1024];
-        StreamUtilities.ReadExactly(stream, buffer);
+        stream.ReadExactly(buffer);
         return FromBytes(buffer);
     }
 

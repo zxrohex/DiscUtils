@@ -460,8 +460,8 @@ internal class ExtentsFileBuffer : Buffer, IFileBuffer
         var buffer = blockSize <= 1024
             ? stackalloc byte[(int)blockSize]
             : new byte[blockSize];
-        
-        StreamUtilities.ReadExactly(_context.RawStream, buffer);
+
+        _context.RawStream.ReadExactly(buffer);
         
         ExtentBlock subBlock = EndianUtilities.ToStruct<ExtentBlock>(buffer);
         

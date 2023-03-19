@@ -95,7 +95,7 @@ internal class HeaderRecord
         {
             var savedPos = s.Position;
             Span<byte> headerSizeBytes = stackalloc byte[4];
-            StreamUtilities.ReadExactly(s, headerSizeBytes);
+            s.ReadExactly(headerSizeBytes);
             headerSize = EndianUtilities.ToInt32LittleEndian(headerSizeBytes);
             s.Position = savedPos;
         }
