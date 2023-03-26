@@ -48,8 +48,8 @@ public sealed class RegistryKey
 
     internal RegistryKey(RegistryHive hive, KeyNodeCell cell)
     {
-        _hive = hive;
-        _cell = cell;
+        _hive = hive ?? throw new ArgumentNullException(nameof(hive));
+        _cell = cell ?? throw new ArgumentNullException(nameof(cell));
     }
 
     /// <summary>
@@ -129,7 +129,10 @@ public sealed class RegistryKey
                 var list = _hive.GetCell<ListCell>(_cell.SubKeysIndex);
                 foreach (var key in list.EnumerateKeys())
                 {
-                    yield return new RegistryKey(_hive, key);
+                    if (key is not null)
+                    {
+                        yield return new RegistryKey(_hive, key);
+                    }
                 }
             }
         }
