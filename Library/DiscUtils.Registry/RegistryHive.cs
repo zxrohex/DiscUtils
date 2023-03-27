@@ -55,7 +55,9 @@ public class RegistryHive : IDisposable
     /// The created object does not assume ownership of the stream.
     /// </remarks>
     public RegistryHive(string filePath, FileAccess access)
-        : this(File.Open(filePath, FileMode.Open, access), Ownership.Dispose, OpenLogFiles(filePath, access).ToArray())
+        : this(new FileStream(filePath, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read, 4096, useAsync: true),
+              Ownership.Dispose,
+              OpenLogFiles(filePath, access).ToArray())
     {
     }
 
@@ -66,17 +68,17 @@ public class RegistryHive : IDisposable
         var log1 = $"{log}1";
         if (File.Exists(log1))
         {
-            yield return File.Open(log1, FileMode.Open, access);
+            yield return new FileStream(log1, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read, 4096, useAsync: true);
 
             var log2 = $"{log}2";
             if (File.Exists(log2))
             {
-                yield return File.Open(log2, FileMode.Open, access);
+                yield return new FileStream(log2, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read, 4096, useAsync: true);
             }
         }
         else if (File.Exists(log))
         {
-            yield return File.Open(log, FileMode.Open, access);
+            yield return new FileStream(log, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read, 4096, useAsync: true);
         }
     }
 
