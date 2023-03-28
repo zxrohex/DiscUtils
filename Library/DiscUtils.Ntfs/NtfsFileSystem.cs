@@ -2397,7 +2397,14 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
             }
             if ((entry.Value.Details.FileAttributes & FileAttributes.Directory) != 0)
             {
-                return GetDirectoryEntry(GetDirectory(entry.Value.Reference), pathEntries, pathOffset + 1);
+                var subdir = GetDirectory(entry.Value.Reference);
+
+                if (subdir is null)
+                {
+                    return null;
+                }
+
+                return GetDirectoryEntry(subdir, pathEntries, pathOffset + 1);
             }
             throw new IOException($"{pathEntries[pathOffset]} is a file, not a directory");
         }
