@@ -62,10 +62,10 @@ public sealed class NTAccount : IdentityReference
         if (targetType == typeof(SecurityIdentifier))
         {
             var acct = WellKnownAccount.LookupByName(Value);
-            if (acct?.Sid == null)
+            if (acct?.Sid is null)
                 throw new Exception($"Cannot map account name: {Value}");
 
-            return new SecurityIdentifier(acct.Sid);
+            return acct.Sid;
         }
 
         throw new ArgumentException("Unknown type", nameof(targetType));

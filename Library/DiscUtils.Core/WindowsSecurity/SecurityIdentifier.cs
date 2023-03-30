@@ -1,5 +1,7 @@
+using DiscUtils.Streams;
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -91,6 +93,14 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         return true;
     }
 
+    public SecurityIdentifier CreateSubSid(uint rid)
+    {
+        Span<byte> newBinary = stackalloc byte[buffer.Length + 4];
+        buffer.CopyTo(newBinary);
+        EndianUtilities.WriteBytesLittleEndian(rid, newBinary.Slice(newBinary.Length - 4));
+        return new(newBinary);
+    }
+
     public SecurityIdentifier(WellKnownSidType sidType,
                               SecurityIdentifier domainSid)
     {
@@ -102,7 +112,7 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
 
         if (acct.IsAbsolute)
         {
-            buffer = ParseSddlForm(acct.Sid);
+            buffer = acct.Sid.buffer;
         }
         else
         {
@@ -111,7 +121,7 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
                 throw new ArgumentNullException(nameof(domainSid));
             }
 
-            buffer = ParseSddlForm($"{domainSid.Value}-{acct.Rid}");
+            buffer = domainSid.CreateSubSid(uint.Parse(acct.RidStr)).buffer;
         }
     }
 
@@ -119,10 +129,7 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     {
         get
         {
-            var strForm = Value;
-
-            // Check prefix, and ensure at least 4 sub authorities
-            if (!strForm.StartsWith("S-1-5-21") || buffer[1] < 4)
+            if (!IsAccountSid())
             {
                 return null;
             }
@@ -135,6 +142,20 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         }
     }
 
+    public uint AccountUserId
+    {
+        get
+        {
+            if (!IsAccountSid())
+            {
+                return 0;
+            }
+
+            var rid = GetSidSubAuthority((byte)(SidSubAuthorityCount - 1));
+            return rid;
+        }
+    }
+
     public int BinaryLength => buffer.Length;
 
     public override string Value
@@ -143,10 +164,10 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         {
             var s = new StringBuilder();
 
-            var authority = GetSidAuthority();
+            var authority = SidAuthority;
             s.AppendFormat(CultureInfo.InvariantCulture, "S-1-{0}", authority);
 
-            for (byte i = 0; i < GetSidSubAuthorityCount(); ++i)
+            for (byte i = 0; i < SidSubAuthorityCount; ++i)
             {
                 s.AppendFormat(
                     CultureInfo.InvariantCulture,
@@ -157,16 +178,13 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         }
     }
 
-    ulong GetSidAuthority()
-    {
-        return (((ulong)buffer[2]) << 40) | (((ulong)buffer[3]) << 32)
+    public ulong SidAuthority => (((ulong)buffer[2]) << 40) | (((ulong)buffer[3]) << 32)
                                           | (((ulong)buffer[4]) << 24) | (((ulong)buffer[5]) << 16)
                                           | (((ulong)buffer[6]) << 8) | (((ulong)buffer[7]) << 0);
-    }
 
-    byte GetSidSubAuthorityCount() => buffer[1];
+    public byte SidSubAuthorityCount => buffer[1];
 
-    uint GetSidSubAuthority(byte index)
+    public uint GetSidSubAuthority(byte index)
     {
         // Note sub authorities little-endian, authority (above) is big-endian!
         var offset = 8 + (index * 4);
@@ -189,17 +207,17 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
         }
 
         int result;
-        if (0 != (result = GetSidAuthority().CompareTo(sid.GetSidAuthority())))
+        if (0 != (result = SidAuthority.CompareTo(sid.SidAuthority)))
         {
             return result;
         }
 
-        if (0 != (result = GetSidSubAuthorityCount().CompareTo(sid.GetSidSubAuthorityCount())))
+        if (0 != (result = SidSubAuthorityCount.CompareTo(sid.SidSubAuthorityCount)))
         {
             return result;
         }
 
-        for (byte i = 0; i < GetSidSubAuthorityCount(); ++i)
+        for (byte i = 0; i < SidSubAuthorityCount; ++i)
         {
             if (0 != (result = GetSidSubAuthority(i).CompareTo(sid.GetSidSubAuthority(i))))
             {
@@ -214,21 +232,26 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
 
     public bool Equals(SecurityIdentifier sid)
     {
-        if (sid == null)
+        if (sid is null)
         {
             return false;
         }
 
-        return (sid.Value == Value);
+        return sid == this;
     }
 
     public void GetBinaryForm(byte[] binaryForm, int offset) => GetBinaryForm(binaryForm.AsSpan(offset));
 
     public void GetBinaryForm(Span<byte> binaryForm) => buffer.CopyTo(binaryForm);
 
+    public ReadOnlySpan<byte> AsSpan() => buffer.AsSpan();
+
     public override int GetHashCode() => Value.GetHashCode();
 
-    public bool IsAccountSid() => AccountDomainSid != null;
+    public bool IsAccountSid() => buffer[0] == 1
+                && SidSubAuthorityCount >= 4
+                && SidAuthority == 5
+                && GetSidSubAuthority(0) == 21;
 
     public bool IsEqualDomainSid(SecurityIdentifier sid)
     {
@@ -264,15 +287,13 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
             return false;
         }
 
-        var sid = Value;
-
         if (acct.IsAbsolute)
         {
-            return sid == acct.Sid;
+            return this == acct.Sid;
         }
 
-        return sid.StartsWith("S-1-5-21", StringComparison.OrdinalIgnoreCase)
-               && sid.EndsWith($"-{acct.Rid}", StringComparison.OrdinalIgnoreCase);
+        return IsAccountSid()
+            && AccountUserId == acct.Rid;
     }
 
     public override string ToString() => Value;
@@ -300,33 +321,22 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
 
     public static bool operator ==(SecurityIdentifier left, SecurityIdentifier right)
     {
-        if (((object)left) == null)
+        if (left is null)
         {
-            return (((object)right) == null);
+            return right is null;
         }
 
-        if (((object)right) == null)
+        if (right is null)
         {
             return false;
         }
 
-        return (left.Value == right.Value);
+        return left.buffer.Length == right.buffer.Length
+            && left.buffer.SequenceEqual(right.buffer);
     }
 
     public static bool operator !=(SecurityIdentifier left, SecurityIdentifier right)
-    {
-        if (((object)left) == null)
-        {
-            return (((object)right) != null);
-        }
-
-        if (((object)right) == null)
-        {
-            return true;
-        }
-
-        return (left.Value != right.Value);
-    }
+        => !(left == right);
 
     internal string GetSddlForm()
     {
@@ -405,7 +415,7 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
                     $"Unable to convert account to SID: {acct.Name ?? sid.ToString()}");
             }
 
-            sid = acct.Sid.AsSpan();
+            return acct.Sid.buffer;
         }
 
         return ParseSddlForm(sid.ToString());
@@ -433,7 +443,7 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
                     $"Unable to convert account to SID: {acct.Name ?? sid}");
             }
 
-            sid = acct.Sid;
+            sid = acct.SidStr;
         }
 
         var elements = sid.Split('-');
