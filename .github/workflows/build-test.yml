@@ -1,6 +1,6 @@
 name: CI Build
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -32,10 +32,8 @@ jobs:
       run: dotnet test -c Debug
 
     - name: Pack
-      if: github.ref == 'refs/heads/develop'
-      run: dotnet pack -c Release -o ${{ github.workspace }}/build
+      run: dotnet pack -c Debug -o ${{ github.workspace }}/build
 
     - name: "GitHub packages: NuGet push"
-      if: github.ref == 'refs/heads/develop'
       run: dotnet nuget push *.nupkg --no-symbols 1 --skip-duplicate -k ${{ secrets.GITHUB_TOKEN }} -s "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
       working-directory: ${{ github.workspace }}/build
