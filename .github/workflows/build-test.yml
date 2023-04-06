@@ -34,6 +34,8 @@ jobs:
     - name: Pack
       run: dotnet pack -c Debug -o ${{ github.workspace }}/build
 
-    - name: "GitHub packages: NuGet push"
-      run: dotnet nuget push *.nupkg --no-symbols 1 --skip-duplicate -k ${{ secrets.GITHUB_TOKEN }} -s "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-      working-directory: ${{ github.workspace }}/build
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: dev-build
+        path: ${{ github.workspace }}/build/*.nupkg
