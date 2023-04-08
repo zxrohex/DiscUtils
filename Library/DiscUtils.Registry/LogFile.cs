@@ -43,6 +43,13 @@ internal class LogFile : IEnumerable<LogEntry>
             }
 
             var size = EndianUtilities.ToInt32LittleEndian(buffer, offset + 4);
+                        
+            // Check for corrupt log records
+            if (size <= 0 || offset + size > buffer.Length)
+            {
+                break;
+            }
+
             var stored_hash1 = EndianUtilities.ToInt64LittleEndian(buffer, offset + 24);
             var stored_hash2 = EndianUtilities.ToInt64LittleEndian(buffer, offset + 32);
             var calc_hash1 = CalculateLogEntryHash(buffer.AsSpan(offset + 40, size - 40));
