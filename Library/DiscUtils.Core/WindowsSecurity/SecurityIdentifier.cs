@@ -97,6 +97,11 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     {
         Span<byte> newBinary = stackalloc byte[buffer.Length + 4];
         buffer.CopyTo(newBinary);
+        var numSubAuthorities = newBinary[1]++;
+        if (numSubAuthorities > 15)
+        {
+            throw new InvalidOperationException("Too many subauthorities.");
+        }
         EndianUtilities.WriteBytesLittleEndian(rid, newBinary.Slice(newBinary.Length - 4));
         return new(newBinary);
     }
