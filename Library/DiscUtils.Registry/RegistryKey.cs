@@ -79,7 +79,7 @@ public sealed class RegistryKey
     }
 
     /// <summary>
-    /// Gets the name of this key.
+    /// Gets the full path of this key within the hive.
     /// </summary>
     public string Name
     {
@@ -93,6 +93,16 @@ public sealed class RegistryKey
             return _cell.Name;
         }
     }
+
+    /// <summary>
+    /// Gets the name of this key.
+    /// </summary>
+    public string KeyName => _cell.Name;
+
+    /// <summary>
+    /// Gets the full path of this key within the hive.
+    /// </summary>
+    public override string ToString() => Name;
 
     /// <summary>
     /// Gets the parent key, or <c>null</c> if this is the root key.
