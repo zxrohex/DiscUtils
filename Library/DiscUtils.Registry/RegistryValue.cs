@@ -212,7 +212,7 @@ internal sealed class RegistryValue
                 var multiString = EndianUtilities.LittleEndianUnicodeBytesToString(data).TrimEnd('\0');
                 return multiString.Split('\0');
 
-            case RegistryValueType.QWord:
+            case RegistryValueType.Qword:
                 return string.Empty + EndianUtilities.ToUInt64LittleEndian(data);
 
             default:
@@ -234,12 +234,17 @@ internal sealed class RegistryValue
                 break;
 
             case RegistryValueType.Dword:
-                data = new byte[4];
+                data = new byte[sizeof(int)];
+                EndianUtilities.WriteBytesLittleEndian((int)value, data, 0);
+                break;
+
+            case RegistryValueType.Qword:
+                data = new byte[sizeof(long)];
                 EndianUtilities.WriteBytesLittleEndian((int)value, data, 0);
                 break;
 
             case RegistryValueType.DwordBigEndian:
-                data = new byte[4];
+                data = new byte[sizeof(int)];
                 EndianUtilities.WriteBytesBigEndian((int)value, data, 0);
                 break;
 
@@ -285,7 +290,7 @@ internal sealed class RegistryValue
                 case RegistryValueType.Link:
                 case RegistryValueType.Dword:
                 case RegistryValueType.DwordBigEndian:
-                case RegistryValueType.QWord:
+                case RegistryValueType.Qword:
                     return ConvertToObject(data, DataType).ToString();
 
                 case RegistryValueType.MultiString:
