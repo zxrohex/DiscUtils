@@ -380,7 +380,26 @@ public sealed class RegistryKey
     /// <param name="value">The value to store.</param>
     public void SetValue(string name, object value)
     {
-        SetValue(name, value, RegistryValueType.None);
+        var valueType = RegistryValueType.None;
+
+        if (value is int)
+        {
+            valueType = RegistryValueType.Dword;
+        }
+        else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte>)
+        {
+            valueType = RegistryValueType.Binary;
+        }
+        else if (value is string[])
+        {
+            valueType = RegistryValueType.MultiString;
+        }
+        else
+        {
+            valueType = RegistryValueType.String;
+        }
+
+        SetValue(name, value, valueType);
     }
 
     /// <summary>
