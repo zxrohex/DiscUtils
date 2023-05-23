@@ -187,13 +187,14 @@ public class DynamicStream : MappedStream
                 var sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
                 var offsetInSector = (int)(offsetInBlock % Sizes.Sector);
                 var toRead = (int)Math.Min(maxToRead - numRead, _dynamicHeader.BlockSize - offsetInBlock);
+                var blockBitmap = _parentStream is ZeroStream ? AllAllocatedBlockBitmap : _blockBitmaps[block];
 
                 // 512 - offsetInSector);
 
                 if (offsetInSector != 0 || toRead < Sizes.Sector)
                 {
                     var mask = (byte)(1 << (7 - sectorInBlock % 8));
-                    if ((_blockBitmaps[block][sectorInBlock / 8] & mask) != 0)
+                    if ((blockBitmap[sectorInBlock / 8] & mask) != 0)
                     {
                         var extentStart = (_blockAllocationTable[block] + sectorInBlock) *
                                            Sizes.Sector + _blockBitmapSize + offsetInSector;
@@ -209,13 +210,13 @@ public class DynamicStream : MappedStream
                     var toReadSectors = toRead / Sizes.Sector;
 
                     var mask = (byte)(1 << (7 - sectorInBlock % 8));
-                    var readFromParent = (_blockBitmaps[block][sectorInBlock / 8] & mask) == 0;
+                    var readFromParent = (blockBitmap[sectorInBlock / 8] & mask) == 0;
 
                     var numSectors = 1;
                     while (numSectors < toReadSectors)
                     {
                         mask = (byte)(1 << (7 - (sectorInBlock + numSectors) % 8));
-                        if ((_blockBitmaps[block][(sectorInBlock + numSectors) / 8] & mask) == 0 != readFromParent)
+                        if ((blockBitmap[(sectorInBlock + numSectors) / 8] & mask) == 0 != readFromParent)
                         {
                             break;
                         }
@@ -491,13 +492,14 @@ public class DynamicStream : MappedStream
                 var sectorInBlock = (int)(offsetInBlock / Sizes.Sector);
                 var offsetInSector = (int)(offsetInBlock % Sizes.Sector);
                 var toRead = (int)Math.Min(maxToRead - numRead, _dynamicHeader.BlockSize - offsetInBlock);
+                var blockBitmap = _parentStream is ZeroStream ? AllAllocatedBlockBitmap : _blockBitmaps[block];
 
                 // 512 - offsetInSector);
 
                 if (offsetInSector != 0 || toRead < Sizes.Sector)
                 {
                     var mask = (byte)(1 << (7 - sectorInBlock % 8));
-                    if ((_blockBitmaps[block][sectorInBlock / 8] & mask) != 0)
+                    if ((blockBitmap[sectorInBlock / 8] & mask) != 0)
                     {
                         _fileStream.Position = (_blockAllocationTable[block] + sectorInBlock) *
                                                Sizes.Sector + _blockBitmapSize + offsetInSector;
@@ -518,13 +520,13 @@ public class DynamicStream : MappedStream
                     var toReadSectors = toRead / Sizes.Sector;
 
                     var mask = (byte)(1 << (7 - sectorInBlock % 8));
-                    var readFromParent = (_blockBitmaps[block][sectorInBlock / 8] & mask) == 0;
+                    var readFromParent = (blockBitmap[sectorInBlock / 8] & mask) == 0;
 
                     var numSectors = 1;
                     while (numSectors < toReadSectors)
                     {
                         mask = (byte)(1 << (7 - (sectorInBlock + numSectors) % 8));
-                        if ((_blockBitmaps[block][(sectorInBlock + numSectors) / 8] & mask) == 0 != readFromParent)
+                        if ((blockBitmap[(sectorInBlock + numSectors) / 8] & mask) == 0 != readFromParent)
                         {
                             break;
                         }
@@ -643,7 +645,8 @@ public class DynamicStream : MappedStream
                                    _blockBitmapSize;
 
                 // Get the existing sector data (if any), or otherwise the parent's content
-                if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
+                if (_parentStream is ZeroStream ||
+                    (_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                 {
                     _fileStream.Position = sectorStart;
                     _fileStream.ReadExactly(sectorBuffer);
@@ -750,7 +753,8 @@ public class DynamicStream : MappedStream
                 var sectorBuffer = ArrayPool<byte>.Shared.Rent(Sizes.Sector);
                 try
                 {
-                    if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
+                    if (_parentStream is ZeroStream ||
+                        (_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                     {
                         _fileStream.Position = sectorStart;
                         await _fileStream.ReadExactlyAsync(sectorBuffer.AsMemory(0, Sizes.Sector), cancellationToken).ConfigureAwait(false);
@@ -861,7 +865,8 @@ public class DynamicStream : MappedStream
                                    _blockBitmapSize;
 
                 // Get the existing sector data (if any), or otherwise the parent's content
-                if ((_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
+                if (_parentStream is ZeroStream ||
+                    (_blockBitmaps[block][sectorInBlock / 8] & sectorMask) != 0)
                 {
                     _fileStream.Position = sectorStart;
                     _fileStream.ReadExactly(sectorBuffer);
