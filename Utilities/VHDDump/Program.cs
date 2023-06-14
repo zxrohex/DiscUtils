@@ -63,7 +63,7 @@ class Program : ProgramBase
             }
         }
 
-        using var vhdFile = new DiskImageFile(_vhdFile.Value, FileAccess.Read);
+        using var vhdFile = new DiskImageFile(_vhdFile.Value, FileAccess.Read, useAsync: false);
         var info = vhdFile.Information;
 
         var fileInfo = new FileInfo(_vhdFile.Value);

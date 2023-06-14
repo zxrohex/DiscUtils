@@ -75,7 +75,7 @@ internal sealed class DiscTransport : VirtualDiskTransport
         return _service.OpenDisc(_disk);
     }
 
-    public override FileLocator GetFileLocator()
+    public override FileLocator GetFileLocator(bool useAsync)
     {
         throw new NotImplementedException();
     }

@@ -126,7 +126,7 @@ internal sealed class Disc : VirtualDisk
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
     /// <returns>Not Applicable.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync)
     {
         throw new NotSupportedException("Differencing disks not supported for optical disks");
     }

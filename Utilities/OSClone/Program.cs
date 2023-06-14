@@ -77,7 +77,7 @@ class Program : ProgramBase
             return;
         }
 
-        using var sourceDisk = VirtualDisk.OpenDisk(_sourceFile.Value, FileAccess.Read, UserName, Password);
+        using var sourceDisk = VirtualDisk.OpenDisk(_sourceFile.Value, FileAccess.Read, UserName, Password, useAsync: false);
 
         if (sourceDisk is null)
         {
@@ -85,7 +85,7 @@ class Program : ProgramBase
             return;
         }
 
-        using var destDisk = VirtualDisk.CreateDisk(OutputDiskType, OutputDiskVariant, _destFile.Value, DiskParameters, UserName, Password);
+        using var destDisk = VirtualDisk.CreateDisk(OutputDiskType, OutputDiskVariant, _destFile.Value, DiskParameters, UserName, Password, useAsync: false);
 
         if (destDisk is DiscUtils.Vhd.Disk)
         {

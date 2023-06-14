@@ -21,7 +21,7 @@ namespace LibraryTests.Utilities
             if (entry.Length > 100 * Sizes.OneMiB)
             {
                 var tempFile = Path.GetTempFileName();
-                ms = new FileStream(tempFile, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+                ms = new FileStream(tempFile, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
             }
             else
             {

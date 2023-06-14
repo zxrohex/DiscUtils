@@ -82,7 +82,7 @@ internal sealed class DiskTransport : VirtualDiskTransport
         throw new NotSupportedException();
     }
 
-    public override FileLocator GetFileLocator()
+    public override FileLocator GetFileLocator(bool useAsync)
     {
         return new DiscFileLocator(_fileSystem, Utilities.GetDirectoryFromPath(_path));
     }

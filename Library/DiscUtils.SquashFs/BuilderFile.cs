@@ -84,7 +84,7 @@ internal sealed class BuilderFile : BuilderNode
         {
             if (_source == null)
             {
-                var locator = new LocalFileLocator(string.Empty);
+                var locator = new LocalFileLocator(string.Empty, useAsync: false);
                 _source = locator.Open(_sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
                 disposeSource = true;
             }

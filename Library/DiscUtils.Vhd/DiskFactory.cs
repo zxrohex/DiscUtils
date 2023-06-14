@@ -68,9 +68,9 @@ internal sealed class DiskFactory : VirtualDiskFactory
         };
     }
 
-    public override VirtualDisk OpenDisk(string path, FileAccess access)
+    public override VirtualDisk OpenDisk(string path, FileAccess access, bool useAsync)
     {
-        return new Disk(path, access);
+        return new Disk(path, access, useAsync);
     }
 
     public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)

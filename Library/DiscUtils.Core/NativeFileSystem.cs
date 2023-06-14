@@ -509,7 +509,7 @@ public class NativeFileSystem : DiscFileSystem
             fileShare = FileShare.Read;
         }
 
-        var locator = new LocalFileLocator(BasePath);
+        var locator = new LocalFileLocator(BasePath, useAsync: false);
         return SparseStream.FromStream(locator.Open(path, mode, access, fileShare),
             Ownership.Dispose);
     }

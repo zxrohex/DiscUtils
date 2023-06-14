@@ -59,18 +59,19 @@ public sealed class Disk : VirtualDisk
     /// Initializes a new instance of the Disk class.
     /// </summary>
     /// <param name="path">The path to the disk image.</param>
-    public Disk(string path)
-        :this(path, FileAccess.ReadWrite) {}
+    public Disk(string path, bool useAsync = false)
+        :this(path, FileAccess.ReadWrite, useAsync) {}
 
     /// <summary>
     /// Initializes a new instance of the Disk class.
     /// </summary>
     /// <param name="path">The path to the disk image.</param>
     /// <param name="access">The access requested to the disk.</param>
-    public Disk(string path, FileAccess access)
+    /// <param name="useAsync"></param>
+    public Disk(string path, FileAccess access, bool useAsync = false)
     {
         var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
-        var locator = new LocalFileLocator(string.Empty);
+        var locator = new LocalFileLocator(string.Empty, useAsync);
         _file = new DiskImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose, default);
     }
 
@@ -192,7 +193,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
     /// <returns>The newly created disk.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync)
     {
         throw new NotSupportedException("Differencing disks not supported for raw disks");
     }

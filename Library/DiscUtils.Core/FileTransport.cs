@@ -53,9 +53,9 @@ internal sealed class FileTransport : VirtualDiskTransport
         throw new NotSupportedException();
     }
 
-    public override FileLocator GetFileLocator()
+    public override FileLocator GetFileLocator(bool useAsync)
     {
-        return new LocalFileLocator(Path.GetDirectoryName(_path) + Path.DirectorySeparatorChar);
+        return new LocalFileLocator(Path.GetDirectoryName(_path) + Path.DirectorySeparatorChar, useAsync);
     }
 
     public override string GetFileName()

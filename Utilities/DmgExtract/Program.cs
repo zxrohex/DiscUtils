@@ -58,7 +58,7 @@ class Program : ProgramBase
 
     protected override void DoRun()
     {
-        using var disk = VirtualDisk.OpenDisk(_dmg.Value, FileAccess.Read);
+        using var disk = VirtualDisk.OpenDisk(_dmg.Value, FileAccess.Read, useAsync: false);
         if (disk is null)
         {
             Console.Error.WriteLine($"Failed to open '{_dmg.Value}' as virtual disk.");

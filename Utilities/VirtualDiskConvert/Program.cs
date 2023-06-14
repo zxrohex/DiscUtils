@@ -64,7 +64,7 @@ class Program : ProgramBase
 
     protected override void DoRun()
     {
-        using var inDisk = VirtualDisk.OpenDisk(_inFile.Value, FileAccess.Read, UserName, Password);
+        using var inDisk = VirtualDisk.OpenDisk(_inFile.Value, FileAccess.Read, UserName, Password, useAsync: false);
 
         if (inDisk is null)
         {
@@ -92,7 +92,7 @@ class Program : ProgramBase
             diskParams.BiosGeometry = Geometry.MakeBiosSafe(diskParams.Geometry, diskParams.Capacity);
         }
 
-        using var outDisk = VirtualDisk.CreateDisk(OutputDiskType, OutputDiskVariant, _outFile.Value, diskParams, UserName, Password);
+        using var outDisk = VirtualDisk.CreateDisk(OutputDiskType, OutputDiskVariant, _outFile.Value, diskParams, UserName, Password, useAsync: false);
         if (outDisk.Capacity < inDisk.Capacity)
         {
             Console.WriteLine("ERROR: The output disk is smaller than the input disk, conversion aborted");

@@ -106,7 +106,7 @@ namespace LibraryTests.Vhdx
 
             try
             {
-                using (var parentDiskBuild = DiscUtils.VirtualDisk.CreateDisk("vhdx", "dynamic", parentPath, diskParameters: new() { Capacity = 200L << 20 }, null, null))
+                using (var parentDiskBuild = DiscUtils.VirtualDisk.CreateDisk("vhdx", "dynamic", parentPath, diskParameters: new() { Capacity = 200L << 20 }, null, null, useAsync: false))
                 {
                     for (byte i = 0; i < 8; ++i)
                     {
@@ -118,9 +118,9 @@ namespace LibraryTests.Vhdx
                     parentDiskBuild.Content.WriteByte(0xff);
                 }
 
-                using var parentDisk = DiscUtils.VirtualDisk.OpenDisk(parentPath, FileAccess.Read);
+                using var parentDisk = DiscUtils.VirtualDisk.OpenDisk(parentPath, FileAccess.Read, useAsync: false);
 
-                using (var diffDisk = parentDisk.CreateDifferencingDisk(diffPath))
+                using (var diffDisk = parentDisk.CreateDifferencingDisk(diffPath, useAsync: false))
                 {
                     for (var i = 0; i < 8; ++i)
                     {

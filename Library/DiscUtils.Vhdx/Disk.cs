@@ -66,9 +66,9 @@ public sealed class Disk : VirtualDisk
     /// Initializes a new instance of the Disk class.  Differencing disks are supported.
     /// </summary>
     /// <param name="path">The path to the disk image.</param>
-    public Disk(string path)
+    public Disk(string path, bool useAsync = false)
     {
-        var file = new DiskImageFile(path, FileAccess.ReadWrite);
+        var file = new DiskImageFile(path, FileAccess.ReadWrite, useAsync);
         _files = new()
         {
             (file, Ownership.Dispose)
@@ -81,9 +81,10 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path to the disk image.</param>
     /// <param name="access">The access requested to the disk.</param>
-    public Disk(string path, FileAccess access)
+    /// <param name="useAsync"></param>
+    public Disk(string path, FileAccess access, bool useAsync = false)
     {
-        var file = new DiskImageFile(path, access);
+        var file = new DiskImageFile(path, access, useAsync);
         _files = new()
         {
             (file, Ownership.Dispose)
@@ -387,15 +388,15 @@ public sealed class Disk : VirtualDisk
     /// <param name="path">The path to the new disk file.</param>
     /// <param name="parentPath">The path to the parent disk file.</param>
     /// <returns>An object that accesses the new file as a Disk.</returns>
-    public static Disk InitializeDifferencing(string path, string parentPath)
+    public static Disk InitializeDifferencing(string path, string parentPath, bool useAsync)
     {
-        var parentLocator = new LocalFileLocator(Path.GetDirectoryName(parentPath));
+        var parentLocator = new LocalFileLocator(Path.GetDirectoryName(parentPath), useAsync);
         var parentFileName = Path.GetFileName(parentPath);
 
         DiskImageFile newFile;
         using (var parent = new DiskImageFile(parentLocator, parentFileName, FileAccess.Read))
         {
-            var locator = new LocalFileLocator(Path.GetDirectoryName(path));
+            var locator = new LocalFileLocator(Path.GetDirectoryName(path), useAsync);
             newFile = parent.CreateDifferencing(locator, Path.GetFileName(path));
         }
 
@@ -445,9 +446,9 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
     /// <returns>The newly created disk.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync)
     {
-        FileLocator locator = new LocalFileLocator(Path.GetDirectoryName(path));
+        FileLocator locator = new LocalFileLocator(Path.GetDirectoryName(path), useAsync);
         var file = _files[0].DiakImageFile.CreateDifferencing(locator, Path.GetFileName(path));
         return new Disk(file, Ownership.Dispose);
     }

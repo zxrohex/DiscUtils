@@ -102,7 +102,7 @@ public sealed class BuildFileInfo : BuildDirectoryMember, IEquatable<BuildFileIn
         }
         if (_contentPath != null)
         {
-            var locator = new LocalFileLocator(string.Empty);
+            var locator = new LocalFileLocator(string.Empty, useAsync: false);
             return locator.Open(_contentPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
         return _contentStream;

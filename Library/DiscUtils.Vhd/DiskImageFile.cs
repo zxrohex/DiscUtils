@@ -100,8 +100,8 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// </summary>
     /// <param name="path">The file path to open.</param>
     /// <param name="access">Controls how the file can be accessed.</param>
-    public DiskImageFile(string path, FileAccess access)
-        : this(new LocalFileLocator(Path.GetDirectoryName(path)), Path.GetFileName(path), access) {}
+    public DiskImageFile(string path, FileAccess access, bool useAsync)
+        : this(new LocalFileLocator(Path.GetDirectoryName(path), useAsync), Path.GetFileName(path), access) {}
 
     internal DiskImageFile(FileLocator locator, string path, Stream stream, Ownership ownsStream)
         : this(stream, ownsStream)
@@ -372,7 +372,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     [Obsolete("Use GetParentLocations() by preference")]
     public string[] GetParentLocations(string basePath)
     {
-        return GetParentLocations(new LocalFileLocator(basePath)).ToArray();
+        return GetParentLocations(new LocalFileLocator(basePath, useAsync: false)).ToArray();
     }
 
     internal static DiskImageFile InitializeFixed(FileLocator locator, string path, long capacity, Geometry geometry)
@@ -613,7 +613,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
         if (fileLocator == null)
         {
             // Use working directory by default
-            fileLocator = new LocalFileLocator(string.Empty);
+            fileLocator = new LocalFileLocator(string.Empty, useAsync: false);
         }
 
         var absPaths = new List<string>(8);

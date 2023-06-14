@@ -392,7 +392,7 @@ public class RegistryHive : IDisposable
     /// <returns>The new hive.</returns>
     public static RegistryHive Create(string path)
     {
-        var locator = new LocalFileLocator(string.Empty);
+        var locator = new LocalFileLocator(string.Empty, useAsync: false);
         return Create(locator.Open(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None), Ownership.Dispose);
     }
 

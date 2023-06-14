@@ -158,7 +158,7 @@ public sealed class TracingStream : CompatibilityStream
 
         if (!string.IsNullOrEmpty(path))
         {
-            var locator = new LocalFileLocator(string.Empty);
+            var locator = new LocalFileLocator(string.Empty, useAsync: false);
             _fileOut = new StreamWriter(locator.Open(path, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite));
         }
     }

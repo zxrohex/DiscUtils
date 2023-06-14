@@ -49,9 +49,9 @@ internal sealed class DiskFactory : VirtualDiskFactory
             Ownership.Dispose, diskParameters.Capacity, diskParameters.Geometry);
     }
 
-    public override VirtualDisk OpenDisk(string path, FileAccess access)
+    public override VirtualDisk OpenDisk(string path, FileAccess access, bool useAsync = false)
     {
-        return new Disk(path, access);
+        return new Disk(path, access, useAsync);
     }
 
     public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)

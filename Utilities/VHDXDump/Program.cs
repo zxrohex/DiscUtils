@@ -48,7 +48,7 @@ class Program : ProgramBase
 
     protected override void DoRun()
     {
-        using var vhdxFile = new DiskImageFile(_vhdxFile.Value, FileAccess.Read);
+        using var vhdxFile = new DiskImageFile(_vhdxFile.Value, FileAccess.Read, useAsync: false);
         var info = vhdxFile.Information;
 
         var fileInfo = new FileInfo(_vhdxFile.Value);

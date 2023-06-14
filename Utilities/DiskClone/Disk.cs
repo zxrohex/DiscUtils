@@ -131,7 +131,7 @@ class Disk : VirtualDisk
         throw new NotImplementedException();
     }
 
-    public override VirtualDisk CreateDifferencingDisk(string path)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync)
     {
         throw new NotImplementedException();
     }

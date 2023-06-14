@@ -39,7 +39,7 @@ internal abstract class VirtualDiskTransport : IDisposable
 
     public abstract VirtualDisk OpenDisk(FileAccess access);
 
-    public abstract FileLocator GetFileLocator();
+    public abstract FileLocator GetFileLocator(bool useAsync);
 
     public abstract string GetFileName();
 

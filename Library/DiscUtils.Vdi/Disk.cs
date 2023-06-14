@@ -41,10 +41,10 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path to the disk.</param>
     /// <param name="access">The access requested to the disk.</param>
-    public Disk(string path, FileAccess access)
+    public Disk(string path, FileAccess access, bool useAsync = false)
     {
         var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
-        var locator = new LocalFileLocator(string.Empty);
+        var locator = new LocalFileLocator(string.Empty, useAsync);
         _diskImage = new DiskImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose);
     }
 
@@ -180,7 +180,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
     /// <returns>The newly created disk.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync)
     {
         throw new NotImplementedException("Differencing disks not implemented for the VDI format");
     }

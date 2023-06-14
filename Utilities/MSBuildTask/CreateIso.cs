@@ -98,7 +98,11 @@ public class CreateIso : Task
             Stream bootImageStream = null;
             if (BootImage != null)
             {
-                bootImageStream = new FileStream(BootImage.GetMetadata("FullPath"), FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, bufferSize: 2 << 20, FileOptions.Asynchronous);
+                bootImageStream = new FileStream(BootImage.GetMetadata("FullPath"),
+                                                 FileMode.Open,
+                                                 FileAccess.Read,
+                                                 FileShare.Read | FileShare.Delete,
+                                                 bufferSize: 2 << 20);
                 builder.SetBootImage(bootImageStream, BootDeviceEmulation.NoEmulation, 0);
                 builder.UpdateIsolinuxBootTable = UpdateIsolinuxBootTable;
             }

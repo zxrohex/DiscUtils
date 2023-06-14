@@ -28,10 +28,12 @@ namespace DiscUtils.Internal;
 internal sealed class LocalFileLocator : FileLocator
 {
     private readonly string _dir;
+    private readonly bool _useAsync;
 
-    public LocalFileLocator(string dir)
+    public LocalFileLocator(string dir, bool useAsync)
     {
         _dir = dir;
+        _useAsync = useAsync;
     }
 
     public override bool Exists(string fileName)
@@ -41,12 +43,12 @@ internal sealed class LocalFileLocator : FileLocator
 
     protected override Stream OpenFile(string fileName, FileMode mode, FileAccess access, FileShare share)
     {
-        return new FileStream(Path.Combine(_dir, fileName), mode, access, share, bufferSize: 2 << 20, useAsync: true);
+        return new FileStream(Path.Combine(_dir, fileName), mode, access, share, bufferSize: 2 << 20, _useAsync);
     }
 
     public override FileLocator GetRelativeLocator(string path)
     {
-        return new LocalFileLocator(Path.Combine(_dir, path));
+        return new LocalFileLocator(Path.Combine(_dir, path), _useAsync);
     }
 
     public override string GetFullPath(string path)
