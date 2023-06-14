@@ -95,7 +95,7 @@ internal sealed class BuilderFile : BuilderNode
             }
 
             var startPos = outStream.Position;
-            var bufferedBytes = StreamUtilities.ReadMaximum(_source, context.IoBuffer, 0, context.DataBlockSize);
+            var bufferedBytes = _source.ReadMaximum(context.IoBuffer, 0, context.DataBlockSize);
 
             if (bufferedBytes < context.DataBlockSize)
             {
@@ -116,7 +116,7 @@ internal sealed class BuilderFile : BuilderNode
                 while (bufferedBytes > 0)
                 {
                     _lengths.Add(context.WriteDataBlock(context.IoBuffer, 0, bufferedBytes));
-                    bufferedBytes = StreamUtilities.ReadMaximum(_source, context.IoBuffer, 0, context.DataBlockSize);
+                    bufferedBytes = _source.ReadMaximum(context.IoBuffer, 0, context.DataBlockSize);
                     _inode.FileSize += (uint)bufferedBytes;
                 }
             }

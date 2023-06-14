@@ -59,7 +59,7 @@ public sealed class Chunk
         _blocksPerChunk = blocksPerChunk;
 
         _bat.Position = _chunk * (_blocksPerChunk + 1) * 8;
-        _batData = StreamUtilities.ReadExactly(bat, (_blocksPerChunk + 1) * 8);
+        _batData = bat.ReadExactly((_blocksPerChunk + 1) * 8);
     }
 
     public bool HasSectorBitmap
@@ -166,7 +166,7 @@ public sealed class Chunk
         if (_sectorBitmap == null)
         {
             _file.Position = SectorBitmapPos;
-            _sectorBitmap = StreamUtilities.ReadExactly(_file, (int)Sizes.OneMiB);
+            _sectorBitmap = _file.ReadExactly((int)Sizes.OneMiB);
         }
 
         return _sectorBitmap;
@@ -177,7 +177,7 @@ public sealed class Chunk
         if (_sectorBitmap == null)
         {
             _file.Position = SectorBitmapPos;
-            _sectorBitmap = await StreamUtilities.ReadExactlyAsync(_file, (int)Sizes.OneMiB, cancellationToken).ConfigureAwait(false);
+            _sectorBitmap = await _file.ReadExactlyAsync((int)Sizes.OneMiB, cancellationToken).ConfigureAwait(false);
         }
 
         return _sectorBitmap;

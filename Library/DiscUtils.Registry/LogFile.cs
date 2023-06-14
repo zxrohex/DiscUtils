@@ -20,7 +20,7 @@ internal class LogFile : IEnumerable<LogEntry>
     public LogFile(Stream stream)
     {
         stream.Position = 0;
-        buffer = StreamUtilities.ReadExactly(stream, (int)stream.Length);
+        buffer = stream.ReadExactly((int)stream.Length);
         var headerResult = HiveHeader.ReadFrom(buffer, throwOnInvalidData: false);
         if (headerResult > 0)
         {

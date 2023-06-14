@@ -1691,7 +1691,7 @@ public sealed class FatFileSystem : DiscFileSystem, IDosFileSystem, IClusterBase
     {
         _data = data;
         _data.Position = 0;
-        _bootSector = StreamUtilities.ReadSector(_data);
+        _bootSector = _data.ReadSector();
 
         FatVariant = DetectFATType(_bootSector);
 

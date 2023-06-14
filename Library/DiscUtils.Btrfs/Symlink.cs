@@ -39,7 +39,7 @@ internal class Symlink : File, IVfsSymlink<DirEntry, File>
         get
         {
             var content = FileContent;
-            var data = StreamUtilities.ReadExactly(content, 0, (int)content.Capacity);
+            var data = content.ReadExactly(0, (int)content.Capacity);
             return Encoding.UTF8.GetString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
         }
     }

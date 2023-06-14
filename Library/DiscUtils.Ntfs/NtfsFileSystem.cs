@@ -1237,7 +1237,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
     public override byte[] ReadBootCode()
     {
         using var s = OpenFile(@"\$Boot", FileMode.Open);
-        return StreamUtilities.ReadExactly(s, (int)s.Length);
+        return s.ReadExactly((int)s.Length);
     }
 
     /// <summary>
@@ -1408,7 +1408,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
             {
                 // If there's an existing reparse point, unhook it.
                 using Stream contentStream = stream.Value.Open(FileAccess.Read);
-                var rp = StreamUtilities.ReadStruct<ReparsePointRecord>(contentStream, (int)contentStream.Length);
+                var rp = contentStream.ReadStruct<ReparsePointRecord>((int)contentStream.Length);
                 _context.ReparsePoints.Remove(rp.Tag, dirEntry.Value.Reference);
             }
             else
@@ -1477,7 +1477,7 @@ public sealed class NtfsFileSystem : DiscFileSystem, IClusterBasedFileSystem,
             {
 
                 using Stream contentStream = stream.Value.Open(FileAccess.Read);
-                var rp = StreamUtilities.ReadStruct<ReparsePointRecord>(contentStream, (int)contentStream.Length);
+                var rp = contentStream.ReadStruct<ReparsePointRecord>((int)contentStream.Length);
                 return new ReparsePoint((int)rp.Tag, rp.Content);
             }
         }

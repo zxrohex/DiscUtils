@@ -449,7 +449,7 @@ public sealed class CDBuilder : StreamBuilder, IFileSystemBuilder
             return bootImage;
         }
 
-        var bootData = StreamUtilities.ReadExactly(bootImage, (int)bootImage.Length);
+        var bootData = bootImage.ReadExactly((int)bootImage.Length);
 
         Array.Clear(bootData, 8, 56);
 

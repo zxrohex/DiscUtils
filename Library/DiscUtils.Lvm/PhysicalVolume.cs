@@ -89,7 +89,7 @@ internal class PhysicalVolume
         var buffer = new byte[SECTOR_SIZE];
         for (uint i = 0; i < 4; i++)
         {
-            if (StreamUtilities.ReadMaximum(content, buffer, 0, SECTOR_SIZE) != SECTOR_SIZE)
+            if (content.ReadMaximum(buffer, 0, SECTOR_SIZE) != SECTOR_SIZE)
             {
                 return false;
             }

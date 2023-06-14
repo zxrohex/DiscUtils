@@ -54,7 +54,7 @@ public class TarFile : IDisposable
 
         for (;;)
         {                
-            if (StreamUtilities.ReadMaximum(_fileStream, hdrBuf) < 512)
+            if (_fileStream.ReadMaximum(hdrBuf) < 512)
             {
                 break;
             }
@@ -194,7 +194,7 @@ public class TarFile : IDisposable
 
         for (;;)
         {
-            if (StreamUtilities.ReadMaximum(archive, hdrBuf, 0, 512) < 512)
+            if (archive.ReadMaximum(hdrBuf, 0, 512) < 512)
             {
                 break;
             }

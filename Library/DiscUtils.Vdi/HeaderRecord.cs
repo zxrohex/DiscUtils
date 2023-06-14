@@ -100,7 +100,7 @@ internal class HeaderRecord
             s.Position = savedPos;
         }
 
-        var buffer = StreamUtilities.ReadExactly(s, headerSize);
+        var buffer = s.ReadExactly(headerSize);
         Read(version, buffer);
     }
 

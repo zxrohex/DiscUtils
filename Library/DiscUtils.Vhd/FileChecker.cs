@@ -121,7 +121,7 @@ public class FileChecker
         }
 
         _fileStream.Position = _dynamicHeader.TableOffset;
-        var batData = StreamUtilities.ReadExactly(_fileStream, batSize);
+        var batData = _fileStream.ReadExactly(batSize);
         var bat = new uint[batSize / 4];
         for (var i = 0; i < bat.Length; ++i)
         {

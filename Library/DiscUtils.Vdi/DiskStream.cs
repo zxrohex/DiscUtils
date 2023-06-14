@@ -696,7 +696,7 @@ internal class DiskStream : SparseStream
     {
         _fileStream.Position = _fileHeader.BlocksOffset;
 
-        var buffer = StreamUtilities.ReadExactly(_fileStream, _fileHeader.BlockCount * 4);
+        var buffer = _fileStream.ReadExactly(_fileHeader.BlockCount * 4);
 
         _blockTable = new uint[_fileHeader.BlockCount];
         for (var i = 0; i < _fileHeader.BlockCount; ++i)

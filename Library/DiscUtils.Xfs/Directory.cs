@@ -66,7 +66,7 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
                             blockDir = new BlockDirectoryV5(Context);
 
                         var dirContent = Inode.GetContentBuffer(Context);
-                        var buffer = StreamUtilities.ReadAll(dirContent);
+                        var buffer = dirContent.ReadAll();
                         blockDir.ReadFrom(buffer);
                         if (!blockDir.HasValidMagic)
                             throw new IOException("invalid block directory magic");

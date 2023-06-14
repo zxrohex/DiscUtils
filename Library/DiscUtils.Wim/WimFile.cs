@@ -45,7 +45,7 @@ public class WimFile
     {
         _fileStream = stream;
 
-        _fileHeader = StreamUtilities.ReadStruct<FileHeader>(stream, 512);
+        _fileHeader = stream.ReadStruct<FileHeader>(512);
 
         if (!_fileHeader.IsValid())
         {

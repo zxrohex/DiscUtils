@@ -79,7 +79,7 @@ internal struct Extent : IByteArraySerializable
     public byte[] GetData(Context context, long offset, uint count)
     {
         context.RawStream.Position = GetOffset(context) + offset;
-        return StreamUtilities.ReadExactly(context.RawStream, (int) count);
+        return context.RawStream.ReadExactly((int) count);
     }
 
     /// <inheritdoc />

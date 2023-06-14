@@ -76,7 +76,7 @@ internal class Mode2Buffer : Streams.Buffer
             var sector = thisPos / DiscImageFile.Mode1SectorSize;
             var sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
 
-            StreamUtilities.ReadExactly(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
+            _wrapped.ReadExactly(sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
 
             var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
             System.Buffer.BlockCopy(_iobuffer, 24 + sectorOffset, buffer, offset + totalRead, bytesToCopy);
@@ -97,7 +97,7 @@ internal class Mode2Buffer : Streams.Buffer
             var sector = thisPos / DiscImageFile.Mode1SectorSize;
             var sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
 
-            await StreamUtilities.ReadExactlyAsync(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer.AsMemory(0, DiscImageFile.Mode2SectorSize), cancellationToken).ConfigureAwait(false);
+            await _wrapped.ReadExactlyAsync(sector * DiscImageFile.Mode2SectorSize, _iobuffer.AsMemory(0, DiscImageFile.Mode2SectorSize), cancellationToken).ConfigureAwait(false);
 
             var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
             _iobuffer.AsMemory(24 + sectorOffset, bytesToCopy).CopyTo(buffer.Slice(totalRead));
@@ -118,7 +118,7 @@ internal class Mode2Buffer : Streams.Buffer
             var sector = thisPos / DiscImageFile.Mode1SectorSize;
             var sectorOffset = (int)(thisPos - sector * DiscImageFile.Mode1SectorSize);
 
-            StreamUtilities.ReadExactly(_wrapped, sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
+            _wrapped.ReadExactly(sector * DiscImageFile.Mode2SectorSize, _iobuffer, 0, DiscImageFile.Mode2SectorSize);
 
             var bytesToCopy = Math.Min(DiscImageFile.Mode1SectorSize - sectorOffset, totalToRead - totalRead);
             _iobuffer.AsSpan(24 + sectorOffset, bytesToCopy).CopyTo(buffer.Slice(totalRead));

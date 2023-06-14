@@ -249,7 +249,7 @@ internal sealed class SecurityDescriptors : IDiagnosticTraceable
 
         s.Position = data.SdsOffset;
 
-        var record = StreamUtilities.ReadStruct<SecurityDescriptorRecord>(s, data.SdsLength);
+        var record = s.ReadStruct<SecurityDescriptorRecord>(data.SdsLength);
 
         return new SecurityDescriptor(new RawSecurityDescriptor(record.SecurityDescriptor, 0));
     }

@@ -40,7 +40,7 @@ public sealed class StandardInformationAttribute : GenericAttribute
     internal StandardInformationAttribute(INtfsContext context, AttributeRecord record)
         : base(context, record)
     {
-        var content = StreamUtilities.ReadAll(Content);
+        var content = Content.ReadAll();
         _si = new StandardInformation();
         _si.ReadFrom(content);
     }

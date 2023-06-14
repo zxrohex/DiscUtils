@@ -624,7 +624,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
                 || pl.PlatformCode == ParentLocator.PlatformCodeWindowsRelativeUnicode)
             {
                 _fileStream.Position = pl.PlatformDataOffset;
-                var buffer = StreamUtilities.ReadExactly(_fileStream, pl.PlatformDataLength);
+                var buffer = _fileStream.ReadExactly(pl.PlatformDataLength);
                 var locationVal = Encoding.Unicode.GetString(buffer);
 
                 if (pl.PlatformCode == ParentLocator.PlatformCodeWindowsAbsoluteUnicode)

@@ -43,7 +43,7 @@ public sealed class AttributeListAttribute : GenericAttribute
     internal AttributeListAttribute(INtfsContext context, AttributeRecord record)
         : base(context, record)
     {
-        var content = StreamUtilities.ReadAll(Content);
+        var content = Content.ReadAll();
         _list = new AttributeList();
         _list.ReadFrom(content);
     }

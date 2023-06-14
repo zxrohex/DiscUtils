@@ -163,7 +163,7 @@ internal sealed class ServerSparseExtentStream : CommonSparseExtentStream
         _parentDiskStream.Position = _diskOffset +
                                      (grain + _header.NumGTEsPerGT * grainTable) * _header.GrainSize *
                                      Sizes.Sector;
-        var content = StreamUtilities.ReadExactly(_parentDiskStream, (int)(_header.GrainSize * Sizes.Sector * count));
+        var content = _parentDiskStream.ReadExactly((int)(_header.GrainSize * Sizes.Sector * count));
         _fileStream.Position = grainStartPos;
         _fileStream.Write(content, 0, content.Length);
 

@@ -204,13 +204,13 @@ public sealed class DiskImageFile : VirtualDiskLayer
         get
         {
             _fileStream.Position = 0;
-            var fileHeader = StreamUtilities.ReadStruct<FileHeader>(_fileStream);
+            var fileHeader = _fileStream.ReadStruct<FileHeader>();
 
             _fileStream.Position = 64 * Sizes.OneKiB;
-            var vhdxHeader1 = StreamUtilities.ReadStruct<VhdxHeader>(_fileStream);
+            var vhdxHeader1 = _fileStream.ReadStruct<VhdxHeader>();
 
             _fileStream.Position = 128 * Sizes.OneKiB;
-            var vhdxHeader2 = StreamUtilities.ReadStruct<VhdxHeader>(_fileStream);
+            var vhdxHeader2 = _fileStream.ReadStruct<VhdxHeader>();
 
             var activeLogSequence = FindActiveLogSequence();
 
@@ -592,19 +592,19 @@ public sealed class DiskImageFile : VirtualDiskLayer
         fileEnd += batRegion.Length;
 
         stream.Position = 0;
-        StreamUtilities.WriteStruct(stream, fileHeader);
+        stream.WriteStruct(fileHeader);
 
         stream.Position = 64 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, header1);
+        stream.WriteStruct(header1);
 
         stream.Position = 128 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, header2);
+        stream.WriteStruct(header2);
 
         stream.Position = 192 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, regionTable);
+        stream.WriteStruct(regionTable);
 
         stream.Position = 256 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, regionTable);
+        stream.WriteStruct(regionTable);
 
         // Set stream to min size
         stream.Position = fileEnd - 1;
@@ -677,19 +677,19 @@ public sealed class DiskImageFile : VirtualDiskLayer
         fileEnd += batRegion.Length;
 
         stream.Position = 0;
-        StreamUtilities.WriteStruct(stream, fileHeader);
+        stream.WriteStruct(fileHeader);
 
         stream.Position = 64 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, header1);
+        stream.WriteStruct(header1);
 
         stream.Position = 128 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, header2);
+        stream.WriteStruct(header2);
 
         stream.Position = 192 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, regionTable);
+        stream.WriteStruct(regionTable);
 
         stream.Position = 256 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, regionTable);
+        stream.WriteStruct(regionTable);
 
         // Set stream to min size
         stream.Position = fileEnd - 1;
@@ -711,7 +711,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     private void Initialize()
     {
         _fileStream.Position = 0;
-        var fileHeader = StreamUtilities.ReadStruct<FileHeader>(_fileStream);
+        var fileHeader = _fileStream.ReadStruct<FileHeader>();
         if (!fileHeader.IsValid)
         {
             throw new IOException("Invalid VHDX file - file signature mismatch");
@@ -741,7 +741,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     private IEnumerable<StreamExtent> BatControlledFileExtents()
     {
         _batStream.Position = 0;
-        var batData = StreamUtilities.ReadExactly(_batStream, (int)_batStream.Length);
+        var batData = _batStream.ReadExactly((int)_batStream.Length);
 
         var blockSize = _metadata.FileParameters.BlockSize;
         var chunkSize = (1L << 23) * _metadata.LogicalSectorSize;
@@ -874,7 +874,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     private void ReadRegionTable()
     {
         _fileStream.Position = 192 * Sizes.OneKiB;
-        _regionTable = StreamUtilities.ReadStruct<RegionTable>(_fileStream);
+        _regionTable = _fileStream.ReadStruct<RegionTable>();
         foreach (var entry in _regionTable.Regions.Values)
         {
             if ((entry.Flags & RegionFlags.Required) != 0)
@@ -896,7 +896,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
         _activeHeader = 0;
 
         _fileStream.Position = 64 * Sizes.OneKiB;
-        var vhdxHeader1 = StreamUtilities.ReadStruct<VhdxHeader>(_fileStream);
+        var vhdxHeader1 = _fileStream.ReadStruct<VhdxHeader>();
         if (vhdxHeader1.IsValid)
         {
             _header = vhdxHeader1;
@@ -904,7 +904,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
         }
 
         _fileStream.Position = 128 * Sizes.OneKiB;
-        var vhdxHeader2 = StreamUtilities.ReadStruct<VhdxHeader>(_fileStream);
+        var vhdxHeader2 = _fileStream.ReadStruct<VhdxHeader>();
         if (vhdxHeader2.IsValid && (_activeHeader == 0 || _header.SequenceNumber < vhdxHeader2.SequenceNumber))
         {
             _header = vhdxHeader2;
@@ -935,14 +935,14 @@ public sealed class DiskImageFile : VirtualDiskLayer
             otherPos = 128 * Sizes.OneKiB;
         }
 
-        StreamUtilities.WriteStruct(_fileStream, _header);
+        _fileStream.WriteStruct(_header);
         _fileStream.Flush();
 
         _header.SequenceNumber++;
         _header.CalcChecksum();
 
         _fileStream.Position = otherPos;
-        StreamUtilities.WriteStruct(_fileStream, _header);
+        _fileStream.WriteStruct(_header);
         _fileStream.Flush();
     }
 

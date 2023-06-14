@@ -47,7 +47,7 @@ internal class ProtocolDataUnit
     {
         var numRead = 0;
 
-        var headerData = StreamUtilities.ReadExactly(stream, 48);
+        var headerData = stream.ReadExactly(48);
         numRead += 48;
 
         byte[] contentData = null;
@@ -63,7 +63,7 @@ internal class ProtocolDataUnit
 
         if (bhs.DataSegmentLength > 0)
         {
-            contentData = StreamUtilities.ReadExactly(stream, bhs.DataSegmentLength);
+            contentData = stream.ReadExactly(bhs.DataSegmentLength);
             numRead += bhs.DataSegmentLength;
 
             if (dataDigestEnabled)

@@ -1056,7 +1056,7 @@ public class DynamicStream : MappedStream
     private void ReadBlockAllocationTable()
     {
         _fileStream.Position = _dynamicHeader.TableOffset;
-        var data = StreamUtilities.ReadExactly(_fileStream, _dynamicHeader.MaxTableEntries * 4);
+        var data = _fileStream.ReadExactly(_dynamicHeader.MaxTableEntries * 4);
 
         var bat = new uint[_dynamicHeader.MaxTableEntries];
         for (var i = 0; i < _dynamicHeader.MaxTableEntries; ++i)
@@ -1100,7 +1100,7 @@ public class DynamicStream : MappedStream
 
         // Read in bitmap
         _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
-        _blockBitmaps[block] = StreamUtilities.ReadExactly(_fileStream, _blockBitmapSize);
+        _blockBitmaps[block] = _fileStream.ReadExactly(_blockBitmapSize);
 
         return true;
     }
@@ -1121,7 +1121,7 @@ public class DynamicStream : MappedStream
 
         // Read in bitmap
         _fileStream.Position = (long)_blockAllocationTable[block] * Sizes.Sector;
-        _blockBitmaps[block] = await StreamUtilities.ReadExactlyAsync(_fileStream, _blockBitmapSize, cancellationToken).ConfigureAwait(false);
+        _blockBitmaps[block] = await _fileStream.ReadExactlyAsync(_blockBitmapSize, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -1231,7 +1231,7 @@ public class DynamicStream : MappedStream
             if (_footerCache == null)
             {
                 _fileStream.Position = 0;
-                _footerCache = StreamUtilities.ReadExactly(_fileStream, Sizes.Sector);
+                _footerCache = _fileStream.ReadExactly(Sizes.Sector);
             }
 
             _fileStream.Position = _nextBlockStart;
@@ -1247,7 +1247,7 @@ public class DynamicStream : MappedStream
             if (_footerCache == null)
             {
                 _fileStream.Position = 0;
-                _footerCache = await StreamUtilities.ReadExactlyAsync(_fileStream, Sizes.Sector, cancellationToken).ConfigureAwait(false);
+                _footerCache = await _fileStream.ReadExactlyAsync(Sizes.Sector, cancellationToken).ConfigureAwait(false);
             }
 
             _fileStream.Position = _nextBlockStart;

@@ -104,7 +104,7 @@ internal sealed class LogEntry
         var sectorBuffer = ArrayPool<byte>.Shared.Rent(LogSectorSize);
         try
         {
-            if (StreamUtilities.ReadMaximum(logStream, sectorBuffer, 0, LogSectorSize) != LogSectorSize)
+            if (logStream.ReadMaximum(sectorBuffer, 0, LogSectorSize) != LogSectorSize)
             {
                 entry = null;
                 return false;
