@@ -20,8 +20,12 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using DiscUtils.Streams.Compatibility;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscUtils.Streams;
 
@@ -41,6 +45,16 @@ public abstract class StreamBuilder
     }
 
     /// <summary>
+    /// Builds a new stream.
+    /// </summary>
+    /// <returns>The stream created by the StreamBuilder instance.</returns>
+    public virtual Task<Stream> BuildAsync(CancellationToken cancellationToken)
+    {
+        var extents = FixExtents(out var totalLength);
+        return Task.FromResult((Stream)new BuiltStream(totalLength, extents));
+    }
+
+    /// <summary>
     /// Writes the stream contents to an existing stream.
     /// </summary>
     /// <param name="output">The stream to write to.</param>
@@ -57,14 +71,40 @@ public abstract class StreamBuilder
     }
 
     /// <summary>
+    /// Writes the stream contents to an existing stream.
+    /// </summary>
+    /// <param name="output">The stream to write to.</param>
+    public async virtual Task BuildAsync(Stream output, CancellationToken cancellationToken)
+    {
+        using var src = await BuildAsync(cancellationToken).ConfigureAwait(false);
+        var buffer = new byte[64 * 1024];
+        var numRead = await src.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+        while (numRead != 0)
+        {
+            await output.WriteAsync(buffer.AsMemory(0, numRead), cancellationToken).ConfigureAwait(false);
+            numRead = await src.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
     /// Writes the stream contents to a file.
     /// </summary>
     /// <param name="outputFile">The file to write to.</param>
     public void Build(string outputFile)
     {
-        using var destStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.Delete, bufferSize: 2 << 20, useAsync: true);
+        using var destStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.Delete, bufferSize: 2 << 20, useAsync: false);
         Build(destStream);
     }
-    
+
+    /// <summary>
+    /// Writes the stream contents to a file.
+    /// </summary>
+    /// <param name="outputFile">The file to write to.</param>
+    public async Task BuildAsync(string outputFile, CancellationToken cancellationToken)
+    {
+        using var destStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.Delete, bufferSize: 2 << 20, useAsync: true);
+        await BuildAsync(destStream, cancellationToken).ConfigureAwait(false);
+    }
+
     protected abstract List<BuilderExtent> FixExtents(out long totalLength);
 }

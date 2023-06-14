@@ -73,7 +73,7 @@ class Program : ProgramBase
 
         if (_bootImage.IsPresent)
         {
-            builder.SetBootImage(new FileStream(_bootImage.Value, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 2 << 20, useAsync: true), BootDeviceEmulation.NoEmulation, 0);
+            builder.SetBootImage(new FileStream(_bootImage.Value, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 2 << 20, useAsync: false), BootDeviceEmulation.NoEmulation, 0);
         }
 
         PopulateFromFolder(builder, di, di.FullName);

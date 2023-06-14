@@ -24,9 +24,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Compression;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using DiscUtils.Streams.Compatibility;
 
 namespace DiscUtils.SquashFs;
 
@@ -298,10 +301,39 @@ public sealed class SquashFileSystemBuilder : StreamBuilder, IFileSystemBuilder
     public override Stream Build()
     {
         Stream stream = new FileStream(Path.GetTempFileName(), FileMode.CreateNew, FileAccess.ReadWrite,
-            FileShare.None, bufferSize: 2 * 1024 * 1024, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+            FileShare.None, bufferSize: 2 * 1024 * 1024, FileOptions.DeleteOnClose);
         try
         {
             Build(stream);
+            return stream;
+        }
+        catch (Exception ex)
+        {
+            if (stream != null)
+            {
+                stream.Dispose();
+            }
+
+            throw new Exception("SquashFs build failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Builds the file system, returning a new stream.
+    /// </summary>
+    /// <returns>The stream containing the file system.</returns>
+    /// <remarks>
+    /// This method uses a temporary file to construct the file system, use of
+    /// the <c>Build(Stream)</c> or <c>Build(string)</c> variant is recommended
+    /// when the file system will be written to a file.
+    /// </remarks>
+    public async override Task<Stream> BuildAsync(CancellationToken cancellationToken)
+    {
+        Stream stream = new FileStream(Path.GetTempFileName(), FileMode.CreateNew, FileAccess.ReadWrite,
+            FileShare.None, bufferSize: 2 * 1024 * 1024, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+        try
+        {
+            await BuildAsync(stream, cancellationToken).ConfigureAwait(false);
             return stream;
         }
         catch (Exception ex)
@@ -404,6 +436,98 @@ public sealed class SquashFileSystemBuilder : StreamBuilder, IFileSystemBuilder
         var buffer = new byte[superBlock.Size];
         superBlock.WriteTo(buffer);
         output.Write(buffer, 0, buffer.Length);
+        output.Position = end;
+    }
+
+    /// <summary>
+    /// Writes the file system to an existing stream.
+    /// </summary>
+    /// <param name="output">The stream to write to.</param>
+    /// <remarks>The <c>output</c> stream must support seeking and writing.</remarks>
+    public async override Task BuildAsync(Stream output, CancellationToken cancellationToken)
+    {
+        if (output == null)
+        {
+            throw new ArgumentNullException(nameof(output));
+        }
+
+        if (!output.CanWrite)
+        {
+            throw new ArgumentException("Output stream must be writable", nameof(output));
+        }
+
+        if (!output.CanSeek)
+        {
+            throw new ArgumentException("Output stream must support seeking", nameof(output));
+        }
+
+        _context = new BuilderContext
+        {
+            RawStream = output,
+            DataBlockSize = DefaultBlockSize,
+            IoBuffer = new byte[DefaultBlockSize]
+        };
+
+        var inodeWriter = new MetablockWriter();
+        var dirWriter = new MetablockWriter();
+        var fragWriter = new FragmentWriter(_context);
+        var idWriter = new IdTableWriter(_context);
+
+        _context.AllocateInode = AllocateInode;
+        _context.AllocateId = idWriter.AllocateId;
+        _context.WriteDataBlock = WriteDataBlock;
+        _context.WriteFragment = fragWriter.WriteFragment;
+        _context.InodeWriter = inodeWriter;
+        _context.DirectoryWriter = dirWriter;
+
+        _nextInode = 1;
+
+        var superBlock = new SuperBlock
+        {
+            Magic = SuperBlock.SquashFsMagic,
+            CreationTime = DateTime.Now,
+            BlockSize = (uint)_context.DataBlockSize,
+            Compression = 1 // DEFLATE
+        };
+        superBlock.BlockSizeLog2 = (ushort)MathUtilities.Log2(superBlock.BlockSize);
+        superBlock.MajorVersion = 4;
+        superBlock.MinorVersion = 0;
+
+        output.Position = superBlock.Size;
+
+        GetRoot().Reset();
+        GetRoot().Write(_context);
+        fragWriter.Flush();
+        superBlock.RootInode = GetRoot().InodeRef;
+        superBlock.InodesCount = _nextInode - 1;
+        superBlock.FragmentsCount = (uint)fragWriter.FragmentCount;
+        superBlock.UidGidCount = (ushort)idWriter.IdCount;
+
+        superBlock.InodeTableStart = output.Position;
+        inodeWriter.Persist(output);
+
+        superBlock.DirectoryTableStart = output.Position;
+        dirWriter.Persist(output);
+
+        superBlock.FragmentTableStart = fragWriter.Persist();
+        superBlock.LookupTableStart = -1;
+        superBlock.UidGidTableStart = idWriter.Persist();
+        superBlock.ExtendedAttrsTableStart = -1;
+        superBlock.BytesUsed = output.Position;
+
+        // Pad to 4KB
+        var end = MathUtilities.RoundUp(output.Position, 4 * Sizes.OneKiB);
+        if (end != output.Position)
+        {
+            var padding = new byte[(int)(end - output.Position)];
+            await output.WriteAsync(padding, cancellationToken).ConfigureAwait(false);
+        }
+
+        // Go back and write the superblock
+        output.Position = 0;
+        var buffer = new byte[superBlock.Size];
+        superBlock.WriteTo(buffer);
+        await output.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
         output.Position = end;
     }
 
