@@ -58,7 +58,7 @@ internal sealed class DiskFactory : VirtualDiskFactory
         return Disk.Initialize(locator, path, vmdkParams);
     }
 
-    public override VirtualDisk OpenDisk(string path, FileAccess access, bool useAsync)
+    public override VirtualDisk OpenDisk(string path, FileAccess access, bool useAsync = false)
     {
         return new Disk(path, access, useAsync);
     }

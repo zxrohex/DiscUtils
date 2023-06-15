@@ -51,9 +51,20 @@ public sealed class Disk : VirtualDisk
     /// <summary>
     /// Initializes a new instance of the Disk class.
     /// </summary>
+    /// <param name="path">The path to the disk image.</param>
+    /// <param name="access">The access requested to the disk.</param>
+    public Disk(string path, FileAccess access)
+        : this(path, access, useAsync: false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Disk class.
+    /// </summary>
     /// <param name="path">The path to the disk.</param>
     /// <param name="access">The access requested to the disk.</param>
-    public Disk(string path, FileAccess access, bool useAsync = false)
+    /// <param name="useAsync"></param>
+    public Disk(string path, FileAccess access, bool useAsync)
         : this(new LocalFileLocator(Path.GetDirectoryName(path), useAsync), path, access) {}
 
     /// <summary>
@@ -262,6 +273,18 @@ public sealed class Disk : VirtualDisk
     /// <param name="path">The name of the VMDK to create.</param>
     /// <param name="parameters">The desired parameters for the new disk.</param>
     /// <returns>The newly created disk image.</returns>
+    public static Disk Initialize(string path, DiskParameters parameters)
+    {
+        return new Disk(DiskImageFile.Initialize(path, parameters), Ownership.Dispose);
+    }
+
+    /// <summary>
+    /// Creates a new virtual disk at the specified path.
+    /// </summary>
+    /// <param name="path">The name of the VMDK to create.</param>
+    /// <param name="parameters">The desired parameters for the new disk.</param>
+    /// <param name="useAsync"></param>
+    /// <returns>The newly created disk image.</returns>
     public static Disk Initialize(string path, DiskParameters parameters, bool useAsync)
     {
         return new Disk(DiskImageFile.Initialize(path, parameters, useAsync), Ownership.Dispose);
@@ -273,6 +296,19 @@ public sealed class Disk : VirtualDisk
     /// <param name="path">The name of the VMDK to create.</param>
     /// <param name="capacity">The desired capacity of the new disk.</param>
     /// <param name="type">The type of virtual disk to create.</param>
+    /// <returns>The newly created disk image.</returns>
+    public static Disk Initialize(string path, long capacity, DiskCreateType type)
+    {
+        return Initialize(path, capacity, default, type);
+    }
+
+    /// <summary>
+    /// Creates a new virtual disk at the specified path.
+    /// </summary>
+    /// <param name="path">The name of the VMDK to create.</param>
+    /// <param name="capacity">The desired capacity of the new disk.</param>
+    /// <param name="type">The type of virtual disk to create.</param>
+    /// <param name="useAsync"></param>
     /// <returns>The newly created disk image.</returns>
     public static Disk Initialize(string path, long capacity, DiskCreateType type, bool useAsync)
     {
@@ -286,6 +322,20 @@ public sealed class Disk : VirtualDisk
     /// <param name="capacity">The desired capacity of the new disk.</param>
     /// <param name="geometry">The desired geometry of the new disk, or <c>null</c> for default.</param>
     /// <param name="type">The type of virtual disk to create.</param>
+    /// <returns>The newly created disk image.</returns>
+    public static Disk Initialize(string path, long capacity, Geometry geometry, DiskCreateType type)
+    {
+        return new Disk(DiskImageFile.Initialize(path, capacity, geometry, type), Ownership.Dispose);
+    }
+
+    /// <summary>
+    /// Creates a new virtual disk at the specified path.
+    /// </summary>
+    /// <param name="path">The name of the VMDK to create.</param>
+    /// <param name="capacity">The desired capacity of the new disk.</param>
+    /// <param name="geometry">The desired geometry of the new disk, or <c>null</c> for default.</param>
+    /// <param name="type">The type of virtual disk to create.</param>
+    /// <param name="useAsync"></param>
     /// <returns>The newly created disk image.</returns>
     public static Disk Initialize(string path, long capacity, Geometry geometry, DiskCreateType type, bool useAsync)
     {
@@ -313,6 +363,20 @@ public sealed class Disk : VirtualDisk
     /// <param name="type">The type of virtual disk to create.</param>
     /// <param name="adapterType">The type of virtual disk adapter.</param>
     /// <returns>The newly created disk image.</returns>
+    public static Disk Initialize(string path, long capacity, DiskCreateType type, DiskAdapterType adapterType)
+    {
+        return Initialize(path, capacity, default, type, adapterType);
+    }
+
+    /// <summary>
+    /// Creates a new virtual disk at the specified path.
+    /// </summary>
+    /// <param name="path">The name of the VMDK to create.</param>
+    /// <param name="capacity">The desired capacity of the new disk.</param>
+    /// <param name="type">The type of virtual disk to create.</param>
+    /// <param name="adapterType">The type of virtual disk adapter.</param>
+    /// <param name="useAsync"></param>
+    /// <returns>The newly created disk image.</returns>
     public static Disk Initialize(string path, long capacity, DiskCreateType type, DiskAdapterType adapterType, bool useAsync)
     {
         return Initialize(path, capacity, default, type, adapterType, useAsync);
@@ -326,6 +390,22 @@ public sealed class Disk : VirtualDisk
     /// <param name="geometry">The desired geometry of the new disk, or <c>null</c> for default.</param>
     /// <param name="type">The type of virtual disk to create.</param>
     /// <param name="adapterType">The type of virtual disk adapter.</param>
+    /// <returns>The newly created disk image.</returns>
+    public static Disk Initialize(string path, long capacity, Geometry geometry, DiskCreateType type,
+                                  DiskAdapterType adapterType)
+    {
+        return new Disk(DiskImageFile.Initialize(path, capacity, geometry, type, adapterType), Ownership.Dispose);
+    }
+
+    /// <summary>
+    /// Creates a new virtual disk at the specified path.
+    /// </summary>
+    /// <param name="path">The name of the VMDK to create.</param>
+    /// <param name="capacity">The desired capacity of the new disk.</param>
+    /// <param name="geometry">The desired geometry of the new disk, or <c>null</c> for default.</param>
+    /// <param name="type">The type of virtual disk to create.</param>
+    /// <param name="adapterType">The type of virtual disk adapter.</param>
+    /// <param name="useAsync"></param>
     /// <returns>The newly created disk image.</returns>
     public static Disk Initialize(string path, long capacity, Geometry geometry, DiskCreateType type,
                                   DiskAdapterType adapterType, bool useAsync)
@@ -354,6 +434,19 @@ public sealed class Disk : VirtualDisk
     /// <param name="path">The path to the new disk.</param>
     /// <param name="type">The type of disk to create.</param>
     /// <param name="parentPath">The path to the parent disk.</param>
+    /// <returns>The new disk.</returns>
+    public static Disk InitializeDifferencing(string path, DiskCreateType type, string parentPath)
+    {
+        return new Disk(DiskImageFile.InitializeDifferencing(path, type, parentPath), Ownership.Dispose);
+    }
+
+    /// <summary>
+    /// Creates a new virtual disk as a thin clone of an existing disk.
+    /// </summary>
+    /// <param name="path">The path to the new disk.</param>
+    /// <param name="type">The type of disk to create.</param>
+    /// <param name="parentPath">The path to the parent disk.</param>
+    /// <param name="useAsync"></param>
     /// <returns>The new disk.</returns>
     public static Disk InitializeDifferencing(string path, DiskCreateType type, string parentPath, bool useAsync)
     {
@@ -389,8 +482,9 @@ public sealed class Disk : VirtualDisk
     /// Create a new differencing disk.
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
+    /// <param name="useAsync"></param>
     /// <returns>The newly created disk.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {
         var firstLayer = _files[0].VirtualDiskLayer;
         return InitializeDifferencing(path, DiffDiskCreateType(firstLayer),

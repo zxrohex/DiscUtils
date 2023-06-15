@@ -30,7 +30,7 @@ internal sealed class LocalFileLocator : FileLocator
     private readonly string _dir;
     private readonly bool _useAsync;
 
-    public LocalFileLocator(string dir, bool useAsync)
+    public LocalFileLocator(string dir, bool useAsync = false)
     {
         _dir = dir;
         _useAsync = useAsync;

@@ -59,8 +59,28 @@ public sealed class Disk : VirtualDisk
     /// Initializes a new instance of the Disk class.
     /// </summary>
     /// <param name="path">The path to the disk image.</param>
-    public Disk(string path, bool useAsync = false)
-        :this(path, FileAccess.ReadWrite, useAsync) {}
+    public Disk(string path)
+        : this(path, FileAccess.ReadWrite) { }
+
+    /// <summary>
+    /// Initializes a new instance of the Disk class.
+    /// </summary>
+    /// <param name="path">The path to the disk image.</param>
+    /// <param name="useAsync"></param>
+    public Disk(string path, bool useAsync)
+        : this(path, FileAccess.ReadWrite, useAsync) { }
+
+    /// <summary>
+    /// Initializes a new instance of the Disk class.
+    /// </summary>
+    /// <param name="path">The path to the disk image.</param>
+    /// <param name="access">The access requested to the disk.</param>
+    public Disk(string path, FileAccess access)
+    {
+        var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
+        var locator = new LocalFileLocator(string.Empty, useAsync: false);
+        _file = new DiskImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose, default);
+    }
 
     /// <summary>
     /// Initializes a new instance of the Disk class.
@@ -68,7 +88,7 @@ public sealed class Disk : VirtualDisk
     /// <param name="path">The path to the disk image.</param>
     /// <param name="access">The access requested to the disk.</param>
     /// <param name="useAsync"></param>
-    public Disk(string path, FileAccess access, bool useAsync = false)
+    public Disk(string path, FileAccess access, bool useAsync)
     {
         var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
         var locator = new LocalFileLocator(string.Empty, useAsync);
@@ -193,7 +213,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
     /// <returns>The newly created disk.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {
         throw new NotSupportedException("Differencing disks not supported for raw disks");
     }

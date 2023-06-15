@@ -56,7 +56,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// </summary>
     /// <param name="path">The path to the disk.</param>
     /// <param name="access">The desired access to the disk.</param>
-    public DiskImageFile(string path, FileAccess access, bool useAsync)
+    public DiskImageFile(string path, FileAccess access, bool useAsync = false)
     {
         _access = access;
 
@@ -306,7 +306,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <param name="path">The name of the VMDK to create.</param>
     /// <param name="parameters">The desired parameters for the new disk.</param>
     /// <returns>The newly created disk image.</returns>
-    public static DiskImageFile Initialize(string path, DiskParameters parameters, bool useAsync)
+    public static DiskImageFile Initialize(string path, DiskParameters parameters, bool useAsync = false)
     {
         FileLocator locator = new LocalFileLocator(Path.GetDirectoryName(path), useAsync);
         return Initialize(locator, Path.GetFileName(path), parameters);
@@ -332,7 +332,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <param name="capacity">The desired capacity of the new disk.</param>
     /// <param name="type">The type of virtual disk to create.</param>
     /// <returns>The newly created disk image.</returns>
-    public static DiskImageFile Initialize(string path, long capacity, DiskCreateType type, bool useAsync)
+    public static DiskImageFile Initialize(string path, long capacity, DiskCreateType type, bool useAsync = false)
     {
         var diskParams = new DiskParameters
         {
@@ -351,7 +351,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <param name="geometry">The desired geometry of the new disk, or <c>null</c> for default.</param>
     /// <param name="createType">The type of virtual disk to create.</param>
     /// <returns>The newly created disk image.</returns>
-    public static DiskImageFile Initialize(string path, long capacity, Geometry geometry, DiskCreateType createType, bool useAsync)
+    public static DiskImageFile Initialize(string path, long capacity, Geometry geometry, DiskCreateType createType, bool useAsync = false)
     {
         var diskParams = new DiskParameters
         {
@@ -373,7 +373,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <param name="adapterType">The type of disk adapter used with the disk.</param>
     /// <returns>The newly created disk image.</returns>
     public static DiskImageFile Initialize(string path, long capacity, Geometry geometry, DiskCreateType createType,
-                                           DiskAdapterType adapterType, bool useAsync)
+                                           DiskAdapterType adapterType, bool useAsync = false)
     {
         var diskParams = new DiskParameters
         {
@@ -435,7 +435,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <param name="type">The type of the new disk.</param>
     /// <param name="parent">The disk to clone.</param>
     /// <returns>The new virtual disk.</returns>
-    public static DiskImageFile InitializeDifferencing(string path, DiskCreateType type, string parent, bool useAsync)
+    public static DiskImageFile InitializeDifferencing(string path, DiskCreateType type, string parent, bool useAsync = false)
     {
         if (type != DiskCreateType.MonolithicSparse && type != DiskCreateType.TwoGbMaxExtentSparse &&
             type != DiskCreateType.VmfsSparse)

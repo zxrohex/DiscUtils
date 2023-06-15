@@ -48,7 +48,7 @@ internal sealed class DiscFactory : VirtualDiskFactory
         throw new NotSupportedException();
     }
 
-    public override VirtualDisk OpenDisk(string path, FileAccess access, bool useAsync)
+    public override VirtualDisk OpenDisk(string path, FileAccess access, bool useAsync = false)
     {
         return new Disc(path, access, useAsync);
     }

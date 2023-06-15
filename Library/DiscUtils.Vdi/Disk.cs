@@ -41,7 +41,18 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path to the disk.</param>
     /// <param name="access">The access requested to the disk.</param>
-    public Disk(string path, FileAccess access, bool useAsync = false)
+    public Disk(string path, FileAccess access)
+        : this(path, access, useAsync: false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Disk class.
+    /// </summary>
+    /// <param name="path">The path to the disk.</param>
+    /// <param name="access">The access requested to the disk.</param>
+    /// <param name="useAsync"></param>
+    public Disk(string path, FileAccess access, bool useAsync)
     {
         var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
         var locator = new LocalFileLocator(string.Empty, useAsync);
@@ -180,7 +191,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
     /// <returns>The newly created disk.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {
         throw new NotImplementedException("Differencing disks not implemented for the VDI format");
     }

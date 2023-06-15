@@ -135,7 +135,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
     /// <returns>The newly created disk.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {
         throw new NotSupportedException("Differencing disks not supported by XVA format");
     }

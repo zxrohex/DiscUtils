@@ -100,7 +100,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// </summary>
     /// <param name="path">The file path to open.</param>
     /// <param name="access">Controls how the file can be accessed.</param>
-    public DiskImageFile(string path, FileAccess access, bool useAsync)
+    public DiskImageFile(string path, FileAccess access, bool useAsync = false)
         : this(new LocalFileLocator(Path.GetDirectoryName(path), useAsync), Path.GetFileName(path), access) {}
 
     internal DiskImageFile(FileLocator locator, string path, Stream stream, Ownership ownsStream)
