@@ -310,7 +310,7 @@ public abstract class VirtualDisk :
     /// <param name="capacity">The capacity of the new disk.</param>
     /// <param name="geometry">The geometry of the new disk (or null).</param>
     /// <param name="parameters">Untyped parameters controlling the creation process (TBD).</param>
-    /// <param name="useAsync"></param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The newly created disk.</returns>
     public static VirtualDisk CreateDisk(string type, string variant, string path, long capacity, Geometry geometry, Dictionary<string, string> parameters, bool useAsync)
     {
@@ -343,7 +343,7 @@ public abstract class VirtualDisk :
     /// <param name="user">The user identity to use when accessing the <c>path</c> (or null).</param>
     /// <param name="password">The password to use when accessing the <c>path</c> (or null).</param>
     /// <param name="parameters">Untyped parameters controlling the creation process (TBD).</param>
-    /// <param name="useAsync"></param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The newly created disk.</returns>
     public static VirtualDisk CreateDisk(string type, string variant, string path, long capacity, Geometry geometry, string user, string password, Dictionary<string, string> parameters, bool useAsync)
     {
@@ -387,7 +387,7 @@ public abstract class VirtualDisk :
     /// <param name="diskParameters">Parameters controlling the capacity, geometry, etc of the new disk.</param>
     /// <param name="user">The user identity to use when accessing the <c>path</c> (or null).</param>
     /// <param name="password">The password to use when accessing the <c>path</c> (or null).</param>
-    /// <param name="useAsync"></param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The newly created disk.</returns>
     public static VirtualDisk CreateDisk(string type, string variant, string path, VirtualDiskParameters diskParameters, string user, string password, bool useAsync)
     {
@@ -449,7 +449,7 @@ public abstract class VirtualDisk :
     /// </summary>
     /// <param name="path">The path of the virtual disk to open, can be a URI.</param>
     /// <param name="access">The desired access to the disk.</param>
-    /// <param name="useAsync"></param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The Virtual Disk, or <c>null</c> if an unknown disk format.</returns>
     public static VirtualDisk OpenDisk(string path, FileAccess access, bool useAsync)
     {
@@ -476,7 +476,7 @@ public abstract class VirtualDisk :
     /// <param name="access">The desired access to the disk.</param>
     /// <param name="user">The user name to use for authentication (if necessary).</param>
     /// <param name="password">The password to use for authentication (if necessary).</param>
-    /// <param name="useAsync"></param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The Virtual Disk, or <c>null</c> if an unknown disk format.</returns>
     public static VirtualDisk OpenDisk(string path, FileAccess access, string user, string password, bool useAsync)
     {
@@ -507,7 +507,7 @@ public abstract class VirtualDisk :
     /// <param name="access">The desired access to the disk.</param>
     /// <param name="user">The user name to use for authentication (if necessary).</param>
     /// <param name="password">The password to use for authentication (if necessary).</param>
-    /// <param name="useAsync"></param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The Virtual Disk, or <c>null</c> if an unknown disk format.</returns>
     /// <remarks>
     /// The detected disk type can be forced by specifying a known disk type: 
@@ -704,7 +704,7 @@ public abstract class VirtualDisk :
     /// Create a new differencing disk.
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
-    /// <param name="useAsync"></param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The newly created disk.</returns>
     public abstract VirtualDisk CreateDifferencingDisk(string path, bool useAsync);
 

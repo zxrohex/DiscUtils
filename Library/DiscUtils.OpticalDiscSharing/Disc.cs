@@ -125,6 +125,7 @@ internal sealed class Disc : VirtualDisk
     /// Not supported for Optical Discs.
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>Not Applicable.</returns>
     public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {

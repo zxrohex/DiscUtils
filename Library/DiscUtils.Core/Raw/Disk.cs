@@ -66,7 +66,7 @@ public sealed class Disk : VirtualDisk
     /// Initializes a new instance of the Disk class.
     /// </summary>
     /// <param name="path">The path to the disk image.</param>
-    /// <param name="useAsync"></param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     public Disk(string path, bool useAsync)
         : this(path, FileAccess.ReadWrite, useAsync) { }
 
@@ -87,7 +87,7 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path to the disk image.</param>
     /// <param name="access">The access requested to the disk.</param>
-    /// <param name="useAsync"></param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     public Disk(string path, FileAccess access, bool useAsync)
     {
         var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
@@ -212,6 +212,7 @@ public sealed class Disk : VirtualDisk
     /// Create a new differencing disk.
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The newly created disk.</returns>
     public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {

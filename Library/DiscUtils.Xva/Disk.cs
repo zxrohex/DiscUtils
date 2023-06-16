@@ -134,6 +134,7 @@ public sealed class Disk : VirtualDisk
     /// Create a new differencing disk.
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The newly created disk.</returns>
     public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {
