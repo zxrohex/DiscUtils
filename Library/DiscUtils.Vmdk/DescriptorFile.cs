@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -373,55 +374,54 @@ internal class DescriptorFile
 
         _diskDataBase.Add(new DescriptorFileEntry(key, value, DescriptorFileEntryType.Quoted));
     }
-
     private void Load(Stream source)
     {
-        var descriptor_size = source.Length - source.Position;
-
-        var reader = new StreamReader(source);
-        
-        var lineStr = reader.ReadLine();
-        
-        if (lineStr != null &&
-            !lineStr.Equals("# Disk DescriptorFile", StringComparison.OrdinalIgnoreCase) &&
-            descriptor_size > MaxSize)
+        var buffer = ArrayPool<byte>.Shared.Rent((int)MaxSize);
+        var dataRead = source.Read(buffer, 0, (int)MaxSize);
+        if (dataRead == 0)
         {
-            throw new IOException($"Too large VMDK descriptor file, {descriptor_size} bytes. Largest allowed size is {MaxSize} bytes. Please verify that you open a descriptor VMDK file and not an actual image file.");
+            throw new IOException("Unable to read data from stream to read DescriptorFile. This is likely not a VMDK file");
         }
 
-        while (lineStr != null)
+        bool isDescriptorFile = false;
+        foreach (var descriptorLine in Encoding.UTF8.GetString(buffer).Split('\r', '\n', '\0'))
         {
-            var line = lineStr.AsMemory().Trim('\0');
 
-            var commentPos = line.Span.IndexOf('#');
-            if (commentPos >= 0)
+            var trimmedLine = descriptorLine.Trim().TrimEnd('\0');
+            if (trimmedLine.Length == 0)
             {
-                line = line.Slice(0, commentPos);
+                continue;
             }
 
-            if (line.Length > 0)
+            if (trimmedLine.StartsWith("# Disk DescriptorFile", StringComparison.OrdinalIgnoreCase))
             {
-                if (line.Span.StartsWith("RW".AsSpan(), StringComparison.Ordinal)
-                    || line.Span.StartsWith("RDONLY".AsSpan(), StringComparison.Ordinal)
-                    || line.Span.StartsWith("NOACCESS".AsSpan(), StringComparison.Ordinal))
+                isDescriptorFile = true;
+            }
+            else if (trimmedLine.StartsWith("RW", StringComparison.OrdinalIgnoreCase)
+                || trimmedLine.StartsWith("RDONLY", StringComparison.OrdinalIgnoreCase)
+                || trimmedLine.StartsWith("NOACCESS", StringComparison.OrdinalIgnoreCase))
+            {
+                Extents.Add(ExtentDescriptor.Parse(trimmedLine.AsMemory()));
+            }
+            else
+            {
+                var entry = DescriptorFileEntry.Parse(trimmedLine.ToString());
+                if (entry.Key.StartsWith("ddb.", StringComparison.Ordinal))
                 {
-                    Extents.Add(ExtentDescriptor.Parse(line));
+                    _diskDataBase.Add(entry);
                 }
                 else
                 {
-                    var entry = DescriptorFileEntry.Parse(line.ToString());
-                    if (entry.Key.StartsWith("ddb.", StringComparison.Ordinal))
-                    {
-                        _diskDataBase.Add(entry);
-                    }
-                    else
-                    {
-                        _header.Add(entry);
-                    }
+                    _header.Add(entry);
                 }
             }
-
-            lineStr = reader.ReadLine();
         }
+        if (!isDescriptorFile)
+        {
+            throw new IOException($"VMDK Descriptor not found in first {MaxSize} bytes of file. Please verify that you open a descriptor VMDK file and not an actual image file");
+        }
+
+        ArrayPool<byte>.Shared.Return(buffer);
     }
+
 }
