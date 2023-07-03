@@ -794,6 +794,11 @@ public sealed class RegistryKey
         {
             var listCell = _hive.GetCell<ListCell>(_cell.SubKeysIndex);
 
+            if (listCell is null)
+            {
+                throw new RegistryCorruptException($"Missing cell for subkeys for key '{Name}'");
+            }
+            
             if (listCell.FindKey(name, out var cellIndex) == 0)
             {
                 return cellIndex;
