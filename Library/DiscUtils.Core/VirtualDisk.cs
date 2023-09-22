@@ -411,7 +411,10 @@ public abstract class VirtualDisk :
             }
             else
             {
-                var factory = VirtualDiskManager.TypeMap[type];
+                if (!VirtualDiskManager.TypeMap.TryGetValue(type, out var factory))
+                {
+                    throw new NotSupportedException($"Virtual disk type '{type}' not supported");
+                }
 
                 result = factory.CreateDisk(transport.GetFileLocator(useAsync), variant.ToLowerInvariant(), Utilities.GetFileFromPath(path), diskParameters);
             }
