@@ -158,8 +158,6 @@ public sealed class SparseMemoryBuffer : Buffer
     /// </summary>
     /// <param name="pos">The offset within the sparse buffer to start reading.</param>
     /// <param name="buffer">The destination byte array.</param>
-    /// <param name="offset">The start offset within the destination buffer.</param>
-    /// <param name="count">The number of bytes to read.</param>
     /// <returns>The actual number of bytes read.</returns>
     public override int Read(long pos, Span<byte> buffer)
     {

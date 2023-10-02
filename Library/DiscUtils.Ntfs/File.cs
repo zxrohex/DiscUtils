@@ -678,6 +678,7 @@ internal class File
     ///  Gets an attribute instance by unique identifier.
     /// </summary>
     /// <param name="identifier">Attribute id.</param>
+    /// <param name="type"></param>
     /// <returns>The attribute of <c>null</c>.</returns>
     internal NtfsAttribute GetAttribute(ushort identifier, AttributeType type)
     {

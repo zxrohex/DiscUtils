@@ -67,8 +67,8 @@ public readonly struct ChsAddress : IEquatable<ChsAddress>
     /// <summary>
     /// Determines if this object is equivalent to another.
     /// </summary>
-    /// <param name="obj">The object to test against.</param>
-    /// <returns><c>true</c> if the <paramref name="obj"/> is equivalent, else <c>false</c>.</returns>
+    /// <param name="other">The object to test against.</param>
+    /// <returns><c>true</c> if the <paramref name="other"/> is equivalent, else <c>false</c>.</returns>
     public bool Equals(ChsAddress other)
         => Cylinder == other.Cylinder && Head == other.Head && Sector == other.Sector;
 

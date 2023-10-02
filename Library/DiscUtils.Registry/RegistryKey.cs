@@ -137,6 +137,12 @@ public sealed class RegistryKey
             if (_cell.NumSubKeys != 0)
             {
                 var list = _hive.GetCell<ListCell>(_cell.SubKeysIndex);
+                
+                if (list is null)
+                {
+                    yield break;
+                }
+
                 foreach (var key in list.EnumerateKeys())
                 {
                     if (key is not null)

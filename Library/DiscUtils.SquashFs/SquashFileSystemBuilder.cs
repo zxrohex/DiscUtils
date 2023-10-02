@@ -443,6 +443,7 @@ public sealed class SquashFileSystemBuilder : StreamBuilder, IFileSystemBuilder
     /// Writes the file system to an existing stream.
     /// </summary>
     /// <param name="output">The stream to write to.</param>
+    /// <param name="cancellationToken"></param>
     /// <remarks>The <c>output</c> stream must support seeking and writing.</remarks>
     public async override Task BuildAsync(Stream output, CancellationToken cancellationToken)
     {

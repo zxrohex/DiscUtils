@@ -20,7 +20,8 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Buffers;
+using LTRData.Extensions.Split;
 using System;
 using System.IO;
 using System.Linq;
@@ -388,6 +389,7 @@ public static class Utilities
     /// Converts a 'standard' wildcard file/path specification into a regular expression.
     /// </summary>
     /// <param name="pattern">The wildcard pattern to convert.</param>
+    /// <param name="ignoreCase"></param>
     /// <returns>The resultant regular expression.</returns>
     /// <remarks>
     /// The wildcard * (star) matches zero or more characters (including '.'), and ?

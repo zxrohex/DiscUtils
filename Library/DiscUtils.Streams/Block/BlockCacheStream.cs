@@ -464,6 +464,7 @@ public sealed class BlockCacheStream : SparseStream
     /// Reads data from the stream.
     /// </summary>
     /// <param name="buffer">The buffer to fill.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of bytes read.</returns>
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -704,8 +705,7 @@ public sealed class BlockCacheStream : SparseStream
     /// Writes data to the stream at the current location.
     /// </summary>
     /// <param name="buffer">The data to write.</param>
-    /// <param name="offset">The first byte to write from buffer.</param>
-    /// <param name="count">The number of bytes to write.</param>
+    /// <param name="cancellationToken"></param>
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         CheckDisposed();
@@ -758,8 +758,6 @@ public sealed class BlockCacheStream : SparseStream
     /// Writes data to the stream at the current location.
     /// </summary>
     /// <param name="buffer">The data to write.</param>
-    /// <param name="offset">The first byte to write from buffer.</param>
-    /// <param name="count">The number of bytes to write.</param>
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         CheckDisposed();

@@ -29,6 +29,7 @@ using DiscUtils.Streams;
 using System.Linq;
 using DiscUtils.Streams.Compatibility;
 using System.Buffers;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.Ntfs;
 

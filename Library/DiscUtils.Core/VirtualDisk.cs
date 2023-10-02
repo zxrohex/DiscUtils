@@ -674,6 +674,7 @@ public abstract class VirtualDisk :
     /// Overwrites the first sector of the disk, known as the Master Boot Record.
     /// </summary>
     /// <param name="data">The master boot record, must be 512 bytes in length.</param>
+    /// <param name="cancellationToken"></param>
     public virtual async ValueTask SetMasterBootRecordAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
     {
         if (data.Length != Sizes.Sector)

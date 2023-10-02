@@ -13,7 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DiscUtils.Streams\DiscUtils.Streams.csproj" />
   </ItemGroup>
-  
+
   <ItemGroup Condition="'$(TargetFramework.CompareTo(`net461`))' &gt;= 0">
     <PackageReference Include="System.Text.Encoding.CodePages" Version="*" />
     <PackageReference Include="Microsoft.Bcl.HashCode" Version="*" />

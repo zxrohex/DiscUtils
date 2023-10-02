@@ -60,30 +60,6 @@ public static class StreamUtilities
         }
     }
 
-    public static IAsyncResult AsAsyncResult<T>(this Task<T> task, AsyncCallback callback, object state)
-    {
-        var returntask = task.ContinueWith((t, _) => t.Result, state, TaskScheduler.Default);
-
-        if (callback is not null)
-        {
-            returntask.ContinueWith(callback.Invoke, TaskScheduler.Default);
-        }
-
-        return returntask;
-    }
-
-    public static IAsyncResult AsAsyncResult(this Task task, AsyncCallback callback, object state)
-    {
-        var returntask = task.ContinueWith((t, _) => { }, state, TaskScheduler.Default);
-
-        if (callback is not null)
-        {
-            returntask.ContinueWith(callback.Invoke, TaskScheduler.Default);
-        }
-
-        return returntask;
-    }
-
     #region Stream Manipulation
 
 #if !NET7_0_OR_GREATER
@@ -118,8 +94,7 @@ public static class StreamUtilities
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <param name="buffer">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
+    /// <param name="cancellationToken"></param>
     public static async ValueTask ReadExactlyAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         var originalCount = buffer.Length;
@@ -181,6 +156,7 @@ public static class StreamUtilities
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <param name="count">The number of bytes to read.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The data read from the stream.</returns>
     public static async ValueTask<byte[]> ReadExactlyAsync(this Stream stream, int count, CancellationToken cancellationToken)
     {
@@ -224,8 +200,7 @@ public static class StreamUtilities
     /// <param name="buffer">The stream to read.</param>
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="data">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
+    /// <param name="cancellationToken"></param>
     public static async ValueTask ReadExactlyAsync(this IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
     {
         var originalCount = data.Length;
@@ -250,8 +225,6 @@ public static class StreamUtilities
     /// <param name="buffer">The stream to read.</param>
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="data">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
     public static void ReadExactly(this IBuffer buffer, long pos, Span<byte> data)
     {
         var originalCount = data.Length;
@@ -292,6 +265,7 @@ public static class StreamUtilities
     /// <param name="buffer">The buffer to read.</param>
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="count">The number of bytes to read.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The data read from the stream.</returns>
     public static async ValueTask<byte[]> ReadExactlyAsync(this IBuffer buffer, long pos, int count, CancellationToken cancellationToken)
     {
@@ -341,6 +315,7 @@ public static class StreamUtilities
     /// </summary>
     /// <param name="stream">The stream to read.</param>
     /// <param name="buffer">The buffer to populate.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of bytes actually read.</returns>
 #if NET7_0_OR_GREATER
     public static ValueTask<int> ReadMaximumAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
@@ -435,8 +410,7 @@ public static class StreamUtilities
     /// <param name="buffer">The stream to read.</param>
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="data">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of bytes actually read.</returns>
     public static async ValueTask<int> ReadMaximumAsync(this IBuffer buffer, long pos, Memory<byte> data, CancellationToken cancellationToken)
     {
@@ -465,8 +439,6 @@ public static class StreamUtilities
     /// <param name="buffer">The stream to read.</param>
     /// <param name="pos">The position in buffer to read from.</param>
     /// <param name="data">The buffer to populate.</param>
-    /// <param name="offset">Offset in the buffer to start.</param>
-    /// <param name="count">The number of bytes to read.</param>
     /// <returns>The number of bytes actually read.</returns>
     public static int ReadMaximum(this IBuffer buffer, long pos, Span<byte> data)
     {
@@ -503,6 +475,7 @@ public static class StreamUtilities
     /// Read bytes until buffer filled or throw EndOfStreamException.
     /// </summary>
     /// <param name="buffer">The buffer to read.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The data read from the stream.</returns>
     public static ValueTask<byte[]> ReadAllAsync(this IBuffer buffer, CancellationToken cancellationToken)
     {
@@ -523,6 +496,7 @@ public static class StreamUtilities
     /// Reads a disk sector (512 bytes).
     /// </summary>
     /// <param name="stream">The stream to read.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The sector data as a byte array.</returns>
     public static ValueTask<byte[]> ReadSectorAsync(this Stream stream, CancellationToken cancellationToken)
     {
@@ -568,6 +542,7 @@ public static class StreamUtilities
     /// </summary>
     /// <typeparam name="T">The type of the structure.</typeparam>
     /// <param name="stream">The stream to read.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The structure.</returns>
     public static async ValueTask<T> ReadStructAsync<T>(this Stream stream, CancellationToken cancellationToken)
         where T : IByteArraySerializable, new()
@@ -593,6 +568,7 @@ public static class StreamUtilities
     /// <typeparam name="T">The type of the structure.</typeparam>
     /// <param name="stream">The stream to read.</param>
     /// <param name="length">Number of bytes to read</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The structure.</returns>
     public static async ValueTask<T> ReadStructAsync<T>(this Stream stream, int length, CancellationToken cancellationToken)
         where T : IByteArraySerializable, new()

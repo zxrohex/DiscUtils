@@ -27,7 +27,8 @@ using System.Linq;
 using System.Text;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
-using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Buffers;
+using LTRData.Extensions.Split;
 
 namespace DiscUtils.Iso9660;
 

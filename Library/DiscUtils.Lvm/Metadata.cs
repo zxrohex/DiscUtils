@@ -23,6 +23,7 @@
 namespace DiscUtils.Lvm;
 
 using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Buffers;
 using System;
 using System.Collections.Generic;
 using System.IO;

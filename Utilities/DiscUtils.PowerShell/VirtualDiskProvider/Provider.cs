@@ -30,6 +30,7 @@ using System.Management.Automation.Provider;
 using System.Text;
 using DiscUtils.Complete;
 using DiscUtils.Ntfs;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.PowerShell.VirtualDiskProvider;
 

@@ -74,6 +74,7 @@ public abstract class StreamBuilder
     /// Writes the stream contents to an existing stream.
     /// </summary>
     /// <param name="output">The stream to write to.</param>
+    /// <param name="cancellationToken"></param>
     public async virtual Task BuildAsync(Stream output, CancellationToken cancellationToken)
     {
         using var src = await BuildAsync(cancellationToken).ConfigureAwait(false);
@@ -100,6 +101,7 @@ public abstract class StreamBuilder
     /// Writes the stream contents to a file.
     /// </summary>
     /// <param name="outputFile">The file to write to.</param>
+    /// <param name="cancellationToken"></param>
     public async Task BuildAsync(string outputFile, CancellationToken cancellationToken)
     {
         using var destStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.Delete, bufferSize: 2 << 20, useAsync: true);

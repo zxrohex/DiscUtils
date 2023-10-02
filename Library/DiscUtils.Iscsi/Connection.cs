@@ -208,11 +208,8 @@ internal sealed class Connection : IDisposable
     /// </summary>
     /// <param name="cmd">The command to send.</param>
     /// <param name="outBuffer">The data to send with the command.</param>
-    /// <param name="outBufferOffset">The offset of the first byte to send.</param>
-    /// <param name="outBufferCount">The number of bytes to send, if any.</param>
     /// <param name="inBuffer">The buffer to fill with returned data.</param>
-    /// <param name="inBufferOffset">The first byte to fill with returned data.</param>
-    /// <param name="inBufferMax">The maximum amount of data to receive.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of bytes received.</returns>
     public async ValueTask<int> SendAsync(ScsiCommand cmd, ReadOnlyMemory<byte> outBuffer, Memory<byte> inBuffer, CancellationToken cancellationToken)
     {

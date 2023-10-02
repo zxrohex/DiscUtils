@@ -27,6 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Async;
 
 namespace DiscUtils.Compression;
 
@@ -194,6 +195,7 @@ public class ZlibStream : CompatibilityStream
     /// Reads data from the stream.
     /// </summary>
     /// <param name="buffer">The buffer to populate.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of bytes read.</returns>
     public async override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
@@ -267,6 +269,7 @@ public class ZlibStream : CompatibilityStream
     /// Writes data to the stream.
     /// </summary>
     /// <param name="buffer">Buffer containing the data to write.</param>
+    /// <param name="cancellationToken"></param>
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         _adler32.Process(buffer.Span);
@@ -279,6 +282,7 @@ public class ZlibStream : CompatibilityStream
     /// <param name="buffer">Buffer containing the data to write.</param>
     /// <param name="offset">Offset of the first byte to write.</param>
     /// <param name="count">Number of bytes to write.</param>
+    /// <param name="cancellationToken"></param>
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         CheckParams(buffer, offset, count);

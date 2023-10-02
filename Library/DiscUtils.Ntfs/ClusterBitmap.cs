@@ -153,6 +153,7 @@ internal class ClusterBitmap : IDisposable
     /// <param name="proposedStart">The proposed start cluster (or -1).</param>
     /// <param name="isMft"><c>true</c> if this attribute is the $MFT\$DATA attribute.</param>
     /// <param name="total">The total number of clusters in the file, including this allocation.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The list of cluster allocations.</returns>
     public async ValueTask<List<Range<long, long>>> AllocateClustersAsync(long count, long proposedStart, bool isMft, long total, CancellationToken cancellationToken)
     {
@@ -405,6 +406,7 @@ internal class ClusterBitmap : IDisposable
     /// <param name="isMft">Indicates if the clusters are for the MFT.</param>
     /// <param name="contiguous">Indicates if contiguous clusters are required.</param>
     /// <param name="headroom">Indicates how many clusters to skip before next allocation, to prevent fragmentation.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of clusters found in the range.</returns>
     private async ValueTask<long> FindClustersAsync(long count, List<Range<long, long>> result, long start, long end, bool isMft,
                               bool contiguous, long headroom, CancellationToken cancellationToken)

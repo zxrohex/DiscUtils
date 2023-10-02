@@ -185,6 +185,7 @@ public sealed class Geometry : IEquatable<Geometry>
     /// Gets the 'LBA Assisted' BIOS geometry for a disk, given it's capacity.
     /// </summary>
     /// <param name="capacity">The capacity of the disk.</param>
+    /// <param name="bytesPerSector"></param>
     /// <returns>The geometry a BIOS using the 'LBA Assisted' method for calculating disk geometry will indicate for the disk.</returns>
     public static Geometry LbaAssistedBiosGeometry(long capacity, int bytesPerSector)
     {
@@ -442,7 +443,7 @@ public sealed class Geometry : IEquatable<Geometry>
     /// Determines if this object is equivalent to another.
     /// </summary>
     /// <param name="other">The object to test against.</param>
-    /// <returns><c>true</c> if the <paramref name="obj"/> is equivalent, else <c>false</c>.</returns>
+    /// <returns><c>true</c> if the <paramref name="other"/> is equivalent, else <c>false</c>.</returns>
     public bool Equals(Geometry other)
     {
         return !ReferenceEquals(other, null) &&
@@ -458,7 +459,7 @@ public sealed class Geometry : IEquatable<Geometry>
     /// <summary>
     /// Determines if this object is equivalent to another.
     /// </summary>
-    /// <param name="other">The object to test against.</param>
+    /// <param name="obj">The object to test against.</param>
     /// <returns><c>true</c> if the <paramref name="obj"/> is equivalent, else <c>false</c>.</returns>
     public override bool Equals(object obj) => obj is Geometry other && Equals(other);
 

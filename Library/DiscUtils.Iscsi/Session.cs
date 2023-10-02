@@ -225,7 +225,6 @@ public sealed class Session : IDisposable
     /// <param name="startBlock">The first block to read.</param>
     /// <param name="blockCount">The number of blocks to read.</param>
     /// <param name="buffer">The buffer to fill.</param>
-    /// <param name="offset">The offset of the first byte to fill.</param>
     /// <returns>The number of bytes read.</returns>
     public int Read(long lun, long startBlock, short blockCount, Span<byte> buffer)
     {
@@ -240,7 +239,7 @@ public sealed class Session : IDisposable
     /// <param name="startBlock">The first block to read.</param>
     /// <param name="blockCount">The number of blocks to read.</param>
     /// <param name="buffer">The buffer to fill.</param>
-    /// <param name="offset">The offset of the first byte to fill.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of bytes read.</returns>
     public ValueTask<int> ReadAsync(long lun, long startBlock, short blockCount, Memory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -270,6 +269,7 @@ public sealed class Session : IDisposable
     /// <param name="blockCount">The number of blocks to write.</param>
     /// <param name="blockSize">The size of each block (must match the actual LUN geometry).</param>
     /// <param name="buffer">The data to write.</param>
+    /// <param name="cancellationToken"></param>
     public ValueTask WriteAsync(long lun, long startBlock, short blockCount, int blockSize, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         var cmd = new ScsiWriteCommand((ulong)lun, (uint)startBlock, (ushort)blockCount);
@@ -282,11 +282,7 @@ public sealed class Session : IDisposable
     /// <param name="lun">The target LUN for the command.</param>
     /// <param name="command">The command (a SCSI Command Descriptor Block, aka CDB).</param>
     /// <param name="outBuffer">Buffer of data to send with the command (or <c>null</c>).</param>
-    /// <param name="outBufferOffset">Offset of first byte of data to send with the command.</param>
-    /// <param name="outBufferLength">Amount of data to send with the command.</param>
     /// <param name="inBuffer">Buffer to receive data from the command (or <c>null</c>).</param>
-    /// <param name="inBufferOffset">Offset of the first byte position to fill with received data.</param>
-    /// <param name="inBufferLength">The expected amount of data to receive.</param>
     /// <returns>The number of bytes of data received.</returns>
     /// <remarks>
     /// <para>This method permits the caller to send raw SCSI commands to a LUN.</para>
@@ -446,6 +442,7 @@ public sealed class Session : IDisposable
     /// <param name="cmd">The command to send.</param>
     /// <param name="outBuffer">The data to send with the command.</param>
     /// <param name="inBuffer">The buffer to fill with returned data.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of bytes received.</returns>
     private ValueTask<int> SendAsync(ScsiCommand cmd, ReadOnlyMemory<byte> outBuffer, Memory<byte> inBuffer, CancellationToken cancellationToken)
     {

@@ -239,8 +239,6 @@ public class ThreadSafeStream : SparseStream
     /// Reads data from the stream.
     /// </summary>
     /// <param name="buffer">The buffer to fill.</param>
-    /// <param name="offset">The first byte in buffer to fill.</param>
-    /// <param name="count">The requested number of bytes to read.</param>
     /// <returns>The actual number of bytes read.</returns>
     public override int Read(Span<byte> buffer)
     {
@@ -316,8 +314,6 @@ public class ThreadSafeStream : SparseStream
     /// Writes data to the stream (not currently supported).
     /// </summary>
     /// <param name="buffer">The data to write.</param>
-    /// <param name="offset">The first byte to write.</param>
-    /// <param name="count">The number of bytes to write.</param>
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         lock (_common)

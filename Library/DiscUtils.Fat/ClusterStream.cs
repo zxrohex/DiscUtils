@@ -417,6 +417,7 @@ internal class ClusterStream : CompatibilityStream
     /// <param name="cluster">The cluster to write to.</param>
     /// <param name="pos">The file position of the write (within the cluster).</param>
     /// <param name="buffer">The buffer with the new data.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of bytes written - either count, or the number that fit up to
     /// the cluster boundary.</returns>
     private async ValueTask<int> WriteToClusterAsync(uint cluster, int pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
