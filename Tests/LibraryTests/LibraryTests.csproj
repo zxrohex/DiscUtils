@@ -5,7 +5,7 @@
     <DebugType>portable</DebugType>
     <AssemblyName>LibraryTests</AssemblyName>
     <PackageId>LibraryTests</PackageId>
-    <SignAssembly>True</SignAssembly>
+    <SignAssembly>false</SignAssembly>
     <LangVersion>Latest</LangVersion>
     <AssemblyOriginatorKeyFile>../../SigningKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>

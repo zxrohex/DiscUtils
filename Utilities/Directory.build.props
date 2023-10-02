@@ -8,7 +8,7 @@
     <TargetFrameworks>net46;net48;net6.0;net7.0</TargetFrameworks>
     <RollForward>LatestMajor</RollForward>
     <LangVersion>Latest</LangVersion>
-    <SignAssembly>true</SignAssembly>
+    <SignAssembly>false</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)../SigningKey.snk</AssemblyOriginatorKeyFile>
 	<OutputPath>..\$(Configuration)</OutputPath>
