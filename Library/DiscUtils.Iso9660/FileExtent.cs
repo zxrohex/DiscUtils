@@ -80,7 +80,7 @@ internal class FileExtent : BuilderExtent
         return totalRead;
     }
 
-    public override async Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+    public override async ValueTask<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
     {
         var relPos = diskOffset - Start;
         var totalRead = 0;

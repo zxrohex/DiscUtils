@@ -277,7 +277,7 @@ internal sealed class MonolithicSparseExtentBuilder : StreamBuilder
             return _content.Read(block, offset, toRead);
         }
 
-        public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+        public override ValueTask<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
         {
             long start = diskOffset - Start;
             long grainSizeBytes = _grainSize * Sizes.Sector;
@@ -294,10 +294,10 @@ internal sealed class MonolithicSparseExtentBuilder : StreamBuilder
             if (readStart > _content.Length)
             {
                 Array.Clear(block, offset, toRead);
-                return Task.FromResult(toRead);
+                return new(toRead);
             }
             _content.Position = readStart;
-            return _content.ReadAsync(block, offset, toRead, cancellationToken);
+            return _content.ReadAsync(block.AsMemory(offset, toRead), cancellationToken);
         }
 
         public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)

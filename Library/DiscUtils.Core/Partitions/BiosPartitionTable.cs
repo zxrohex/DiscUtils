@@ -29,6 +29,7 @@ using System.Linq;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.Partitions;
 

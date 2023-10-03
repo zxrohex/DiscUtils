@@ -26,6 +26,7 @@ using DiscUtils.Vfs;
 using DiscUtils.Streams;
 using System.Collections;
 using System.Collections.Generic;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.Iso9660;
 

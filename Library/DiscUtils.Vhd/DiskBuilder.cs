@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.Vhd;
 

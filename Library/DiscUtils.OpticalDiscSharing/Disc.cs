@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using DiscUtils.Streams;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.OpticalDiscSharing;
 
