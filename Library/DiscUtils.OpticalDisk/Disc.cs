@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.OpticalDisk;
 
@@ -41,7 +42,9 @@ public sealed class Disc : VirtualDisk
     /// <param name="stream">The stream to read.</param>
     /// <param name="ownsStream">Indicates if the new instance should control the lifetime of the stream.</param>
     public Disc(Stream stream, Ownership ownsStream)
-        : this(stream, ownsStream, OpticalFormat.None) {}
+        : this(stream, ownsStream, OpticalFormat.None)
+    {
+    }
 
     /// <summary>
     /// Initializes a new instance of the Disc class.
@@ -59,7 +62,19 @@ public sealed class Disc : VirtualDisk
     /// </summary>
     /// <param name="path">The path to the disc image.</param>
     public Disc(string path)
-        :this(path, FileAccess.ReadWrite) {}
+        : this(path, FileAccess.ReadWrite)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Disc class.
+    /// </summary>
+    /// <param name="path">The path to the disc image.</param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
+    public Disc(string path, bool useAsync)
+        : this(path, FileAccess.ReadWrite, useAsync)
+    {
+    }
 
     /// <summary>
     /// Initializes a new instance of the Disc class.
@@ -67,9 +82,20 @@ public sealed class Disc : VirtualDisk
     /// <param name="path">The path to the disc image.</param>
     /// <param name="access">The access requested to the disk.</param>
     public Disc(string path, FileAccess access)
+        : this(path, access, useAsync: false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Disc class.
+    /// </summary>
+    /// <param name="path">The path to the disc image.</param>
+    /// <param name="access">The access requested to the disk.</param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
+    public Disc(string path, FileAccess access, bool useAsync)
     {
         var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
-        var locator = new LocalFileLocator(string.Empty);
+        var locator = new LocalFileLocator(string.Empty, useAsync);
         _file = new DiscImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose,
             OpticalFormat.None);
     }
@@ -153,8 +179,9 @@ public sealed class Disc : VirtualDisk
     /// Not supported for Optical Discs.
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>Not Applicable.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {
         throw new NotSupportedException("Differencing disks not supported for optical disks");
     }

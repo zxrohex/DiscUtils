@@ -411,7 +411,7 @@ internal class UdifBuffer : Buffer
 
             case RunType.AdcCompressed:
                 _stream.Position = run.CompOffset;
-                var compressed = StreamUtilities.ReadExactly(_stream, (int)run.CompLength);
+                var compressed = _stream.ReadExactly((int)run.CompLength);
                 if (ADCDecompress(compressed, 0, compressed.Length, _decompBuffer, 0) != toCopy)
                 {
                     throw new InvalidDataException("Run too short when decompressed");
@@ -432,7 +432,7 @@ internal class UdifBuffer : Buffer
 
             case RunType.LzfseCompressed:
                 _stream.Position = run.CompOffset;
-                var lzfseCompressed = StreamUtilities.ReadExactly(_stream, (int)run.CompLength);
+                var lzfseCompressed = _stream.ReadExactly((int)run.CompLength);
                 if (Lzfse.LzfseCompressor.Decompress(lzfseCompressed, _decompBuffer) != toCopy)
                 {
                     throw new InvalidDataException("Run too short when decompressed");

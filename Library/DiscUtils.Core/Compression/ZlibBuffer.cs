@@ -27,6 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Buffers;
 using Buffer = DiscUtils.Streams.Buffer;
 
 namespace DiscUtils.Compression;

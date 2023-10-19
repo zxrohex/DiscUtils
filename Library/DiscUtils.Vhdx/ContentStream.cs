@@ -192,7 +192,7 @@ public sealed class ContentStream : MappedStream
             if (blockStatus == PayloadBlockStatus.FullyPresent)
             {
                 _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
-                var read = StreamUtilities.ReadMaximum(_fileStream, buffer, offset + totalRead,
+                var read = _fileStream.ReadMaximum(buffer, offset + totalRead,
                     Math.Min(blockBytesRemaining, totalToRead - totalRead));
 
                 totalRead += read;
@@ -208,12 +208,12 @@ public sealed class ContentStream : MappedStream
                 if (present)
                 {
                     _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
-                    read = StreamUtilities.ReadMaximum(_fileStream, buffer, offset + totalRead, toRead);
+                    read = _fileStream.ReadMaximum(buffer, offset + totalRead, toRead);
                 }
                 else
                 {
                     _parentStream.Position = _position + totalRead;
-                    read = StreamUtilities.ReadMaximum(_parentStream, buffer, offset + totalRead, toRead);
+                    read = _parentStream.ReadMaximum(buffer, offset + totalRead, toRead);
                 }
 
                 totalRead += read;
@@ -221,8 +221,7 @@ public sealed class ContentStream : MappedStream
             else if (blockStatus == PayloadBlockStatus.NotPresent)
             {
                 _parentStream.Position = _position + totalRead;
-                var read = StreamUtilities.ReadMaximum(_parentStream, buffer, offset + totalRead,
-                    Math.Min(blockBytesRemaining, totalToRead - totalRead));
+                var read = _parentStream.ReadMaximum(buffer, offset + totalRead, Math.Min(blockBytesRemaining, totalToRead - totalRead));
 
                 totalRead += read;
             }
@@ -273,8 +272,7 @@ public sealed class ContentStream : MappedStream
             if (blockStatus == PayloadBlockStatus.FullyPresent)
             {
                 _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
-                var read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer.Slice(totalRead,
-                    Math.Min(blockBytesRemaining, totalToRead - totalRead)), cancellationToken).ConfigureAwait(false);
+                var read = await _fileStream.ReadMaximumAsync(buffer.Slice(totalRead, Math.Min(blockBytesRemaining, totalToRead - totalRead)), cancellationToken).ConfigureAwait(false);
 
                 totalRead += read;
             }
@@ -289,12 +287,12 @@ public sealed class ContentStream : MappedStream
                 if (present)
                 {
                     _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
-                    read = await StreamUtilities.ReadMaximumAsync(_fileStream, buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+                    read = await _fileStream.ReadMaximumAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
                     _parentStream.Position = _position + totalRead;
-                    read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
+                    read = await _parentStream.ReadMaximumAsync(buffer.Slice(totalRead, toRead), cancellationToken).ConfigureAwait(false);
                 }
 
                 totalRead += read;
@@ -302,8 +300,7 @@ public sealed class ContentStream : MappedStream
             else if (blockStatus == PayloadBlockStatus.NotPresent)
             {
                 _parentStream.Position = _position + totalRead;
-                var read = await StreamUtilities.ReadMaximumAsync(_parentStream, buffer.Slice(totalRead,
-                    Math.Min(blockBytesRemaining, totalToRead - totalRead)), cancellationToken).ConfigureAwait(false);
+                var read = await _parentStream.ReadMaximumAsync(buffer.Slice(totalRead, Math.Min(blockBytesRemaining, totalToRead - totalRead)), cancellationToken).ConfigureAwait(false);
 
                 totalRead += read;
             }
@@ -354,8 +351,7 @@ public sealed class ContentStream : MappedStream
             if (blockStatus == PayloadBlockStatus.FullyPresent)
             {
                 _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
-                var read = StreamUtilities.ReadMaximum(_fileStream, buffer.Slice(totalRead,
-                    Math.Min(blockBytesRemaining, totalToRead - totalRead)));
+                var read = _fileStream.ReadMaximum(buffer.Slice(totalRead, Math.Min(blockBytesRemaining, totalToRead - totalRead)));
 
                 totalRead += read;
             }
@@ -370,12 +366,12 @@ public sealed class ContentStream : MappedStream
                 if (present)
                 {
                     _fileStream.Position = chunk.GetBlockPosition(blockIndex) + blockOffset;
-                    read = StreamUtilities.ReadMaximum(_fileStream, buffer.Slice(totalRead, toRead));
+                    read = _fileStream.ReadMaximum(buffer.Slice(totalRead, toRead));
                 }
                 else
                 {
                     _parentStream.Position = _position + totalRead;
-                    read = StreamUtilities.ReadMaximum(_parentStream, buffer.Slice(totalRead, toRead));
+                    read = _parentStream.ReadMaximum(buffer.Slice(totalRead, toRead));
                 }
 
                 totalRead += read;
@@ -383,8 +379,7 @@ public sealed class ContentStream : MappedStream
             else if (blockStatus == PayloadBlockStatus.NotPresent)
             {
                 _parentStream.Position = _position + totalRead;
-                var read = StreamUtilities.ReadMaximum(_parentStream, buffer.Slice(totalRead,
-                    Math.Min(blockBytesRemaining, totalToRead - totalRead)));
+                var read = _parentStream.ReadMaximum(buffer.Slice(totalRead, Math.Min(blockBytesRemaining, totalToRead - totalRead)));
 
                 totalRead += read;
             }

@@ -62,7 +62,7 @@ public sealed class SdiFile : IDisposable
         _header.ReadFrom(page);
 
         _stream.Position = _header.PageAlignment * 512;
-        var toc = StreamUtilities.ReadExactly(_stream, (int)(_header.PageAlignment * 512));
+        var toc = _stream.ReadExactly((int)(_header.PageAlignment * 512));
 
         _sections = new List<SectionRecord>();
         var pos = 0;

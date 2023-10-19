@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.Iso9660;
 
@@ -545,7 +546,7 @@ internal class VfsCDReader : VfsReadOnlyFileSystem<ReaderDirEntry, File, ReaderD
         if (_bootCatalog == null && _bootVolDesc != null)
         {
             _data.Position = _bootVolDesc.CatalogSector * IsoUtilities.SectorSize;
-            _bootCatalog = StreamUtilities.ReadExactly(_data, IsoUtilities.SectorSize);
+            _bootCatalog = _data.ReadExactly(IsoUtilities.SectorSize);
         }
 
         return _bootCatalog;

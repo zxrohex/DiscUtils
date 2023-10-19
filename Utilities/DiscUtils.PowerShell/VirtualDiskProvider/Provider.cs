@@ -30,6 +30,7 @@ using System.Management.Automation.Provider;
 using System.Text;
 using DiscUtils.Complete;
 using DiscUtils.Ntfs;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.PowerShell.VirtualDiskProvider;
 
@@ -95,7 +96,7 @@ public sealed class Provider : NavigationCmdletProvider, IContentCmdletProvider
             }
 
             var access = dynParams.ReadWrite.IsPresent ? FileAccess.ReadWrite : FileAccess.Read;
-            var disk = VirtualDisk.OpenDisk(fullPath, dynParams.DiskType, access, user, password);
+            var disk = VirtualDisk.OpenDisk(fullPath, dynParams.DiskType, access, user, password, useAsync: false);
             return new VirtualDiskPSDriveInfo(drive, MakePath($"{Utilities.NormalizePath(fullPath)}!", relPath), disk);
         }
         catch (IOException ioe)

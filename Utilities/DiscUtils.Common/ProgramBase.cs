@@ -27,8 +27,7 @@ using System.Diagnostics;
 using System.Reflection;
 using DiscUtils.Streams;
 using System.Linq;
-using DiscUtils.Streams.Compatibility;
-using System.IO;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.Common;
 

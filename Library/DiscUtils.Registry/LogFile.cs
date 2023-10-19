@@ -20,7 +20,7 @@ internal class LogFile : IEnumerable<LogEntry>
     public LogFile(Stream stream)
     {
         stream.Position = 0;
-        buffer = StreamUtilities.ReadExactly(stream, (int)stream.Length);
+        buffer = stream.ReadExactly((int)stream.Length);
         var headerResult = HiveHeader.ReadFrom(buffer, throwOnInvalidData: false);
         if (headerResult > 0)
         {
@@ -43,6 +43,13 @@ internal class LogFile : IEnumerable<LogEntry>
             }
 
             var size = EndianUtilities.ToInt32LittleEndian(buffer, offset + 4);
+                        
+            // Check for corrupt log records
+            if (size <= 0 || offset + size > buffer.Length)
+            {
+                break;
+            }
+
             var stored_hash1 = EndianUtilities.ToInt64LittleEndian(buffer, offset + 24);
             var stored_hash2 = EndianUtilities.ToInt64LittleEndian(buffer, offset + 32);
             var calc_hash1 = CalculateLogEntryHash(buffer.AsSpan(offset + 40, size - 40));

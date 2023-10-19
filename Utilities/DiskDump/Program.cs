@@ -78,7 +78,7 @@ class Program : ProgramBase
         var disks = new List<VirtualDisk>();
         foreach (var path in _inFiles.Values)
         {
-            var disk = VirtualDisk.OpenDisk(path, _diskType.IsPresent ? _diskType.Value : null, FileAccess.Read, UserName, Password);
+            var disk = VirtualDisk.OpenDisk(path, _diskType.IsPresent ? _diskType.Value : null, FileAccess.Read, UserName, Password, useAsync: false);
 
             if (disk is null)
             {
@@ -309,7 +309,7 @@ class Program : ProgramBase
         {
             foreach (var path in _inFiles.Values)
             {
-                var disk = VirtualDisk.OpenDisk(path, FileAccess.Read, UserName, Password);
+                var disk = VirtualDisk.OpenDisk(path, FileAccess.Read, UserName, Password, useAsync: false);
 
                 Console.WriteLine();
                 Console.WriteLine("DISK CONTENTS ({0})", path);

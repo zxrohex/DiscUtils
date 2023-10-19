@@ -55,7 +55,7 @@ internal class Directory : File, IVfsDirectory<DirEntry, File>
                     long pos = 0;
                     while (pos < Inode.FileSize)
                     {
-                        StreamUtilities.ReadMaximum(content, blockSize * (long)relBlock, blockData, 0, (int)blockSize);
+                        content.ReadMaximum(blockSize * (long)relBlock, blockData, 0, (int)blockSize);
 
                         var blockPos = 0;
                         while (blockPos < blockSize)

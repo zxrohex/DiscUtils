@@ -314,7 +314,7 @@ public sealed class NtfsFileSystemChecker : DiscFileSystemChecker
         byte[] rootBuffer;
         using (Stream s = file.OpenStream(AttributeType.IndexRoot, name, FileAccess.Read))
         {
-            rootBuffer = StreamUtilities.ReadExactly(s, (int)s.Length);
+            rootBuffer = s.ReadExactly((int)s.Length);
         }
 
         Bitmap indexBitmap = null;

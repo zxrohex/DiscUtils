@@ -30,6 +30,7 @@ using DiscUtils.Internal;
 using DiscUtils.Setup;
 using DiscUtils.Streams;
 using DiscUtils.Vfs;
+using LTRData.Extensions.Buffers;
 
 namespace ExternalFileSystem;
 

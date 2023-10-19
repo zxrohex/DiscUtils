@@ -51,9 +51,9 @@ internal sealed class DiskFactory : VirtualDiskFactory
         throw new NotSupportedException();
     }
 
-    public override VirtualDisk OpenDisk(string path, FileAccess access)
+    public override VirtualDisk OpenDisk(string path, FileAccess access, bool useAsync = false)
     {
-        return OpenDisk(new LocalFileLocator(Path.GetDirectoryName(path)), Path.GetFileName(path), access);
+        return OpenDisk(new LocalFileLocator(Path.GetDirectoryName(path), useAsync), Path.GetFileName(path), access);
     }
 
     public override VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access)

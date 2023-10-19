@@ -46,7 +46,7 @@ public sealed class FileNameAttribute : GenericAttribute
     internal FileNameAttribute(INtfsContext context, AttributeRecord record)
         : base(context, record)
     {
-        var content = StreamUtilities.ReadAll(Content);
+        var content = Content.ReadAll();
         _fnr = new FileNameRecord();
         _fnr.ReadFrom(content);
     }

@@ -63,7 +63,7 @@ public sealed class BtrfsFileSystem : VfsFileSystemFacade, IUnixFileSystem, IAll
 
         stream.Position = SuperblockOffsets[0];
 
-        var superblock = StreamUtilities.ReadStruct<SuperBlock>(stream, SuperBlock.Length);
+        var superblock = stream.ReadStruct<SuperBlock>(SuperBlock.Length);
 
         return superblock.Magic == SuperBlock.BtrfsMagic;
     }

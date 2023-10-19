@@ -678,6 +678,7 @@ internal class File
     ///  Gets an attribute instance by unique identifier.
     /// </summary>
     /// <param name="identifier">Attribute id.</param>
+    /// <param name="type"></param>
     /// <returns>The attribute of <c>null</c>.</returns>
     internal NtfsAttribute GetAttribute(ushort identifier, AttributeType type)
     {
@@ -721,7 +722,7 @@ internal class File
         var newAttrRecord = _records[0].GetAttribute(id);
 
         IBuffer attrBuffer = attr.GetDataBuffer();
-        var tempData = StreamUtilities.ReadExactly(attrBuffer, 0, (int)Math.Min(maxData, attrBuffer.Capacity));
+        var tempData = attrBuffer.ReadExactly(0, (int)Math.Min(maxData, attrBuffer.Capacity));
 
         RemoveAttributeExtents(attr);
         attr.SetExtent(_records[0].Reference, newAttrRecord);
@@ -1142,7 +1143,7 @@ internal class File
         var newAttrRecord = _records[0].GetAttribute(id);
 
         IBuffer attrBuffer = attr.GetDataBuffer();
-        var tempData = StreamUtilities.ReadExactly(attrBuffer, 0, (int)Math.Min(maxData, attrBuffer.Capacity));
+        var tempData = attrBuffer.ReadExactly(0, (int)Math.Min(maxData, attrBuffer.Capacity));
 
         RemoveAttributeExtents(attr);
         attr.SetExtent(_records[0].Reference, newAttrRecord);

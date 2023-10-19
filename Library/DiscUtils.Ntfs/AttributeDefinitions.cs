@@ -64,7 +64,7 @@ public sealed class AttributeDefinitions
 
         Span<byte> buffer = stackalloc byte[AttributeDefinitionRecord.Size];
         using var s = file.OpenStream(AttributeType.Data, null, FileAccess.Read);
-        while (StreamUtilities.ReadMaximum(s, buffer) == AttributeDefinitionRecord.Size)
+        while (s.ReadMaximum(buffer) == AttributeDefinitionRecord.Size)
         {
             var record = new AttributeDefinitionRecord();
             record.Read(buffer);

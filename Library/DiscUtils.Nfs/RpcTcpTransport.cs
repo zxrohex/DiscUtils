@@ -193,7 +193,7 @@ internal sealed class RpcTcpTransport : IRpcTransport
             var headerVal = EndianUtilities.ToUInt32BigEndian(header);
 
             lastFragFound = (headerVal & 0x80000000) != 0;
-            var frag = StreamUtilities.ReadExactly(stream, (int)(headerVal & 0x7FFFFFFF));
+            var frag = stream.ReadExactly((int)(headerVal & 0x7FFFFFFF));
 
             if (ms != null)
             {

@@ -26,6 +26,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
 using DiscUtils.Streams;
+using LTRData.Extensions.Buffers;
 using Microsoft.Win32.SafeHandles;
 
 namespace DiskClone;

@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.Raw;
 
@@ -60,7 +61,15 @@ public sealed class Disk : VirtualDisk
     /// </summary>
     /// <param name="path">The path to the disk image.</param>
     public Disk(string path)
-        :this(path, FileAccess.ReadWrite) {}
+        : this(path, FileAccess.ReadWrite) { }
+
+    /// <summary>
+    /// Initializes a new instance of the Disk class.
+    /// </summary>
+    /// <param name="path">The path to the disk image.</param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
+    public Disk(string path, bool useAsync)
+        : this(path, FileAccess.ReadWrite, useAsync) { }
 
     /// <summary>
     /// Initializes a new instance of the Disk class.
@@ -70,7 +79,20 @@ public sealed class Disk : VirtualDisk
     public Disk(string path, FileAccess access)
     {
         var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
-        var locator = new LocalFileLocator(string.Empty);
+        var locator = new LocalFileLocator(string.Empty, useAsync: false);
+        _file = new DiskImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose, default);
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Disk class.
+    /// </summary>
+    /// <param name="path">The path to the disk image.</param>
+    /// <param name="access">The access requested to the disk.</param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
+    public Disk(string path, FileAccess access, bool useAsync)
+    {
+        var share = access == FileAccess.Read ? FileShare.Read : FileShare.None;
+        var locator = new LocalFileLocator(string.Empty, useAsync);
         _file = new DiskImageFile(locator.Open(path, FileMode.Open, access, share), Ownership.Dispose, default);
     }
 
@@ -191,8 +213,9 @@ public sealed class Disk : VirtualDisk
     /// Create a new differencing disk.
     /// </summary>
     /// <param name="path">The path (or URI) for the disk to create.</param>
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
     /// <returns>The newly created disk.</returns>
-    public override VirtualDisk CreateDifferencingDisk(string path)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {
         throw new NotSupportedException("Differencing disks not supported for raw disks");
     }

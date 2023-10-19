@@ -35,6 +35,7 @@ namespace DiscUtils.Diagnostics;
 /// <param name="fs">The file system instance to perform the activity on</param>
 /// <param name="context">Contextual information shared by all activities during a 'run'</param>
 /// <typeparam name="TFileSystem">The concrete type of the file system the action is performed on.</typeparam>
+/// <typeparam name="TResult"></typeparam>
 /// <returns>A return value that is made available after the activity is run</returns>
 /// <remarks>The <c>context</c> information is reset (i.e. empty) at the start of a particular
 /// replay.  It's purpose is to enable multiple activites that operate in sequence to co-ordinate.</remarks>

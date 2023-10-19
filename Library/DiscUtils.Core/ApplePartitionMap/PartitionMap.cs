@@ -54,7 +54,7 @@ public sealed class PartitionMap : PartitionTable
         var initialPart = new PartitionMapEntry(_stream);
         initialPart.ReadFrom(initialBytes.Slice(512));
 
-        var partTableData = StreamUtilities.ReadExactly(stream, (int)(initialPart.MapEntries - 1) * 512);
+        var partTableData = stream.ReadExactly((int)(initialPart.MapEntries - 1) * 512);
 
         _partitions = new PartitionMapEntry[initialPart.MapEntries - 1];
         for (uint i = 0; i < initialPart.MapEntries - 1; ++i)

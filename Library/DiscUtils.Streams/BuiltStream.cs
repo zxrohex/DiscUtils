@@ -406,7 +406,7 @@ public class BuiltStream : SparseStream
             throw new NotSupportedException();
         }
 
-        public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
+        public override ValueTask<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
         public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken) =>

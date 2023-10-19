@@ -19,7 +19,7 @@ public class ZipFileSystem : VirtualFileSystem
         {
             Span<byte> buffer = stackalloc byte[512];
 
-            if (StreamUtilities.ReadMaximum(archive, buffer) < 512)
+            if (archive.ReadMaximum(buffer) < 512)
             {
                 return false;
             }

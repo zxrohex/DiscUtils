@@ -79,7 +79,7 @@ public sealed class RegistryKey
     }
 
     /// <summary>
-    /// Gets the name of this key.
+    /// Gets the full path of this key within the hive.
     /// </summary>
     public string Name
     {
@@ -93,6 +93,16 @@ public sealed class RegistryKey
             return _cell.Name;
         }
     }
+
+    /// <summary>
+    /// Gets the name of this key.
+    /// </summary>
+    public string KeyName => _cell.Name;
+
+    /// <summary>
+    /// Gets the full path of this key within the hive.
+    /// </summary>
+    public override string ToString() => Name;
 
     /// <summary>
     /// Gets the parent key, or <c>null</c> if this is the root key.
@@ -127,6 +137,12 @@ public sealed class RegistryKey
             if (_cell.NumSubKeys != 0)
             {
                 var list = _hive.GetCell<ListCell>(_cell.SubKeysIndex);
+                
+                if (list is null)
+                {
+                    yield break;
+                }
+
                 foreach (var key in list.EnumerateKeys())
                 {
                     if (key is not null)
@@ -370,7 +386,32 @@ public sealed class RegistryKey
     /// <param name="value">The value to store.</param>
     public void SetValue(string name, object value)
     {
-        SetValue(name, value, RegistryValueType.None);
+        RegistryValueType valueType;
+
+        switch (value)
+        {
+            case int:
+                valueType = RegistryValueType.Dword;
+                break;
+            
+            case long:
+                valueType = RegistryValueType.Qword;
+                break;
+            
+            case byte[] or ReadOnlyMemory<byte> or Memory<byte>:
+                valueType = RegistryValueType.Binary;
+                break;
+            
+            case string[]:
+                valueType = RegistryValueType.MultiString;
+                break;
+            
+            default:
+                valueType = RegistryValueType.String;
+                break;
+        }
+
+        SetValue(name, value, valueType);
     }
 
     /// <summary>
@@ -759,6 +800,11 @@ public sealed class RegistryKey
         {
             var listCell = _hive.GetCell<ListCell>(_cell.SubKeysIndex);
 
+            if (listCell is null)
+            {
+                throw new RegistryCorruptException($"Missing cell for subkeys for key '{Name}'");
+            }
+            
             if (listCell.FindKey(name, out var cellIndex) == 0)
             {
                 return cellIndex;

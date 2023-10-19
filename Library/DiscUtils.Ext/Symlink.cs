@@ -36,7 +36,7 @@ internal class Symlink : File, IVfsSymlink<DirEntry, File>
         get
         {
             var content = FileContent;
-            var data = StreamUtilities.ReadExactly(content, 0, (int)content.Capacity);
+            var data = content.ReadExactly(0, (int)content.Capacity);
             return EndianUtilities.BytesToZString(data, 0, data.Length).Replace('/', Path.DirectorySeparatorChar);
         }
     }

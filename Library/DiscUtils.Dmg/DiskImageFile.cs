@@ -54,7 +54,7 @@ internal sealed class DiskImageFile : VirtualDiskLayer
         if (_udifHeader.SignatureValid)
         {
             stream.Position = (long)_udifHeader.XmlOffset;
-            var xmlData = StreamUtilities.ReadExactly(stream, (int)_udifHeader.XmlLength);
+            var xmlData = stream.ReadExactly((int)_udifHeader.XmlLength);
             var plist = Plist.Parse(new MemoryStream(xmlData));
 
             _resources = ResourceFork.FromPlist(plist);

@@ -578,7 +578,7 @@ public sealed class GuidPartitionTable : PartitionTable
     {
         _diskData.Position = header.PartitionEntriesLba * _diskGeometry.BytesPerSector;
 
-        var buffer = StreamUtilities.ReadExactly(_diskData, (int)(header.PartitionEntrySize * header.PartitionEntryCount));
+        var buffer = _diskData.ReadExactly((int)(header.PartitionEntrySize * header.PartitionEntryCount));
 
         if (header.EntriesCrc != CalcEntriesCrc(buffer))
         {

@@ -183,28 +183,8 @@ internal sealed class RegistryValue
     /// <param name="valueType">The registry type of the data.</param>
     public void SetValue(object value, RegistryValueType valueType)
     {
-        if (valueType == RegistryValueType.None)
-        {
-            if (value is int)
-            {
-                valueType = RegistryValueType.Dword;
-            }
-            else if (value is byte[])
-            {
-                valueType = RegistryValueType.Binary;
-            }
-            else if (value is string[])
-            {
-                valueType = RegistryValueType.MultiString;
-            }
-            else
-            {
-                valueType = RegistryValueType.String;
-            }
-        }
-
         var data = ConvertToData(value, valueType);
-        SetData(data, valueType);
+        SetData(data.Span, valueType);
     }
 
     /// <summary>
@@ -232,7 +212,7 @@ internal sealed class RegistryValue
                 var multiString = EndianUtilities.LittleEndianUnicodeBytesToString(data).TrimEnd('\0');
                 return multiString.Split('\0');
 
-            case RegistryValueType.QWord:
+            case RegistryValueType.Qword:
                 return string.Empty + EndianUtilities.ToUInt64LittleEndian(data);
 
             default:
@@ -240,14 +220,10 @@ internal sealed class RegistryValue
         }
     }
 
-    private static byte[] ConvertToData(object value, RegistryValueType valueType)
+    private static ReadOnlyMemory<byte> ConvertToData(object value, RegistryValueType valueType)
     {
-        if (valueType == RegistryValueType.None)
-        {
-            throw new ArgumentException("Specific registry value type must be specified", nameof(valueType));
-        }
-
         byte[] data;
+
         switch (valueType)
         {
             case RegistryValueType.String:
@@ -258,12 +234,17 @@ internal sealed class RegistryValue
                 break;
 
             case RegistryValueType.Dword:
-                data = new byte[4];
+                data = new byte[sizeof(int)];
+                EndianUtilities.WriteBytesLittleEndian((int)value, data, 0);
+                break;
+
+            case RegistryValueType.Qword:
+                data = new byte[sizeof(long)];
                 EndianUtilities.WriteBytesLittleEndian((int)value, data, 0);
                 break;
 
             case RegistryValueType.DwordBigEndian:
-                data = new byte[4];
+                data = new byte[sizeof(int)];
                 EndianUtilities.WriteBytesBigEndian((int)value, data, 0);
                 break;
 
@@ -274,8 +255,22 @@ internal sealed class RegistryValue
                 break;
 
             default:
-                data = (byte[])value;
-                break;
+                if (value is byte[] array)
+                {
+                    return array;
+                }
+                else if (value is ReadOnlyMemory<byte> romem)
+                {
+                    return romem;
+                }
+                else if (value is Memory<byte> mem)
+                {
+                    return mem;
+                }
+                else
+                {
+                    throw new ArgumentException("Invalid data type for value data parameter", nameof(value));
+                }
         }
 
         return data;
@@ -295,7 +290,7 @@ internal sealed class RegistryValue
                 case RegistryValueType.Link:
                 case RegistryValueType.Dword:
                 case RegistryValueType.DwordBigEndian:
-                case RegistryValueType.QWord:
+                case RegistryValueType.Qword:
                     return ConvertToObject(data, DataType).ToString();
 
                 case RegistryValueType.MultiString:

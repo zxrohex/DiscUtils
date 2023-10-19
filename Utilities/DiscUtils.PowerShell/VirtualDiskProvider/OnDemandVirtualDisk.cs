@@ -129,10 +129,10 @@ internal sealed class OnDemandVirtualDisk : VirtualDisk
         return disk.CreateDifferencingDisk(fileSystem, path);
     }
 
-    public override VirtualDisk CreateDifferencingDisk(string path)
+    public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync = false)
     {
         using var disk = OpenDisk();
-        return disk.CreateDifferencingDisk(path);
+        return disk.CreateDifferencingDisk(path, useAsync);
     }
 
     private VirtualDisk OpenDisk()

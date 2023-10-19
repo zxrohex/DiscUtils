@@ -90,7 +90,7 @@ public class NewVirtualDiskCommand : PSCmdlet
         if (parentObj.BaseObject is DirectoryInfo)
         {
             var path = Path.Combine(((DirectoryInfo)parentObj.BaseObject).FullName, child);
-            using (var realDisk = VirtualDisk.CreateDisk(type, variant, path, size, default, null)) { }
+            using (var realDisk = VirtualDisk.CreateDisk(type, variant, path, size, default, null, useAsync: false)) { }
             disk = new OnDemandVirtualDisk(path, FileAccess.ReadWrite);
         }
         else if (parentObj.BaseObject is DiscDirectoryInfo)
@@ -125,7 +125,7 @@ public class NewVirtualDiskCommand : PSCmdlet
         {
             if (baseDiskObj.BaseObject is FileInfo)
             {
-                baseDisk = VirtualDisk.OpenDisk(((FileInfo)baseDiskObj.BaseObject).FullName, FileAccess.Read);
+                baseDisk = VirtualDisk.OpenDisk(((FileInfo)baseDiskObj.BaseObject).FullName, FileAccess.Read, useAsync: false);
             }
             else if (baseDiskObj.BaseObject is DiscFileInfo)
             {
@@ -146,7 +146,7 @@ public class NewVirtualDiskCommand : PSCmdlet
             if (parentObj.BaseObject is DirectoryInfo)
             {
                 var path = Path.Combine(((DirectoryInfo)parentObj.BaseObject).FullName, child);
-                using (baseDisk.CreateDifferencingDisk(path)) { }
+                using (baseDisk.CreateDifferencingDisk(path, useAsync: false)) { }
                 newDisk = new OnDemandVirtualDisk(path, FileAccess.ReadWrite);
             }
             else if (parentObj.BaseObject is DiscDirectoryInfo)

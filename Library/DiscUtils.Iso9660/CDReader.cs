@@ -206,7 +206,7 @@ public class CDReader : VfsFileSystemFacade, IClusterBasedFileSystem,
             }
 
             data.Position = 0x8000;
-            var numRead = StreamUtilities.ReadMaximum(data, buffer, 0, IsoUtilities.SectorSize);
+            var numRead = data.ReadMaximum(buffer, 0, IsoUtilities.SectorSize);
             if (numRead != IsoUtilities.SectorSize)
             {
                 return false;

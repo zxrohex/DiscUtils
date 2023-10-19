@@ -26,6 +26,8 @@ using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using DiscUtils.Archives;
 using DiscUtils.Streams;
 
@@ -196,6 +198,112 @@ public sealed class VirtualMachineBuilder : StreamBuilder, IDisposable
         }
 
         return tarBuilder.Build();
+    }
+
+    /// <summary>
+    /// Creates a new stream that contains the XVA image.
+    /// </summary>
+    /// <returns>The new stream.</returns>
+    public override Task<Stream> BuildAsync(CancellationToken cancellationToken)
+    {
+        var tarBuilder = new TarFileBuilder();
+
+        var ovaFileContent = GenerateOvaXml(out var diskIds);
+        tarBuilder.AddFile("ova.xml", Encoding.ASCII.GetBytes(ovaFileContent));
+
+        var diskIdx = 0;
+        foreach (var diskRec in _disks)
+        {
+            var diskStream = diskRec.content;
+            var extents = new List<StreamExtent>(diskStream.Extents);
+
+            var lastChunkAdded = -1;
+            foreach (var extent in extents)
+            {
+                var firstChunk = (int)(extent.Start / Sizes.OneMiB);
+                var lastChunk = (int)((extent.Start + extent.Length - 1) / Sizes.OneMiB);
+
+                for (var i = firstChunk; i <= lastChunk; ++i)
+                {
+                    if (i != lastChunkAdded)
+                    {
+                        Stream chunkStream;
+
+                        var diskBytesLeft = diskStream.Length - i * Sizes.OneMiB;
+                        if (diskBytesLeft < Sizes.OneMiB)
+                        {
+                            chunkStream = new ConcatStream(
+                                Ownership.Dispose, new SparseStream[] {
+                                new SubStream(diskStream, i * Sizes.OneMiB, diskBytesLeft),
+                                new ZeroStream(Sizes.OneMiB - diskBytesLeft) });
+                        }
+                        else
+                        {
+                            chunkStream = new SubStream(diskStream, i * Sizes.OneMiB, Sizes.OneMiB);
+                        }
+
+                        Stream chunkHashStream;
+#if NETSTANDARD || NETCOREAPP || NET461_OR_GREATER
+                        var hashAlgCore = IncrementalHash.CreateHash(HashAlgorithmName.SHA1);
+                        chunkHashStream = new HashStreamCore(chunkStream, Ownership.Dispose, hashAlgCore);
+#else
+                        HashAlgorithm hashAlgDotnet = new SHA1Managed();
+                        chunkHashStream = new HashStreamDotnet(chunkStream, Ownership.Dispose, hashAlgDotnet);
+#endif
+
+                        tarBuilder.AddFile(string.Format(CultureInfo.InvariantCulture, "Ref:{0}/{1:D8}", diskIds[diskIdx], i), chunkHashStream);
+
+                        byte[] hash;
+#if NETSTANDARD || NETCOREAPP || NET461_OR_GREATER
+                        hash = hashAlgCore.GetHashAndReset();
+#else
+                        hashAlgDotnet.TransformFinalBlock(new byte[0], 0, 0);
+                        hash = hashAlgDotnet.Hash;
+#endif
+
+                        var hashString = BitConverter.ToString(hash).Replace("-", "").ToLower();
+                        var hashStringAscii = Encoding.ASCII.GetBytes(hashString);
+                        tarBuilder.AddFile(string.Format(CultureInfo.InvariantCulture, "Ref:{0}/{1:D8}.checksum", diskIds[diskIdx], i), hashStringAscii);
+
+                        lastChunkAdded = i;
+                    }
+                }
+            }
+
+            // Make sure the last chunk is present, filled with zero's if necessary
+            var lastActualChunk = (int)((diskStream.Length - 1) / Sizes.OneMiB);
+            if (lastChunkAdded < lastActualChunk)
+            {
+                Stream chunkStream = new ZeroStream(Sizes.OneMiB);
+
+                Stream chunkHashStream;
+#if NETSTANDARD || NETCOREAPP || NET461_OR_GREATER
+                var hashAlgCore = IncrementalHash.CreateHash(HashAlgorithmName.SHA1);
+                chunkHashStream = new HashStreamCore(chunkStream, Ownership.Dispose, hashAlgCore);
+#else
+                HashAlgorithm hashAlgDotnet = new SHA1Managed();
+                chunkHashStream = new HashStreamDotnet(chunkStream, Ownership.Dispose, hashAlgDotnet);
+#endif
+
+                tarBuilder.AddFile(string.Format(CultureInfo.InvariantCulture, "Ref:{0}/{1:D8}", diskIds[diskIdx], lastActualChunk), chunkHashStream);
+
+                byte[] hash;
+#if NETSTANDARD || NETCOREAPP || NET461_OR_GREATER
+                hash = hashAlgCore.GetHashAndReset();
+#else
+                hashAlgDotnet.TransformFinalBlock(new byte[0], 0, 0);
+                hash = hashAlgDotnet.Hash;
+#endif
+
+                var hashString = BitConverter.ToString(hash).Replace("-", "").ToLower();
+                var hashStringAscii = Encoding.ASCII.GetBytes(hashString);
+                tarBuilder.AddFile(string.Format(CultureInfo.InvariantCulture, "Ref:{0}/{1:D8}.checksum", diskIds[diskIdx], lastActualChunk), hashStringAscii);
+            }
+
+            ++diskIdx;
+        }
+
+        return tarBuilder.BuildAsync(cancellationToken);
     }
 
     protected override List<BuilderExtent> FixExtents(out long totalLength)

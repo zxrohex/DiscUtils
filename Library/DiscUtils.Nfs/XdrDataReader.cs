@@ -38,7 +38,7 @@ public sealed class XdrDataReader : BigEndianDataReader
 
     public override byte[] ReadBytes(int count)
     {
-        var buffer = StreamUtilities.ReadExactly(_stream, count);
+        var buffer = _stream.ReadExactly(count);
 
         if ((count & 0x3) != 0)
         {

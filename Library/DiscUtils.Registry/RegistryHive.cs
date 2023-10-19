@@ -55,7 +55,7 @@ public class RegistryHive : IDisposable
     /// The created object does not assume ownership of the stream.
     /// </remarks>
     public RegistryHive(string filePath, FileAccess access)
-        : this(new FileStream(filePath, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read, 4096, useAsync: true),
+        : this(new FileStream(filePath, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read),
               Ownership.Dispose,
               OpenLogFiles(filePath, access).ToArray())
     {
@@ -68,17 +68,17 @@ public class RegistryHive : IDisposable
         var log1 = $"{log}1";
         if (File.Exists(log1))
         {
-            yield return new FileStream(log1, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read, 4096, useAsync: true);
+            yield return new FileStream(log1, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read);
 
             var log2 = $"{log}2";
             if (File.Exists(log2))
             {
-                yield return new FileStream(log2, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read, 4096, useAsync: true);
+                yield return new FileStream(log2, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read);
             }
         }
         else if (File.Exists(log))
         {
-            yield return new FileStream(log, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read, 4096, useAsync: true);
+            yield return new FileStream(log, FileMode.Open, access, access.HasFlag(FileAccess.Write) ? FileShare.None : FileShare.Read);
         }
     }
 
@@ -392,7 +392,7 @@ public class RegistryHive : IDisposable
     /// <returns>The new hive.</returns>
     public static RegistryHive Create(string path)
     {
-        var locator = new LocalFileLocator(string.Empty);
+        var locator = new LocalFileLocator(string.Empty, useAsync: false);
         return Create(locator.Open(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None), Ownership.Dispose);
     }
 

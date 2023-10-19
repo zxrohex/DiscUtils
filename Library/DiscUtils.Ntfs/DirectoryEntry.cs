@@ -21,6 +21,7 @@
 //
 
 using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.Ntfs;
 

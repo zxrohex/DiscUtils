@@ -29,6 +29,7 @@ using System.Threading.Tasks;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Async;
 
 namespace DiscUtils.Diagnostics;
 
@@ -158,7 +159,7 @@ public sealed class TracingStream : CompatibilityStream
 
         if (!string.IsNullOrEmpty(path))
         {
-            var locator = new LocalFileLocator(string.Empty);
+            var locator = new LocalFileLocator(string.Empty, useAsync: false);
             _fileOut = new StreamWriter(locator.Open(path, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite));
         }
     }
@@ -289,6 +290,7 @@ public sealed class TracingStream : CompatibilityStream
     /// Reads data from the stream.
     /// </summary>
     /// <param name="buffer">The buffer to fill</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The number of bytes read</returns>
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -415,6 +417,7 @@ public sealed class TracingStream : CompatibilityStream
     /// Writes data to the stream at the current location.
     /// </summary>
     /// <param name="buffer">The data to write</param>
+    /// <param name="cancellationToken"></param>
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         var position = _wrapped.Position;

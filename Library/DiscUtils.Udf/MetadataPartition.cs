@@ -40,7 +40,7 @@ internal class MetadataPartition : LogicalPartition
         var physical = context.PhysicalPartitions[partitionMap.PartitionNumber];
         var fileEntryPos = partitionMap.MetadataFileLocation * (long)volumeDescriptor.LogicalBlockSize;
 
-        var entryData = StreamUtilities.ReadExactly(physical.Content, fileEntryPos, _context.PhysicalSectorSize);
+        var entryData = physical.Content.ReadExactly(fileEntryPos, _context.PhysicalSectorSize);
         if (!DescriptorTag.IsValid(entryData))
         {
             throw new IOException("Invalid descriptor tag looking for Metadata file entry");

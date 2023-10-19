@@ -68,11 +68,8 @@ public class BuilderSparseStreamExtent : BuilderExtent
         return _stream.Read(block, offset, count);
     }
 
-    public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
-    {
-        _stream.Position = diskOffset - Start;
-        return _stream.ReadAsync(block, offset, count, cancellationToken);
-    }
+    public override ValueTask<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+        => ReadAsync(diskOffset, block.AsMemory(offset, count), cancellationToken);
 
     public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
     {

@@ -36,7 +36,10 @@ public abstract class VirtualDiskFactory
     public abstract VirtualDisk CreateDisk(FileLocator locator, string variant, string path,
                                            VirtualDiskParameters diskParameters);
 
-    public abstract VirtualDisk OpenDisk(string path, FileAccess access);
+    public VirtualDisk OpenDisk(string path, FileAccess access)
+        => OpenDisk(path, access, useAsync: false);
+
+    public abstract VirtualDisk OpenDisk(string path, FileAccess access, bool useAsync);
 
     public abstract VirtualDisk OpenDisk(FileLocator locator, string path, FileAccess access);
 

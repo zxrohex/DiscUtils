@@ -25,7 +25,7 @@ namespace DiscUtils.Xfs;
 using System;
 
 /// <summary>
-/// Additional version flags if <see cref="VersionFlags.MOREBITSBIT"/> is set in <see cref="SuperBlock.Version"/>.
+/// Additional version flags if MOREBITSBIT is set in <see cref="SuperBlock.Version"/>.
 /// </summary>
 [Flags]
 internal enum Version2Features : uint

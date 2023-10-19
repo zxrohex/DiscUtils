@@ -517,7 +517,7 @@ public sealed class Provider : NavigationCmdletProvider, IDynamicPropertyCmdletP
         {
             RegistryValueType.Binary or RegistryValueType.None => new byte[0],
             RegistryValueType.Dword or RegistryValueType.DwordBigEndian => 0,
-            RegistryValueType.QWord => 0L,
+            RegistryValueType.Qword => 0L,
             RegistryValueType.String or RegistryValueType.ExpandString => "",
             RegistryValueType.MultiString => Array.Empty<string>(),
             _ => null,

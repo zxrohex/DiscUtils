@@ -54,7 +54,7 @@ class Program : ProgramBase
         var volMgr = new VolumeManager();
         foreach (var path in _inFiles.Values)
         {
-            var disk = VirtualDisk.OpenDisk(path, FileAccess.Read, UserName, Password);
+            var disk = VirtualDisk.OpenDisk(path, FileAccess.Read, UserName, Password, useAsync: false);
 
             if (disk is null)
             {

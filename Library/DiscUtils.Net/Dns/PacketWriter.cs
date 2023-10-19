@@ -24,6 +24,7 @@ using System;
 using System.Text;
 using DiscUtils.Streams;
 using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.Net.Dns;
 

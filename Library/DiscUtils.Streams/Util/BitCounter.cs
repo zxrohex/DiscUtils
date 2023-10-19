@@ -80,7 +80,7 @@ public static class BitCounter
     /// <summary>
     /// count the number of bits set in each entry of <paramref name="values"/>
     /// </summary>
-    /// <param name="values">the <see cref="ReadOnlySpan{byte}"/> to process</param>
+    /// <param name="values">the <see cref="ReadOnlySpan{Byte}"/> to process</param>
     /// <returns></returns>
     public static long Count(ReadOnlySpan<byte> values)
     {

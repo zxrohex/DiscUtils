@@ -125,8 +125,7 @@ public class SubBuffer : Buffer
     /// </summary>
     /// <param name="pos">The offset within the buffer to start reading.</param>
     /// <param name="buffer">The destination byte array.</param>
-    /// <param name="offset">The start offset within the destination buffer.</param>
-    /// <param name="count">The number of bytes to read.</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>The actual number of bytes read.</returns>
     public override ValueTask<int> ReadAsync(long pos, Memory<byte> buffer, CancellationToken cancellationToken)
     {
@@ -143,8 +142,6 @@ public class SubBuffer : Buffer
     /// </summary>
     /// <param name="pos">The offset within the buffer to start reading.</param>
     /// <param name="buffer">The destination byte array.</param>
-    /// <param name="offset">The start offset within the destination buffer.</param>
-    /// <param name="count">The number of bytes to read.</param>
     /// <returns>The actual number of bytes read.</returns>
     public override int Read(long pos, Span<byte> buffer)
     {
@@ -183,8 +180,7 @@ public class SubBuffer : Buffer
     /// </summary>
     /// <param name="pos">The start offset within the buffer.</param>
     /// <param name="buffer">The source byte array.</param>
-    /// <param name="offset">The start offset within the source byte array.</param>
-    /// <param name="count">The number of bytes to write.</param>
+    /// <param name="cancellationToken"></param>
     public override ValueTask WriteAsync(long pos, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         if (pos + buffer.Length > _length)
@@ -200,8 +196,6 @@ public class SubBuffer : Buffer
     /// </summary>
     /// <param name="pos">The start offset within the buffer.</param>
     /// <param name="buffer">The source byte array.</param>
-    /// <param name="offset">The start offset within the source byte array.</param>
-    /// <param name="count">The number of bytes to write.</param>
     public override void Write(long pos, ReadOnlySpan<byte> buffer)
     {
         if (pos + buffer.Length > _length)

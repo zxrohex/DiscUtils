@@ -40,7 +40,7 @@ internal sealed class Metadata
     {
         _regionStream = regionStream;
         _regionStream.Position = 0;
-        Table = StreamUtilities.ReadStruct<MetadataTable>(_regionStream);
+        Table = _regionStream.ReadStruct<MetadataTable>();
 
         FileParameters = ReadStruct<FileParameters>(MetadataTable.FileParametersGuid, false);
         DiskSize = ReadValue(MetadataTable.VirtualDiskSizeGuid, false, EndianUtilities.ToUInt64LittleEndian);
@@ -93,7 +93,7 @@ internal sealed class Metadata
         }
 
         metadataStream.Position = 0;
-        StreamUtilities.WriteStruct(metadataStream, header);
+        metadataStream.WriteStruct(header);
         return new Metadata(metadataStream);
     }
 
@@ -113,7 +113,7 @@ internal sealed class Metadata
         header.Entries[key] = entry;
 
         stream.Position = dataOffset;
-        StreamUtilities.WriteStruct(stream, data);
+        stream.WriteStruct(data);
 
         return entry.Length;
     }
@@ -151,7 +151,7 @@ internal sealed class Metadata
         if (Table.Entries.TryGetValue(key, out var entry))
         {
             _regionStream.Position = entry.Offset;
-            return StreamUtilities.ReadStruct<T>(_regionStream, (int)entry.Length);
+            return _regionStream.ReadStruct<T>((int)entry.Length);
         }
 
         return default(T);

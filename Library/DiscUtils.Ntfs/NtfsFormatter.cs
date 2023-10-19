@@ -261,7 +261,9 @@ internal class NtfsFormatter
         ntfs.SetSecurity("System Volume Information", new RawSecurityDescriptor("O:BAG:SYD:(A;OICI;FA;;;SY)"));
 
         using (
-            Stream s = ntfs.OpenFile(@"System Volume Information\MountPointManagerRemoteDatabase", FileMode.Create)) {}
+            Stream s = ntfs.OpenFile(@"System Volume Information\MountPointManagerRemoteDatabase", FileMode.Create))
+        {
+        }
 
         ntfs.SetAttributes(@"System Volume Information\MountPointManagerRemoteDatabase",
             FileAttributes.Hidden | FileAttributes.System | FileAttributes.Archive);

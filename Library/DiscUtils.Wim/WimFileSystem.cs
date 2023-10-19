@@ -30,6 +30,7 @@ using System.Xml.Linq;
 using System.Xml.XPath;
 using System.Linq;
 using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Split;
 
 namespace DiscUtils.Wim;
 

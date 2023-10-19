@@ -27,7 +27,8 @@ using System.Linq;
 using System.Text;
 using DiscUtils.Internal;
 using DiscUtils.Streams;
-using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Buffers;
+using LTRData.Extensions.Split;
 
 namespace DiscUtils.Iso9660;
 
@@ -449,7 +450,7 @@ public sealed class CDBuilder : StreamBuilder, IFileSystemBuilder
             return bootImage;
         }
 
-        var bootData = StreamUtilities.ReadExactly(bootImage, (int)bootImage.Length);
+        var bootData = bootImage.ReadExactly((int)bootImage.Length);
 
         Array.Clear(bootData, 8, 56);
 

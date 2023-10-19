@@ -64,11 +64,8 @@ public class BuilderStreamExtent : BuilderExtent
         return _source.Read(block, offset, count);
     }
 
-    public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
-    {
-        _source.Position = diskOffset - Start;
-        return _source.ReadAsync(block, offset, count, cancellationToken);
-    }
+    public override ValueTask<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+        => ReadAsync(diskOffset, block.AsMemory(offset, count), cancellationToken);
 
     public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
     {

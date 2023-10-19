@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
+using LTRData.Extensions.Buffers;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -50,8 +51,8 @@ public abstract class BuilderExtent : IDisposable
 
     public abstract int Read(long diskOffset, byte[] block, int offset, int count);
 
-    public virtual Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
-        Task.FromResult(Read(diskOffset, block, offset, count));
+    public virtual ValueTask<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken) =>
+        new(Read(diskOffset, block, offset, count));
 
     public abstract int Read(long diskOffset, Span<byte> block);
 

@@ -689,8 +689,6 @@ public static class EndianUtilities
     /// Primitive conversion from ASCII to Unicode that preserves special characters.
     /// </summary>
     /// <param name="data">The data to convert.</param>
-    /// <param name="offset">The first byte to convert.</param>
-    /// <param name="count">The number of bytes to convert.</param>
     /// <returns>The string.</returns>
     /// <remarks>The built-in ASCIIEncoding converts characters of codepoint > 127 to ?,
     /// this preserves those code points.</remarks>
@@ -737,8 +735,6 @@ public static class EndianUtilities
     /// Primitive conversion from ASCII to Unicode that stops at a null-terminator.
     /// </summary>
     /// <param name="data">The data to convert.</param>
-    /// <param name="offset">The first byte to convert.</param>
-    /// <param name="count">The number of bytes to convert.</param>
     /// <returns>The string.</returns>
     /// <remarks>The built-in ASCIIEncoding converts characters of codepoint > 127 to ?,
     /// this preserves those code points.</remarks>

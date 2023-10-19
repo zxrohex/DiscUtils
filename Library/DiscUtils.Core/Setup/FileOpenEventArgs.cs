@@ -62,7 +62,7 @@ public class FileOpenEventArgs:EventArgs
     /// Gets or sets the <see cref="FileShare"/>
     /// </summary>
     public FileShare FileShare { get; set; }
-
+    
     /// <summary>
     /// The resulting stream.
     /// </summary>

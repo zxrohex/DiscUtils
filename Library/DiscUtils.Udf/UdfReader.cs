@@ -72,7 +72,7 @@ public sealed class UdfReader : VfsFileSystemFacade
         while (validDescriptor)
         {
             data.Position = vdpos;
-            var numRead = StreamUtilities.ReadMaximum(data, buffer, 0, IsoUtilities.SectorSize);
+            var numRead = data.ReadMaximum(buffer, 0, IsoUtilities.SectorSize);
             if (numRead != IsoUtilities.SectorSize)
             {
                 break;

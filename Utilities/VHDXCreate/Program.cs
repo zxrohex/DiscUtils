@@ -105,7 +105,7 @@ class Program : ProgramBase
                 return;
             }
 
-            Disk.InitializeDifferencing(_destFile.Value, _sourceFile.Value);
+            Disk.InitializeDifferencing(_destFile.Value, _sourceFile.Value, useAsync: false);
         }
         else if (_typeSwitch.Value == "fixed")
         {

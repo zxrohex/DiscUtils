@@ -51,7 +51,7 @@ internal sealed class DiskTransport : VirtualDiskTransport
         return _session.OpenDisk(_lunInfo.Lun, access);
     }
 
-    public override FileLocator GetFileLocator()
+    public override FileLocator GetFileLocator(bool useAsync)
     {
         throw new NotImplementedException();
     }

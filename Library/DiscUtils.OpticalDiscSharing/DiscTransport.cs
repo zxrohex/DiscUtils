@@ -24,6 +24,7 @@ using System;
 using System.IO;
 using DiscUtils.Internal;
 using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Buffers;
 
 namespace DiscUtils.OpticalDiscSharing;
 
@@ -75,7 +76,7 @@ internal sealed class DiscTransport : VirtualDiskTransport
         return _service.OpenDisc(_disk);
     }
 
-    public override FileLocator GetFileLocator()
+    public override FileLocator GetFileLocator(bool useAsync)
     {
         throw new NotImplementedException();
     }

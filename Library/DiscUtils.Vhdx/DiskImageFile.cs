@@ -118,8 +118,11 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// </summary>
     /// <param name="path">The file path to open.</param>
     /// <param name="access">Controls how the file can be accessed.</param>
-    public DiskImageFile(string path, FileAccess access)
-        : this(new LocalFileLocator(Path.GetDirectoryName(path)), Path.GetFileName(path), access) {}
+    /// <param name="useAsync">Underlying files will be opened optimized for async use.</param>
+    public DiskImageFile(string path, FileAccess access, bool useAsync = false)
+        : this(new LocalFileLocator(Path.GetDirectoryName(path), useAsync), Path.GetFileName(path), access)
+    {
+    }
 
     internal DiskImageFile(FileLocator locator, string path, Stream stream, Ownership ownsStream)
         : this(stream, ownsStream)
@@ -204,13 +207,13 @@ public sealed class DiskImageFile : VirtualDiskLayer
         get
         {
             _fileStream.Position = 0;
-            var fileHeader = StreamUtilities.ReadStruct<FileHeader>(_fileStream);
+            var fileHeader = _fileStream.ReadStruct<FileHeader>();
 
             _fileStream.Position = 64 * Sizes.OneKiB;
-            var vhdxHeader1 = StreamUtilities.ReadStruct<VhdxHeader>(_fileStream);
+            var vhdxHeader1 = _fileStream.ReadStruct<VhdxHeader>();
 
             _fileStream.Position = 128 * Sizes.OneKiB;
-            var vhdxHeader2 = StreamUtilities.ReadStruct<VhdxHeader>(_fileStream);
+            var vhdxHeader2 = _fileStream.ReadStruct<VhdxHeader>();
 
             var activeLogSequence = FindActiveLogSequence();
 
@@ -327,6 +330,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <param name="stream">The stream to initialize.</param>
     /// <param name="ownsStream">Indicates if the new instance controls the lifetime of the stream.</param>
     /// <param name="capacity">The desired capacity of the new disk.</param>
+    /// <param name="geometry"></param>
     /// <returns>An object that accesses the stream as a VHDX file.</returns>
     public static DiskImageFile InitializeDynamic(Stream stream, Ownership ownsStream, long capacity, Geometry geometry)
     {
@@ -340,6 +344,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     /// <param name="stream">The stream to initialize.</param>
     /// <param name="ownsStream">Indicates if the new instance controls the lifetime of the stream.</param>
     /// <param name="capacity">The desired capacity of the new disk.</param>
+    /// <param name="geometry"></param>
     /// <param name="blockSize">The size of each block (unit of allocation).</param>
     /// <returns>An object that accesses the stream as a VHDX file.</returns>
     public static DiskImageFile InitializeDynamic(Stream stream, Ownership ownsStream, long capacity, Geometry geometry, long blockSize)
@@ -414,7 +419,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     [Obsolete("Use GetParentLocations() by preference")]
     public IEnumerable<string> GetParentLocations(string basePath)
     {
-        return GetParentLocations(new LocalFileLocator(basePath));
+        return GetParentLocations(new LocalFileLocator(basePath, useAsync: false));
     }
 
     internal static DiskImageFile InitializeFixed(FileLocator locator, string path, long capacity, Geometry geometry)
@@ -592,19 +597,19 @@ public sealed class DiskImageFile : VirtualDiskLayer
         fileEnd += batRegion.Length;
 
         stream.Position = 0;
-        StreamUtilities.WriteStruct(stream, fileHeader);
+        stream.WriteStruct(fileHeader);
 
         stream.Position = 64 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, header1);
+        stream.WriteStruct(header1);
 
         stream.Position = 128 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, header2);
+        stream.WriteStruct(header2);
 
         stream.Position = 192 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, regionTable);
+        stream.WriteStruct(regionTable);
 
         stream.Position = 256 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, regionTable);
+        stream.WriteStruct(regionTable);
 
         // Set stream to min size
         stream.Position = fileEnd - 1;
@@ -677,19 +682,19 @@ public sealed class DiskImageFile : VirtualDiskLayer
         fileEnd += batRegion.Length;
 
         stream.Position = 0;
-        StreamUtilities.WriteStruct(stream, fileHeader);
+        stream.WriteStruct(fileHeader);
 
         stream.Position = 64 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, header1);
+        stream.WriteStruct(header1);
 
         stream.Position = 128 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, header2);
+        stream.WriteStruct(header2);
 
         stream.Position = 192 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, regionTable);
+        stream.WriteStruct(regionTable);
 
         stream.Position = 256 * Sizes.OneKiB;
-        StreamUtilities.WriteStruct(stream, regionTable);
+        stream.WriteStruct(regionTable);
 
         // Set stream to min size
         stream.Position = fileEnd - 1;
@@ -711,7 +716,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     private void Initialize()
     {
         _fileStream.Position = 0;
-        var fileHeader = StreamUtilities.ReadStruct<FileHeader>(_fileStream);
+        var fileHeader = _fileStream.ReadStruct<FileHeader>();
         if (!fileHeader.IsValid)
         {
             throw new IOException("Invalid VHDX file - file signature mismatch");
@@ -741,7 +746,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     private IEnumerable<StreamExtent> BatControlledFileExtents()
     {
         _batStream.Position = 0;
-        var batData = StreamUtilities.ReadExactly(_batStream, (int)_batStream.Length);
+        var batData = _batStream.ReadExactly((int)_batStream.Length);
 
         var blockSize = _metadata.FileParameters.BlockSize;
         var chunkSize = (1L << 23) * _metadata.LogicalSectorSize;
@@ -874,7 +879,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
     private void ReadRegionTable()
     {
         _fileStream.Position = 192 * Sizes.OneKiB;
-        _regionTable = StreamUtilities.ReadStruct<RegionTable>(_fileStream);
+        _regionTable = _fileStream.ReadStruct<RegionTable>();
         foreach (var entry in _regionTable.Regions.Values)
         {
             if ((entry.Flags & RegionFlags.Required) != 0)
@@ -896,7 +901,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
         _activeHeader = 0;
 
         _fileStream.Position = 64 * Sizes.OneKiB;
-        var vhdxHeader1 = StreamUtilities.ReadStruct<VhdxHeader>(_fileStream);
+        var vhdxHeader1 = _fileStream.ReadStruct<VhdxHeader>();
         if (vhdxHeader1.IsValid)
         {
             _header = vhdxHeader1;
@@ -904,7 +909,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
         }
 
         _fileStream.Position = 128 * Sizes.OneKiB;
-        var vhdxHeader2 = StreamUtilities.ReadStruct<VhdxHeader>(_fileStream);
+        var vhdxHeader2 = _fileStream.ReadStruct<VhdxHeader>();
         if (vhdxHeader2.IsValid && (_activeHeader == 0 || _header.SequenceNumber < vhdxHeader2.SequenceNumber))
         {
             _header = vhdxHeader2;
@@ -935,14 +940,14 @@ public sealed class DiskImageFile : VirtualDiskLayer
             otherPos = 128 * Sizes.OneKiB;
         }
 
-        StreamUtilities.WriteStruct(_fileStream, _header);
+        _fileStream.WriteStruct(_header);
         _fileStream.Flush();
 
         _header.SequenceNumber++;
         _header.CalcChecksum();
 
         _fileStream.Position = otherPos;
-        StreamUtilities.WriteStruct(_fileStream, _header);
+        _fileStream.WriteStruct(_header);
         _fileStream.Flush();
     }
 
@@ -961,7 +966,7 @@ public sealed class DiskImageFile : VirtualDiskLayer
         if (fileLocator == null)
         {
             // Use working directory by default
-            fileLocator = new LocalFileLocator(string.Empty);
+            fileLocator = new LocalFileLocator(string.Empty, useAsync: false);
         }
 
         var locator = _metadata.ParentLocator;

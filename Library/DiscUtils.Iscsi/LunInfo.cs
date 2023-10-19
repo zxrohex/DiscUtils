@@ -20,7 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 //
 
-using DiscUtils.Streams.Compatibility;
+using LTRData.Extensions.Split;
 using System;
 using System.Collections.Generic;
 using System.Globalization;

@@ -10,6 +10,7 @@
     <PackageReference Include="System.Memory" Version="*" />
     <PackageReference Include="System.Security.Cryptography.Algorithms" Version="4.3.1" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+    <PackageReference Include="LTRData.Extensions" Version="*" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework.CompareTo(`net461`))' &gt;= 0">

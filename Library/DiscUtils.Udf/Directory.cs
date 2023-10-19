@@ -43,7 +43,7 @@ internal class Directory : File, IVfsDirectory<FileIdentifier, File>
 
         _entries = new(StringComparer.OrdinalIgnoreCase, entry => entry.Name);
 
-        var contentBytes = StreamUtilities.ReadExactly(FileContent, 0, (int)FileContent.Capacity);
+        var contentBytes = FileContent.ReadExactly(0, (int)FileContent.Capacity);
 
         var pos = 0;
         while (pos < contentBytes.Length)

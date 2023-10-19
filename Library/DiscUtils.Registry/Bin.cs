@@ -56,7 +56,7 @@ internal sealed class Bin
         _header.ReadFrom(buffer);
 
         _fileStream.Position = _streamPos;
-        _buffer = StreamUtilities.ReadExactly(_fileStream, _header.BinSize);
+        _buffer = _fileStream.ReadExactly(_header.BinSize);
 
         // Gather list of all free cells.
         _freeCells = new List<Range<int, int>>();

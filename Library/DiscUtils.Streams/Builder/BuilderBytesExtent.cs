@@ -53,14 +53,14 @@ public class BuilderBytesExtent : BuilderExtent
         return numRead;
     }
 
-    public override Task<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
+    public override ValueTask<int> ReadAsync(long diskOffset, byte[] block, int offset, int count, CancellationToken cancellationToken)
     {
         var start = (int)Math.Min(diskOffset - Start, _data.Length);
         var numRead = Math.Min(count, _data.Length - start);
 
         System.Buffer.BlockCopy(_data, start, block, offset, numRead);
 
-        return Task.FromResult(numRead);
+        return new(numRead);
     }
 
     public override ValueTask<int> ReadAsync(long diskOffset, Memory<byte> block, CancellationToken cancellationToken)
